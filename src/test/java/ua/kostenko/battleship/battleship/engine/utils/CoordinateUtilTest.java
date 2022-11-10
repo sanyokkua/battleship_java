@@ -169,23 +169,23 @@ class CoordinateUtilTest {
         var coordinates = Set.of(Coordinate.of(0, 0), Coordinate.of(0, 1));
         var neighbours = CoordinateUtil.buildNeighbourCoordinates(coordinates);
         assertEquals(4, neighbours.size());
-        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(1,0).equals(c)));
-        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(1,1).equals(c)));
-        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(1,2).equals(c)));
-        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(0,2).equals(c)));
+        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(1, 0).equals(c)));
+        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(1, 1).equals(c)));
+        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(1, 2).equals(c)));
+        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(0, 2).equals(c)));
 
         coordinates = Set.of(Coordinate.of(5, 5), Coordinate.of(4, 5));
         neighbours = CoordinateUtil.buildNeighbourCoordinates(coordinates);
         assertEquals(10, neighbours.size());
-        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(3,4).equals(c)));
-        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(3,5).equals(c)));
-        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(3,6).equals(c)));
-        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(4,4).equals(c)));
-        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(4,6).equals(c)));
-        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(5,4).equals(c)));
-        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(5,6).equals(c)));
-        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(6,4).equals(c)));
-        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(6,5).equals(c)));
-        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(6,6).equals(c)));
+        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(3, 4).equals(c)));
+        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(3, 5).equals(c)));
+        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(3, 6).equals(c)));
+        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(4, 4).equals(c)));
+        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(4, 6).equals(c)));
+        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(5, 4).equals(c)));
+        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(5, 6).equals(c)));
+        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(6, 4).equals(c)));
+        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(6, 5).equals(c)));
+        assertTrue(neighbours.stream().anyMatch(c -> Coordinate.of(6, 6).equals(c)));
     }
 } 

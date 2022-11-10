@@ -1,5 +1,7 @@
 package ua.kostenko.battleship.battleship.engine.utils;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import ua.kostenko.battleship.battleship.engine.config.GameConfig;
 import ua.kostenko.battleship.battleship.engine.config.GameType;
 import ua.kostenko.battleship.battleship.engine.config.ShipConfiguration;
@@ -12,7 +14,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-public class ShipUtil {
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public final class ShipUtil {
 
     public static Set<Ship> generateShips(GameType gameType) {
         final Set<ShipConfiguration> shipConfigs = GameConfig.getConfiguration(gameType);

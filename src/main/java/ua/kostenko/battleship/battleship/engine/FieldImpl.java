@@ -25,10 +25,6 @@ public class FieldImpl implements Field {
         this.field = FieldUtil.initializeField();
     }
 
-    public FieldImpl(@NonNull Cell[][] field) {
-        this.field = field;
-    }
-
     private Cell getCell(@NonNull final Coordinate coordinate) {
         return this.field[coordinate.row()][coordinate.column()];
     }
@@ -93,6 +89,7 @@ public class FieldImpl implements Field {
 
         val ship = cell.ship();
         val shipCells = FieldUtil.findShipCells(field, ship);
+        val neighbourCells = FieldUtil.findShipNeighbourCells(field, ship);
 
         for (var shipCell : shipCells) {
             val row = shipCell.coordinate().row();
@@ -102,9 +99,6 @@ public class FieldImpl implements Field {
                                        .isAvailable(true)
                                        .build();
         }
-
-        val neighbourCells = FieldUtil.findShipNeighbourCells(field, ship);
-
         for (var neighbourCell : neighbourCells) {
             val row = neighbourCell.coordinate().row();
             val col = neighbourCell.coordinate().column();
@@ -175,7 +169,7 @@ public class FieldImpl implements Field {
 
     @Override
     public int getAmountOfAliveCells() {
-        final Predicate<Cell> hasShotPredicate = cell -> !cell.hasShot();
+        final Predicate<Cell> hasShotPredicate = cell -> cell.hasShot();
         final Predicate<Cell> doesntHaveShotPredicate = hasShotPredicate.negate();
         return (int) FieldUtil.convertToFlatSet(field)
                               .stream()
@@ -187,7 +181,7 @@ public class FieldImpl implements Field {
     public int getAmountOfAliveShips() {
         return (int) FieldUtil.getShipsFromField(field).stream()
                               .map(ship -> FieldUtil.findShipCells(field, ship))
-                              .filter(coordinates -> coordinates.stream().allMatch(Cell::hasShot))
+                              .filter(coordinates -> coordinates.stream().noneMatch(Cell::hasShot))
                               .count();
     }
 
