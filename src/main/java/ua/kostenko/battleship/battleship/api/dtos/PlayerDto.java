@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import ua.kostenko.battleship.battleship.api.internal.ControllerUtils;
 import ua.kostenko.battleship.battleship.engine.Field;
 import ua.kostenko.battleship.battleship.engine.models.Player;
 import ua.kostenko.battleship.battleship.engine.models.records.Ship;
@@ -17,7 +18,7 @@ import java.util.Set;
 public class PlayerDto {
     private String playerId;
     private String playerName;
-    private Field field;
+    private CellDto[][] field;
     private Set<Ship> shipsNotOnTheField;
     private Set<Ship> allPlayerShips;
     private boolean isActive;
@@ -28,7 +29,7 @@ public class PlayerDto {
         return PlayerDto.builder()
                         .playerId(player.getPlayerId())
                         .playerName(player.getPlayerName())
-                        .field(player.getField())
+                        .field(ControllerUtils.mapFieldToFieldDto(player.getField().getField()))
                         .shipsNotOnTheField(player.getShipsNotOnTheField())
                         .allPlayerShips(player.getAllPlayerShips())
                         .isActive(player.isActive())

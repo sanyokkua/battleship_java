@@ -2,7 +2,7 @@ package ua.kostenko.battleship.battleship.engine.utils;
 
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.Test;
-import ua.kostenko.battleship.battleship.engine.config.GameType;
+import ua.kostenko.battleship.battleship.engine.config.GameEdition;
 import ua.kostenko.battleship.battleship.engine.models.enums.ShipType;
 import ua.kostenko.battleship.battleship.engine.models.records.Ship;
 
@@ -15,7 +15,7 @@ class ShipUtilTest {
 
     @Test
     void testGenerateShips() {
-        final Set<Ship> shipsClassic = ShipUtil.generateShips(GameType.CLASSIC);
+        final Set<Ship> shipsClassic = ShipUtil.generateShips(GameEdition.UKRAINIAN);
         assertEquals(10, shipsClassic.size());
         assertTrue(shipsClassic.stream().anyMatch(s -> ShipType.PATROL_BOAT.equals(s.shipType())));
         assertTrue(shipsClassic.stream().anyMatch(s -> ShipType.SUBMARINE.equals(s.shipType())));
@@ -60,7 +60,7 @@ class ShipUtilTest {
 
         assertTrue(shipsClassic.stream().allMatch(s -> StringUtils.isNotBlank(s.shipId())));
 
-        final Set<Ship> shipsCustom = ShipUtil.generateShips(GameType.CUSTOM);
+        final Set<Ship> shipsCustom = ShipUtil.generateShips(GameEdition.MILTON_BRADLEY);
         assertEquals(10, shipsCustom.size());
         assertTrue(shipsCustom.stream().anyMatch(s -> ShipType.SUBMARINE.equals(s.shipType())));
         assertTrue(shipsCustom.stream().anyMatch(s -> ShipType.DESTROYER.equals(s.shipType())));

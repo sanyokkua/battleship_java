@@ -1,4 +1,4 @@
-package ua.kostenko.battleship.battleship.api;
+package ua.kostenko.battleship.battleship.api.internal;
 
 import ua.kostenko.battleship.battleship.api.dtos.CellDto;
 import ua.kostenko.battleship.battleship.api.dtos.PlayerDto;

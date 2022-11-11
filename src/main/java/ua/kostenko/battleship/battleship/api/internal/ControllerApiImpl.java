@@ -1,46 +1,40 @@
-package ua.kostenko.battleship.battleship.api;
+package ua.kostenko.battleship.battleship.api.internal;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import ua.kostenko.battleship.battleship.api.dtos.CellDto;
 import ua.kostenko.battleship.battleship.api.dtos.PlayerDto;
 import ua.kostenko.battleship.battleship.api.dtos.ShipDto;
 import ua.kostenko.battleship.battleship.engine.Game;
-import ua.kostenko.battleship.battleship.engine.config.GameConfig;
-import ua.kostenko.battleship.battleship.engine.config.GameType;
+import ua.kostenko.battleship.battleship.engine.config.GameEdition;
 import ua.kostenko.battleship.battleship.engine.models.Player;
 import ua.kostenko.battleship.battleship.engine.models.enums.Direction;
 import ua.kostenko.battleship.battleship.engine.models.enums.GameState;
 import ua.kostenko.battleship.battleship.engine.models.enums.ShotResult;
-import ua.kostenko.battleship.battleship.engine.models.records.Cell;
 import ua.kostenko.battleship.battleship.engine.models.records.Coordinate;
 import ua.kostenko.battleship.battleship.engine.models.records.GameStateRepresentation;
 import ua.kostenko.battleship.battleship.engine.models.records.Ship;
 import ua.kostenko.battleship.battleship.persistence.Persistence;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RequiredArgsConstructor
 public class ControllerApiImpl implements ControllerApi {
     private final Persistence persistence;
 
-    private static CellDto[][] mapFieldToFieldDto(final Cell[][] playerField) {
-        CellDto[][] field = new CellDto[GameConfig.NUMBER_OF_ROWS][GameConfig.NUMBER_OF_COLUMNS];
-        for (int i = 0; i < GameConfig.NUMBER_OF_ROWS; i++) {
-            for (int j = 0; j < GameConfig.NUMBER_OF_COLUMNS; j++) {
-                field[i][j] = CellDto.of(playerField[i][j]);
-            }
-        }
-        return field;
-    }
-
     private Game loadGame(final String sessionId) {
         val loaded = persistence.load(sessionId);
         if (loaded.isEmpty()) {
-            throw new IllegalArgumentException("Game with sessionId doesn't exist");
+            throw new IllegalArgumentException(
+                    "Game with id '%s' doesn't exist".formatted(sessionId));
         }
         return loaded.get();
     }
@@ -48,7 +42,7 @@ public class ControllerApiImpl implements ControllerApi {
     @Override
     public Set<ShipDto> getPrepareShipsList(final String sessionId, final String playerId) {
         if (StringUtils.isAnyBlank(sessionId, playerId)) {
-            return Collections.emptySet();
+            throw new IllegalArgumentException("sessionId or playerId is blank");
         }
         val game = loadGame(sessionId);
         val player = game.getPlayer(playerId);
@@ -62,7 +56,7 @@ public class ControllerApiImpl implements ControllerApi {
         }
         val game = loadGame(sessionId);
         val playerField = game.getField(playerId);
-        return mapFieldToFieldDto(playerField);
+        return ControllerUtils.mapFieldToFieldDto(playerField);
     }
 
     @Override
@@ -70,8 +64,11 @@ public class ControllerApiImpl implements ControllerApi {
             final String sessionId, final String playerId, final String shipId,
             final Coordinate coordinate,
             final String shipDirection) {
-        if (StringUtils.isAnyBlank(sessionId, playerId, shipId)) {
-            throw new IllegalArgumentException("sessionId, or playerId, or shipId is blank");
+        if (StringUtils.isAnyBlank(sessionId, playerId)) {
+            throw new IllegalArgumentException("sessionId or playerId is blank");
+        }
+        if (StringUtils.isBlank(shipId)) {
+            throw new IllegalArgumentException("shipId is blank");
         }
         val direction = Direction.valueOf(shipDirection.toUpperCase());
         val game = loadGame(sessionId);
@@ -132,11 +129,11 @@ public class ControllerApiImpl implements ControllerApi {
     }
 
     @Override
-    public Optional<String> createGameSession(@NonNull final GameType gameType) {
+    public Optional<String> createGameSession(@NonNull final GameEdition gameEdition) {
         val newGameId = UUID.randomUUID().toString();
         val gameRepresentation = GameStateRepresentation.builder()
                                                         .sessionId(newGameId)
-                                                        .gameType(gameType)
+                                                        .gameEdition(gameEdition)
                                                         .gameState(GameState.INITIALIZED)
                                                         .players(new HashSet<>())
                                                         .build();
@@ -218,7 +215,7 @@ public class ControllerApiImpl implements ControllerApi {
 
         val game = loadGame(sessionId);
         val field = isForOpponent ? game.getOpponentField(playerId) : game.getField(playerId);
-        return mapFieldToFieldDto(field);
+        return ControllerUtils.mapFieldToFieldDto(field);
     }
 
     @Override

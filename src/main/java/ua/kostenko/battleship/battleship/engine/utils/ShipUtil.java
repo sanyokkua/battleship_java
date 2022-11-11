@@ -2,8 +2,9 @@ package ua.kostenko.battleship.battleship.engine.utils;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import ua.kostenko.battleship.battleship.engine.config.GameConfig;
-import ua.kostenko.battleship.battleship.engine.config.GameType;
+import ua.kostenko.battleship.battleship.engine.config.GameEdition;
 import ua.kostenko.battleship.battleship.engine.config.ShipConfiguration;
 import ua.kostenko.battleship.battleship.engine.models.enums.Direction;
 import ua.kostenko.battleship.battleship.engine.models.records.Ship;
@@ -14,11 +15,14 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ShipUtil {
 
-    public static Set<Ship> generateShips(GameType gameType) {
-        final Set<ShipConfiguration> shipConfigs = GameConfig.getConfiguration(gameType);
+    public static Set<Ship> generateShips(GameEdition gameEdition) {
+        log.trace("In method: generateShips");
+        log.debug("GameEdition: {}", gameEdition);
+        final Set<ShipConfiguration> shipConfigs = GameConfig.getConfiguration(gameEdition);
         return shipConfigs.stream()
                           .flatMap(ship -> {
                               List<Ship> ships = new ArrayList<>();
@@ -32,6 +36,7 @@ public final class ShipUtil {
                               }
                               return ships.stream();
                           })
+                          .peek(ship -> log.debug("SipConfig: {}", ship))
                           .collect(Collectors.toSet());
     }
 }

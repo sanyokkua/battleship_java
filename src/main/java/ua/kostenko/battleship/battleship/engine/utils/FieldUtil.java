@@ -2,7 +2,10 @@ package ua.kostenko.battleship.battleship.engine.utils;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ua.kostenko.battleship.battleship.engine.models.records.Cell;
 import ua.kostenko.battleship.battleship.engine.models.records.Coordinate;
 import ua.kostenko.battleship.battleship.engine.models.records.Ship;
@@ -14,9 +17,12 @@ import java.util.stream.Collectors;
 import static ua.kostenko.battleship.battleship.engine.config.GameConfig.NUMBER_OF_COLUMNS;
 import static ua.kostenko.battleship.battleship.engine.config.GameConfig.NUMBER_OF_ROWS;
 
+
+@Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class FieldUtil {
     public static Cell[][] initializeField() {
+        log.trace("In method: initializeField");
         Cell[][] field = new Cell[NUMBER_OF_ROWS][NUMBER_OF_COLUMNS];
         for (int i = 0; i < NUMBER_OF_ROWS; i++) {
             for (int j = 0; j < NUMBER_OF_COLUMNS; j++) {
@@ -32,12 +38,14 @@ public final class FieldUtil {
     }
 
     public static Set<Cell> convertToFlatSet(Cell[][] field) {
+        log.trace("In method: convertToFlatSet");
         return Arrays.stream(field)
                      .flatMap(Arrays::stream)
                      .collect(Collectors.toSet());
     }
 
     public static Set<Ship> getShipsFromField(Cell[][] field) {
+        log.trace("In method: getShipsFromField");
         return convertToFlatSet(field)
                 .stream()
                 .filter(Cell::hasShip)
@@ -46,6 +54,7 @@ public final class FieldUtil {
     }
 
     public static Set<Cell> findShipCells(Cell[][] field, Ship ship) {
+        log.trace("In method: findShipCells");
         return convertToFlatSet(field)
                 .stream()
                 .filter(Cell::hasShip)
@@ -55,6 +64,7 @@ public final class FieldUtil {
     }
 
     public static Set<Cell> findShipNeighbourCells(Cell[][] field, Ship ship) {
+        log.trace("In method: findShipNeighbourCells");
         val shipCells = findShipCells(field, ship);
         val shipCoordinates = shipCells.stream()
                                        .map(Cell::coordinate)

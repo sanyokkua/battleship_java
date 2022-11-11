@@ -13,14 +13,16 @@ import ua.kostenko.battleship.battleship.engine.models.records.Ship;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CellDto {
-    private Coordinate coordinate;
+    private int row;
+    private int col;
     private Ship ship;
     private boolean hasShot;
     private boolean isAvailable;
 
     public static CellDto of(Cell cell) {
         return CellDto.builder()
-                      .coordinate(cell.coordinate())
+                      .row(cell.coordinate().row())
+                      .col(cell.coordinate().column())
                       .ship(cell.ship())
                       .hasShot(cell.hasShot())
                       .isAvailable(cell.isAvailable())

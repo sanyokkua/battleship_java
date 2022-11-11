@@ -1,6 +1,7 @@
 package ua.kostenko.battleship.battleship.engine;
 
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import ua.kostenko.battleship.battleship.engine.models.enums.ShotResult;
 import ua.kostenko.battleship.battleship.engine.models.records.Cell;
@@ -18,23 +19,30 @@ import java.util.stream.Collectors;
 import static ua.kostenko.battleship.battleship.engine.config.GameConfig.NUMBER_OF_COLUMNS;
 import static ua.kostenko.battleship.battleship.engine.config.GameConfig.NUMBER_OF_ROWS;
 
+@Slf4j
 public class FieldImpl implements Field {
     private final Cell[][] field;
 
     public FieldImpl() {
+        log.trace("Initialized field in constructor");
         this.field = FieldUtil.initializeField();
     }
 
     private Cell getCell(@NonNull final Coordinate coordinate) {
+        log.trace("In method: getCell");
+        log.debug("get cell for coordinate: {}", coordinate);
         return this.field[coordinate.row()][coordinate.column()];
     }
 
     private Cell updateCell(@NonNull final Cell cell) {
+        log.trace("In method: updateCell");
+        log.debug("Updating cell {}", cell);
         this.field[cell.coordinate().row()][cell.coordinate().column()] = cell;
         return this.field[cell.coordinate().row()][cell.coordinate().column()];
     }
 
     private void validateShipIntersections(Set<Coordinate> shipCoordinates) {
+        log.trace("In method: validateShipIntersections");
         val neighbourCoordinates = CoordinateUtil.buildNeighbourCoordinates(shipCoordinates);
 
         val shipCoordinatesRegion = new HashSet<>(shipCoordinates);
@@ -49,6 +57,8 @@ public class FieldImpl implements Field {
 
     @Override
     public void addShip(@NonNull final Coordinate coordinate, @NonNull final Ship ship) {
+        log.trace("In method: addShip");
+        log.debug("coordinate: {}, ship: {}", coordinate, ship);
         CoordinateUtil.validateCoordinateAndThrowException(coordinate);
 
         val shipCoordinates = CoordinateUtil.buildShipCoordinates(coordinate, ship);
@@ -56,34 +66,28 @@ public class FieldImpl implements Field {
 
         validateShipIntersections(shipCoordinates);
 
-        for (var shipCoordinate : shipCoordinates) {
-            val row = shipCoordinate.row();
-            val col = shipCoordinate.column();
-            this.field[row][col] = Cell.builder()
-                                       .coordinate(shipCoordinate)
-                                       .ship(ship)
-                                       .isAvailable(false)
-                                       .build();
-        }
-
+        shipCoordinates.forEach(c -> updateCell(Cell.builder()
+                                                    .coordinate(c)
+                                                    .ship(ship)
+                                                    .isAvailable(false)
+                                                    .build()));
         val shipNeighbourCoordinates = CoordinateUtil.buildNeighbourCoordinates(shipCoordinates);
-
-        for (var neighbourCoordinate : shipNeighbourCoordinates) {
-            val row = neighbourCoordinate.row();
-            val col = neighbourCoordinate.column();
-            this.field[row][col] = Cell.builder()
-                                       .coordinate(neighbourCoordinate)
-                                       .isAvailable(false)
-                                       .build();
-        }
+        shipNeighbourCoordinates.forEach(
+                neighbourCoordinate -> updateCell(Cell.builder()
+                                                      .coordinate(neighbourCoordinate)
+                                                      .isAvailable(false)
+                                                      .build()));
     }
 
     @Override
     public Optional<String> removeShip(@NonNull final Coordinate coordinate) {
+        log.trace("In method: removeShip");
+        log.debug("remove ship, coordinate: {}", coordinate);
         CoordinateUtil.validateCoordinateAndThrowException(coordinate);
 
         val cell = getCell(coordinate);
         if (!cell.hasShip()) {
+            log.debug("cell doesn't have ship, Optional.empty() will be returned");
             return Optional.empty();
         }
 
@@ -91,27 +95,22 @@ public class FieldImpl implements Field {
         val shipCells = FieldUtil.findShipCells(field, ship);
         val neighbourCells = FieldUtil.findShipNeighbourCells(field, ship);
 
-        for (var shipCell : shipCells) {
-            val row = shipCell.coordinate().row();
-            val col = shipCell.coordinate().column();
-            this.field[row][col] = Cell.builder()
-                                       .coordinate(shipCell.coordinate())
-                                       .isAvailable(true)
-                                       .build();
-        }
-        for (var neighbourCell : neighbourCells) {
-            val row = neighbourCell.coordinate().row();
-            val col = neighbourCell.coordinate().column();
-            this.field[row][col] = Cell.builder()
-                                       .coordinate(neighbourCell.coordinate())
-                                       .isAvailable(true)
-                                       .build();
-        }
+        shipCells.forEach(shipCell -> updateCell(Cell.builder()
+                                                     .coordinate(shipCell.coordinate())
+                                                     .isAvailable(true)
+                                                     .build()));
+        neighbourCells.forEach(
+                neighbourCell -> updateCell(Cell.builder()
+                                                .coordinate(neighbourCell.coordinate())
+                                                .isAvailable(true)
+                                                .build()));
         return Optional.of(ship.shipId());
     }
 
     @Override
     public ShotResult makeShot(@NonNull final Coordinate coordinate) {
+        log.trace("In method: makeShot");
+        log.debug("Shot to coordinate: {}", coordinate);
         CoordinateUtil.validateCoordinateAndThrowException(coordinate);
         val cell = updateCell(Cell.builder()
                                   .coordinate(coordinate)
@@ -119,19 +118,25 @@ public class FieldImpl implements Field {
                                   .hasShot(true)
                                   .build());
         if (!cell.hasShip()) {
+            log.debug("Cell doesn't have a ship, shot result is MISS");
             return ShotResult.MISS;
         }
 
         val shipCells = FieldUtil.findShipCells(this.field, cell.ship());
         val isDestroyed = shipCells.stream().allMatch(Cell::hasShot);
+        log.debug("ship is destroyed: {}", isDestroyed);
         if (isDestroyed) {
+            log.debug("Additional processing of neighbour cells will be started");
             processDestroyedShip(shipCells);
         }
-        return isDestroyed ? ShotResult.DESTROYED : ShotResult.HIT;
+        val result = isDestroyed ? ShotResult.DESTROYED : ShotResult.HIT;
+        log.debug("ShotResult: {}", result);
+        return result;
     }
 
     @Override
     public Cell[][] getField() {
+        log.trace("In method: getField");
         Cell[][] newField = new Cell[NUMBER_OF_ROWS][NUMBER_OF_COLUMNS];
         for (int i = 0; i < NUMBER_OF_ROWS; i++) {
             for (int j = 0; j < NUMBER_OF_COLUMNS; j++) {
@@ -145,11 +150,13 @@ public class FieldImpl implements Field {
                                      .build();
             }
         }
+        log.debug("Copy of the field will be returned");
         return newField;
     }
 
     @Override
     public Cell[][] getFieldWithHiddenShips() {
+        log.trace("In method: getFieldWithHiddenShips");
         Cell[][] newField = new Cell[NUMBER_OF_ROWS][NUMBER_OF_COLUMNS];
         for (int i = 0; i < NUMBER_OF_ROWS; i++) {
             for (int j = 0; j < NUMBER_OF_COLUMNS; j++) {
@@ -164,12 +171,14 @@ public class FieldImpl implements Field {
                                      .build();
             }
         }
+        log.debug("Copy of the field with hidden ships will be returned");
         return newField;
     }
 
     @Override
     public int getAmountOfAliveCells() {
-        final Predicate<Cell> hasShotPredicate = cell -> cell.hasShot();
+        log.trace("In method: getAmountOfAliveCells");
+        final Predicate<Cell> hasShotPredicate = Cell::hasShot;
         final Predicate<Cell> doesntHaveShotPredicate = hasShotPredicate.negate();
         return (int) FieldUtil.convertToFlatSet(field)
                               .stream()
@@ -179,13 +188,15 @@ public class FieldImpl implements Field {
 
     @Override
     public int getAmountOfAliveShips() {
+        log.trace("In method: getAmountOfAliveShips");
         return (int) FieldUtil.getShipsFromField(field).stream()
                               .map(ship -> FieldUtil.findShipCells(field, ship))
-                              .filter(coordinates -> coordinates.stream().noneMatch(Cell::hasShot))
+                              .filter(s -> s.stream().anyMatch(c -> !c.hasShot()))
                               .count();
     }
 
     private void processDestroyedShip(final Set<Cell> shipCells) {
+        log.trace("In method: processDestroyedShip");
         val shipCoordinates = shipCells.stream()
                                        .map(Cell::coordinate)
                                        .collect(Collectors.toSet());

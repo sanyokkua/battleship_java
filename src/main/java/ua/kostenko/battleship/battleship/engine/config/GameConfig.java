@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.battleship.engine.config;
 
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import ua.kostenko.battleship.battleship.engine.models.enums.ShipType;
 
@@ -8,21 +9,25 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 public abstract class GameConfig {
     public static final int NUMBER_OF_ROWS = 10;
     public static final int NUMBER_OF_COLUMNS = 10;
 
-    public static Set<ShipConfiguration> getConfiguration(GameType gameType) {
-        switch (gameType) {
-            case CUSTOM -> {
-                return new CustomGameConfig().getShipConfigs();
+    public static Set<ShipConfiguration> getConfiguration(GameEdition gameEdition) {
+        log.trace("In method: getConfiguration");
+        switch (gameEdition) {
+            case MILTON_BRADLEY -> {
+                log.debug("MILTON_BRADLEY edition config will be returned");
+                return new MiltonBradleyGameConfig().getShipConfigs();
             }
-            case CLASSIC -> {
-                return new ClassicGameConfig().getShipConfigs();
+            case UKRAINIAN -> {
+                log.debug("UKRAINIAN edition config will be returned");
+                return new UkrainianGameConfig().getShipConfigs();
             }
             default -> {
                 throw new IllegalArgumentException(
-                        "GameType %s is not supported yet".formatted(gameType));
+                        "GameType %s is not supported yet".formatted(gameEdition));
             }
         }
     }

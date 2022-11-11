@@ -10,11 +10,16 @@ import ua.kostenko.battleship.battleship.engine.models.records.Ship;
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 
 public interface Game {
 
     static Game wrap(@NonNull GameStateRepresentation gameStateRepresentation) {
         return new GameImpl(gameStateRepresentation);
+    }
+
+    default Supplier<Field> newField() {
+        return FieldImpl::new;
     }
 
     Player createPlayer(String playerId, String playerName);
