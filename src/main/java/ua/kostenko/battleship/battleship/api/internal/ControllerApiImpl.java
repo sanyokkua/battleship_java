@@ -1,19 +1,24 @@
 package ua.kostenko.battleship.battleship.api.internal;
 
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.apache.commons.lang3.StringUtils;
+import org.springframework.http.ResponseEntity;
 import ua.kostenko.battleship.battleship.api.dtos.CellDto;
+import ua.kostenko.battleship.battleship.api.dtos.PlayerBaseInfoDto;
 import ua.kostenko.battleship.battleship.api.dtos.PlayerDto;
 import ua.kostenko.battleship.battleship.api.dtos.ShipDto;
+import ua.kostenko.battleship.battleship.api.internal.exceptions.IllegalGameStateException;
+import ua.kostenko.battleship.battleship.api.internal.exceptions.IncorrectSessionIdException;
+import ua.kostenko.battleship.battleship.api.internal.exceptions.IncorrectShipIdException;
+import ua.kostenko.battleship.battleship.api.internal.exceptions.InternalGameException;
 import ua.kostenko.battleship.battleship.engine.Game;
 import ua.kostenko.battleship.battleship.engine.config.GameEdition;
 import ua.kostenko.battleship.battleship.engine.models.Player;
 import ua.kostenko.battleship.battleship.engine.models.enums.Direction;
 import ua.kostenko.battleship.battleship.engine.models.enums.GameState;
 import ua.kostenko.battleship.battleship.engine.models.enums.ShotResult;
+import ua.kostenko.battleship.battleship.engine.models.records.Cell;
 import ua.kostenko.battleship.battleship.engine.models.records.Coordinate;
 import ua.kostenko.battleship.battleship.engine.models.records.GameStateRepresentation;
 import ua.kostenko.battleship.battleship.engine.models.records.Ship;
@@ -31,235 +36,327 @@ public class ControllerApiImpl implements ControllerApi {
     private final Persistence persistence;
 
     private Game loadGame(final String sessionId) {
-        val loaded = persistence.load(sessionId);
+        log.debug("sessionId to load: {}", sessionId);
+        final Optional<Game> loaded = persistence.load(sessionId);
         if (loaded.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Game with id '%s' doesn't exist".formatted(sessionId));
+            throw new IncorrectSessionIdException("Session is not found. ID: %s".formatted(
+                    sessionId));
         }
-        return loaded.get();
+        final Game game = loaded.get();
+        log.debug("sessionId is loaded: {}", game.getGameStateRepresentation().sessionId());
+        return game;
+    }
+
+    private void saveGame(final Game game) {
+        log.debug("sessionId for saving: {}", game.getGameStateRepresentation().sessionId());
+
+        persistence.save(game.getGameStateRepresentation());
+
+        log.debug("sessionId: {} is saved", game.getGameStateRepresentation().sessionId());
     }
 
     @Override
-    public Set<ShipDto> getPrepareShipsList(final String sessionId, final String playerId) {
-        if (StringUtils.isAnyBlank(sessionId, playerId)) {
-            throw new IllegalArgumentException("sessionId or playerId is blank");
-        }
-        val game = loadGame(sessionId);
-        val player = game.getPlayer(playerId);
-        return player.getShipsNotOnTheField().stream().map(ShipDto::of).collect(Collectors.toSet());
+    public ResponseEntity<Set<GameEdition>> getGameEditions() {
+        log.debug("Returning supporting GameEditions");
+        return ResponseEntity.ok(Set.of(GameEdition.UKRAINIAN, GameEdition.MILTON_BRADLEY));
     }
 
     @Override
-    public CellDto[][] getPreparePlayerField(final String sessionId, final String playerId) {
-        if (StringUtils.isAnyBlank(sessionId, playerId)) {
-            throw new IllegalArgumentException("sessionId or playerId is blank");
-        }
-        val game = loadGame(sessionId);
-        val playerField = game.getField(playerId);
-        return ControllerUtils.mapFieldToFieldDto(playerField);
+    public ResponseEntity<String> createGameSession(final String gameEdition) {
+        ValidationUtils.validateGameEdition(gameEdition);
+        val gameId = UUID.randomUUID().toString();
+
+        persistence.save(GameStateRepresentation.builder()
+                                                .sessionId(gameId)
+                                                .gameEdition(GameEdition.valueOf(gameEdition))
+                                                .gameState(GameState.INITIALIZED)
+                                                .players(new HashSet<>())
+                                                .build());
+
+        return ResponseEntity.status(201).body(gameId);
     }
 
     @Override
-    public Optional<ShipDto> addShipToField(
+    public ResponseEntity<PlayerDto> createPlayerInSession(
+            final String sessionId, final String playerName) {
+        ValidationUtils.validateSessionId(sessionId);
+        ValidationUtils.validatePlayerName(playerName);
+
+        final Game game = loadGame(sessionId);
+
+        final String playerId = UUID.randomUUID().toString();
+        Player player;
+        try {
+            player = game.createPlayer(playerId, playerName);
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new InternalGameException(ex.getMessage());
+        }
+
+        saveGame(game);
+        return ResponseEntity.status(201).body(PlayerDto.of(player));
+    }
+
+    @Override
+    public ResponseEntity<PlayerDto> getPlayer(final String sessionId, final String playerId) {
+        ValidationUtils.validateSessionId(sessionId);
+        ValidationUtils.validatePlayerId(playerId);
+
+        final Game game = loadGame(sessionId);
+
+        Player player;
+        try {
+            player = game.getPlayer(playerId);
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new InternalGameException(ex.getMessage());
+        }
+
+        return ResponseEntity.ok(PlayerDto.of(player));
+    }
+
+    @Override
+    public ResponseEntity<PlayerDto> startGame(final String sessionId, final String playerId) {
+        ValidationUtils.validateSessionId(sessionId);
+        ValidationUtils.validatePlayerId(playerId);
+
+        final Game game = loadGame(sessionId);
+
+        Player player;
+        try {
+            game.makePlayerReady(playerId);
+            player = game.getPlayer(playerId);
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new InternalGameException(ex.getMessage());
+        }
+
+        saveGame(game);
+
+        return ResponseEntity.ok(PlayerDto.of(player));
+    }
+
+    @Override
+    public ResponseEntity<PlayerBaseInfoDto> getOpponent(
+            final String sessionId, final String playerId) {
+        ValidationUtils.validateSessionId(sessionId);
+        ValidationUtils.validatePlayerId(playerId);
+
+        final Game game = loadGame(sessionId);
+
+        Player player;
+        try {
+            player = game.getOpponent(playerId);
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new InternalGameException(ex.getMessage());
+        }
+
+        return ResponseEntity.ok(PlayerBaseInfoDto.of(player));
+    }
+
+    @Override
+    public ResponseEntity<CellDto[][]> getField(final String sessionId, final String playerId) {
+        ValidationUtils.validateSessionId(sessionId);
+        ValidationUtils.validatePlayerId(playerId);
+
+        final Game game = loadGame(sessionId);
+
+        Cell[][] field;
+        try {
+            field = game.getField(playerId);
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new InternalGameException(ex.getMessage());
+        }
+
+        return ResponseEntity.ok(ControllerUtils.mapFieldToFieldDto(field));
+    }
+
+    @Override
+    public ResponseEntity<CellDto[][]> getFieldOfOpponent(
+            final String sessionId, final String playerId) {
+        ValidationUtils.validateSessionId(sessionId);
+        ValidationUtils.validatePlayerId(playerId);
+
+        final Game game = loadGame(sessionId);
+
+        Cell[][] field;
+        try {
+            field = game.getOpponentField(playerId);
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new InternalGameException(ex.getMessage());
+        }
+
+        return ResponseEntity.ok(ControllerUtils.mapFieldToFieldDto(field));
+    }
+
+    @Override
+    public ResponseEntity<Set<ShipDto>> getPrepareShipsList(
+            final String sessionId, final String playerId) {
+        ValidationUtils.validateSessionId(sessionId);
+        ValidationUtils.validatePlayerId(playerId);
+
+        final Game game = loadGame(sessionId);
+
+        Set<Ship> field;
+        try {
+            field = game.getAvailableShipsForPlayer(playerId);
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new InternalGameException(ex.getMessage());
+        }
+
+        return ResponseEntity.ok(field.stream().map(ShipDto::of).collect(Collectors.toSet()));
+    }
+
+    @Override
+    public ResponseEntity<ShipDto> addShipToField(
             final String sessionId, final String playerId, final String shipId,
             final Coordinate coordinate,
             final String shipDirection) {
-        if (StringUtils.isAnyBlank(sessionId, playerId)) {
-            throw new IllegalArgumentException("sessionId or playerId is blank");
-        }
-        if (StringUtils.isBlank(shipId)) {
-            throw new IllegalArgumentException("shipId is blank");
-        }
-        val direction = Direction.valueOf(shipDirection.toUpperCase());
-        val game = loadGame(sessionId);
-        val optionalShip = game.getAvailableShipsForPlayer(playerId).stream()
-                               .filter(s -> shipId.equals(s.shipId()))
-                               .findAny();
-        if (optionalShip.isEmpty()) {
-            return Optional.empty();
-        }
-        val playerShip = optionalShip.get();
-        val shipToBeAdded = Ship.builder()
-                                .shipId(playerShip.shipId())
-                                .shipSize(playerShip.shipSize())
-                                .shipType(playerShip.shipType())
-                                .direction(direction)
-                                .build();
 
-        game.addShipToField(playerId, coordinate, shipToBeAdded);
-
-        persistence.save(game.getGameStateRepresentation());
-
-        return Optional.ofNullable(ShipDto.of(shipToBeAdded));
-    }
-
-
-    @Override
-    public Optional<ShipDto> removeShipFromField(
-            final String sessionId, final String playerId, final Coordinate coordinate) {
-        if (StringUtils.isAnyBlank(sessionId, playerId)) {
-            throw new IllegalArgumentException("sessionId or playerId is blank");
-        }
+        ValidationUtils.validateSessionId(sessionId);
+        ValidationUtils.validatePlayerId(playerId);
+        ValidationUtils.validateShipId(shipId);
+        ValidationUtils.validateShipDirection(shipDirection);
+        ValidationUtils.validateCoordinate(coordinate);
 
         val game = loadGame(sessionId);
-        val res = game.removeShipFromField(playerId, coordinate);
-        if (res.isEmpty()) {
-            return Optional.empty();
-        }
-        persistence.save(game.getGameStateRepresentation());
 
-        return game.getAvailableShipsForPlayer(playerId).stream()
-                   .filter(s -> res.get().equals(s.shipId()))
-                   .map(ShipDto::of)
-                   .findAny();
-    }
-
-    @Override
-    public Optional<PlayerDto> getOpponentPrepareStatus(
-            final String sessionId, final String playerId) {
-        if (StringUtils.isAnyBlank(sessionId, playerId)) {
-            throw new IllegalArgumentException("sessionId or playerId is blank");
-        }
-        val game = loadGame(sessionId);
+        Ship ship;
         try {
-            return Optional.ofNullable(PlayerDto.of(game.getOpponent(playerId)));
+            ship = game.getAllShipsForPlayer(playerId)
+                       .stream()
+                       .filter(s -> shipId.equals(s.shipId()))
+                       .findAny()
+                       .orElseThrow(() -> new IncorrectShipIdException(
+                               "Ship (%s) is not found in player".formatted(shipId)));
+            val direction = Direction.valueOf(shipDirection);
+            game.addShipToField(playerId, coordinate, Ship.builder()
+                                                          .shipId(ship.shipId())
+                                                          .direction(direction)
+                                                          .shipSize(ship.shipSize())
+                                                          .shipType(ship.shipType())
+                                                          .build());
         } catch (IllegalArgumentException | IllegalStateException ex) {
-            return Optional.empty();
-        }
-    }
-
-    @Override
-    public Optional<String> createGameSession(@NonNull final GameEdition gameEdition) {
-        val newGameId = UUID.randomUUID().toString();
-        val gameRepresentation = GameStateRepresentation.builder()
-                                                        .sessionId(newGameId)
-                                                        .gameEdition(gameEdition)
-                                                        .gameState(GameState.INITIALIZED)
-                                                        .players(new HashSet<>())
-                                                        .build();
-        persistence.save(gameRepresentation);
-        return Optional.of(newGameId);
-    }
-
-    @Override
-    public Optional<PlayerDto> createPlayerInSession(
-            final String sessionId, final String playerName) {
-        if (StringUtils.isAnyBlank(sessionId, playerName)) {
-            throw new IllegalArgumentException("sessionId or playerName is blank");
+            throw new InternalGameException(ex.getMessage());
         }
 
-        val game = loadGame(sessionId);
-        val playerId = UUID.randomUUID().toString();
-        val player = game.createPlayer(playerId, playerName);
-        persistence.save(game.getGameStateRepresentation());
+        saveGame(game);
 
-        return Optional.of(PlayerDto.of(player));
+        return ResponseEntity.ok(ShipDto.of(ship));
     }
 
     @Override
-    public Optional<PlayerDto> startGame(final String sessionId, final String playerId) {
-        if (StringUtils.isAnyBlank(sessionId, playerId)) {
-            throw new IllegalArgumentException("sessionId or playerId is blank");
-        }
-
-        val game = loadGame(sessionId);
-        game.makePlayerReady(playerId);
-        persistence.save(game.getGameStateRepresentation());
-
-        val player = game.getPlayer(playerId);
-        return Optional.of(PlayerDto.of(player));
-    }
-
-    @Override
-    public Optional<PlayerDto> getOpponent(final String sessionId, final String playerId) {
-        if (StringUtils.isAnyBlank(sessionId, playerId)) {
-            throw new IllegalArgumentException("sessionId or playerId is blank");
-        }
-
-        val game = loadGame(sessionId);
-
-        val player = game.getOpponent(playerId);
-        return Optional.of(PlayerDto.of(player));
-    }
-
-    @Override
-    public Optional<PlayerDto> getPlayerById(final String sessionId, final String playerId) {
-        if (StringUtils.isAnyBlank(sessionId, playerId)) {
-            throw new IllegalArgumentException("sessionId or playerId is blank");
-        }
-
-        val game = loadGame(sessionId);
-
-        val player = game.getPlayer(playerId);
-        return Optional.of(PlayerDto.of(player));
-    }
-
-    @Override
-    public Optional<PlayerDto> getActivePlayer(final String sessionId) {
-        if (StringUtils.isAnyBlank(sessionId)) {
-            throw new IllegalArgumentException("sessionId is blank");
-        }
-
-        val game = loadGame(sessionId);
-
-        val player = game.getPlayers().stream().filter(Player::isActive).findAny();
-        return player.map(PlayerDto::of);
-    }
-
-    @Override
-    public CellDto[][] getField(
-            final String sessionId, final String playerId, final boolean isForOpponent) {
-        if (StringUtils.isAnyBlank(sessionId, playerId)) {
-            throw new IllegalArgumentException("sessionId or playerId is blank");
-        }
-
-        val game = loadGame(sessionId);
-        val field = isForOpponent ? game.getOpponentField(playerId) : game.getField(playerId);
-        return ControllerUtils.mapFieldToFieldDto(field);
-    }
-
-    @Override
-    public ShotResult makeShot(
+    public ResponseEntity<String> removeShipFromField(
             final String sessionId, final String playerId, final Coordinate coordinate) {
-        if (StringUtils.isAnyBlank(sessionId, playerId)) {
-            throw new IllegalArgumentException("sessionId or playerId is blank");
-        }
+        ValidationUtils.validateSessionId(sessionId);
+        ValidationUtils.validatePlayerId(playerId);
+        ValidationUtils.validateCoordinate(coordinate);
 
         val game = loadGame(sessionId);
-        val res = game.makeShot(playerId, coordinate);
-        persistence.save(game.getGameStateRepresentation());
 
-        return res;
+        String ship;
+        try {
+            val shipId = game.removeShipFromField(playerId, coordinate);
+            ship = shipId.orElse("");
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new InternalGameException(ex.getMessage());
+        }
+
+        saveGame(game);
+
+        return ResponseEntity.ok(ship);
     }
 
     @Override
-    public int getNumberOfCellsLeft(final String sessionId, final String playerId) {
-        if (StringUtils.isAnyBlank(sessionId, playerId)) {
-            throw new IllegalArgumentException("sessionId or playerId is blank");
+    public ResponseEntity<PlayerBaseInfoDto> getActivePlayer(final String sessionId) {
+        ValidationUtils.validateSessionId(sessionId);
+
+        final Game game = loadGame(sessionId);
+
+        Player player;
+        try {
+            player = game.getPlayers()
+                         .stream()
+                         .filter(Player::isActive)
+                         .findAny()
+                         .orElseThrow(
+                                 () -> new IllegalGameStateException("Active player is not found"));
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new InternalGameException(ex.getMessage());
         }
 
-        val game = loadGame(sessionId);
-        return game.getPlayer(playerId).getField().getAmountOfAliveCells();
+        return ResponseEntity.ok(PlayerBaseInfoDto.of(player));
     }
 
     @Override
-    public int getNumberOfShipsLeft(final String sessionId, final String playerId) {
-        if (StringUtils.isAnyBlank(sessionId, playerId)) {
-            throw new IllegalArgumentException("sessionId or playerId is blank");
-        }
+    public ResponseEntity<ShotResult> makeShot(
+            final String sessionId, final String playerId, final Coordinate coordinate) {
+        ValidationUtils.validateSessionId(sessionId);
+        ValidationUtils.validatePlayerId(playerId);
+        ValidationUtils.validateCoordinate(coordinate);
 
         val game = loadGame(sessionId);
-        return game.getPlayer(playerId).getField().getAmountOfAliveShips();
+
+        ShotResult shotResult;
+        try {
+            shotResult = game.makeShot(playerId, coordinate);
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new InternalGameException(ex.getMessage());
+        }
+
+        saveGame(game);
+
+        return ResponseEntity.ok(shotResult);
     }
 
     @Override
-    public Optional<PlayerDto> getWinner(final String sessionId) {
-        if (StringUtils.isAnyBlank(sessionId)) {
-            throw new IllegalArgumentException("sessionId is blank");
+    public ResponseEntity<Integer> getNumberOfUndamagedCells(
+            final String sessionId, final String playerId) {
+        ValidationUtils.validateSessionId(sessionId);
+        ValidationUtils.validatePlayerId(playerId);
+
+        final Game game = loadGame(sessionId);
+
+        int amount;
+        try {
+            amount = game.getPlayer(playerId).getField().getAmountOfAliveCells();
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new InternalGameException(ex.getMessage());
         }
 
-        val game = loadGame(sessionId);
-        val player = game.getWinner();
-        return player.map(PlayerDto::of);
+        return ResponseEntity.ok(amount);
+    }
+
+    @Override
+    public ResponseEntity<Integer> getNumberOfNotDestroyedShips(
+            final String sessionId, final String playerId) {
+        ValidationUtils.validateSessionId(sessionId);
+        ValidationUtils.validatePlayerId(playerId);
+
+        final Game game = loadGame(sessionId);
+
+        int amount;
+        try {
+            amount = game.getPlayer(playerId).getField().getAmountOfAliveShips();
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new InternalGameException(ex.getMessage());
+        }
+
+        return ResponseEntity.ok(amount);
+    }
+
+    @Override
+    public ResponseEntity<PlayerBaseInfoDto> getWinner(final String sessionId) {
+        ValidationUtils.validateSessionId(sessionId);
+
+        final Game game = loadGame(sessionId);
+
+        Player player;
+        try {
+            player = game.getWinner()
+                         .orElseThrow(() -> new IllegalGameStateException(
+                                 "Winner can't be returned now"));
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw new InternalGameException(ex.getMessage());
+        }
+
+        return ResponseEntity.ok(PlayerBaseInfoDto.of(player));
     }
 }

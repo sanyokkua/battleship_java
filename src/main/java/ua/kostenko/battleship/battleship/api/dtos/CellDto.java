@@ -5,7 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import ua.kostenko.battleship.battleship.engine.models.records.Cell;
-import ua.kostenko.battleship.battleship.engine.models.records.Coordinate;
 import ua.kostenko.battleship.battleship.engine.models.records.Ship;
 
 @Data

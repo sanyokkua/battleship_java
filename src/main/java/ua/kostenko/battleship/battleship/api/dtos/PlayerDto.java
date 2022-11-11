@@ -5,7 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import ua.kostenko.battleship.battleship.api.internal.ControllerUtils;
-import ua.kostenko.battleship.battleship.engine.Field;
 import ua.kostenko.battleship.battleship.engine.models.Player;
 import ua.kostenko.battleship.battleship.engine.models.records.Ship;
 
