@@ -36,7 +36,6 @@ public final class ShipUtil {
                               }
                               return ships.stream();
                           })
-                          .peek(ship -> log.debug("SipConfig: {}", ship))
                           .collect(Collectors.toSet());
     }
 }

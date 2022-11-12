@@ -14,8 +14,10 @@ import ua.kostenko.battleship.battleship.engine.utils.CoordinateUtil;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ValidationUtils {
 
+    private static final String DEBUG_TEMPLATE_MESSAGE = "Validations of: {}";
+
     public static void validateCoordinate(Coordinate coordinate) {
-        log.debug("Validations of: {}", coordinate);
+        log.debug(DEBUG_TEMPLATE_MESSAGE, coordinate);
         if (!CoordinateUtil.isCorrectCoordinate(coordinate)) {
             throw new IncorrectCoordinateException(
                     "Coordinate: %s is not VALID!".formatted(coordinate));
@@ -23,7 +25,7 @@ public final class ValidationUtils {
     }
 
     public static void validatePlayerId(String playerId) {
-        log.debug("Validations of: {}", playerId);
+        log.debug(DEBUG_TEMPLATE_MESSAGE, playerId);
         if (StringUtils.isBlank(playerId)) {
             throw new IncorrectPlayerIdException(
                     "Player ID: %s is not VALID!".formatted(playerId));
@@ -32,7 +34,7 @@ public final class ValidationUtils {
     }
 
     public static void validatePlayerName(String playerName) {
-        log.debug("Validations of: {}", playerName);
+        log.debug(DEBUG_TEMPLATE_MESSAGE, playerName);
         if (StringUtils.isBlank(playerName)) {
             throw new IncorrectPlayerNameException(
                     "Player Name: %s is not VALID!".formatted(playerName));
@@ -40,7 +42,7 @@ public final class ValidationUtils {
     }
 
     public static void validateSessionId(String sessionId) {
-        log.debug("Validations of: {}", sessionId);
+        log.debug(DEBUG_TEMPLATE_MESSAGE, sessionId);
         if (StringUtils.isBlank(sessionId)) {
             throw new IncorrectSessionIdException(
                     "Session ID: %s is not VALID!".formatted(sessionId));
@@ -48,7 +50,7 @@ public final class ValidationUtils {
     }
 
     public static void validateShipDirection(String shipDirection) {
-        log.debug("Validations of: {}", shipDirection);
+        log.debug(DEBUG_TEMPLATE_MESSAGE, shipDirection);
         if (StringUtils.isBlank(shipDirection)) {
             throw new IncorrectShipDirectionException(
                     "Ship Direction: %s is not VALID!".formatted(shipDirection));
@@ -62,7 +64,7 @@ public final class ValidationUtils {
     }
 
     public static void validateShipId(String shipId) {
-        log.debug("Validations of: {}", shipId);
+        log.debug(DEBUG_TEMPLATE_MESSAGE, shipId);
         if (StringUtils.isBlank(shipId)) {
             throw new IncorrectShipIdException(
                     "Ship ID: %s is not VALID!".formatted(shipId));
@@ -70,7 +72,7 @@ public final class ValidationUtils {
     }
 
     public static void validateGameEdition(String gameEdition) {
-        log.debug("Validations of: {}", gameEdition);
+        log.debug(DEBUG_TEMPLATE_MESSAGE, gameEdition);
         if (StringUtils.isBlank(gameEdition)) {
             throw new IncorrectGameEditionException(
                     "Game Edition: %s is not VALID!".formatted(gameEdition));

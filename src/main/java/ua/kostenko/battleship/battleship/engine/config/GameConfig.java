@@ -25,10 +25,8 @@ public abstract class GameConfig {
                 log.debug("UKRAINIAN edition config will be returned");
                 return new UkrainianGameConfig().getShipConfigs();
             }
-            default -> {
-                throw new IllegalArgumentException(
-                        "GameType %s is not supported yet".formatted(gameEdition));
-            }
+            default -> throw new IllegalArgumentException(
+                    "GameType %s is not supported yet".formatted(gameEdition));
         }
     }
 
