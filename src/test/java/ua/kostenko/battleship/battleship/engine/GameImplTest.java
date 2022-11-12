@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import ua.kostenko.battleship.battleship.engine.config.GameConfig;
 import ua.kostenko.battleship.battleship.engine.config.GameEdition;
 import ua.kostenko.battleship.battleship.engine.models.Player;
+import ua.kostenko.battleship.battleship.engine.models.enums.Direction;
 import ua.kostenko.battleship.battleship.engine.models.enums.GameState;
 import ua.kostenko.battleship.battleship.engine.models.enums.ShotResult;
 import ua.kostenko.battleship.battleship.engine.models.records.Cell;
@@ -24,7 +25,7 @@ public class GameImplTest {
     private GameStateRepresentation gameRepresentation;
     private Game game;
 
-    private static void addShipsToField(Player player) {
+    public static void addShipsToField(Player player) {
         var ships = player.getShipsNotOnTheField();
         var field = player.getField();
         var iterator = ships.iterator();
@@ -166,12 +167,29 @@ public class GameImplTest {
                             .stream()
                             .noneMatch(Cell::hasShip));
 
+        final Ship ship = ships.stream().findAny().get();
+
         assertThrows(IllegalStateException.class, () ->
-                game.addShipToField("player_1", Coordinate.of(0, 0),
-                                    ships.stream().findAny().get()));
+                game.addShipToField("player_1", Coordinate.of(0, 0), ship));
 
         game.createPlayer("player_2", "player_name_2");
-        game.addShipToField("player_1", Coordinate.of(0, 0), ships.stream().findAny().get());
+
+        game.addShipToField("player_1", Coordinate.of(0, 0), ship);
+
+        assertThrows(IllegalArgumentException.class,
+                     () -> game.addShipToField("player_1", Coordinate.of(0, 0),
+                                               Ship.builder()
+                                                   .shipId(ship.shipId())
+                                                   .shipType(ship.shipType())
+                                                   .shipSize(
+                                                           ship.shipSize())
+                                                   .direction(
+                                                           ship.direction() ==
+                                                                   Direction.HORIZONTAL ?
+                                                                   Direction.VERTICAL :
+                                                                   Direction.HORIZONTAL
+                                                   )
+                                                   .build()));
 
         val ships2 = game.getAvailableShipsForPlayer("player_1");
 
@@ -335,6 +353,11 @@ public class GameImplTest {
         assertTrue(game.getWinner().isEmpty());
 
         game.makeShot(player1.getPlayerId(), Coordinate.of(1, 0));
+
+        assertThrows(IllegalStateException.class,
+                     () -> game.makeShot(player1.getPlayerId(), Coordinate.of(1, 1)));
+
+        game.makeShot(player2.getPlayerId(), Coordinate.of(1, 0));
 
         assertTrue(game.getWinner().isEmpty());
 

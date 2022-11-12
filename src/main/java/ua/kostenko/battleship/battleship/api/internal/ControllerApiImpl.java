@@ -270,17 +270,13 @@ public class ControllerApiImpl implements ControllerApi {
 
         final Game game = loadGame(sessionId);
 
-        Player player;
-        try {
-            player = game.getPlayers()
-                         .stream()
-                         .filter(Player::isActive)
-                         .findAny()
-                         .orElseThrow(
-                                 () -> new IllegalGameStateException("Active player is not found"));
-        } catch (IllegalArgumentException | IllegalStateException ex) {
-            throw new InternalGameException(ex.getMessage());
-        }
+        Player player = game.getPlayers()
+                            .stream()
+                            .filter(Player::isActive)
+                            .findAny()
+                            .orElseThrow(
+                                    () -> new IllegalGameStateException(
+                                            "Active player is not found"));
 
         return ResponseEntity.ok(PlayerBaseInfoDto.of(player));
     }
@@ -314,12 +310,7 @@ public class ControllerApiImpl implements ControllerApi {
 
         final Game game = loadGame(sessionId);
 
-        int amount;
-        try {
-            amount = game.getPlayer(playerId).getField().getAmountOfAliveCells();
-        } catch (IllegalArgumentException | IllegalStateException ex) {
-            throw new InternalGameException(ex.getMessage());
-        }
+        int amount = game.getPlayer(playerId).getField().getAmountOfAliveCells();
 
         return ResponseEntity.ok(amount);
     }
@@ -332,12 +323,7 @@ public class ControllerApiImpl implements ControllerApi {
 
         final Game game = loadGame(sessionId);
 
-        int amount;
-        try {
-            amount = game.getPlayer(playerId).getField().getAmountOfAliveShips();
-        } catch (IllegalArgumentException | IllegalStateException ex) {
-            throw new InternalGameException(ex.getMessage());
-        }
+        int amount = game.getPlayer(playerId).getField().getAmountOfAliveShips();
 
         return ResponseEntity.ok(amount);
     }

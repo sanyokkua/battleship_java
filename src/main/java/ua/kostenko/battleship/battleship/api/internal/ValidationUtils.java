@@ -72,13 +72,13 @@ public final class ValidationUtils {
     public static void validateGameEdition(String gameEdition) {
         log.debug("Validations of: {}", gameEdition);
         if (StringUtils.isBlank(gameEdition)) {
-            throw new GameEditionException(
+            throw new IncorrectGameEditionException(
                     "Game Edition: %s is not VALID!".formatted(gameEdition));
         }
         try {
             GameEdition.valueOf(gameEdition);
         } catch (Exception ex) {
-            throw new GameEditionException(
+            throw new IncorrectGameEditionException(
                     "Game Edition: %s is not VALID!".formatted(gameEdition));
         }
     }

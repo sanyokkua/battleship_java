@@ -115,7 +115,8 @@ public class GameImpl implements Game {
         val field = current.getField();
         val shipsNotOnTheField = current.getShipsNotOnTheField();
 
-        if (!shipsNotOnTheField.contains(ship)) {
+
+        if (shipsNotOnTheField.stream().noneMatch(s -> ship.shipId().equals(s.shipId()))) {
             throw new IllegalArgumentException("Ship %s is not available for add operation"
                                                        .formatted(ship));
         }
@@ -213,6 +214,9 @@ public class GameImpl implements Game {
         }
         CoordinateUtil.validateCoordinateAndThrowException(coordinate);
         val current = getPlayer(playerId);
+        if (!current.isActive()) {
+            throw new IllegalStateException("Player is not active to make a shot");
+        }
         val opponent = getOpponent(playerId);
         val shotResult = opponent.getField().makeShot(coordinate);
         updateGameState(current, opponent, shotResult);

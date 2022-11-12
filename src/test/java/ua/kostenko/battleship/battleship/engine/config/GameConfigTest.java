@@ -21,11 +21,12 @@ public class GameConfigTest {
                 ShipType.BATTLESHIP
         );
 
-        assertTrue(result.stream().map(ShipConfiguration::shipType).allMatch(correctShips::contains));
+        assertTrue(
+                result.stream().map(ShipConfiguration::shipType).allMatch(correctShips::contains));
         assertEquals(1, result.stream()
-                         .filter(s -> ShipType.PATROL_BOAT.equals(s.shipType()))
-                         .findAny()
-                         .map(ShipConfiguration::shipSize).orElse(-1));
+                              .filter(s -> ShipType.PATROL_BOAT.equals(s.shipType()))
+                              .findAny()
+                              .map(ShipConfiguration::shipSize).orElse(-1));
         assertEquals(2, result.stream()
                               .filter(s -> ShipType.SUBMARINE.equals(s.shipType()))
                               .findAny()
@@ -69,7 +70,8 @@ public class GameConfigTest {
                 ShipType.CARRIER
         );
 
-        assertTrue(result.stream().map(ShipConfiguration::shipType).allMatch(correctShips::contains));
+        assertTrue(
+                result.stream().map(ShipConfiguration::shipType).allMatch(correctShips::contains));
         assertEquals(2, result.stream()
                               .filter(s -> ShipType.SUBMARINE.equals(s.shipType()))
                               .findAny()
@@ -107,8 +109,8 @@ public class GameConfigTest {
     }
 
     @Test
-    void testGameConfigMerging(){
-        var config = new GameConfig(){
+    void testGameConfigMerging() {
+        var config = new GameConfig() {
 
             @Override
             protected Map<ShipType, Integer> getSizeMapping() {

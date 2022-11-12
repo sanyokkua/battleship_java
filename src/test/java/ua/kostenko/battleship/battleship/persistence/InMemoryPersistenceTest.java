@@ -85,9 +85,12 @@ class InMemoryPersistenceTest {
         assertTrue(loaded_1.isPresent());
         assertTrue(loaded_2.isPresent());
         assertTrue(loaded_3.isPresent());
-        assertEquals("saved_new_test_session_1", loaded_1.get().getGameStateRepresentation().sessionId());
-        assertEquals("saved_new_test_session_2", loaded_2.get().getGameStateRepresentation().sessionId());
-        assertEquals("saved_new_test_session_3", loaded_3.get().getGameStateRepresentation().sessionId());
+        assertEquals("saved_new_test_session_1",
+                     loaded_1.get().getGameStateRepresentation().sessionId());
+        assertEquals("saved_new_test_session_2",
+                     loaded_2.get().getGameStateRepresentation().sessionId());
+        assertEquals("saved_new_test_session_3",
+                     loaded_3.get().getGameStateRepresentation().sessionId());
     }
 
     @Test
