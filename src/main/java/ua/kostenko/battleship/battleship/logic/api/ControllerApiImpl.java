@@ -4,10 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.http.ResponseEntity;
-import ua.kostenko.battleship.battleship.logic.api.dtos.CellDto;
-import ua.kostenko.battleship.battleship.logic.api.dtos.PlayerBaseInfoDto;
-import ua.kostenko.battleship.battleship.logic.api.dtos.PlayerDto;
-import ua.kostenko.battleship.battleship.logic.api.dtos.ShipDto;
+import ua.kostenko.battleship.battleship.logic.api.dtos.*;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameInternalProblemException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameSessionIdIsNotCorrectException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipIdIsNotCorrectException;
@@ -58,13 +55,13 @@ public class ControllerApiImpl implements ControllerApi {
     }
 
     @Override
-    public ResponseEntity<Set<GameEdition>> getGameEditions() {
+    public ResponseEntity<GameEditionsDto> getGameEditions() {
         log.debug("Returning supporting GameEditions");
-        return ResponseEntity.ok(Set.of(GameEdition.UKRAINIAN, GameEdition.MILTON_BRADLEY));
+        return ResponseEntity.ok(new GameEditionsDto(Set.of(GameEdition.UKRAINIAN, GameEdition.MILTON_BRADLEY)));
     }
 
     @Override
-    public ResponseEntity<String> createGameSession(final String gameEdition) {
+    public ResponseEntity<GameSessionDto> createGameSession(final String gameEdition) {
         ValidationUtils.validateGameEdition(gameEdition);
         val gameId = UUID.randomUUID()
                          .toString();
@@ -77,7 +74,7 @@ public class ControllerApiImpl implements ControllerApi {
                                   .build());
 
         return ResponseEntity.status(201)
-                             .body(gameId);
+                             .body(new GameSessionDto(gameId));
     }
 
     @Override
@@ -248,7 +245,7 @@ public class ControllerApiImpl implements ControllerApi {
     }
 
     @Override
-    public ResponseEntity<String> removeShipFromField(
+    public ResponseEntity<RemovedShipDto> removeShipFromField(
             final String sessionId, final String playerId, final Coordinate coordinate) {
         ValidationUtils.validateSessionId(sessionId);
         ValidationUtils.validatePlayerId(playerId);
@@ -266,7 +263,7 @@ public class ControllerApiImpl implements ControllerApi {
 
         saveGame(game);
 
-        return ResponseEntity.ok(ship);
+        return ResponseEntity.ok(new RemovedShipDto(ship));
     }
 
     @Override
@@ -285,7 +282,7 @@ public class ControllerApiImpl implements ControllerApi {
     }
 
     @Override
-    public ResponseEntity<ShotResult> makeShot(
+    public ResponseEntity<ShotResultDto> makeShot(
             final String sessionId, final String playerId, final Coordinate coordinate) {
         ValidationUtils.validateSessionId(sessionId);
         ValidationUtils.validatePlayerId(playerId);
@@ -302,11 +299,11 @@ public class ControllerApiImpl implements ControllerApi {
 
         saveGame(game);
 
-        return ResponseEntity.ok(shotResult);
+        return ResponseEntity.ok(new ShotResultDto(shotResult));
     }
 
     @Override
-    public ResponseEntity<Integer> getNumberOfUndamagedCells(final String sessionId, final String playerId) {
+    public ResponseEntity<UndamagedCellsDto> getNumberOfUndamagedCells(final String sessionId, final String playerId) {
         ValidationUtils.validateSessionId(sessionId);
         ValidationUtils.validatePlayerId(playerId);
 
@@ -316,11 +313,12 @@ public class ControllerApiImpl implements ControllerApi {
                          .getField()
                          .getNumberOfUndamagedCells();
 
-        return ResponseEntity.ok(amount);
+        return ResponseEntity.ok(new UndamagedCellsDto(amount));
     }
 
     @Override
-    public ResponseEntity<Integer> getNumberOfNotDestroyedShips(final String sessionId, final String playerId) {
+    public ResponseEntity<NumberOfAliveShipsDto> getNumberOfNotDestroyedShips(
+            final String sessionId, final String playerId) {
         ValidationUtils.validateSessionId(sessionId);
         ValidationUtils.validatePlayerId(playerId);
 
@@ -330,7 +328,7 @@ public class ControllerApiImpl implements ControllerApi {
                          .getField()
                          .getNumberOfNotDestroyedShips();
 
-        return ResponseEntity.ok(amount);
+        return ResponseEntity.ok(new NumberOfAliveShipsDto(amount));
     }
 
     @Override

@@ -5,9 +5,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ua.kostenko.battleship.battleship.logic.api.ControllerApi;
 import ua.kostenko.battleship.battleship.logic.api.dtos.PlayerDto;
+import ua.kostenko.battleship.battleship.logic.api.dtos.RemovedShipDto;
 import ua.kostenko.battleship.battleship.logic.api.dtos.ShipDto;
 import ua.kostenko.battleship.battleship.logic.engine.models.records.Coordinate;
 import ua.kostenko.battleship.battleship.web.controllers.dto.AddShipToFieldBody;
+import ua.kostenko.battleship.battleship.web.controllers.dto.PlayerNameDto;
 
 import java.util.Set;
 
@@ -19,8 +21,8 @@ public class GamePreparationRestController {
 
     @PostMapping(value = "players")
     public ResponseEntity<PlayerDto> createPlayerInSession(
-            @PathVariable String sessionId, @RequestBody String playerName) {
-        return controller.createPlayerInSession(sessionId, playerName);
+            @PathVariable String sessionId, @RequestBody PlayerNameDto playerName) {
+        return controller.createPlayerInSession(sessionId, playerName.getPlayerName());
     }
 
     @PutMapping(value = "players/{playerId}/ships/{shipId}")
@@ -35,7 +37,7 @@ public class GamePreparationRestController {
     }
 
     @DeleteMapping(value = "players/{playerId}/ships", params = "delete")
-    public ResponseEntity<String> removeShipFromField(
+    public ResponseEntity<RemovedShipDto> removeShipFromField(
             @PathVariable String sessionId, @PathVariable String playerId, @RequestBody Coordinate coordinate) {
         return controller.removeShipFromField(sessionId, playerId, coordinate);
     }

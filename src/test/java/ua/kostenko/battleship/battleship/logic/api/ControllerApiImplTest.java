@@ -43,11 +43,13 @@ class ControllerApiImplTest {
 
         var result = controller.createGameSession(GameEdition.UKRAINIAN.name());
         assert Objects.nonNull(result.getBody());
-        emptySessionId = result.getBody();
+        emptySessionId = result.getBody()
+                               .getGameSessionId();
 
         var withPlayers = controller.createGameSession(GameEdition.UKRAINIAN.name());
         assert Objects.nonNull(withPlayers.getBody());
-        sessionIdWithPlayers = withPlayers.getBody();
+        sessionIdWithPlayers = withPlayers.getBody()
+                                          .getGameSessionId();
 
         var player1 = controller.createPlayerInSession(sessionIdWithPlayers, playerName1);
         assert Objects.nonNull(player1.getBody());
@@ -67,10 +69,12 @@ class ControllerApiImplTest {
         assertNotNull(gameEditionsResponse.getBody());
         assertEquals(2,
                      gameEditionsResponse.getBody()
+                                         .getGameEditions()
                                          .size());
 
         var expected = Set.of(GameEdition.UKRAINIAN, GameEdition.MILTON_BRADLEY);
-        assertTrue(expected.containsAll(gameEditionsResponse.getBody()));
+        assertTrue(expected.containsAll(gameEditionsResponse.getBody()
+                                                            .getGameEditions()));
     }
 
     @Test
@@ -78,9 +82,11 @@ class ControllerApiImplTest {
         var createGameSessionResponse = controller.createGameSession(GameEdition.UKRAINIAN.name());
         assertEquals(HttpStatus.CREATED, createGameSessionResponse.getStatusCode());
         assertNotNull(createGameSessionResponse.getBody());
-        assertTrue(StringUtils.isNotBlank(createGameSessionResponse.getBody()));
+        assertTrue(StringUtils.isNotBlank(createGameSessionResponse.getBody()
+                                                                   .getGameSessionId()));
 
-        var game = persistence.load(createGameSessionResponse.getBody());
+        var game = persistence.load(createGameSessionResponse.getBody()
+                                                             .getGameSessionId());
         assertTrue(game.isPresent());
     }
 
@@ -306,7 +312,9 @@ class ControllerApiImplTest {
 
         assertEquals(HttpStatus.OK, removeShipFromFieldResponse.getStatusCode());
         assertNotNull(removeShipFromFieldResponse.getBody());
-        assertEquals(shipId.get(), removeShipFromFieldResponse.getBody());
+        assertEquals(shipId.get(),
+                     removeShipFromFieldResponse.getBody()
+                                                .getRemovedShipId());
     }
 
     @Test
@@ -357,7 +365,8 @@ class ControllerApiImplTest {
         assertEquals(HttpStatus.OK, makeShotResponse.getStatusCode());
         assertNotNull(makeShotResponse.getBody());
         assertTrue(Set.of(ShotResult.HIT, ShotResult.DESTROYED)
-                      .contains(makeShotResponse.getBody()));
+                      .contains(makeShotResponse.getBody()
+                                                .getShotResult()));
     }
 
     @Test
@@ -377,7 +386,9 @@ class ControllerApiImplTest {
                 controller.getNumberOfUndamagedCells(sessionIdWithPlayers, sessionIdWithPlayersPlayer2ID);
         assertEquals(HttpStatus.OK, getNumberOfUndamagedCellsResponse.getStatusCode());
         assertNotNull(getNumberOfUndamagedCellsResponse.getBody());
-        assertEquals(100, getNumberOfUndamagedCellsResponse.getBody());
+        assertEquals(100,
+                     getNumberOfUndamagedCellsResponse.getBody()
+                                                      .getNumberOfUndamagedCells());
 
         var player2ShipCoordinates = FieldUtils.convertToFlatSet(game.get()
                                                                      .getPlayer(sessionIdWithPlayersPlayer2ID)
@@ -398,7 +409,9 @@ class ControllerApiImplTest {
                 controller.getNumberOfUndamagedCells(sessionIdWithPlayers, sessionIdWithPlayersPlayer2ID);
         assertEquals(HttpStatus.OK, getNumberOfUndamagedCellsResponse.getStatusCode());
         assertNotNull(getNumberOfUndamagedCellsResponse.getBody());
-        assertEquals(99, getNumberOfUndamagedCellsResponse.getBody());
+        assertEquals(99,
+                     getNumberOfUndamagedCellsResponse.getBody()
+                                                      .getNumberOfUndamagedCells());
     }
 
     @Test
@@ -418,7 +431,9 @@ class ControllerApiImplTest {
                 controller.getNumberOfNotDestroyedShips(sessionIdWithPlayers, sessionIdWithPlayersPlayer2ID);
         assertEquals(HttpStatus.OK, getNumberOfNotDestroyedShipsResponse.getStatusCode());
         assertNotNull(getNumberOfNotDestroyedShipsResponse.getBody());
-        assertEquals(10, getNumberOfNotDestroyedShipsResponse.getBody());
+        assertEquals(10,
+                     getNumberOfNotDestroyedShipsResponse.getBody()
+                                                         .getNumberOfAliveShips());
 
         var player2ShipCoordinates = FieldUtils.convertToFlatSet(game.get()
                                                                      .getPlayer(sessionIdWithPlayersPlayer2ID)
@@ -439,7 +454,9 @@ class ControllerApiImplTest {
                 controller.getNumberOfNotDestroyedShips(sessionIdWithPlayers, sessionIdWithPlayersPlayer2ID);
         assertEquals(HttpStatus.OK, getNumberOfNotDestroyedShipsResponse.getStatusCode());
         assertNotNull(getNumberOfNotDestroyedShipsResponse.getBody());
-        assertEquals(9, getNumberOfNotDestroyedShipsResponse.getBody());
+        assertEquals(9,
+                     getNumberOfNotDestroyedShipsResponse.getBody()
+                                                         .getNumberOfAliveShips());
     }
 
     @Test
@@ -459,7 +476,9 @@ class ControllerApiImplTest {
                 controller.getNumberOfNotDestroyedShips(sessionIdWithPlayers, sessionIdWithPlayersPlayer2ID);
         assertEquals(HttpStatus.OK, getNumberOfNotDestroyedShipsResponse.getStatusCode());
         assertNotNull(getNumberOfNotDestroyedShipsResponse.getBody());
-        assertEquals(10, getNumberOfNotDestroyedShipsResponse.getBody());
+        assertEquals(10,
+                     getNumberOfNotDestroyedShipsResponse.getBody()
+                                                         .getNumberOfAliveShips());
 
         var coordinatesOfOpponentShips = FieldUtils.convertToFlatSet(game.get()
                                                                          .getPlayer(sessionIdWithPlayersPlayer2ID)
@@ -478,7 +497,9 @@ class ControllerApiImplTest {
                 controller.getNumberOfNotDestroyedShips(sessionIdWithPlayers, sessionIdWithPlayersPlayer2ID);
         assertEquals(HttpStatus.OK, getNumberOfNotDestroyedShipsResponse.getStatusCode());
         assertNotNull(getNumberOfNotDestroyedShipsResponse.getBody());
-        assertEquals(0, getNumberOfNotDestroyedShipsResponse.getBody());
+        assertEquals(0,
+                     getNumberOfNotDestroyedShipsResponse.getBody()
+                                                         .getNumberOfAliveShips());
 
         var getWinnerResponse = controller.getWinner(sessionIdWithPlayers);
         assertEquals(HttpStatus.OK, getWinnerResponse.getStatusCode());
