@@ -2,13 +2,13 @@ package ua.kostenko.battleship.battleship.logic.api;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import lombok.val;
 import ua.kostenko.battleship.battleship.logic.api.dtos.CellDto;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEditionConfiguration;
 import ua.kostenko.battleship.battleship.logic.engine.models.records.Cell;
 
-@Slf4j
+@Log4j2
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ControllerUtils {
     public static CellDto[][] mapFieldToFieldDto(final Cell[][] playerField) {

@@ -9,7 +9,7 @@ import java.util.Set;
 public interface ControllerApi {
     ResponseEntity<GameEditionsDto> getGameEditions();
 
-    ResponseEntity<GameSessionDto> createGameSession(String gameEdition); // POST
+    ResponseEntity<GameSessionIdDto> createGameSession(String gameEdition); // POST
 
     ResponseEntity<PlayerDto> createPlayerInSession(String sessionId, String playerName); // POST
 

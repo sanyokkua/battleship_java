@@ -1,6 +1,6 @@
 package ua.kostenko.battleship.battleship.logic.engine;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import lombok.val;
 import ua.kostenko.battleship.battleship.logic.engine.models.Player;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.GameStage;
@@ -18,7 +18,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
-@Slf4j
+@Log4j2
 public class GameImpl implements Game {
     private GameState gameState;
 

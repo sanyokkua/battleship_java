@@ -8,6 +8,6 @@ public class GameStageIsNotCorrectException extends IllegalStateException {
     }
 
     public GameStageIsNotCorrectException(final GameStage gameStage, final String message) {
-        super("Current game state: %s is not support operation. %s".formatted(gameStage, message));
+        this("Current game state: %s is not support operation. %s".formatted(gameStage, message));
     }
 }

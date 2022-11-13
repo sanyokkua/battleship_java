@@ -1,7 +1,7 @@
 package ua.kostenko.battleship.battleship.logic.engine;
 
 import lombok.NonNull;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import lombok.val;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEditionConfiguration;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.ShotResult;
@@ -17,7 +17,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-@Slf4j
+@Log4j2
 public class FieldImpl implements Field {
     private final Cell[][] field;
 

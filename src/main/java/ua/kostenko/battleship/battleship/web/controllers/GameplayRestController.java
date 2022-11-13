@@ -13,7 +13,7 @@ import ua.kostenko.battleship.battleship.logic.engine.models.records.Coordinate;
 @RequestMapping("/api/game/sessions/{sessionId}")
 @RestController
 @RequiredArgsConstructor
-public class GamePlayRestController {
+public class GameplayRestController {
     private final ControllerApi controller;
 
     @GetMapping(value = "players", params = "active")

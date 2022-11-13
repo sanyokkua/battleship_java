@@ -2,7 +2,7 @@ package ua.kostenko.battleship.battleship.logic.engine.utils;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEdition;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEditionConfiguration;
 import ua.kostenko.battleship.battleship.logic.engine.config.ShipConfiguration;
@@ -15,7 +15,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-@Slf4j
+@Log4j2
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ShipUtils {
 

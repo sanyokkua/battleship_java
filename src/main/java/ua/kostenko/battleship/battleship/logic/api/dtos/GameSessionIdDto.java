@@ -7,6 +7,6 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class GameSessionDto {
+public class GameSessionIdDto {
     private String gameSessionId;
 }

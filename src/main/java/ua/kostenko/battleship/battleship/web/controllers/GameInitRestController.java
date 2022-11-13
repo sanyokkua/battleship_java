@@ -5,7 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ua.kostenko.battleship.battleship.logic.api.ControllerApi;
 import ua.kostenko.battleship.battleship.logic.api.dtos.GameEditionsDto;
-import ua.kostenko.battleship.battleship.logic.api.dtos.GameSessionDto;
+import ua.kostenko.battleship.battleship.logic.api.dtos.GameSessionIdDto;
 import ua.kostenko.battleship.battleship.web.controllers.dto.GameEditionDto;
 
 @RequestMapping("/api/game")
@@ -20,7 +20,7 @@ public class GameInitRestController {
     }
 
     @PostMapping("/sessions")
-    public ResponseEntity<GameSessionDto> createGameSession(@RequestBody GameEditionDto gameEdition) {
+    public ResponseEntity<GameSessionIdDto> createGameSession(@RequestBody GameEditionDto gameEdition) {
         return controller.createGameSession(gameEdition.getGameEdition());
     }
 }

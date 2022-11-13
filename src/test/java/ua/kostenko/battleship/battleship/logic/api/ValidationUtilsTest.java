@@ -24,9 +24,9 @@ class ValidationUtilsTest {
 
     @Test
     void validatePlayerId() {
-        assertThrows(GamePlayerIdIsNoctCorrectException.class, () -> ValidationUtils.validatePlayerId(""));
-        assertThrows(GamePlayerIdIsNoctCorrectException.class, () -> ValidationUtils.validatePlayerId(null));
-        assertThrows(GamePlayerIdIsNoctCorrectException.class, () -> ValidationUtils.validatePlayerId("    "));
+        assertThrows(GamePlayerIdIsNotCorrectException.class, () -> ValidationUtils.validatePlayerId(""));
+        assertThrows(GamePlayerIdIsNotCorrectException.class, () -> ValidationUtils.validatePlayerId(null));
+        assertThrows(GamePlayerIdIsNotCorrectException.class, () -> ValidationUtils.validatePlayerId("    "));
         assertDoesNotThrow(() -> ValidationUtils.validatePlayerId("player-id"));
     }
 

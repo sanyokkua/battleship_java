@@ -1,6 +1,6 @@
 package ua.kostenko.battleship.battleship.logic.engine.config;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import lombok.val;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.ShipType;
 
@@ -9,7 +9,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@Slf4j
+@Log4j2
 public abstract class GameEditionConfiguration {
     public static final int NUMBER_OF_ROWS = 10;
     public static final int NUMBER_OF_COLUMNS = 10;

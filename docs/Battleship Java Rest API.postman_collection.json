@@ -1,0 +1,1152 @@
+{
+  "info": {
+    "_postman_id": "10aa2e70-b27f-4fd8-b14c-94ae9c886b9a",
+    "name": "Battleship Java Rest API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "GetEditions",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/editions",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "editions"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "CreateSession",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "pm.globals.set(\"created_session\", jsonData.gameSessionId);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"gameEdition\": \"UKRAINIAN\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Create_Player_1",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "pm.globals.set(\"player_1_id\", jsonData.playerId);",
+              "",
+              "pm.globals.set(\"player_1_id_ship_1_id\", jsonData.shipsNotOnTheField[0].shipId);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"playerName\": \"player_1\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players"
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Create_Player_2",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "pm.globals.set(\"player_2_id\", jsonData.playerId);",
+              "",
+              "pm.globals.set(\"player_2_id_ship_1_id\", jsonData.shipsNotOnTheField[0].shipId);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"playerName\": \"player_2\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players"
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "AddShip_Player_1",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"coordinate\": {\n        \"row\": 0,\n        \"column\": 0\n    },\n    \"shipDirection\": \"HORIZONTAL\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId/ships/:shipId",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId",
+            "ships",
+            ":shipId"
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_1_id}}"
+            },
+            {
+              "key": "shipId",
+              "value": "{{player_1_id_ship_1_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "AddShip_Player_2",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"coordinate\": {\n        \"row\": 0,\n        \"column\": 0\n    },\n    \"shipDirection\": \"HORIZONTAL\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId/ships/:shipId",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId",
+            "ships",
+            ":shipId"
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_2_id}}"
+            },
+            {
+              "key": "shipId",
+              "value": "{{player_2_id_ship_1_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "DeleteShip_Player_1",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"row\": 0,\n    \"column\": 0\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId/ships?delete",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId",
+            "ships"
+          ],
+          "query": [
+            {
+              "key": "delete",
+              "value": null
+            }
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_1_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "DeleteShip_Player_2",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"row\": 0,\n    \"column\": 0\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId/ships?delete",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId",
+            "ships"
+          ],
+          "query": [
+            {
+              "key": "delete",
+              "value": null
+            }
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_2_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GetAvailableShipsPlayer_1",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId/ships?available",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId",
+            "ships"
+          ],
+          "query": [
+            {
+              "key": "available",
+              "value": null
+            }
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_1_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GetAvailableShipsPlayer_2",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId/ships?available",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId",
+            "ships"
+          ],
+          "query": [
+            {
+              "key": "available",
+              "value": null
+            }
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_2_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "MakeReady_Player_1",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId?start",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId"
+          ],
+          "query": [
+            {
+              "key": "start",
+              "value": null
+            }
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_1_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "MakeReady_Player_2",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId?start",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId"
+          ],
+          "query": [
+            {
+              "key": "start",
+              "value": null
+            }
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_2_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GetPlayer_1",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId"
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_1_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GetPlayer_2",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId"
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_2_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GetOpponent_Player_1",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId?opponent",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId"
+          ],
+          "query": [
+            {
+              "key": "opponent",
+              "value": null
+            }
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_1_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GetOpponent_Player_2",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId?opponent",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId"
+          ],
+          "query": [
+            {
+              "key": "opponent",
+              "value": null
+            }
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_2_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GetField_Player_1",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId/field",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId",
+            "field"
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_1_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GetField_Player_2",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId/field",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId",
+            "field"
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_2_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GetOpponentField_Player_1",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId/field?opponent",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId",
+            "field"
+          ],
+          "query": [
+            {
+              "key": "opponent",
+              "value": null
+            }
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_1_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GetOpponentField_Player_2",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId/field?opponent",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId",
+            "field"
+          ],
+          "query": [
+            {
+              "key": "opponent",
+              "value": null
+            }
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_2_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GetActivePlayer",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players?active",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players"
+          ],
+          "query": [
+            {
+              "key": "active",
+              "value": null
+            }
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "MakeShot_Player_1",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"row\": 0,\n    \"column\": 0\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId/field?shot",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId",
+            "field"
+          ],
+          "query": [
+            {
+              "key": "shot",
+              "value": null
+            }
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_1_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "MakeShot_Player_2",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"row\": 0,\n    \"column\": 0\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId/field?shot",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId",
+            "field"
+          ],
+          "query": [
+            {
+              "key": "shot",
+              "value": null
+            }
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_2_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GetAvailableCells_Player_1",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId/cells",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId",
+            "cells"
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_1_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GetAvailableCells_Player_2",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId/cells",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId",
+            "cells"
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_2_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GetNotDestroyedShips_Player_1",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId/ships?NotDestroyed",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId",
+            "ships"
+          ],
+          "query": [
+            {
+              "key": "NotDestroyed",
+              "value": null
+            }
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_1_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GetNotDestroyedShips_Player_2",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/players/:playerId/ships?NotDestroyed",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "players",
+            ":playerId",
+            "ships"
+          ],
+          "query": [
+            {
+              "key": "NotDestroyed",
+              "value": null
+            }
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            },
+            {
+              "key": "playerId",
+              "value": "{{player_2_id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GetWinner",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/game/sessions/:sessionId/winner",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "game",
+            "sessions",
+            ":sessionId",
+            "winner"
+          ],
+          "variable": [
+            {
+              "key": "sessionId",
+              "value": "{{created_session}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

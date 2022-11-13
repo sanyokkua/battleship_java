@@ -2,7 +2,7 @@ package ua.kostenko.battleship.battleship.logic.api;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.*;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEdition;
@@ -10,7 +10,7 @@ import ua.kostenko.battleship.battleship.logic.engine.models.enums.ShipDirection
 import ua.kostenko.battleship.battleship.logic.engine.models.records.Coordinate;
 import ua.kostenko.battleship.battleship.logic.engine.utils.CoordinateUtils;
 
-@Slf4j
+@Log4j2
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ValidationUtils {
 
@@ -26,7 +26,7 @@ public final class ValidationUtils {
     public static void validatePlayerId(String playerId) {
         log.debug(DEBUG_TEMPLATE_MESSAGE, playerId);
         if (StringUtils.isBlank(playerId)) {
-            throw new GamePlayerIdIsNoctCorrectException("Player ID: %s is not VALID!".formatted(playerId));
+            throw new GamePlayerIdIsNotCorrectException("Player ID: %s is not VALID!".formatted(playerId));
         }
 
     }

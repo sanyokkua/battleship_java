@@ -1,6 +1,6 @@
 package ua.kostenko.battleship.battleship.logic.persistence;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import ua.kostenko.battleship.battleship.logic.engine.Game;
@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-@Slf4j
+@Log4j2
 public class InMemoryPersistence implements Persistence {
     private final Map<String, GameState> db;
 

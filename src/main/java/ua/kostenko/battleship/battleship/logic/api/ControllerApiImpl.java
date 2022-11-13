@@ -1,7 +1,7 @@
 package ua.kostenko.battleship.battleship.logic.api;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import lombok.val;
 import org.springframework.http.ResponseEntity;
 import ua.kostenko.battleship.battleship.logic.api.dtos.*;
@@ -26,7 +26,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-@Slf4j
+@Log4j2
 @RequiredArgsConstructor
 public class ControllerApiImpl implements ControllerApi {
     private final Persistence persistence;
@@ -61,7 +61,7 @@ public class ControllerApiImpl implements ControllerApi {
     }
 
     @Override
-    public ResponseEntity<GameSessionDto> createGameSession(final String gameEdition) {
+    public ResponseEntity<GameSessionIdDto> createGameSession(final String gameEdition) {
         ValidationUtils.validateGameEdition(gameEdition);
         val gameId = UUID.randomUUID()
                          .toString();
@@ -74,7 +74,7 @@ public class ControllerApiImpl implements ControllerApi {
                                   .build());
 
         return ResponseEntity.status(201)
-                             .body(new GameSessionDto(gameId));
+                             .body(new GameSessionIdDto(gameId));
     }
 
     @Override
@@ -194,14 +194,14 @@ public class ControllerApiImpl implements ControllerApi {
 
         final Game game = loadGame(sessionId);
 
-        Set<Ship> field;
+        Set<Ship> ships;
         try {
-            field = game.getShipsNotOnTheField(playerId);
+            ships = game.getShipsNotOnTheField(playerId);
         } catch (IllegalArgumentException | IllegalStateException ex) {
             throw new GameInternalProblemException(ex.getMessage());
         }
 
-        return ResponseEntity.ok(field.stream()
+        return ResponseEntity.ok(ships.stream()
                                       .map(ShipDto::of)
                                       .collect(Collectors.toSet()));
     }
@@ -276,7 +276,9 @@ public class ControllerApiImpl implements ControllerApi {
                             .stream()
                             .filter(Player::isActive)
                             .findAny()
-                            .orElseThrow(() -> new GameStageIsNotCorrectException("Active player is not found"));
+                            .orElseThrow(() -> new GameStageIsNotCorrectException(game.getGameState()
+                                                                                      .gameStage(),
+                                                                                  "Active player is not found"));
 
         return ResponseEntity.ok(PlayerBaseInfoDto.of(player));
     }
@@ -340,7 +342,9 @@ public class ControllerApiImpl implements ControllerApi {
         Player player;
         try {
             player = game.getWinner()
-                         .orElseThrow(() -> new GameStageIsNotCorrectException("Winner can't be returned now"));
+                         .orElseThrow(() -> new GameStageIsNotCorrectException(game.getGameState()
+                                                                                   .gameStage(),
+                                                                               "Winner can't be returned now"));
         } catch (IllegalArgumentException | IllegalStateException ex) {
             throw new GameInternalProblemException(ex.getMessage());
         }
