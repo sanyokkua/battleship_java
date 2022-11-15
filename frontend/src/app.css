@@ -1,0 +1,6 @@
+.grid_div {
+    display: grid;
+    grid-template-rows: repeat(10, 5fr);
+    grid-template-columns: repeat(10, 5fr);
+    aspect-ratio: 1;
+}
