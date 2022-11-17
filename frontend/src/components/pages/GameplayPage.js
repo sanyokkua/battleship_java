@@ -1,11 +1,10 @@
-import React from 'react';
-import "../../app.css";
+import React from "react";
 import Button from "react-bootstrap/Button";
+import Row from "react-bootstrap/Row";
 import Status from "../common/Status";
 import Field from "../field/Field";
-import Row from "react-bootstrap/Row";
 
-class Gameplay extends React.Component {
+class GameplayPage extends React.Component {
     constructor(props) {
         super(props);
         this.state = {};
@@ -46,4 +45,4 @@ class Gameplay extends React.Component {
     }
 }
 
-export default Gameplay;
+export default GameplayPage;

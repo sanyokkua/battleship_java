@@ -1,19 +1,21 @@
-import React from 'react';
-import "../../app.css";
-import Button from "react-bootstrap/Button";
-import copy from 'copy-to-clipboard';
+import copy from "copy-to-clipboard";
+import PropTypes from "prop-types";
+import React from "react";
 import Alert from "react-bootstrap/Alert";
+import Button from "react-bootstrap/Button";
 import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
 import Spinner from "react-bootstrap/Spinner";
+import Toast from "react-bootstrap/Toast";
 
 
-class WaitForPlayersComponent extends React.Component {
+class WaitForPlayersPage extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
             isPlayerJoined: false,
-            opponentName: null
+            opponentName: null,
+            isCopied: false
         };
     }
 
@@ -24,6 +26,15 @@ class WaitForPlayersComponent extends React.Component {
 
     handleCopy() {
         copy(this.props.sessionId);
+        this.setState({
+            isCopied: true
+        });
+    }
+
+    disablePopup() {
+        this.setState({
+            isCopied: false
+        });
     }
 
     render() {
@@ -52,6 +63,9 @@ class WaitForPlayersComponent extends React.Component {
                     <Button variant="success" onClick={() => this.handleCopy()}>
                         Copy to clipboard
                     </Button>
+                    <Toast onClose={() => this.disablePopup()} show={this.state.isCopied} delay={3000} autohide>
+                        <Toast.Body>Game ID is copied!</Toast.Body>
+                    </Toast>
                 </Row>
                 <br/>
                 {waitingTag}
@@ -75,4 +89,18 @@ class WaitForPlayersComponent extends React.Component {
     }
 }
 
-export default WaitForPlayersComponent;
+WaitForPlayersPage.propTypes = {
+    player: PropTypes.shape({
+        playerId: PropTypes.string.isRequired,
+        playerName: PropTypes.string.isRequired,
+        field: PropTypes.array.isRequired,
+        shipsNotOnTheField: PropTypes.array.isRequired,
+        allPlayerShips: PropTypes.array.isRequired,
+        isActive: PropTypes.bool.isRequired,
+        isWinner: PropTypes.bool.isRequired,
+        isReady: PropTypes.bool.isRequired
+    }).isRequired,
+    sessionId: PropTypes.string.isRequired
+};
+
+export default WaitForPlayersPage;

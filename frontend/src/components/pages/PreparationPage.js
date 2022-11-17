@@ -1,12 +1,11 @@
-import React from 'react';
-import "../../app.css";
+import React from "react";
 import Button from "react-bootstrap/Button";
 import Row from "react-bootstrap/Row";
-import Field from "../field/Field";
-import Status from "../common/Status";
 import ShipsList from "../common/ShipsList";
+import Status from "../common/Status";
+import Field from "../field/Field";
 
-class PreparationComponent extends React.Component {
+class PreparationPage extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -16,25 +15,25 @@ class PreparationComponent extends React.Component {
                     shipId: "ship-id-1",
                     shipType: "some type",
                     shipDirection: "HORIZONTAL",
-                    shipSize: 4,
+                    shipSize: 4
                 },
                 {
                     shipId: "ship-id-2",
                     shipType: "some type",
                     shipDirection: "VERTICAL",
-                    shipSize: 3,
+                    shipSize: 3
                 },
                 {
                     shipId: "ship-id-3",
                     shipType: "some type",
                     shipDirection: "HORIZONTAL",
-                    shipSize: 2,
+                    shipSize: 2
                 },
                 {
                     shipId: "ship-id-4",
                     shipType: "some type",
                     shipDirection: "VERTICAL",
-                    shipSize: 1,
+                    shipSize: 1
                 }
             ]
         };
@@ -61,4 +60,4 @@ class PreparationComponent extends React.Component {
     }
 }
 
-export default PreparationComponent;
+export default PreparationPage;

@@ -1,9 +1,9 @@
-import React from 'react';
-import PropTypes from 'prop-types'
-import Button from 'react-bootstrap/Button'
+import PropTypes from "prop-types";
+import React from "react";
+import Button from "react-bootstrap/Button";
 import ButtonGroup from "react-bootstrap/ButtonGroup";
-import DropdownButton from "react-bootstrap/DropdownButton";
 import Dropdown from "react-bootstrap/Dropdown";
+import DropdownButton from "react-bootstrap/DropdownButton";
 
 
 const active = "btn btn-success btn-block";
@@ -59,9 +59,9 @@ ButtonShip.propTypes = {
         shipId: PropTypes.string.isRequired,
         shipType: PropTypes.string.isRequired,
         shipDirection: PropTypes.oneOf(["HORIZONTAL", "VERTICAL"]).isRequired,
-        shipSize: PropTypes.number.isRequired,
+        shipSize: PropTypes.number.isRequired
     })
 
-}
+};
 
 export default ButtonShip;

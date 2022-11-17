@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import Cell from "./Cell";
 
 const fieldTmp = [];
@@ -12,11 +12,11 @@ for (let i = 0; i < 10; i++) {
                 shipId: "shipId" + i + j,
                 shipType: "TYPE",
                 shipDirection: "VERTICAL",
-                shipSize: Math.floor(Math.random() * 4) + 1,
+                shipSize: Math.floor(Math.random() * 4) + 1
             },
             hasShot: false,
             isAvailable: true
-        })
+        });
     }
     fieldTmp.push(row);
 }
@@ -25,8 +25,8 @@ class Field extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            playerField: fieldTmp,
-        }
+            playerField: fieldTmp
+        };
     }
 
     render() {
@@ -55,12 +55,12 @@ class Field extends React.Component {
             } else if (isAvailable) {
                 style = "empty";
             } else {
-                style = "not_available"
+                style = "not_available";
             }
             let isDisabled = false;
             const id = `${cell.row}_${cell.col}`;
             return <Cell key={id} isDisabled={isDisabled} currentStyle={style}
-                         onClick={() => this.props.onClick(cell)}/>
+                         onClick={() => this.props.onClick(cell)}/>;
         });
 
         return (

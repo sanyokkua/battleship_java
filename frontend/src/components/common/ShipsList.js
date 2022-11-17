@@ -1,7 +1,7 @@
-import React from 'react';
-import PropTypes from 'prop-types'
-import ButtonShip from "./ButtonShip";
+import PropTypes from "prop-types";
+import React from "react";
 import Container from "react-bootstrap/Container";
+import ButtonShip from "./ButtonShip";
 
 function ShipsList(props) {
     const ships = props.shipsList;
@@ -20,8 +20,8 @@ ShipsList.propTypes = {
         shipId: PropTypes.string.isRequired,
         shipType: PropTypes.string.isRequired,
         shipDirection: PropTypes.oneOf(["HORIZONTAL", "VERTICAL"]).isRequired,
-        shipSize: PropTypes.number.isRequired,
+        shipSize: PropTypes.number.isRequired
     }))
-}
+};
 
 export default ShipsList;

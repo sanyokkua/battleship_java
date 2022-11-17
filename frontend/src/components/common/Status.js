@@ -1,6 +1,6 @@
-import React from 'react';
-import Badge from 'react-bootstrap/Badge'
-import PropTypes from 'prop-types'
+import PropTypes from "prop-types";
+import React from "react";
+import Badge from "react-bootstrap/Badge";
 
 function Status(props) {
     const badgeColor = props.badgeColor;
@@ -10,7 +10,7 @@ function Status(props) {
 
     let highlightedText = null;
     if (props.highlightedText) {
-        highlightedText = <span className={highlightedTextColor}>{props.highlightedText}</span>
+        highlightedText = <span className={highlightedTextColor}>{props.highlightedText}</span>;
     }
 
     return (
@@ -28,6 +28,6 @@ Status.propTypes = {
     textInTheMiddle: PropTypes.string.isRequired,
     highlightedTextColor: PropTypes.oneOf(["primary", "secondary", "success", "warning", "info", "light", "dark"]),
     highlightedText: PropTypes.string
-}
+};
 
 export default Status;

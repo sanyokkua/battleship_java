@@ -1,6 +1,6 @@
-import React from 'react';
-import Button from "react-bootstrap/Button";
 import PropTypes from "prop-types";
+import React from "react";
+import Button from "react-bootstrap/Button";
 
 const styleEmpty = "btn-outline-primary";
 const styleNotAvailable = "bg-primary p-2 bg-opacity-50";
@@ -32,7 +32,7 @@ function Cell(props) {
             style = styleEmpty;
             break;
     }
-    style += " border-dark "
+    style += " border-dark ";
     return (
         <Button className={style} disabled={isDisabled}/>
     );
@@ -40,6 +40,6 @@ function Cell(props) {
 
 Cell.propTypes = {
     isDisabled: PropTypes.bool, currentStyle: PropTypes.oneOf(["ship", "hit", "not_available", "miss", "empty"])
-}
+};
 
 export default Cell;
