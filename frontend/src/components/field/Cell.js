@@ -9,7 +9,6 @@ const styleHasShot = "btn-danger";
 const styleMiss = "btn-secondary";
 
 function Cell(props) {
-    const isDisabled = props.isDisabled;
     const currentStyle = props.currentStyle;
     let style = null;
     switch (currentStyle) {
@@ -34,12 +33,14 @@ function Cell(props) {
     }
     style += " border-dark ";
     return (
-        <Button className={style} disabled={isDisabled}/>
+        <Button bsPrefix="btn-square-sm" className={style} disabled={props.isDisabled} onClick={props.onButtonClick}/>
     );
 }
 
 Cell.propTypes = {
-    isDisabled: PropTypes.bool, currentStyle: PropTypes.oneOf(["ship", "hit", "not_available", "miss", "empty"])
+    isDisabled: PropTypes.bool,
+    currentStyle: PropTypes.oneOf(["ship", "hit", "not_available", "miss", "empty"]),
+    onButtonClick: PropTypes.func
 };
 
 export default Cell;

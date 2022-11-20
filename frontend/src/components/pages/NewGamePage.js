@@ -1,158 +1,98 @@
 import PropTypes from "prop-types";
 import React from "react";
 import Alert from "react-bootstrap/Alert";
-import Button from "react-bootstrap/Button";
-import Form from "react-bootstrap/Form";
+import Container from "react-bootstrap/Container";
 import ProgressBar from "react-bootstrap/ProgressBar";
+import {Navigate} from "react-router-dom";
 import {createGameSession, createPlayerInSession, getGameEditions} from "../../services/PromiseGameService";
-import {isValidString} from "../../utils/StringUtils";
+import NewGameForm from "../common/NewGameForm";
 
 class NewGamePage extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            isValid: false,
-            gameEdition: null,
-            playerName: null,
-
             isLoading: true,
             gameEditions: [],
 
-            gameIsCreated: false,
-            isErrorHappen: false,
+            gameEdition: null,
+            isValid: false,
+            playerName: null,
 
-            createdSessionId: null
+            isErrorHappen: false
         };
     }
 
-    handleNewGameClick(e) {
-        e.preventDefault();
+    async handleNewGameClick({gameEdition, playerName}) {
         this.setState({
             isLoading: true
         });
-        createGameSession(this.state.gameEdition)
-            .then(data => {
-                if (data && data.gameSessionId && data.gameSessionId.length) {
-                    const sessionId = data.gameSessionId;
-                    this.setState({
-                        createdSessionId: sessionId
-                    });
-                    const playerName = this.state.playerName;
-                    return createPlayerInSession(sessionId, playerName);
-                } else {
-                    throw new Error("Data is not valid");
-                }
-            })
-            .then(playerData => {
-                if (playerData) {
-                    const playerId = playerData.playerId;
 
-                    this.props.onNewGameSessionCreated({
-                        sessionId: this.state.createdSessionId,
-                        playerId: playerId
-                    });
+        try {
+            const gameSessionDto = await createGameSession(gameEdition);
+            const sessionId = gameSessionDto.gameSessionId;
+            const playerDto = await createPlayerInSession(sessionId, playerName);
 
-                    this.setState({
-                        isLoading: false,
-                        gameIsCreated: true
-                    });
+            console.log(sessionId);
+            console.log(playerDto);
 
-                    return playerData;
-                } else {
-                    throw new Error("Player data is not valid");
-                }
-            })
-            .catch(error => this.setState({isErrorHappen: true}));
-    }
+            this.props.onNewGameSessionCreated({
+                sessionId: sessionId,
+                playerId: playerDto.playerId
+            });
+        } catch (error) {
+            this.setState({isErrorHappen: true});
+        }
 
-    handleOnGameEditionChange(e) {
-        e.preventDefault();
         this.setState({
-            gameEdition: e.target.value
+            isLoading: false
         });
+
     }
 
-    validateName(e) {
-        const nameValue = e.target.value;
-        const isValid = isValidString(nameValue) && isValidString(this.state.gameEdition);
-        this.setState({
-            isValid: isValid,
-            playerName: nameValue
-        });
-    }
-
-    componentDidMount() {
-        getGameEditions()
-            .then(data => {
-                const allEditions = data.gameEditions;
-                if (allEditions && allEditions.length) {
-                    this.setState({
-                        gameEditions: allEditions,
-                        gameEdition: allEditions[0],
-                        isLoading: false
-                    });
-                }
-                return data;
-            })
-            .catch(error => this.setState({isErrorHappen: true}));
-    }
-
-    renderForm() {
-        return (
-            <>
-                <Form>
-                    <Form.Select aria-label="Default select example"
-                                 onChange={(e) => this.handleOnGameEditionChange(e)}
-                                 value={this.state.gameEdition}>
-                        {this.state.gameEditions.map((element) => {
-                            return <option key={element} value={element}>{element}</option>;
-                        })}
-                    </Form.Select>
-                    <Form.Group>
-                        <Form.Label>Player Name</Form.Label>
-                        <Form.Control onChange={(e) => this.validateName(e)} type="text" placeholder="Enter your name"/>
-                    </Form.Group>
-                    <br/>
-                    <Button variant="primary"
-                            type="submit"
-                            disabled={!this.state.isValid}
-                            onClick={(e) => this.handleNewGameClick(e)}>
-                        Submit
-                    </Button>
-                </Form>
-            </>
-        );
+    async componentDidMount() {
+        try {
+            const gameEditionsDto = await getGameEditions();
+            this.setState({
+                gameEditions: gameEditionsDto.gameEditions,
+                gameEdition: gameEditionsDto.gameEditions[0],
+                isLoading: false
+            });
+        } catch (error) {
+            this.setState({isErrorHappen: true});
+        }
     }
 
     render() {
-        if (this.state.gameIsCreated) {
-            const navigate = useNavigate();
-            navigate("wait");
-            return;
-        }
+        const navigate = <Navigate to="/game/wait" replace={true}/>;
         const progressBarLoading = <ProgressBar animated now={100}/>;
         const errorHappen = <Alert variant="danger">Error happened</Alert>;
-        const form = this.renderForm();
+        const form = <NewGameForm onSubmitClicked={(data) => this.handleNewGameClick(data)}
+                                  gameEditions={this.state.gameEditions}/>;
 
         let toRender = null;
-
-        if (this.state.isLoading) {
+        if (this.props.gameIsCreated) {
+            toRender = navigate;
+        } else if (this.state.isLoading) {
             toRender = progressBarLoading;
         } else if (this.state.isErrorHappen) {
             toRender = errorHappen;
         } else {
             toRender = form;
         }
+
         return (
             <>
-                {toRender}
+                <Container className="d-grid gap-4 w-75-ns p-3">
+                    {toRender}
+                </Container>
             </>
         );
     }
 }
 
 NewGamePage.propTypes = {
-    onNewGameSessionCreated: PropTypes.func.isRequired
+    onNewGameSessionCreated: PropTypes.func.isRequired,
+    gameIsCreated: PropTypes.bool
 };
 
 export default NewGamePage;

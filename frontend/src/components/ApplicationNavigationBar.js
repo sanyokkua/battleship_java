@@ -1,33 +1,54 @@
+import PropTypes from "prop-types";
 import React from "react";
 import Container from "react-bootstrap/Container";
 import Nav from "react-bootstrap/Nav";
 import Navbar from "react-bootstrap/Navbar";
-import {Link} from "wouter";
+import {LinkContainer} from "react-router-bootstrap";
+import {Outlet} from "react-router-dom";
 
 function ApplicationNavigationBar(props) {
+    const preparationPage = <LinkContainer to="/game/preparation"><Nav.Link>Preparation</Nav.Link></LinkContainer>;
+    const gameplayPage = <LinkContainer to="/game/gameplay"><Nav.Link>Gameplay</Nav.Link></LinkContainer>;
+    const resultsPage = <LinkContainer to="/game/results"><Nav.Link>Results</Nav.Link></LinkContainer>;
+
     return (
         <>
-            <Navbar bg="primary" variant="dark" expand="lg">
+            <Navbar collapseOnSelect bg="primary" variant="dark" expand="lg">
                 <Container>
-                    <Navbar.Brand>React-Bootstrap</Navbar.Brand>
+                    <LinkContainer to="/">
+                        <Navbar.Brand>Battleship</Navbar.Brand>
+                    </LinkContainer>
                     <Navbar.Toggle aria-controls="basic-navbar-nav"/>
                     <Navbar.Collapse id="basic-navbar-nav">
                         <Nav className="me-auto">
-                            <Link to="/">
+                            <LinkContainer to="/">
                                 <Nav.Link>Home</Nav.Link>
-                            </Link>
-                            <Link to="/new">
+                            </LinkContainer>
+                            <LinkContainer to="/new">
                                 <Nav.Link>New Game</Nav.Link>
-                            </Link>
-                            <Link to="/join">
+                            </LinkContainer>
+                            <LinkContainer to="/join">
                                 <Nav.Link>Join Game</Nav.Link>
-                            </Link>
+                            </LinkContainer>
+                            {props.hasPreparation && preparationPage}
+                            {props.hasGameplay && gameplayPage}
+                            {props.hasHasResults && resultsPage}
                         </Nav>
                     </Navbar.Collapse>
                 </Container>
             </Navbar>
+            <br/>
+            <Container fluid>
+                <Outlet/>
+            </Container>
         </>
     );
 }
+
+ApplicationNavigationBar.propTypes = {
+    hasPreparation: PropTypes.bool,
+    hasGameplay: PropTypes.bool,
+    hasHasResults: PropTypes.bool
+};
 
 export default ApplicationNavigationBar;

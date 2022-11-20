@@ -116,7 +116,8 @@ public class GameImpl implements Game {
         playerField.addShip(coordinate, ship);
         log.debug("Ship {} added to field with {} for player {}", ship, coordinate, playerId);
 
-        shipsNotOnTheField.remove(ship);
+        shipsNotOnTheField.removeIf(collectionShip -> collectionShip.shipId()
+                                                                    .equals(ship.shipId()));
         log.debug("Ship added to field, removed from the available ships");
     }
 

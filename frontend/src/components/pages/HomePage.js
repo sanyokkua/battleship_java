@@ -7,7 +7,7 @@ import {useNavigate} from "react-router-dom";
 function HomePage(props) {
     let navigate = useNavigate();
     return (
-        <Container className="d-grid gap-2">
+        <Container className="d-grid gap-4 w-75-ns p-3">
             <Row>
                 <Button variant="success" onClick={() => navigate("/new")}>New Game</Button>
             </Row>

@@ -14,11 +14,9 @@ function Status(props) {
     }
 
     return (
-        <div>
-            <p>
-                {highlightedText} {textInTheMiddle} <Badge bg={badgeColor}>{badgeText}</Badge>
-            </p>
-        </div>
+        <p>
+            {highlightedText} {textInTheMiddle} <Badge bg={badgeColor}>{badgeText}</Badge>
+        </p>
     );
 }
 

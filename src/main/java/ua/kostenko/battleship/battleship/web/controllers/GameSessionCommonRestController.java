@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import ua.kostenko.battleship.battleship.logic.api.ControllerApi;
 import ua.kostenko.battleship.battleship.logic.api.dtos.CellDto;
+import ua.kostenko.battleship.battleship.logic.api.dtos.GameStageDto;
 import ua.kostenko.battleship.battleship.logic.api.dtos.PlayerBaseInfoDto;
 import ua.kostenko.battleship.battleship.logic.api.dtos.PlayerDto;
 
@@ -37,5 +38,10 @@ public class GameSessionCommonRestController {
     public ResponseEntity<CellDto[][]> getFieldOfOpponent(
             @PathVariable String sessionId, @PathVariable String playerId) {
         return controllerApi.getFieldOfOpponent(sessionId, playerId);
+    }
+
+    @GetMapping(value = "stage")
+    public ResponseEntity<GameStageDto> getStage(@PathVariable final String sessionId) {
+        return controllerApi.getStage(sessionId);
     }
 }

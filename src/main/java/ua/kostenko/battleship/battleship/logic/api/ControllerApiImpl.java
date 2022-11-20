@@ -351,4 +351,16 @@ public class ControllerApiImpl implements ControllerApi {
 
         return ResponseEntity.ok(PlayerBaseInfoDto.of(player));
     }
+
+    @Override
+    public ResponseEntity<GameStageDto> getStage(final String sessionId) {
+        ValidationUtils.validateSessionId(sessionId);
+
+        final Game game = loadGame(sessionId);
+
+        return ResponseEntity.ok(GameStageDto.builder()
+                                             .gameStage(game.getGameState()
+                                                            .gameStage())
+                                             .build());
+    }
 }

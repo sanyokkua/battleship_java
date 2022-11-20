@@ -80,6 +80,7 @@ public class FieldImpl implements Field {
                                                                                .coordinate(neighbourCoordinate)
                                                                                .isAvailable(false)
                                                                                .build()));
+        updateFieldState();
     }
 
     @Override
@@ -106,6 +107,7 @@ public class FieldImpl implements Field {
                                                                .coordinate(neighbourCell.coordinate())
                                                                .isAvailable(true)
                                                                .build()));
+        updateFieldState();
         return Optional.of(ship.shipId());
     }
 
@@ -122,7 +124,7 @@ public class FieldImpl implements Field {
                                   .build());
 
         if (!cell.hasShip()) {
-            log.debug("Cell doesn't have a ship, shot result is MISS");
+            log.debug("PreparationCell doesn't have a ship, shot result is MISS");
             return ShotResult.MISS;
         }
 
@@ -139,6 +141,17 @@ public class FieldImpl implements Field {
         val result = isDestroyed ? ShotResult.DESTROYED : ShotResult.HIT;
         log.debug("ShotResult: {}", result);
         return result;
+    }
+
+    private void updateFieldState() {
+        FieldUtils.getShipsFromField(this.field)
+                  .stream()
+                  .flatMap(ship -> FieldUtils.findShipNeighbourCells(this.field, ship)
+                                             .stream())
+                  .forEach(cell -> updateCell(Cell.builder()
+                                                  .coordinate(cell.coordinate())
+                                                  .isAvailable(false)
+                                                  .build()));
     }
 
     @Override

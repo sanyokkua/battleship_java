@@ -1,108 +1,76 @@
 import PropTypes from "prop-types";
 import React from "react";
 import Alert from "react-bootstrap/Alert";
-import Button from "react-bootstrap/Button";
-import Form from "react-bootstrap/Form";
+import Container from "react-bootstrap/Container";
 import ProgressBar from "react-bootstrap/ProgressBar";
+import {Navigate} from "react-router-dom";
 import {createPlayerInSession} from "../../services/PromiseGameService";
-import {isValidString} from "../../utils/StringUtils";
+import JoinGameForm from "../common/JoinGameForm";
 
 class JoinGamePage extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            isValidName: false,
-            isValidSessionId: false,
-            playerName: null,
-            sessionId: null,
+            isJoinedToGame: false,
             isLoading: false,
-            isJoinedToGame: false
+            isErrorHappen: false
         };
     }
 
-    handleJoinGameClick(e) {
-        e.preventDefault();
-
+    async handleJoinGameClick({sessionId, playerName}) {
         this.setState({
             isLoading: true
-        });
+        }, async () => {
+            try {
+                const playerDto = await createPlayerInSession(sessionId, playerName);
 
-        createPlayerInSession(this.state.sessionId, this.state.playerName)
-            .then(playerData => {
-                if (playerData) {
-                    const playerId = playerData.playerId;
+                console.log(sessionId);
+                console.log(playerDto);
 
-                    this.props.onPlayerIsJoined({
-                        sessionId: this.state.sessionId,
-                        playerId: playerId
-                    });
-
-                    this.setState({
-                        isLoading: false,
-                        isJoinedToGame: true
-                    });
-                }
+                this.props.onPlayerIsJoined({
+                    sessionId: sessionId,
+                    playerId: playerDto.playerId
+                });
+            } catch (e) {
+                this.setState({isErrorHappen: true});
+            }
+            this.setState({
+                isLoading: false,
+                isJoinedToGame: true
             });
-    }
-
-    validateName(e) {
-        const tempValue = e.target.value;
-        const isValid = isValidString(tempValue);
-
-        this.setState({
-            isValidName: isValid,
-            playerName: tempValue
-        });
-    }
-
-    validateSessionId(e) {
-        const tempValue = e.target.value;
-        const isValid = isValidString(tempValue);
-
-        this.setState({
-            isValidSessionId: isValid,
-            sessionId: tempValue
         });
     }
 
     render() {
-        const isDisabled = !(this.state.isValidName && this.state.isValidSessionId);
+        const navigate = <Navigate to="/game/preparation" replace={true}/>;
+        const progressBarLoading = <ProgressBar animated now={100}/>;
+        const errorHappen = <Alert variant="danger">Error happened</Alert>;
+        const form = <JoinGameForm onSubmitClicked={(data) => this.handleJoinGameClick(data)}/>;
+
         let toRender = null;
-        if (this.state.isJoinedToGame) {
-            toRender = <Alert variant="success">
-                Joined to game!
-            </Alert>;
+        if (this.props.isJoinedToGame) {
+            toRender = navigate;
+        } else if (this.state.isLoading) {
+            toRender = progressBarLoading;
+        } else if (this.state.isErrorHappen) {
+            toRender = errorHappen;
         } else {
-            toRender = <Form>
-                <Form.Group>
-                    <Form.Label>Player Name</Form.Label>
-                    <Form.Control onChange={(e) => this.validateName(e)} type="text" placeholder="Enter your name"/>
-                </Form.Group>
-                <Form.Group>
-                    <Form.Label>Game ID</Form.Label>
-                    <Form.Control onChange={(e) => this.validateSessionId(e)} type="text"
-                                  placeholder="Enter session ID"/>
-                </Form.Group>
-                <br/>
-                <Button variant="primary"
-                        type="submit"
-                        disabled={isDisabled}
-                        onClick={(e) => this.handleJoinGameClick(e)}>
-                    Submit
-                </Button>
-            </Form>;
+            toRender = form;
         }
+
         return (
             <>
-                {this.state.isLoading ? <ProgressBar animated now={100}/> : toRender}
+                <Container className="d-grid gap-4 w-75-ns p-3">
+                    {toRender}
+                </Container>
             </>
-
         );
     }
 }
 
 JoinGamePage.propTypes = {
-    onPlayerIsJoined: PropTypes.func.isRequired
+    onPlayerIsJoined: PropTypes.func.isRequired,
+    isJoinedToGame: PropTypes.bool
 };
 
 export default JoinGamePage;

@@ -37,7 +37,7 @@ function del(path, data) {
     if (!path) {
         throw new Error("params are incorrect");
     }
-    return axios.delete(path, data)
+    return axios.delete(path, {data: data})
                 .then(axiosResponse => axiosResponse.data)
                 .catch(axiosError => console.log(axiosError));
 }
@@ -166,5 +166,11 @@ export function getNumberOfNotDestroyedShips(sessionId, playerId) {
 export function getWinner(sessionId) {
     validateStringPathVariable(sessionId);
     const path = `/api/game/sessions/${sessionId}/winner`;
+    return get(path);
+}
+
+export function getStage(sessionId) {
+    validateStringPathVariable(sessionId);
+    const path = `/api/game/sessions/${sessionId}/stage`;
     return get(path);
 }

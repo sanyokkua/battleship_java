@@ -1,6 +1,13 @@
 .grid_div {
     display: grid;
-    grid-template-rows: repeat(10, 5fr);
-    grid-template-columns: repeat(10, 5fr);
-    aspect-ratio: 1;
+    grid-template-rows: repeat(10, 3fr);
+    grid-template-columns: repeat(10, 3fr);
+    aspect-ratio: 1 / 1;
+    max-height: 60vh;
+    grid-gap: 1px;
+}
+
+.ship_btn_size {
+    width: 80px;
+    font-size: larger;
 }
