@@ -1,7 +1,7 @@
 import React from "react";
 import Row from "react-bootstrap/Row";
 import Status from "../common/Status";
-import Field from "../field/Field";
+import Field from "./Field";
 
 
 function PlayerField(props) {

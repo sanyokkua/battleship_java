@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import React from "react";
 import Container from "react-bootstrap/Container";
 import Nav from "react-bootstrap/Nav";
@@ -6,7 +5,13 @@ import Navbar from "react-bootstrap/Navbar";
 import {LinkContainer} from "react-router-bootstrap";
 import {Outlet} from "react-router-dom";
 
-function ApplicationNavigationBar(props) {
+export type AppNavBarProps = {
+    hasPreparation: boolean,
+    hasGameplay: boolean,
+    hasHasResults: boolean
+}
+
+function ApplicationNavigationBar(props: AppNavBarProps) {
     const preparationPage = <LinkContainer to="/game/preparation"><Nav.Link>Preparation</Nav.Link></LinkContainer>;
     const gameplayPage = <LinkContainer to="/game/gameplay"><Nav.Link>Gameplay</Nav.Link></LinkContainer>;
     const resultsPage = <LinkContainer to="/game/results"><Nav.Link>Results</Nav.Link></LinkContainer>;
@@ -44,11 +49,5 @@ function ApplicationNavigationBar(props) {
         </>
     );
 }
-
-ApplicationNavigationBar.propTypes = {
-    hasPreparation: PropTypes.bool,
-    hasGameplay: PropTypes.bool,
-    hasHasResults: PropTypes.bool
-};
 
 export default ApplicationNavigationBar;

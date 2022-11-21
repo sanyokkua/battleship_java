@@ -1,5 +1,4 @@
 import copy from "copy-to-clipboard";
-import PropTypes from "prop-types";
 import React from "react";
 import Alert from "react-bootstrap/Alert";
 import Button from "react-bootstrap/Button";
@@ -8,19 +7,35 @@ import Row from "react-bootstrap/Row";
 import Toast from "react-bootstrap/Toast";
 import {Navigate} from "react-router-dom";
 import {getOpponent} from "../../services/PromiseGameService";
+import {PlayerDto} from "../../logic/GameTypes";
 
+export type WaitForPlayersPageProps = {
+    player: PlayerDto,
+    sessionId: string
+};
 
-class WaitForPlayersPage extends React.Component {
-    constructor(props) {
+export type WaitForPlayersPageState = {
+    isCopied: boolean,
+    isPlayerJoined: boolean,
+    isNeedToRedirect: boolean
+    opponentName: string | null,
+};
+
+class WaitForPlayersPage extends React.Component<WaitForPlayersPageProps, WaitForPlayersPageState> {
+    private updateInterval: NodeJS.Timer | null;
+
+    constructor(props: WaitForPlayersPageProps) {
         super(props);
-        this.timerTick = this.timerTick.bind(this);
+        this.updateInterval = null;
 
         this.state = {
-            isPlayerJoined: false,
-            opponentName: null,
             isCopied: false,
-            isNeedToRedirect: false
+            isPlayerJoined: false,
+            isNeedToRedirect: false,
+            opponentName: null
         };
+
+        this.timerTick = this.timerTick.bind(this);
     }
 
     async timerTick() {
@@ -32,7 +47,9 @@ class WaitForPlayersPage extends React.Component {
                     isPlayerJoined: true,
                     opponentName: playerName
                 });
-                clearInterval(this.updateInterval);
+                if (this.updateInterval) {
+                    clearInterval(this.updateInterval);
+                }
             }
         } catch (e) {
             console.warn(e);
@@ -44,7 +61,9 @@ class WaitForPlayersPage extends React.Component {
     }
 
     componentWillUnmount() {
-        clearInterval(this.updateInterval);
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+        }
     }
 
     handleCopy() {
@@ -61,12 +80,13 @@ class WaitForPlayersPage extends React.Component {
     }
 
     render() {
-        const opponent = <Row><p><b>{this.state.opponentName}</b> has joined.</p></Row>;
-        const waiting = <Row><p>Waiting for your friend (opponent)...</p></Row>;
-        const navigate = <Navigate to="/game/preparation" replace={true}/>;
-        const elementToRender = this.state.isPlayerJoined ? opponent : waiting;
+        const playerJoined = this.state.isPlayerJoined;
 
-        if (this.state.isPlayerJoined) {
+        const opponent = <p><b>{this.state.opponentName}</b> has joined.</p>;
+        const waiting = <p>Waiting for your friend (opponent)...</p>;
+        const elementToRender = playerJoined ? opponent : waiting;
+
+        if (playerJoined) {
             setTimeout(() => this.setState({isNeedToRedirect: true}), 3000);
         }
 
@@ -77,7 +97,7 @@ class WaitForPlayersPage extends React.Component {
                         <h3>Hello <b>{this.props.player.playerName}!</b></h3>
                     </Row>
                     <Row></Row>
-                    <Row hidden={this.state.isPlayerJoined}>
+                    <Row hidden={playerJoined}>
                         <h5>Share Game ID with other player:</h5>
                         <Container>
                             <Alert variant="success">{this.props.sessionId}</Alert>
@@ -87,17 +107,15 @@ class WaitForPlayersPage extends React.Component {
                             <Button variant="success" onClick={() => this.handleCopy()}>Copy to clipboard</Button>
                         </Container>
                     </Row>
-                    {elementToRender}
+                    <Row>
+                        {elementToRender}
+                    </Row>
                 </Container>
-                {this.state.isNeedToRedirect && navigate}
+
+                {this.state.isNeedToRedirect && <Navigate to="/game/preparation" replace={true}/>}
             </>
         );
     }
 }
-
-WaitForPlayersPage.propTypes = {
-    player: PropTypes.object.isRequired,
-    sessionId: PropTypes.string.isRequired
-};
 
 export default WaitForPlayersPage;

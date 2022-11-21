@@ -8,7 +8,7 @@ const styleHasShip = "btn-success";
 const styleHasShot = "btn-danger";
 const styleMiss = "btn-secondary";
 
-function Cell(props) {
+function Cell(props: any) {
     const currentStyle = props.currentStyle;
     let style = null;
     switch (currentStyle) {
