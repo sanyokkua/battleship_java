@@ -22,11 +22,11 @@ type WaitForPlayersPageState = {
 };
 
 class WaitForPlayersPage extends React.Component<WaitForPlayersPageProps, WaitForPlayersPageState> {
-    private updateInterval: NodeJS.Timer | null;
+    private updateIntervals: NodeJS.Timer[];
 
     constructor(props: WaitForPlayersPageProps) {
         super(props);
-        this.updateInterval = null;
+        this.updateIntervals = [];
 
         this.state = {
             isCopied: false,
@@ -47,23 +47,31 @@ class WaitForPlayersPage extends React.Component<WaitForPlayersPageProps, WaitFo
                     isPlayerJoined: true,
                     opponentName: playerName
                 });
-                if (this.updateInterval) {
-                    clearInterval(this.updateInterval);
-                }
+                this.removeAllIntervals();
             }
         } catch (e) {
             console.warn(e);
         }
     }
 
+    removeAllIntervals() {
+        for (let i = 0; i < this.updateIntervals.length; i++) {
+            clearInterval(this.updateIntervals[i]);
+        }
+        this.updateIntervals = [];
+    }
+
+    setUpdateInterval() {
+        this.removeAllIntervals();
+        this.updateIntervals.push(setInterval(this.timerTick, 3000));
+    }
+
     componentDidMount() {
-        this.updateInterval = setInterval(this.timerTick, 3000);
+        this.setUpdateInterval();
     }
 
     componentWillUnmount() {
-        if (this.updateInterval) {
-            clearInterval(this.updateInterval);
-        }
+        this.removeAllIntervals();
     }
 
     handleCopy() {

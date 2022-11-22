@@ -35,11 +35,11 @@ type PreparationPageState = {
 };
 
 class PreparationPage extends React.Component<PreparationPageProps, PreparationPageState> {
-    private updateInterval: NodeJS.Timer | null;
+    private updateIntervals: NodeJS.Timer[];
 
     constructor(props: PreparationPageProps) {
         super(props);
-        this.updateInterval = null;
+        this.updateIntervals = [];
 
         this.state = {
             isDataLoaded: false,
@@ -58,6 +58,18 @@ class PreparationPage extends React.Component<PreparationPageProps, PreparationP
         this.timerTick = this.timerTick.bind(this);
     }
 
+    removeAllIntervals() {
+        for (let i = 0; i < this.updateIntervals.length; i++) {
+            clearInterval(this.updateIntervals[i]);
+        }
+        this.updateIntervals = [];
+    }
+
+    setUpdateInterval() {
+        this.removeAllIntervals();
+        this.updateIntervals.push(setInterval(this.timerTick, 3000));
+    }
+
     async timerTick() {
         try {
             const opponentDto = await service.getOpponent(this.props.sessionId, this.props.player.playerId);
@@ -69,10 +81,8 @@ class PreparationPage extends React.Component<PreparationPageProps, PreparationP
                     }
                 });
                 if (opponentDto.isReady) {
-                    if (this.updateInterval) {
-                        // Status from ready can't be changed, we do not need now checking state
-                        clearInterval(this.updateInterval);
-                    }
+                    // Status from ready can't be changed, we do not need now checking state
+                    this.removeAllIntervals();
                 }
             }
         } catch (error) {
@@ -81,14 +91,12 @@ class PreparationPage extends React.Component<PreparationPageProps, PreparationP
     }
 
     async componentDidMount() {
-        this.updateInterval = setInterval(this.timerTick, 3000);
+        this.setUpdateInterval();
         this.loadData();
     }
 
     componentWillUnmount() {
-        if (this.updateInterval) {
-            clearInterval(this.updateInterval);
-        }
+        this.removeAllIntervals();
     }
 
     loadData() {
