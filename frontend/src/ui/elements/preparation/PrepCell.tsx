@@ -2,12 +2,13 @@ import React, {useState} from "react";
 import Button from "react-bootstrap/Button";
 import Container from "react-bootstrap/Container";
 import Modal from "react-bootstrap/Modal";
-import {CellDto, ShipDirection} from "../../../logic/GameTypes";
-import {CellClickEventData} from "./PreparationTypes";
+import {CellDto, ShipDirection, ShipDto} from "../../../logic/GameTypes";
+import {CellClickEventData} from "./common/PreparationTypes";
 
 type PreparationCellProps = {
     cell: CellDto,
-    onButtonClick: (cellClickEventData: CellClickEventData) => void
+    onButtonClick: (cellClickEventData: CellClickEventData) => void,
+    getChosenShip: () => ShipDto | null
 };
 
 function PrepCell(props: PreparationCellProps) {
@@ -17,7 +18,18 @@ function PrepCell(props: PreparationCellProps) {
 
     const handleOnCellButtonClick = () => {
         if (!props.cell.ship) {
-            setShowDirectionDialog(true);
+            const currentActiveShip = props.getChosenShip();
+            if (currentActiveShip) {
+                if (currentActiveShip.shipSize > 1) {
+                    setShowDirectionDialog(true);
+                } else {
+                    props.onButtonClick({
+                        cell: props.cell,
+                        isDelete: false,
+                        direction: "VERTICAL"
+                    });
+                }
+            }
         } else {
             props.onButtonClick({
                 cell: props.cell,
@@ -46,7 +58,7 @@ function PrepCell(props: PreparationCellProps) {
         isDisabled = false;
     } else {
         isDisabled = true;
-        btnClassName = "bg-primary p-2 bg-opacity-25";
+        btnClassName = "outline-danger bg-opacity-25";
     }
 
     return (

@@ -2,11 +2,11 @@ import React from "react";
 import Badge from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
 import Row from "react-bootstrap/Row";
-import Status from "../../components/common/Status";
+import Status from "../../ui/elements/preparation/Status";
 // import Field from "../../components/field/Field";
 import {CellDto, PlayerBaseInfoDto, PlayerDto} from "../../logic/GameTypes";
 
-export type FinishPageProps = {
+type FinishPageProps = {
     winner: PlayerBaseInfoDto,
     player: PlayerDto,
     opponent: PlayerBaseInfoDto,

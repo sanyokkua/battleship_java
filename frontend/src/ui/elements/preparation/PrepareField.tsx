@@ -1,12 +1,13 @@
 import React from "react";
 import PrepCell from "./PrepCell";
-import {CellDto} from "../../../logic/GameTypes";
-import {CellClickEventData} from "./PreparationTypes";
+import {CellDto, ShipDto} from "../../../logic/GameTypes";
+import {CellClickEventData} from "./common/PreparationTypes";
 
 type PrepareFieldProps = {
     isReadOnly: boolean,
     playerField: CellDto[][],
     onCellClick: (cellClickEventData: CellClickEventData) => void;
+    getChosenShip: () => ShipDto | null
 };
 
 function PrepareField(props: PrepareFieldProps) {
@@ -18,6 +19,7 @@ function PrepareField(props: PrepareFieldProps) {
             {flatField
                 .map(cell => <PrepCell key={`${cell.row}_${cell.col}`}
                                        cell={cell}
+                                       getChosenShip={props.getChosenShip}
                                        onButtonClick={(event) => props.onCellClick(event)}/>)}
         </div>
     );

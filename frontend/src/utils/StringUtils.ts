@@ -1,7 +1,5 @@
-function isValidString(stringValue) {
-    return stringValue
-        && typeof stringValue === "string"
-        && stringValue.length > 2;
+function isValidString(stringValue: string | null): boolean {
+    return Boolean(stringValue && stringValue.length > 2);
 }
 
 export {isValidString};

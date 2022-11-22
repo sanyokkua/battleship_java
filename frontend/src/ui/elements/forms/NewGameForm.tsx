@@ -2,14 +2,14 @@ import React, {ChangeEvent, MouseEvent} from "react";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import {isValidString} from "../../../utils/StringUtils";
-import {NewGameFormResultDto} from "./FormTypes";
+import {NewGameFormResultDto} from "./common/FormTypes";
 
-export type NewGameFormProps = {
+type NewGameFormProps = {
     gameEditions: string[]
     onSubmitClicked: (formResults: NewGameFormResultDto) => void,
 };
 
-export type NewGameFormState = {
+type NewGameFormState = {
     isValid: boolean,
     playerName: string | null,
     gameEdition: string | null

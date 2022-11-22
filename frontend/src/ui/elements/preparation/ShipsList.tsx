@@ -15,7 +15,8 @@ function ShipsList(props: ShipsListProps) {
             <div>
                 {props.shipsList.map(ship => <ButtonShip key={ship.shipId}
                                                          isActive={props.activeShipId === ship.shipId}
-                                                         ship={ship}/>)}
+                                                         ship={ship}
+                                                         onButtonClick={props.onShipIsChosen}/>)}
             </div>
         </Container>
     );

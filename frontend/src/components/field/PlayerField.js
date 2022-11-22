@@ -1,6 +1,5 @@
 import React from "react";
 import Row from "react-bootstrap/Row";
-import Status from "../common/Status";
 import Field from "./Field";
 
 
@@ -12,7 +11,7 @@ function PlayerField(props) {
     return (
         <>
             <Row>
-                <Status badgeColor="warning" badgeText="Player Name" textInTheMiddle="Field of:"/>
+                {/*<Status badgeColor="warning" badgeText="Player Name" textInTheMiddle="Field of:"/>*/}
                 <Field/>
             </Row>
         </>

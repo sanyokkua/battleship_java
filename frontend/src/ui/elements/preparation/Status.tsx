@@ -1,8 +1,8 @@
 import React from "react";
 import Badge from "react-bootstrap/Badge";
-import {Colors} from "./PreparationTypes";
+import {Colors} from "./common/PreparationTypes";
 
-export type StatusProps = {
+type StatusProps = {
     badgeColor: Colors,
     badgeText: string,
 

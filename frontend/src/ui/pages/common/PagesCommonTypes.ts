@@ -1,4 +1,4 @@
-import {PlayerDto} from "../../logic/GameTypes";
+import {PlayerDto} from "../../../logic/GameTypes";
 
 export type GameCreatedOrJoinedResult = {
     sessionId: string,

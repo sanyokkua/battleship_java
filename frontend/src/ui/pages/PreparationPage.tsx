@@ -9,24 +9,15 @@ import ShipsList from "../elements/preparation/ShipsList";
 import Status from "../elements/preparation/Status";
 import PrepareField from "../elements/preparation/PrepareField";
 import {CellDto, Coordinate, PlayerDto, ShipDirection, ShipDto} from "../../logic/GameTypes";
-import {CellClickEventData} from "../elements/preparation/PreparationTypes";
+import {CellClickEventData} from "../elements/preparation/common/PreparationTypes";
+import {shipComparator} from "../../utils/GameUtils";
 
-function shipComparator(ship1: ShipDto, ship2: ShipDto) {
-    if (ship1.shipSize > ship2.shipSize) {
-        return 1;
-    }
-    if (ship1.shipSize < ship2.shipSize) {
-        return -1;
-    }
-    return 0;
-}
-
-export type PreparationPageProps = {
+type PreparationPageProps = {
     player: PlayerDto,
     sessionId: string
 };
 
-export type PreparationPageState = {
+type PreparationPageState = {
     isDataLoaded: boolean,
     opponent: {
         name: string,
@@ -169,7 +160,8 @@ class PreparationPage extends React.Component<PreparationPageProps, PreparationP
                 <Col>
                     <PrepareField playerField={this.state.field}
                                   onCellClick={(clickCellEventData) => this.handleOnCellClicked(clickCellEventData)}
-                                  isReadOnly={false}/>
+                                  isReadOnly={false}
+                                  getChosenShip={() => this.state.chosenShip}/>
                 </Col>
             </Row>
         </Container>;

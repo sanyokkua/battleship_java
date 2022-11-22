@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.battleship.logic.api.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import ua.kostenko.battleship.battleship.logic.engine.models.records.Cell;
 import ua.kostenko.battleship.battleship.logic.engine.models.records.Ship;
@@ -13,6 +14,7 @@ public class CellDto {
     private int col;
     private Ship ship;
     private boolean hasShot;
+    @JsonProperty("isAvailable")
     private boolean isAvailable;
 
     public static CellDto of(Cell cell) {

@@ -1,4 +1,4 @@
-import {CellDto, ShipDirection} from "../../../logic/GameTypes";
+import {CellDto, ShipDirection} from "../../../../logic/GameTypes";
 
 export type CellClickEventData = {
     cell: CellDto,

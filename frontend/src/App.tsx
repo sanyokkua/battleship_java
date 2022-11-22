@@ -9,7 +9,7 @@ import * as gameStorage from "./services/GameStorage";
 import * as gameUtils from "./utils/GameUtils";
 import {getStage} from "./services/PromiseGameService";
 import {GameStage, PlayerDto} from "./logic/GameTypes";
-import {GameCreatedOrJoinedResult} from "./ui/pages/PagesCommonTypes";
+import {GameCreatedOrJoinedResult} from "./ui/pages/common/PagesCommonTypes";
 import PreparationPage from "./ui/pages/PreparationPage";
 
 type AppState = {

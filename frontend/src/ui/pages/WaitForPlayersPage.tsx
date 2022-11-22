@@ -9,12 +9,12 @@ import {Navigate} from "react-router-dom";
 import {getOpponent} from "../../services/PromiseGameService";
 import {PlayerDto} from "../../logic/GameTypes";
 
-export type WaitForPlayersPageProps = {
+type WaitForPlayersPageProps = {
     player: PlayerDto,
     sessionId: string
 };
 
-export type WaitForPlayersPageState = {
+type WaitForPlayersPageState = {
     isCopied: boolean,
     isPlayerJoined: boolean,
     isNeedToRedirect: boolean

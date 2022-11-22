@@ -2,13 +2,13 @@ import React, {ChangeEvent, MouseEvent} from "react";
 import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import {isValidString} from "../../../utils/StringUtils";
-import {JoinGameFormResultDto} from "./FormTypes";
+import {JoinGameFormResultDto} from "./common/FormTypes";
 
-export type JoinGameFormProps = {
+type JoinGameFormProps = {
     onSubmitClicked: (formResults: JoinGameFormResultDto) => void,
 };
 
-export type JoinGameFormState = {
+type JoinGameFormState = {
     isValidName: boolean,
     playerName: string | null,
     isValidSessionId: boolean,

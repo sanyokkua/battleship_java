@@ -1,6 +1,6 @@
 import * as storage from "../services/GameStorage";
 import * as promiseService from "../services/PromiseGameService";
-import {GameStage, PlayerDto} from "../logic/GameTypes";
+import {GameStage, PlayerDto, ShipDto} from "../logic/GameTypes";
 
 export async function createPlayer(sessionId: string, playerName: string): Promise<PlayerDto> {
     if (!sessionId || sessionId.trim().length === 0 || !playerName || playerName.trim().length === 0) {
@@ -56,4 +56,14 @@ export async function loadInitialData(): Promise<InitialData> {
     } catch (e) {
         throw e;
     }
+}
+
+export function shipComparator(ship1: ShipDto, ship2: ShipDto) {
+    if (ship1.shipSize > ship2.shipSize) {
+        return 1;
+    }
+    if (ship1.shipSize < ship2.shipSize) {
+        return -1;
+    }
+    return 0;
 }

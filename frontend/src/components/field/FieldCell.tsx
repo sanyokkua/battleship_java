@@ -13,7 +13,7 @@ const styleHasShip = "btn-success";
 const styleHasShot = "btn-danger";
 const styleMiss = "btn-secondary";
 
-function getStyleForPrepare(cell) {
+function getStyleForPrepare(cell: any) {
     let style = null;
     let isDisabled = false;
 
@@ -30,7 +30,7 @@ function getStyleForPrepare(cell) {
     return {style: style, isDisabled: isDisabled};
 }
 
-function getStyleForGameplay(cell) {
+function getStyleForGameplay(cell: any) {
     let style = null;
     let isDisabled = false;
 
@@ -50,7 +50,7 @@ function getStyleForGameplay(cell) {
     return {style: style, isDisabled: isDisabled};
 }
 
-function FieldCell(props) {
+function FieldCell(props: any) {
     let style = null;
     if (props.stage === "prepare") {
         style = getStyleForPrepare(props.cell);
@@ -59,7 +59,7 @@ function FieldCell(props) {
     }
     const componentStyle = style.style;
     const disabled = props.isAlwaysDisabled && style.isDisabled;
-    const onClick = (event) => {
+    const onClick = (event: any) => {
         console.log(event);
         props.onButtonClick({cell: cell, direction: event});
     };
