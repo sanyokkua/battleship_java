@@ -11,6 +11,9 @@ import PrepareField from "../elements/preparation/PrepareField";
 import {CellDto, Coordinate, PlayerDto, ShipDirection, ShipDto} from "../../logic/GameTypes";
 import {CellClickEventData} from "../elements/preparation/common/PreparationTypes";
 import {shipComparator} from "../../utils/GameUtils";
+import ToastContainer from "react-bootstrap/ToastContainer";
+import Toast from "react-bootstrap/Toast";
+import Button from "react-bootstrap/Button";
 
 type PreparationPageProps = {
     player: PlayerDto,
@@ -19,6 +22,8 @@ type PreparationPageProps = {
 
 type PreparationPageState = {
     isDataLoaded: boolean,
+    isErrorOnShipAdd: boolean,
+    isErrorOnReadyButtonClick: boolean,
     opponent: {
         name: string,
         ready: boolean
@@ -26,7 +31,7 @@ type PreparationPageState = {
     ships: ShipDto[],
     field: CellDto[][],
     chosenShip: ShipDto | null,
-    onStartButtonClicked: boolean
+    playerMadeIsReady: boolean
 };
 
 class PreparationPage extends React.Component<PreparationPageProps, PreparationPageState> {
@@ -38,6 +43,8 @@ class PreparationPage extends React.Component<PreparationPageProps, PreparationP
 
         this.state = {
             isDataLoaded: false,
+            isErrorOnShipAdd: false,
+            isErrorOnReadyButtonClick: false,
             opponent: {
                 name: "",
                 ready: false
@@ -45,7 +52,7 @@ class PreparationPage extends React.Component<PreparationPageProps, PreparationP
             ships: [],
             field: [],
             chosenShip: null,
-            onStartButtonClicked: false
+            playerMadeIsReady: false
         };
 
         this.timerTick = this.timerTick.bind(this);
@@ -61,6 +68,12 @@ class PreparationPage extends React.Component<PreparationPageProps, PreparationP
                         ready: opponentDto.isReady
                     }
                 });
+                if (opponentDto.isReady) {
+                    if (this.updateInterval) {
+                        // Status from ready can't be changed, we do not need now checking state
+                        clearInterval(this.updateInterval);
+                    }
+                }
             }
         } catch (error) {
             //ignore
@@ -133,44 +146,85 @@ class PreparationPage extends React.Component<PreparationPageProps, PreparationP
                 direction
             );
         } catch (e) {
-            console.warn(e);
+            this.setState({isErrorOnShipAdd: true});
         }
         this.loadData();
 
     }
 
+    async handleOnReadyButtonClick() {
+        try {
+            const result = await service.startGame(this.props.sessionId, this.props.player.playerId);
+            if (result && result.isReady) {
+                this.setState({playerMadeIsReady: true});
+            }
+        } catch (e) {
+            this.setState({isErrorOnReadyButtonClick: true});
+        }
+    }
+
     render() {
         const dataIsNotLoaded = !this.state.isDataLoaded;
         const opponentStatus = this.state.opponent.ready ? "Ready" : "In progress";
-
-        const content = <Container className="text-center" hidden={dataIsNotLoaded}>
-            <Row className="text-center">
-                <Status badgeColor="warning" badgeText={opponentStatus}
-                        textInTheMiddle="status:"
-                        highlightedTextColor="primary"
-                        highlightedText={this.state.opponent.name}/>
-            </Row>
-            <Row>
-                <Col>
-                    <ShipsList shipsList={this.state.ships}
-                               onShipIsChosen={(ship) => this.handleOnShipChosen(ship)}
-                               activeShipId={this.state.chosenShip?.shipId || null}
-                    />
-                </Col>
-                <Col>
-                    <PrepareField playerField={this.state.field}
-                                  onCellClick={(clickCellEventData) => this.handleOnCellClicked(clickCellEventData)}
-                                  isReadOnly={false}
-                                  getChosenShip={() => this.state.chosenShip}/>
-                </Col>
-            </Row>
-        </Container>;
-
+        const showReadyButton = this.state.ships.length === 0;
         return (
             <>
                 {dataIsNotLoaded && <ProgressBar animated now={100}/>}
-                {this.state.onStartButtonClicked && <Navigate to="/game/gameplay" replace={true}/>}
-                {this.state.isDataLoaded && content}
+                {this.state.playerMadeIsReady && <Navigate to="/game/gameplay" replace={true}/>}
+                {this.state.isDataLoaded &&
+                    <Container className="text-center" hidden={dataIsNotLoaded}>
+                        <Row className="text-center">
+                            <Status badgeColor="warning" badgeText={opponentStatus}
+                                    textInTheMiddle="status:"
+                                    highlightedTextColor="primary"
+                                    highlightedText={this.state.opponent.name}/>
+                        </Row>
+                        <Row>
+                            <Col>
+                                <ShipsList shipsList={this.state.ships}
+                                           onShipIsChosen={(ship) => this.handleOnShipChosen(ship)}
+                                           activeShipId={this.state.chosenShip?.shipId || null}
+                                />
+                            </Col>
+                            <Col>
+                                <PrepareField playerField={this.state.field}
+                                              onCellClick={(clickCellEventData) => this.handleOnCellClicked(clickCellEventData)}
+                                              isReadOnly={false}
+                                              getChosenShip={() => this.state.chosenShip}/>
+                            </Col>
+                        </Row>
+                        <Row hidden={!showReadyButton}>
+                            <Button variant={"success"} disabled={!showReadyButton}
+                                    onClick={() => this.handleOnReadyButtonClick()}>Ready to go!</Button>
+                        </Row>
+                        <Row>
+                            <ToastContainer className="p-3" position="bottom-end">
+                                <Toast onClose={() => this.setState({isErrorOnShipAdd: false})}
+                                       show={this.state.isErrorOnShipAdd}
+                                       delay={2000}
+                                       bg={"danger"}
+                                       autohide>
+                                    <Toast.Header closeButton={true}>
+                                        <strong className="me-auto">Error happened</strong>
+                                    </Toast.Header>
+                                    <Toast.Body className={"text-white"}>Ship can't be added!</Toast.Body>
+                                </Toast>
+                            </ToastContainer>
+
+                            <ToastContainer className="p-3" position="bottom-end">
+                                <Toast onClose={() => this.setState({isErrorOnReadyButtonClick: false})}
+                                       show={this.state.isErrorOnReadyButtonClick}
+                                       delay={5000}
+                                       bg={"danger"}
+                                       autohide>
+                                    <Toast.Header closeButton={true}>
+                                        <strong className="me-auto">Error happened</strong>
+                                    </Toast.Header>
+                                    <Toast.Body className={"text-white"}>Player can't be made ready!</Toast.Body>
+                                </Toast>
+                            </ToastContainer>
+                        </Row>
+                    </Container>}
             </>
         );
     }

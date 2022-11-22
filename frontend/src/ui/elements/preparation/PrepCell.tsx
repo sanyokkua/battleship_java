@@ -64,15 +64,17 @@ function PrepCell(props: PreparationCellProps) {
     return (
         <>
             <Button variant={btnClassName} onClick={handleOnCellButtonClick} disabled={isDisabled}/>
-            <Modal show={showDirectionDialog} onHide={handleOnDialogClose} backdrop="static" centered size="sm">
+            <Modal show={showDirectionDialog} onHide={handleOnDialogClose}
+                   backdrop="static" centered size="sm"
+                   dialogClassName="modal-30w">
                 <Modal.Header closeButton>Chose direction</Modal.Header>
                 <Modal.Body>
                     <Container className="text-center">
                         <Button variant="primary" onClick={() => handleOnDirectionChose("VERTICAL")}>
-                            Vertical
+                            Vertical ⇩
                         </Button>{" "}
                         <Button variant="success" onClick={() => handleOnDirectionChose("HORIZONTAL")}>
-                            Horizontal
+                            Horizontal ⇨
                         </Button>
                     </Container>
                 </Modal.Body>
