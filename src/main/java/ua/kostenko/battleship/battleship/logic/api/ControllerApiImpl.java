@@ -334,6 +334,36 @@ public class ControllerApiImpl implements ControllerApi {
     }
 
     @Override
+    public ResponseEntity<UndamagedCellsDto> getNumberOfUndamagedCellsOpponent(
+            final String sessionId, final String playerId) {
+        ValidationUtils.validateSessionId(sessionId);
+        ValidationUtils.validatePlayerId(playerId);
+
+        final Game game = loadGame(sessionId);
+
+        int amount = game.getOpponent(playerId)
+                         .getField()
+                         .getNumberOfUndamagedCells();
+
+        return ResponseEntity.ok(new UndamagedCellsDto(amount));
+    }
+
+    @Override
+    public ResponseEntity<NumberOfAliveShipsDto> getNumberOfNotDestroyedShipsOpponent(
+            final String sessionId, final String playerId) {
+        ValidationUtils.validateSessionId(sessionId);
+        ValidationUtils.validatePlayerId(playerId);
+
+        final Game game = loadGame(sessionId);
+
+        int amount = game.getOpponent(playerId)
+                         .getField()
+                         .getNumberOfNotDestroyedShips();
+
+        return ResponseEntity.ok(new NumberOfAliveShipsDto(amount));
+    }
+
+    @Override
     public ResponseEntity<PlayerBaseInfoDto> getWinner(final String sessionId) {
         ValidationUtils.validateSessionId(sessionId);
 

@@ -39,6 +39,10 @@ public interface ControllerApi {
 
     ResponseEntity<NumberOfAliveShipsDto> getNumberOfNotDestroyedShips(String sessionId, String playerId);
 
+    ResponseEntity<UndamagedCellsDto> getNumberOfUndamagedCellsOpponent(String sessionId, String playerId);
+
+    ResponseEntity<NumberOfAliveShipsDto> getNumberOfNotDestroyedShipsOpponent(String sessionId, String playerId);
+
     ResponseEntity<PlayerBaseInfoDto> getWinner(String sessionId);
 
     ResponseEntity<GameStageDto> getStage(String sessionId);

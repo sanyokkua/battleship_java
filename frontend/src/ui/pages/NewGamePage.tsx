@@ -60,8 +60,8 @@ class NewGamePage extends React.Component<NewGamePageProps, NewGamePageState> {
             isLoading: true
         });
         try {
-            const sessionId = await gameUtils.createSession(newGameFormResult.gameEdition);
-            const playerDto = await gameUtils.createPlayer(sessionId, newGameFormResult.playerName);
+            const sessionId = await gameUtils.createSessionAsync(newGameFormResult.gameEdition);
+            const playerDto = await gameUtils.createPlayerAsync(sessionId, newGameFormResult.playerName);
 
             this.props.onNewGameSessionCreated({
                 sessionId: sessionId,

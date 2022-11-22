@@ -36,7 +36,7 @@ class JoinGamePage extends React.Component<JoinGamePageProps, JoinGamePageState>
             isLoading: true
         }, async () => {
             try {
-                const playerDto = await gameUtils.createPlayer(joinGameFormResult.sessionId, joinGameFormResult.playerName);
+                const playerDto = await gameUtils.createPlayerAsync(joinGameFormResult.sessionId, joinGameFormResult.playerName);
 
                 this.props.onPlayerIsJoined({
                     sessionId: joinGameFormResult.sessionId,

@@ -14,6 +14,9 @@ import {
     ShotResultDto,
     UndamagedCellsDto
 } from "../logic/GameTypes";
+import axiosRetry from "axios-retry";
+
+axiosRetry(axios, {retries: 3});
 
 function validateStringValue(value: string): void {
     if (!value || value.length < 2) {
@@ -144,6 +147,20 @@ export function getNumberOfNotDestroyedShips(sessionId: string, playerId: string
     validateStringValue(sessionId);
     validateStringValue(playerId);
     const path = `/api/game/sessions/${sessionId}/players/${playerId}/ships?NotDestroyed`;
+    return axios.get<NumberOfAliveShipsDto>(path).then(axiosResponse => axiosResponse.data);
+}
+
+export function getNumberOfUndamagedCellsOpponent(sessionId: string, playerId: string): Promise<UndamagedCellsDto> {
+    validateStringValue(sessionId);
+    validateStringValue(playerId);
+    const path = `/api/game/sessions/${sessionId}/players/${playerId}/opponent/cells`;
+    return axios.get<UndamagedCellsDto>(path).then(axiosResponse => axiosResponse.data);
+}
+
+export function getNumberOfNotDestroyedShipsOpponent(sessionId: string, playerId: string): Promise<NumberOfAliveShipsDto> {
+    validateStringValue(sessionId);
+    validateStringValue(playerId);
+    const path = `/api/game/sessions/${sessionId}/players/${playerId}/opponent/ships?NotDestroyed`;
     return axios.get<NumberOfAliveShipsDto>(path).then(axiosResponse => axiosResponse.data);
 }
 

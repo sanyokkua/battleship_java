@@ -1,8 +1,17 @@
 import * as storage from "../services/GameStorage";
 import * as promiseService from "../services/PromiseGameService";
-import {GameStage, PlayerDto, ShipDto} from "../logic/GameTypes";
+import {
+    CellDto,
+    GamePlayState,
+    GameStage,
+    NumberOfAliveShipsDto,
+    PlayerBaseInfoDto,
+    PlayerDto,
+    ShipDto,
+    UndamagedCellsDto
+} from "../logic/GameTypes";
 
-export async function createPlayer(sessionId: string, playerName: string): Promise<PlayerDto> {
+export async function createPlayerAsync(sessionId: string, playerName: string): Promise<PlayerDto> {
     if (!sessionId || sessionId.trim().length === 0 || !playerName || playerName.trim().length === 0) {
         throw new Error("Initial params are not valid!");
     }
@@ -13,7 +22,7 @@ export async function createPlayer(sessionId: string, playerName: string): Promi
     return playerDto;
 }
 
-export async function createSession(gameEdition: string): Promise<string> {
+export async function createSessionAsync(gameEdition: string): Promise<string> {
     const gameSessionDto = await promiseService.createGameSession(gameEdition);
     if (!gameSessionDto || !gameSessionDto.gameSessionId || gameSessionDto.gameSessionId.length === 0) {
         throw new Error("Session is not created");
@@ -21,7 +30,7 @@ export async function createSession(gameEdition: string): Promise<string> {
     return gameSessionDto.gameSessionId;
 }
 
-export async function getGameEditions(): Promise<string[]> {
+export async function getGameEditionsAsync(): Promise<string[]> {
     const gameEditions = await promiseService.getGameEditions();
     if (!gameEditions || !gameEditions.gameEditions || gameEditions.gameEditions.length === 0) {
         throw new Error("Game Editions are not loaded");
@@ -36,7 +45,7 @@ export type InitialData = {
     gameEditions: string[]
 }
 
-export async function loadInitialData(): Promise<InitialData> {
+export async function loadInitialDataAsync(): Promise<InitialData> {
     try {
         const sessionId = storage.loadSession();
         const player = storage.loadPlayer();
@@ -56,6 +65,29 @@ export async function loadInitialData(): Promise<InitialData> {
     } catch (e) {
         throw e;
     }
+}
+
+export async function loadGameplayData(sessionId: string, playerId: string): Promise<GamePlayState> {
+    const opponentDto: PlayerBaseInfoDto = await promiseService.getOpponent(sessionId, playerId);
+    const activePlayerDto: PlayerBaseInfoDto = await promiseService.getActivePlayer(sessionId);
+    const aliveShipsDto: NumberOfAliveShipsDto = await promiseService.getNumberOfNotDestroyedShips(sessionId, playerId);
+    const aliveCellsDto: UndamagedCellsDto = await promiseService.getNumberOfUndamagedCells(sessionId, playerId);
+    const opponentAliveShipsDto: NumberOfAliveShipsDto = await promiseService.getNumberOfNotDestroyedShipsOpponent(sessionId, playerId);
+    const opponentAliveCellsDto: UndamagedCellsDto = await promiseService.getNumberOfUndamagedCellsOpponent(sessionId, playerId);
+    const playerField: CellDto[][] = await promiseService.getField(sessionId, playerId);
+    const opponentField: CellDto[][] = await promiseService.getFieldOfOpponent(sessionId, playerId);
+
+    const state: GamePlayState = {
+        opponent: opponentDto,
+        activePlayer: activePlayerDto,
+        playerNumberOfAliveCells: aliveCellsDto.numberOfUndamagedCells,
+        playerNumberOfAliveShips: aliveShipsDto.numberOfAliveShips,
+        opponentNumberOfAliveCells: opponentAliveCellsDto.numberOfUndamagedCells,
+        opponentNumberOfAliveShips: opponentAliveShipsDto.numberOfAliveShips,
+        playerField: playerField,
+        opponentField: opponentField
+    };
+    return state;
 }
 
 export function shipComparator(ship1: ShipDto, ship2: ShipDto) {

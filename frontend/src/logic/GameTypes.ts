@@ -75,3 +75,14 @@ export type GameStage = "INITIALIZED" | "WAITING_FOR_PLAYERS" | "PREPARATION" | 
 export type GameStageDto = {
     gameStage: GameStage;
 }
+
+export type GamePlayState = {
+    opponent: PlayerBaseInfoDto,
+    activePlayer: PlayerBaseInfoDto,
+    playerNumberOfAliveCells: number,
+    opponentNumberOfAliveCells: number,
+    playerNumberOfAliveShips: number,
+    opponentNumberOfAliveShips: number,
+    playerField: CellDto[][],
+    opponentField: CellDto[][],
+}

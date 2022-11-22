@@ -39,6 +39,20 @@ public class GameplayRestController {
         return controller.getNumberOfNotDestroyedShips(sessionId, playerId);
     }
 
+    @GetMapping(value = "players/{playerId}/opponent/cells")
+    public ResponseEntity<UndamagedCellsDto> getNumberOfUndamagedCellsOpponent(
+            @PathVariable String sessionId, @PathVariable String playerId) {
+
+        return controller.getNumberOfUndamagedCellsOpponent(sessionId, playerId);
+    }
+
+    @GetMapping(value = "players/{playerId}/opponent/ships", params = "NotDestroyed")
+    public ResponseEntity<NumberOfAliveShipsDto> getNumberOfNotDestroyedShipsOpponent(
+            @PathVariable String sessionId, @PathVariable String playerId) {
+
+        return controller.getNumberOfNotDestroyedShipsOpponent(sessionId, playerId);
+    }
+
     @GetMapping("winner")
     public ResponseEntity<PlayerBaseInfoDto> getWinner(@PathVariable String sessionId) {
         return controller.getWinner(sessionId);

@@ -1,6 +1,6 @@
 import React from "react";
 import {Route, Routes} from "react-router-dom";
-import ApplicationNavigationBar from "./components/ApplicationNavigationBar";
+import ApplicationNavigationBar from "./ui/ApplicationNavigationBar";
 import HomePage from "./ui/pages/HomePage";
 import JoinGamePage from "./ui/pages/JoinGamePage";
 import NewGamePage from "./ui/pages/NewGamePage";
@@ -11,6 +11,7 @@ import {getStage} from "./services/PromiseGameService";
 import {GameStage, PlayerDto} from "./logic/GameTypes";
 import {GameCreatedOrJoinedResult} from "./ui/pages/common/PagesCommonTypes";
 import PreparationPage from "./ui/pages/PreparationPage";
+import GameplayPage from "./ui/pages/GameplayPage";
 
 type AppState = {
     sessionId: string | null,
@@ -38,7 +39,7 @@ class App extends React.Component<any, AppState> {
     }
 
     async componentDidMount() {
-        const initialData = await gameUtils.loadInitialData();
+        const initialData = await gameUtils.loadInitialDataAsync();
         this.setState({
             sessionId: initialData.sessionId,
             playerDto: initialData.player,
@@ -95,7 +96,10 @@ class App extends React.Component<any, AppState> {
                             && <Route path="/game/preparation" element={
                                 <PreparationPage sessionId={this.state.sessionId} player={this.state.playerDto}/>}/>}
 
-                        {/*<Route path="/game/gameplay" element={<GameplayPage/>}/>*/}
+                        {this.state.sessionId && this.state.playerDto
+                            && <Route path="/game/gameplay" element={
+                                <GameplayPage sessionId={this.state.sessionId} player={this.state.playerDto}/>}/>}
+
                         {/*<Route path="/game/results" element={<FinishPage/>}/>*/}
                         <Route path="*" element={<div>Error</div>}/>
                     </Route>
