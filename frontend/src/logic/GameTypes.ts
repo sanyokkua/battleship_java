@@ -49,14 +49,6 @@ export type ShotResultDto = {
     shotResult: ShotResult;
 }
 
-export type UndamagedCellsDto = {
-    numberOfUndamagedCells: number
-}
-
-export type NumberOfAliveShipsDto = {
-    numberOfAliveShips: number;
-}
-
 export type RemovedShipDto = {
     removedShipId: string;
 }
@@ -66,25 +58,10 @@ export type Coordinate = {
     column: number
 }
 
-export type AddShipToFieldBody = {
-    coordinate: Coordinate;
-    shipDirection: ShipDirection;
-}
 export type GameStage = "INITIALIZED" | "WAITING_FOR_PLAYERS" | "PREPARATION" | "IN_GAME" | "FINISHED";
 
 export type GameStageDto = {
     gameStage: GameStage;
-}
-
-export type GamePlayState = {
-    opponent: PlayerBaseInfoDto,
-    activePlayer: PlayerBaseInfoDto,
-    playerNumberOfAliveCells: number,
-    opponentNumberOfAliveCells: number,
-    playerNumberOfAliveShips: number,
-    opponentNumberOfAliveShips: number,
-    playerField: CellDto[][],
-    opponentField: CellDto[][],
 }
 
 export type LastGameUpdateDto = {

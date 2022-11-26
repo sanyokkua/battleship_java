@@ -63,6 +63,7 @@ class App extends React.Component<any, AppState> {
                                   hasGameplay: hasGameplay,
                                   hasHasResults: hasHasResults
                               });
+                gameStorage.saveStage(gameStageDto.gameStage);
             });
         }
     }

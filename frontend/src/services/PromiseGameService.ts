@@ -8,14 +8,12 @@ import {
     GameSessionIdDto,
     GameStageDto,
     LastGameUpdateDto,
-    NumberOfAliveShipsDto,
     PlayerBaseInfoDto,
     PlayerDto,
     RemovedShipDto,
     ShipDirection,
     ShipDto,
-    ShotResultDto,
-    UndamagedCellsDto
+    ShotResultDto
 } from "../logic/GameTypes";
 
 axiosRetry(axios, {retries: 3});
@@ -93,13 +91,6 @@ export function startGame(sessionId: string, playerId: string): Promise<PlayerDt
     return axios.post<PlayerDto>(path, null).then(axiosResponse => axiosResponse.data);
 }
 
-export function getPlayer(sessionId: string, playerId: string): Promise<PlayerDto> {
-    validateStringValue(sessionId);
-    validateStringValue(playerId);
-    const path = `/api/game/sessions/${sessionId}/players/${playerId}`;
-    return axios.get<PlayerDto>(path).then(axiosResponse => axiosResponse.data);
-}
-
 export function getOpponent(sessionId: string, playerId: string): Promise<PlayerBaseInfoDto> {
     validateStringValue(sessionId);
     validateStringValue(playerId);
@@ -114,19 +105,6 @@ export function getField(sessionId: string, playerId: string): Promise<CellDto[]
     return axios.get<CellDto[][]>(path).then(axiosResponse => axiosResponse.data);
 }
 
-export function getFieldOfOpponent(sessionId: string, playerId: string): Promise<CellDto[][]> {
-    validateStringValue(sessionId);
-    validateStringValue(playerId);
-    const path = `/api/game/sessions/${sessionId}/players/${playerId}/field?opponent`;
-    return axios.get<CellDto[][]>(path).then(axiosResponse => axiosResponse.data);
-}
-
-export function getActivePlayer(sessionId: string): Promise<PlayerBaseInfoDto> {
-    validateStringValue(sessionId);
-    const path = `/api/game/sessions/${sessionId}/players?active`;
-    return axios.get<PlayerBaseInfoDto>(path).then(axiosResponse => axiosResponse.data);
-}
-
 export function makeShot(sessionId: string, playerId: string, coordinate: Coordinate): Promise<ShotResultDto> {
     validateStringValue(sessionId);
     validateStringValue(playerId);
@@ -136,34 +114,6 @@ export function makeShot(sessionId: string, playerId: string, coordinate: Coordi
         column: coordinate.column
     };
     return axios.post<ShotResultDto>(path, data).then(axiosResponse => axiosResponse.data);
-}
-
-export function getNumberOfUndamagedCells(sessionId: string, playerId: string): Promise<UndamagedCellsDto> {
-    validateStringValue(sessionId);
-    validateStringValue(playerId);
-    const path = `/api/game/sessions/${sessionId}/players/${playerId}/cells`;
-    return axios.get<UndamagedCellsDto>(path).then(axiosResponse => axiosResponse.data);
-}
-
-export function getNumberOfNotDestroyedShips(sessionId: string, playerId: string): Promise<NumberOfAliveShipsDto> {
-    validateStringValue(sessionId);
-    validateStringValue(playerId);
-    const path = `/api/game/sessions/${sessionId}/players/${playerId}/ships?NotDestroyed`;
-    return axios.get<NumberOfAliveShipsDto>(path).then(axiosResponse => axiosResponse.data);
-}
-
-export function getNumberOfUndamagedCellsOpponent(sessionId: string, playerId: string): Promise<UndamagedCellsDto> {
-    validateStringValue(sessionId);
-    validateStringValue(playerId);
-    const path = `/api/game/sessions/${sessionId}/players/${playerId}/opponent/cells`;
-    return axios.get<UndamagedCellsDto>(path).then(axiosResponse => axiosResponse.data);
-}
-
-export function getNumberOfNotDestroyedShipsOpponent(sessionId: string, playerId: string): Promise<NumberOfAliveShipsDto> {
-    validateStringValue(sessionId);
-    validateStringValue(playerId);
-    const path = `/api/game/sessions/${sessionId}/players/${playerId}/opponent/ships?NotDestroyed`;
-    return axios.get<NumberOfAliveShipsDto>(path).then(axiosResponse => axiosResponse.data);
 }
 
 export function getWinner(sessionId: string): Promise<PlayerBaseInfoDto> {
