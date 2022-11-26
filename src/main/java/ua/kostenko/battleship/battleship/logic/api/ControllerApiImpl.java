@@ -393,4 +393,51 @@ public class ControllerApiImpl implements ControllerApi {
                                                             .gameStage())
                                              .build());
     }
+
+    @Override
+    public ResponseEntity<LastGameUpdateDto> getLastUpdate(final String sessionId, final String playerId) {
+        ValidationUtils.validateSessionId(sessionId);
+        ValidationUtils.validatePlayerId(playerId);
+
+        final Game game = loadGame(sessionId);
+
+        var responseData = LastGameUpdateDto.builder()
+                                            .lastId(game.getGameState()
+                                                        .lastUpdate())
+                                            .gameStage(game.getGameState()
+                                                           .gameStage())
+                                            .build();
+        return ResponseEntity.ok(responseData);
+    }
+
+    @Override
+    public ResponseEntity<GameplayStateDto> getState(final String sessionId, final String playerId) {
+        ValidationUtils.validateSessionId(sessionId);
+        ValidationUtils.validatePlayerId(playerId);
+
+        final Game game = loadGame(sessionId);
+        var currentPlayer = game.getPlayer(playerId);
+        var opponentPlayer = game.getOpponent(playerId);
+        var playerField = getField(sessionId, playerId);
+        var opponentField = getFieldOfOpponent(sessionId, playerId);
+
+        var responseData = GameplayStateDto.builder()
+                                           .playerName(currentPlayer.getPlayerName())
+                                           .opponentName(opponentPlayer.getPlayerName())
+                                           .isPlayerActive(currentPlayer.isActive())
+                                           .isOpponentReady(opponentPlayer.isReady())
+                                           .playerNumberOfAliveCells(currentPlayer.getField()
+                                                                                  .getNumberOfUndamagedCells())
+                                           .playerNumberOfAliveShips(currentPlayer.getField()
+                                                                                  .getNumberOfNotDestroyedShips())
+                                           .opponentNumberOfAliveCells(opponentPlayer.getField()
+                                                                                     .getNumberOfUndamagedCells())
+                                           .opponentNumberOfAliveShips(opponentPlayer.getField()
+                                                                                     .getNumberOfNotDestroyedShips())
+                                           .playerField(playerField.getBody())
+                                           .opponentField(opponentField.getBody())
+                                           .hasWinner(currentPlayer.isWinner() || opponentPlayer.isWinner())
+                                           .build();
+        return ResponseEntity.ok(responseData);
+    }
 }

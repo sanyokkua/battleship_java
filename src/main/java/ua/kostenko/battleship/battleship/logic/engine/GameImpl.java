@@ -13,6 +13,7 @@ import ua.kostenko.battleship.battleship.logic.engine.utils.CoordinateUtils;
 import ua.kostenko.battleship.battleship.logic.engine.utils.GameUtils;
 import ua.kostenko.battleship.battleship.logic.engine.utils.ShipUtils;
 
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -64,6 +65,8 @@ public class GameImpl implements Game {
                                   .sessionId(this.gameState.sessionId())
                                   .gameStage(currentGameStage)
                                   .players(this.gameState.players())
+                                  .lastUpdate(LocalTime.now()
+                                                       .toString())
                                   .build();
 
         log.info("Player Created. Game state updated.");

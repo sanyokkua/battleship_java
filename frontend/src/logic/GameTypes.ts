@@ -86,3 +86,22 @@ export type GamePlayState = {
     playerField: CellDto[][],
     opponentField: CellDto[][],
 }
+
+export type LastGameUpdateDto = {
+    gameStage: GameStage;
+    lastId: string;
+}
+
+export type GameplayStateDto = {
+    playerName: string,
+    opponentName: string,
+    isPlayerActive: boolean,
+    isOpponentReady: boolean,
+    playerNumberOfAliveCells: number,
+    playerNumberOfAliveShips: number,
+    opponentNumberOfAliveCells: number,
+    opponentNumberOfAliveShips: number,
+    playerField: CellDto[][],
+    opponentField: CellDto[][],
+    hasWinner: boolean
+}

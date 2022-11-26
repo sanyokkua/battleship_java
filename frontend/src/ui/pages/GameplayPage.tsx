@@ -1,8 +1,7 @@
 import React from "react";
 import Row from "react-bootstrap/Row";
-import {CellDto, Coordinate, GamePlayState, PlayerDto} from "../../logic/GameTypes";
-import {loadGameplayData} from "../../utils/GameUtils";
-import {getPlayer, makeShot} from "../../services/PromiseGameService";
+import {CellDto, Coordinate, GameplayStateDto, PlayerDto} from "../../logic/GameTypes";
+import {getGameplayState, getLastUpdate, makeShot} from "../../services/PromiseGameService";
 import Status from "../elements/preparation/Status";
 import GameplayField from "../elements/gameplay/GameplayField";
 import {Navigate} from "react-router-dom";
@@ -20,8 +19,9 @@ type GameplayPageState = {
     isWaiting: boolean,
     isErrorHappened: boolean,
     isNeedToRedirect: boolean,
+    lastUpdate: string,
     hasHit: boolean,
-    gameState: GamePlayState | null
+    gameState: GameplayStateDto | null
 }
 
 
@@ -38,6 +38,7 @@ class GameplayPage extends React.Component<GameplayPageProps, GameplayPageState>
             isErrorHappened: false,
             isNeedToRedirect: false,
             hasHit: false,
+            lastUpdate: "",
             gameState: null
         };
         this.timerTick = this.timerTick.bind(this);
@@ -45,13 +46,11 @@ class GameplayPage extends React.Component<GameplayPageProps, GameplayPageState>
 
     async componentDidMount() {
         try {
-            const currentPlayer = await getPlayer(this.props.sessionId, this.props.player.playerId);
-            if (currentPlayer) {
-                if (currentPlayer.isActive) {
-                    await this.updateGameplayInformation();
-                } else {
-                    this.setUpdateInterval();
-                }
+            const gameplayStatus = await getGameplayState(this.props.sessionId, this.props.player.playerId);
+            if (gameplayStatus && gameplayStatus.isPlayerActive) {
+                await this.updateGameplayInformation();
+            } else {
+                this.setUpdateInterval();
             }
         } catch (e) {
             this.setState({isErrorHappened: true});
@@ -73,9 +72,18 @@ class GameplayPage extends React.Component<GameplayPageProps, GameplayPageState>
     async updateGameplayInformation() {
         this.setState({isLoading: true}, async () => {
             try {
-                const stateData = await loadGameplayData(this.props.sessionId, this.props.player.playerId);
+                const stateData = await getGameplayState(this.props.sessionId, this.props.player.playerId);
                 if (stateData) {
-                    this.setState({gameState: stateData, isLoading: false, isWaiting: !stateData.opponent.isReady});
+                    this.setState({gameState: stateData, isLoading: false, isWaiting: !stateData.isOpponentReady});
+                    if (stateData.isPlayerActive) {
+                        this.removeAllIntervals();
+                    } else {
+                        this.removeAllIntervals();
+                        this.setUpdateInterval();
+                    }
+                    if (stateData.hasWinner) {
+                        this.setState({isNeedToRedirect: true});
+                    }
                 }
             } catch (e) {
                 this.setState({isErrorHappened: true});
@@ -85,13 +93,10 @@ class GameplayPage extends React.Component<GameplayPageProps, GameplayPageState>
 
     async timerTick() {
         try {
-            const currentPlayer = await getPlayer(this.props.sessionId, this.props.player.playerId);
-            if (currentPlayer) {
-                if (currentPlayer.isActive) {
-                    this.removeAllIntervals();
-                } else {
-                    await this.updateGameplayInformation();
-                }
+            const lastUpdate = await getLastUpdate(this.props.sessionId, this.props.player.playerId);
+            if (lastUpdate && lastUpdate.lastId !== this.state.lastUpdate) {
+                this.setState({lastUpdate: lastUpdate.lastId});
+                await this.updateGameplayInformation();
             }
         } catch (e) {
             this.setState({isErrorHappened: true});
@@ -103,12 +108,15 @@ class GameplayPage extends React.Component<GameplayPageProps, GameplayPageState>
     }
 
     async onCellButtonClick(cell: CellDto) {
+        this.setState({isLoading: true});
         try {
             const coordinate: Coordinate = {row: cell.row, column: cell.col};
             const result = await makeShot(this.props.sessionId, this.props.player.playerId, coordinate);
             if (result && (result.shotResult === "HIT" || result.shotResult === "DESTROYED")) {
+                await this.updateGameplayInformation();
                 this.setState({hasHit: true});
             } else {
+                await this.updateGameplayInformation();
                 this.setUpdateInterval();
             }
         } catch (e) {
@@ -117,13 +125,18 @@ class GameplayPage extends React.Component<GameplayPageProps, GameplayPageState>
     }
 
     render() {
+        const activePlayerName = this.state.gameState?.isPlayerActive ? this.state.gameState?.playerName :
+            this.state.gameState?.opponentName;
+
+        const isFieldDisabled = !this.state.gameState?.isPlayerActive || this.state.isLoading;
+
         return (
             <>
                 {this.state.isLoading && <ProgressBar animated now={100}/>}
                 <Row hidden={this.state.isWaiting}>
 
                     <Status badgeColor="danger"
-                            badgeText={this.state.gameState?.activePlayer?.playerName || ""}
+                            badgeText={activePlayerName || ""}
                             textInTheMiddle="Now is a turn of the player:"/>
 
                     <Status badgeColor="primary"
@@ -136,14 +149,14 @@ class GameplayPage extends React.Component<GameplayPageProps, GameplayPageState>
                             badgeText={this.state.gameState?.opponentNumberOfAliveCells + "" || "0"}
                             textInTheMiddle="cells:"
                             highlightedTextColor="success"
-                            highlightedText={this.state.gameState?.opponent?.playerName || ""}/>
+                            highlightedText={this.state.gameState?.opponentName || ""}/>
 
                     <Status badgeColor="warning"
                             badgeText="In progress"
-                            textInTheMiddle={"Field of: " + this.state.gameState?.opponent?.playerName || ""}/>
+                            textInTheMiddle={"Field of: " + this.state.gameState?.opponentName || ""}/>
 
                     <GameplayField field={this.state.gameState?.opponentField || []}
-                                   isReadOnly={this.state.gameState?.opponent.isActive || false}
+                                   isReadOnly={isFieldDisabled}
                                    onCellClick={(cell) => this.onCellButtonClick(cell)}/>
 
                     <Status badgeColor="warning"

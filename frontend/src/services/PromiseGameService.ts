@@ -3,8 +3,10 @@ import {
     CellDto,
     Coordinate,
     GameEditionsDto,
+    GameplayStateDto,
     GameSessionIdDto,
     GameStageDto,
+    LastGameUpdateDto,
     NumberOfAliveShipsDto,
     PlayerBaseInfoDto,
     PlayerDto,
@@ -174,4 +176,18 @@ export function getStage(sessionId: string): Promise<GameStageDto> {
     validateStringValue(sessionId);
     const path = `/api/game/sessions/${sessionId}/stage`;
     return axios.get<GameStageDto>(path).then(axiosResponse => axiosResponse.data);
+}
+
+export function getGameplayState(sessionId: string, playerId: string): Promise<GameplayStateDto> {
+    validateStringValue(sessionId);
+    validateStringValue(playerId);
+    const path = `/api/game/sessions/${sessionId}/players/${playerId}/state`;
+    return axios.get<GameplayStateDto>(path).then(axiosResponse => axiosResponse.data);
+}
+
+export function getLastUpdate(sessionId: string, playerId: string): Promise<LastGameUpdateDto> {
+    validateStringValue(sessionId);
+    validateStringValue(playerId);
+    const path = `/api/game/sessions/${sessionId}/players/${playerId}/lastupdate`;
+    return axios.get<LastGameUpdateDto>(path).then(axiosResponse => axiosResponse.data);
 }
