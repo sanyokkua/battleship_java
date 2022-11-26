@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 import ua.kostenko.battleship.battleship.logic.engine.Game;
 import ua.kostenko.battleship.battleship.logic.engine.models.records.GameState;
 
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -47,7 +48,15 @@ public class InMemoryPersistence implements Persistence {
             log.debug("null is passed, Optional.empty() will be returned");
             return Optional.empty();
         }
-        db.put(gameState.sessionId(), gameState);
+        db.put(gameState.sessionId(),
+               GameState.builder()
+                        .sessionId(gameState.sessionId())
+                        .gameStage(gameState.gameStage())
+                        .gameEdition(gameState.gameEdition())
+                        .players(gameState.players())
+                        .lastUpdate(LocalTime.now()
+                                             .toString())
+                        .build());
         val game = Game.fromGameState(gameState);
         log.debug("Game: {}", game);
         return Optional.of(game);

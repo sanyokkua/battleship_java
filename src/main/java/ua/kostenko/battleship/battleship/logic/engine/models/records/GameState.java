@@ -8,5 +8,6 @@ import ua.kostenko.battleship.battleship.logic.engine.models.enums.GameStage;
 import java.util.Set;
 
 @Builder
-public record GameState(GameEdition gameEdition, String sessionId, GameStage gameStage, Set<Player> players) {
+public record GameState(GameEdition gameEdition, String sessionId, GameStage gameStage, Set<Player> players,
+                        String lastUpdate) {
 }
