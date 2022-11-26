@@ -1,19 +1,19 @@
 import React from "react";
+import {Alert} from "react-bootstrap";
 import {Route, Routes} from "react-router-dom";
+import {GameStage, PlayerDto} from "./logic/GameTypes";
+import * as gameStorage from "./services/GameStorage";
+import {getStage} from "./services/PromiseGameService";
 import ApplicationNavigationBar from "./ui/ApplicationNavigationBar";
+import {GameCreatedOrJoinedResult} from "./ui/pages/common/PagesCommonTypes";
+import FinishPage from "./ui/pages/FinishPage";
+import GameplayPage from "./ui/pages/GameplayPage";
 import HomePage from "./ui/pages/HomePage";
 import JoinGamePage from "./ui/pages/JoinGamePage";
 import NewGamePage from "./ui/pages/NewGamePage";
-import WaitForPlayersPage from "./ui/pages/WaitForPlayersPage";
-import * as gameStorage from "./services/GameStorage";
-import * as gameUtils from "./utils/GameUtils";
-import {getStage} from "./services/PromiseGameService";
-import {GameStage, PlayerDto} from "./logic/GameTypes";
-import {GameCreatedOrJoinedResult} from "./ui/pages/common/PagesCommonTypes";
 import PreparationPage from "./ui/pages/PreparationPage";
-import GameplayPage from "./ui/pages/GameplayPage";
-import FinishPage from "./ui/pages/FinishPage";
-import {Alert} from "react-bootstrap";
+import WaitForPlayersPage from "./ui/pages/WaitForPlayersPage";
+import * as gameUtils from "./utils/GameUtils";
 
 type AppState = {
     sessionId: string | null,
@@ -43,11 +43,11 @@ class App extends React.Component<any, AppState> {
     async componentDidMount() {
         const initialData = await gameUtils.loadInitialDataAsync();
         this.setState({
-            sessionId: initialData.sessionId,
-            playerDto: initialData.player,
-            gameStage: initialData.stage,
-            gameEditions: initialData.gameEditions
-        }, () => this.updateStage());
+                          sessionId: initialData.sessionId,
+                          playerDto: initialData.player,
+                          gameStage: initialData.stage,
+                          gameEditions: initialData.gameEditions
+                      }, () => this.updateStage());
     }
 
     async updateStage() {
@@ -59,10 +59,10 @@ class App extends React.Component<any, AppState> {
                 const hasGameplay: boolean = "IN_GAME" === gameStageDto.gameStage;
                 const hasHasResults: boolean = "FINISHED" === gameStageDto.gameStage;
                 this.setState({
-                    hasPreparation: hasPreparation,
-                    hasGameplay: hasGameplay,
-                    hasHasResults: hasHasResults
-                });
+                                  hasPreparation: hasPreparation,
+                                  hasGameplay: hasGameplay,
+                                  hasHasResults: hasHasResults
+                              });
             });
         }
     }
@@ -75,9 +75,9 @@ class App extends React.Component<any, AppState> {
         gameStorage.saveSession(sessionStarted.sessionId);
         gameStorage.savePlayer(sessionStarted.player);
         this.setState({
-            sessionId: sessionStarted.sessionId,
-            playerDto: sessionStarted.player
-        });
+                          sessionId: sessionStarted.sessionId,
+                          playerDto: sessionStarted.player
+                      });
     }
 
     render() {

@@ -1,16 +1,16 @@
 import React from "react";
+import Alert from "react-bootstrap/Alert";
+import Badge from "react-bootstrap/Badge";
+import ProgressBar from "react-bootstrap/ProgressBar";
 import Row from "react-bootstrap/Row";
+import Spinner from "react-bootstrap/Spinner";
+import Table from "react-bootstrap/Table";
+import Toast from "react-bootstrap/Toast";
+import ToastContainer from "react-bootstrap/ToastContainer";
+import {Navigate} from "react-router-dom";
 import {CellDto, Coordinate, GameplayStateDto, PlayerDto} from "../../logic/GameTypes";
 import {getGameplayState, getLastUpdate, makeShot} from "../../services/PromiseGameService";
 import GameplayField from "../elements/gameplay/GameplayField";
-import {Navigate} from "react-router-dom";
-import ProgressBar from "react-bootstrap/ProgressBar";
-import Toast from "react-bootstrap/Toast";
-import ToastContainer from "react-bootstrap/ToastContainer";
-import Table from "react-bootstrap/Table";
-import Badge from "react-bootstrap/Badge";
-import Spinner from "react-bootstrap/Spinner";
-import Alert from "react-bootstrap/Alert";
 
 
 function getCellsColor(numberOfCells: number | null | undefined): string {
@@ -158,7 +158,7 @@ class GameplayPage extends React.Component<GameplayPageProps, GameplayPageState>
 
     render() {
         const activePlayerName = this.state.gameState?.isPlayerActive ? this.state.gameState?.playerName :
-            this.state.gameState?.opponentName;
+                                 this.state.gameState?.opponentName;
 
         const isFieldDisabled = !this.state.gameState?.isPlayerActive || this.state.isLoading;
 

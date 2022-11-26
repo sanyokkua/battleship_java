@@ -1,4 +1,5 @@
 import axios, {AxiosRequestConfig} from "axios";
+import axiosRetry from "axios-retry";
 import {
     CellDto,
     Coordinate,
@@ -16,7 +17,6 @@ import {
     ShotResultDto,
     UndamagedCellsDto
 } from "../logic/GameTypes";
-import axiosRetry from "axios-retry";
 
 axiosRetry(axios, {retries: 3});
 
@@ -37,7 +37,7 @@ export function createGameSession(gameEdition: string): Promise<GameSessionIdDto
         gameEdition: gameEdition
     };
     return axios.post<GameSessionIdDto>(path, data)
-        .then(axiosResponse => axiosResponse.data);
+                .then(axiosResponse => axiosResponse.data);
 }
 
 export function createPlayerInSession(sessionId: string, playerName: string): Promise<PlayerDto> {

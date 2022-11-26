@@ -5,9 +5,9 @@ import ProgressBar from "react-bootstrap/ProgressBar";
 import {Navigate} from "react-router-dom";
 import {getGameEditions} from "../../services/PromiseGameService";
 import * as gameUtils from "../../utils/GameUtils";
+import {NewGameFormResultDto} from "../elements/forms/common/FormTypes";
 import NewGameForm from "../elements/forms/NewGameForm";
 import {GameCreatedOrJoinedResult} from "./common/PagesCommonTypes";
-import {NewGameFormResultDto} from "../elements/forms/common/FormTypes";
 
 type NewGamePageProps = {
     onNewGameSessionCreated: (result: GameCreatedOrJoinedResult) => void
@@ -45,11 +45,11 @@ class NewGamePage extends React.Component<NewGamePageProps, NewGamePageState> {
                 throw new Error("Game editions are not loaded!");
             }
             this.setState({
-                isLoading: false,
-                pageState: {
-                    gameEditions: gameEditionsDto.gameEditions
-                }
-            });
+                              isLoading: false,
+                              pageState: {
+                                  gameEditions: gameEditionsDto.gameEditions
+                              }
+                          });
         } catch (e) {
             this.setState({formSubmitResult: {failure: true}});
         }
@@ -57,16 +57,16 @@ class NewGamePage extends React.Component<NewGamePageProps, NewGamePageState> {
 
     async handleNewGameClick(newGameFormResult: NewGameFormResultDto) {
         this.setState({
-            isLoading: true
-        });
+                          isLoading: true
+                      });
         try {
             const sessionId = await gameUtils.createSessionAsync(newGameFormResult.gameEdition);
             const playerDto = await gameUtils.createPlayerAsync(sessionId, newGameFormResult.playerName);
 
             this.props.onNewGameSessionCreated({
-                sessionId: sessionId,
-                player: playerDto
-            });
+                                                   sessionId: sessionId,
+                                                   player: playerDto
+                                               });
 
             this.setState({isLoading: false, formSubmitResult: {success: true}});
         } catch (error) {

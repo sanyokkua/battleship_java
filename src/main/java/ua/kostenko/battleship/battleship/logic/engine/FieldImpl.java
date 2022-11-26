@@ -143,17 +143,6 @@ public class FieldImpl implements Field {
         return result;
     }
 
-    private void updateFieldState() {
-        FieldUtils.getShipsFromField(this.field)
-                  .stream()
-                  .flatMap(ship -> FieldUtils.findShipNeighbourCells(this.field, ship)
-                                             .stream())
-                  .forEach(cell -> updateCell(Cell.builder()
-                                                  .coordinate(cell.coordinate())
-                                                  .isAvailable(false)
-                                                  .build()));
-    }
-
     @Override
     public Cell[][] getField() {
         log.trace("In method: getField");
@@ -217,6 +206,17 @@ public class FieldImpl implements Field {
                                .filter(s -> s.stream()
                                              .anyMatch(c -> !c.hasShot()))
                                .count();
+    }
+
+    private void updateFieldState() {
+        FieldUtils.getShipsFromField(this.field)
+                  .stream()
+                  .flatMap(ship -> FieldUtils.findShipNeighbourCells(this.field, ship)
+                                             .stream())
+                  .forEach(cell -> updateCell(Cell.builder()
+                                                  .coordinate(cell.coordinate())
+                                                  .isAvailable(false)
+                                                  .build()));
     }
 
     private void processDestroyedShip(final Set<Cell> shipCells) {

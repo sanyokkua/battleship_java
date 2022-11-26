@@ -4,8 +4,8 @@ import Container from "react-bootstrap/Container";
 import ProgressBar from "react-bootstrap/ProgressBar";
 import {Navigate} from "react-router-dom";
 import * as gameUtils from "../../utils/GameUtils";
-import JoinGameForm from "../elements/forms/JoinGameForm";
 import {JoinGameFormResultDto} from "../elements/forms/common/FormTypes";
+import JoinGameForm from "../elements/forms/JoinGameForm";
 import {GameCreatedOrJoinedResult} from "./common/PagesCommonTypes";
 
 type JoinGamePageProps = {
@@ -33,15 +33,16 @@ class JoinGamePage extends React.Component<JoinGamePageProps, JoinGamePageState>
 
     async handleJoinGameClick(joinGameFormResult: JoinGameFormResultDto) {
         this.setState({
-            isLoading: true
-        }, async () => {
+                          isLoading: true
+                      }, async () => {
             try {
-                const playerDto = await gameUtils.createPlayerAsync(joinGameFormResult.sessionId, joinGameFormResult.playerName);
+                const playerDto = await gameUtils.createPlayerAsync(joinGameFormResult.sessionId,
+                                                                    joinGameFormResult.playerName);
 
                 this.props.onPlayerIsJoined({
-                    sessionId: joinGameFormResult.sessionId,
-                    player: playerDto
-                });
+                                                sessionId: joinGameFormResult.sessionId,
+                                                player: playerDto
+                                            });
 
                 this.setState({isLoading: false, formSubmitResult: {success: true}});
             } catch (error) {

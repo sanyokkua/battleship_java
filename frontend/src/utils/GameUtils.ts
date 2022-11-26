@@ -1,5 +1,3 @@
-import * as storage from "../services/GameStorage";
-import * as promiseService from "../services/PromiseGameService";
 import {
     CellDto,
     GamePlayState,
@@ -10,6 +8,8 @@ import {
     ShipDto,
     UndamagedCellsDto
 } from "../logic/GameTypes";
+import * as storage from "../services/GameStorage";
+import * as promiseService from "../services/PromiseGameService";
 
 export async function createPlayerAsync(sessionId: string, playerName: string): Promise<PlayerDto> {
     if (!sessionId || sessionId.trim().length === 0 || !playerName || playerName.trim().length === 0) {
@@ -72,8 +72,10 @@ export async function loadGameplayData(sessionId: string, playerId: string): Pro
     const activePlayerDto: PlayerBaseInfoDto = await promiseService.getActivePlayer(sessionId);
     const aliveShipsDto: NumberOfAliveShipsDto = await promiseService.getNumberOfNotDestroyedShips(sessionId, playerId);
     const aliveCellsDto: UndamagedCellsDto = await promiseService.getNumberOfUndamagedCells(sessionId, playerId);
-    const opponentAliveShipsDto: NumberOfAliveShipsDto = await promiseService.getNumberOfNotDestroyedShipsOpponent(sessionId, playerId);
-    const opponentAliveCellsDto: UndamagedCellsDto = await promiseService.getNumberOfUndamagedCellsOpponent(sessionId, playerId);
+    const opponentAliveShipsDto: NumberOfAliveShipsDto = await promiseService.getNumberOfNotDestroyedShipsOpponent(
+        sessionId, playerId);
+    const opponentAliveCellsDto: UndamagedCellsDto = await promiseService.getNumberOfUndamagedCellsOpponent(sessionId,
+                                                                                                            playerId);
     const playerField: CellDto[][] = await promiseService.getField(sessionId, playerId);
     const opponentField: CellDto[][] = await promiseService.getFieldOfOpponent(sessionId, playerId);
 

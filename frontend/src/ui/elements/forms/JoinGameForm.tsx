@@ -33,9 +33,9 @@ class JoinGameForm extends React.Component<JoinGameFormProps, JoinGameFormState>
         const isValidName = isValidString(playerName);
 
         this.setState({
-            isValidName: isValidName,
-            playerName: playerName
-        });
+                          isValidName: isValidName,
+                          playerName: playerName
+                      });
     }
 
     handleOnGameIdChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
@@ -45,9 +45,9 @@ class JoinGameForm extends React.Component<JoinGameFormProps, JoinGameFormState>
         const isValidSessionId = isValidString(sessionId) && sessionId.length === 36; //36 => UUID length
 
         this.setState({
-            isValidSessionId: isValidSessionId,
-            sessionId: sessionId
-        });
+                          isValidSessionId: isValidSessionId,
+                          sessionId: sessionId
+                      });
     }
 
     handleOnSubmit(event: MouseEvent<HTMLButtonElement>) {

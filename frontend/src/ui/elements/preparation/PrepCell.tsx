@@ -24,27 +24,27 @@ function PrepCell(props: PreparationCellProps) {
                     setShowDirectionDialog(true);
                 } else {
                     props.onButtonClick({
-                        cell: props.cell,
-                        isDelete: false,
-                        direction: "VERTICAL"
-                    });
+                                            cell: props.cell,
+                                            isDelete: false,
+                                            direction: "VERTICAL"
+                                        });
                 }
             }
         } else {
             props.onButtonClick({
-                cell: props.cell,
-                isDelete: true,
-                direction: null
-            });
+                                    cell: props.cell,
+                                    isDelete: true,
+                                    direction: null
+                                });
         }
     };
     const handleOnDirectionChose = (direction: ShipDirection) => {
         setShowDirectionDialog(false);
         props.onButtonClick({
-            cell: props.cell,
-            isDelete: false,
-            direction: direction
-        });
+                                cell: props.cell,
+                                isDelete: false,
+                                direction: direction
+                            });
     };
 
     let btnClassName: string | null;

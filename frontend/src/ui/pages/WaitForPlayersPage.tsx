@@ -6,8 +6,8 @@ import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
 import Toast from "react-bootstrap/Toast";
 import {Navigate} from "react-router-dom";
-import {getOpponent} from "../../services/PromiseGameService";
 import {PlayerDto} from "../../logic/GameTypes";
+import {getOpponent} from "../../services/PromiseGameService";
 
 type WaitForPlayersPageProps = {
     player: PlayerDto,
@@ -45,9 +45,9 @@ class WaitForPlayersPage extends React.Component<WaitForPlayersPageProps, WaitFo
             if (opponentDto && opponentDto.playerName && opponentDto.playerName.length) {
                 const playerName = opponentDto.playerName;
                 this.setState({
-                    isPlayerJoined: true,
-                    opponentName: playerName
-                }, () => setTimeout(() => this.setState({isNeedToRedirect: true}), 3000));
+                                  isPlayerJoined: true,
+                                  opponentName: playerName
+                              }, () => setTimeout(() => this.setState({isNeedToRedirect: true}), 3000));
                 this.removeAllIntervals();
             }
         } catch (e) {
@@ -81,14 +81,14 @@ class WaitForPlayersPage extends React.Component<WaitForPlayersPageProps, WaitFo
     handleCopy() {
         copy(this.props.sessionId);
         this.setState({
-            isCopied: true
-        });
+                          isCopied: true
+                      });
     }
 
     disablePopup() {
         this.setState({
-            isCopied: false
-        });
+                          isCopied: false
+                      });
     }
 
     render() {

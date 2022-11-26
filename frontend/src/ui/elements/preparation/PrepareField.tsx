@@ -1,7 +1,7 @@
 import React from "react";
-import PrepCell from "./PrepCell";
 import {CellDto, ShipDto} from "../../../logic/GameTypes";
 import {CellClickEventData} from "./common/PreparationTypes";
+import PrepCell from "./PrepCell";
 
 type PrepareFieldProps = {
     isReadOnly: boolean,

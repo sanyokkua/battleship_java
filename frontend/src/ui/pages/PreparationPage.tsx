@@ -1,19 +1,19 @@
 import React from "react";
+import Button from "react-bootstrap/Button";
 import Col from "react-bootstrap/Col";
 import Container from "react-bootstrap/Container";
 import ProgressBar from "react-bootstrap/ProgressBar";
 import Row from "react-bootstrap/Row";
+import Toast from "react-bootstrap/Toast";
+import ToastContainer from "react-bootstrap/ToastContainer";
 import {Navigate} from "react-router-dom";
+import {CellDto, Coordinate, PlayerDto, ShipDirection, ShipDto} from "../../logic/GameTypes";
 import * as service from "../../services/PromiseGameService";
+import {shipComparator} from "../../utils/GameUtils";
+import {CellClickEventData} from "../elements/preparation/common/PreparationTypes";
+import PrepareField from "../elements/preparation/PrepareField";
 import ShipsList from "../elements/preparation/ShipsList";
 import Status from "../elements/preparation/Status";
-import PrepareField from "../elements/preparation/PrepareField";
-import {CellDto, Coordinate, PlayerDto, ShipDirection, ShipDto} from "../../logic/GameTypes";
-import {CellClickEventData} from "../elements/preparation/common/PreparationTypes";
-import {shipComparator} from "../../utils/GameUtils";
-import ToastContainer from "react-bootstrap/ToastContainer";
-import Toast from "react-bootstrap/Toast";
-import Button from "react-bootstrap/Button";
 
 type PreparationPageProps = {
     player: PlayerDto,
@@ -76,11 +76,11 @@ class PreparationPage extends React.Component<PreparationPageProps, PreparationP
             const opponentDto = await service.getOpponent(this.props.sessionId, this.props.player.playerId);
             if (opponentDto) {
                 this.setState({
-                    opponent: {
-                        name: opponentDto.playerName,
-                        ready: opponentDto.isReady
-                    }
-                });
+                                  opponent: {
+                                      name: opponentDto.playerName,
+                                      ready: opponentDto.isReady
+                                  }
+                              });
                 if (opponentDto.isReady) {
                     // Status from ready can't be changed, we do not need now checking state
                     this.removeAllIntervals();
@@ -105,23 +105,23 @@ class PreparationPage extends React.Component<PreparationPageProps, PreparationP
         this.setState({isDataLoaded: false, ships: []});
 
         service.getPrepareShipsList(this.props.sessionId, this.props.player.playerId)
-            .then(ships => {
-                ships.sort(shipComparator);
-                const shipActive = ships.length ? ships[0] : null;
-                this.setState({ships: ships, chosenShip: shipActive});
-            })
-            .catch(console.warn);
+               .then(ships => {
+                   ships.sort(shipComparator);
+                   const shipActive = ships.length ? ships[0] : null;
+                   this.setState({ships: ships, chosenShip: shipActive});
+               })
+               .catch(console.warn);
 
         service.getField(this.props.sessionId, this.props.player.playerId)
-            .then(field => this.setState({field: field, isDataLoaded: true}))
-            .catch(console.warn);
+               .then(field => this.setState({field: field, isDataLoaded: true}))
+               .catch(console.warn);
     }
 
     handleOnShipChosen(ship: ShipDto) {
         if (ship) {
             this.setState({
-                chosenShip: ship
-            });
+                              chosenShip: ship
+                          });
         } else {
             throw new Error("Ship is null or undefined");
         }
@@ -198,7 +198,8 @@ class PreparationPage extends React.Component<PreparationPageProps, PreparationP
                             </Col>
                             <Col>
                                 <PrepareField playerField={this.state.field}
-                                              onCellClick={(clickCellEventData) => this.handleOnCellClicked(clickCellEventData)}
+                                              onCellClick={(clickCellEventData) => this.handleOnCellClicked(
+                                                  clickCellEventData)}
                                               isReadOnly={false}
                                               getChosenShip={() => this.state.chosenShip}/>
                             </Col>

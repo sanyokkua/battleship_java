@@ -1,12 +1,12 @@
 import React from "react";
 import Badge from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
+import ProgressBar from "react-bootstrap/ProgressBar";
 import Row from "react-bootstrap/Row";
+import {Navigate} from "react-router-dom";
 import {GameplayStateDto, PlayerBaseInfoDto, PlayerDto} from "../../logic/GameTypes";
 import {getGameplayState, getWinner} from "../../services/PromiseGameService";
-import ProgressBar from "react-bootstrap/ProgressBar";
 import GameplayField from "../elements/gameplay/GameplayField";
-import {Navigate} from "react-router-dom";
 
 type FinishPageProps = {
     player: PlayerDto | null,
@@ -42,11 +42,11 @@ class FinishPage extends React.Component<FinishPageProps, FinishPageState> {
                 const winnerInfo: PlayerBaseInfoDto = await getWinner(this.props.sessionId);
                 if (gameplayStatus && winnerInfo) {
                     this.setState({
-                        isLoading: false,
-                        isErrorHappened: false,
-                        gameState: gameplayStatus,
-                        winner: winnerInfo
-                    });
+                                      isLoading: false,
+                                      isErrorHappened: false,
+                                      gameState: gameplayStatus,
+                                      winner: winnerInfo
+                                  });
                 } else {
                     this.setState({isErrorHappened: true});
                 }
