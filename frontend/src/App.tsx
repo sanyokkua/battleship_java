@@ -13,6 +13,7 @@ import {GameCreatedOrJoinedResult} from "./ui/pages/common/PagesCommonTypes";
 import PreparationPage from "./ui/pages/PreparationPage";
 import GameplayPage from "./ui/pages/GameplayPage";
 import FinishPage from "./ui/pages/FinishPage";
+import {Alert} from "react-bootstrap";
 
 type AppState = {
     sessionId: string | null,
@@ -66,6 +67,10 @@ class App extends React.Component<any, AppState> {
         }
     }
 
+    async onNewPageOpened() {
+        await this.updateStage();
+    }
+
     async onGameSessionStarted(sessionStarted: GameCreatedOrJoinedResult) {
         gameStorage.saveSession(sessionStarted.sessionId);
         gameStorage.savePlayer(sessionStarted.player);
@@ -79,31 +84,48 @@ class App extends React.Component<any, AppState> {
         return (
             <>
                 <Routes>
-                    <Route path="/" element={<ApplicationNavigationBar hasPreparation={this.state.hasPreparation}
-                                                                       hasGameplay={this.state.hasGameplay}
-                                                                       hasHasResults={this.state.hasHasResults}/>}>
-                        <Route index element={<HomePage
-                            isDataLoaded={this.state.gameEditions && this.state.gameEditions.length > 0}/>}/>
-                        <Route path="/new" element={<NewGamePage
-                            onNewGameSessionCreated={(data) => this.onGameSessionStarted(data)}/>}/>
+                    <Route path="/" element={
+                        <ApplicationNavigationBar hasPreparation={this.state.hasPreparation}
+                                                  hasGameplay={this.state.hasGameplay}
+                                                  hasHasResults={this.state.hasHasResults}/>}>
+
+                        <Route index element={
+                            <HomePage isDataLoaded={this.state.gameEditions && this.state.gameEditions.length > 0}/>}/>
+
+                        <Route path="/new" element={
+                            <NewGamePage onNewGameSessionCreated={(data) => this.onGameSessionStarted(data)}/>}/>
+
                         <Route path="/join"
                                element={<JoinGamePage onPlayerIsJoined={(data) => this.onGameSessionStarted(data)}/>}/>
 
                         {this.state.sessionId && this.state.playerDto
                             && <Route path="/game/wait" element={
-                                <WaitForPlayersPage sessionId={this.state.sessionId} player={this.state.playerDto}/>}/>}
+                                <WaitForPlayersPage sessionId={this.state.sessionId} player={this.state.playerDto}
+                                                    onPageOpened={() => this.onNewPageOpened()}/>}/>}
 
                         {this.state.sessionId && this.state.playerDto
                             && <Route path="/game/preparation" element={
-                                <PreparationPage sessionId={this.state.sessionId} player={this.state.playerDto}/>}/>}
+                                <PreparationPage sessionId={this.state.sessionId} player={this.state.playerDto}
+                                                 onPageOpened={() => this.onNewPageOpened()}/>}/>}
 
                         {this.state.sessionId && this.state.playerDto
                             && <Route path="/game/gameplay" element={
-                                <GameplayPage sessionId={this.state.sessionId} player={this.state.playerDto}/>}/>}
+                                <GameplayPage sessionId={this.state.sessionId} player={this.state.playerDto}
+                                              onPageOpened={() => this.onNewPageOpened()}/>}/>}
 
-                        <Route path="/game/results"
-                               element={<FinishPage player={this.state.playerDto} sessionId={this.state.sessionId}/>}/>
-                        <Route path="*" element={<div>Error</div>}/>
+                        {this.state.sessionId && this.state.playerDto
+                            && <Route path="/game/results" element={
+                                <FinishPage player={this.state.playerDto} sessionId={this.state.sessionId}
+                                            onPageOpened={() => this.onNewPageOpened()}/>}/>}
+
+                        <Route path="*" element={
+                            <Alert variant="danger">
+                                <Alert.Heading>The error happen!</Alert.Heading>
+                                <p>
+                                    During your last action happened an error. Please return to the
+                                    home page.
+                                </p>
+                            </Alert>}/>
                     </Route>
                 </Routes>
             </>

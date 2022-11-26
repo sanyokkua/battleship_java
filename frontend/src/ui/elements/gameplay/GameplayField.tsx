@@ -3,6 +3,7 @@ import Cell from "./Cell";
 import {CellDto} from "../../../logic/GameTypes";
 import {OnCellClick} from "./common/GameplayTypes";
 
+
 type GameplayFieldProps = {
     isReadOnly: boolean,
     field: CellDto[][],
@@ -20,6 +21,7 @@ function GameplayField(props: GameplayFieldProps) {
                                    isReadOnly={props.isReadOnly}
                                    onCellClick={(event) => props.onCellClick(event)}/>)}
         </div>
+
     );
 }
 

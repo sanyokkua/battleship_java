@@ -17,7 +17,8 @@ import Button from "react-bootstrap/Button";
 
 type PreparationPageProps = {
     player: PlayerDto,
-    sessionId: string
+    sessionId: string,
+    onPageOpened: () => void
 };
 
 type PreparationPageState = {
@@ -93,6 +94,7 @@ class PreparationPage extends React.Component<PreparationPageProps, PreparationP
     async componentDidMount() {
         this.setUpdateInterval();
         this.loadData();
+        this.props.onPageOpened();
     }
 
     componentWillUnmount() {

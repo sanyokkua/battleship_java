@@ -2,7 +2,6 @@ import React from "react";
 import Badge from "react-bootstrap/Badge";
 import Button from "react-bootstrap/Button";
 import Row from "react-bootstrap/Row";
-import Status from "../../ui/elements/preparation/Status";
 import {GameplayStateDto, PlayerBaseInfoDto, PlayerDto} from "../../logic/GameTypes";
 import {getGameplayState, getWinner} from "../../services/PromiseGameService";
 import ProgressBar from "react-bootstrap/ProgressBar";
@@ -11,7 +10,8 @@ import {Navigate} from "react-router-dom";
 
 type FinishPageProps = {
     player: PlayerDto | null,
-    sessionId: string | null
+    sessionId: string | null,
+    onPageOpened: () => void
 };
 
 type FinishPageState = {
@@ -56,6 +56,7 @@ class FinishPage extends React.Component<FinishPageProps, FinishPageState> {
         } catch (e) {
             this.setState({isErrorHappened: true});
         }
+        this.props.onPageOpened();
     }
 
     handleOnButtonClick() {
@@ -68,27 +69,29 @@ class FinishPage extends React.Component<FinishPageProps, FinishPageState> {
                 <Row>
                     {this.state.isLoading && <ProgressBar animated now={100}/>}
                 </Row>
-                <Row hidden={this.state.isLoading}>
-
+                <Row hidden={this.state.isLoading} className="text-center">
                     <h1>Game is finished!</h1>
                     <p>
                         Player <Badge bg="success"> {this.state.winner?.playerName}</Badge> has win this game.
                     </p>
-
+                </Row>
+                <Row>
+                    <p>Field of <b>{this.state.gameState?.opponentName || ""}</b></p>
                     <GameplayField field={this.state.gameState?.opponentField || []}
                                    isReadOnly={true}
                                    onCellClick={(cell) => console.log(cell)}/>
-
-                    <Status badgeColor="warning"
-                            badgeText="In progress"
-                            textInTheMiddle="status:"
-                            highlightedTextColor="primary"
-                            highlightedText={this.props.player?.playerName || ""}/>
-
+                </Row>
+                <Row>
+                    <br/>
+                </Row>
+                <Row>
+                    <p>Field of <b>{this.state.gameState?.playerName || ""}</b></p>
                     <GameplayField field={this.state.gameState?.playerField || []}
                                    isReadOnly={true}
                                    onCellClick={(cell) => console.log(cell)}/>
 
+                </Row>
+                <Row>
                     <Button variant="outline-primary"
                             onClick={() => this.handleOnButtonClick()}>Return to main page</Button>
                 </Row>

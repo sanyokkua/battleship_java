@@ -22,6 +22,7 @@ import ua.kostenko.battleship.battleship.logic.engine.models.records.Ship;
 import ua.kostenko.battleship.battleship.logic.persistence.Persistence;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -57,7 +58,7 @@ public class ControllerApiImpl implements ControllerApi {
     @Override
     public ResponseEntity<GameEditionsDto> getGameEditions() {
         log.debug("Returning supporting GameEditions");
-        return ResponseEntity.ok(new GameEditionsDto(Set.of(GameEdition.UKRAINIAN, GameEdition.MILTON_BRADLEY)));
+        return ResponseEntity.ok(new GameEditionsDto(List.of(GameEdition.UKRAINIAN, GameEdition.MILTON_BRADLEY)));
     }
 
     @Override
@@ -419,7 +420,10 @@ public class ControllerApiImpl implements ControllerApi {
         var currentPlayer = game.getPlayer(playerId);
         var opponentPlayer = game.getOpponent(playerId);
         var playerField = getField(sessionId, playerId);
-        var opponentField = getFieldOfOpponent(sessionId, playerId);
+        var opponentField = game.getGameState()
+                                .gameStage() == GameStage.FINISHED ?
+                getField(sessionId, opponentPlayer.getPlayerId()) :
+                getFieldOfOpponent(sessionId, playerId);
 
         var responseData = GameplayStateDto.builder()
                                            .playerName(currentPlayer.getPlayerName())

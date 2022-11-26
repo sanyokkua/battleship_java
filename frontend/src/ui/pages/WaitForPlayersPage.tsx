@@ -11,7 +11,8 @@ import {PlayerDto} from "../../logic/GameTypes";
 
 type WaitForPlayersPageProps = {
     player: PlayerDto,
-    sessionId: string
+    sessionId: string,
+    onPageOpened: () => void
 };
 
 type WaitForPlayersPageState = {
@@ -46,11 +47,13 @@ class WaitForPlayersPage extends React.Component<WaitForPlayersPageProps, WaitFo
                 this.setState({
                     isPlayerJoined: true,
                     opponentName: playerName
-                });
+                }, () => setTimeout(() => this.setState({isNeedToRedirect: true}), 3000));
                 this.removeAllIntervals();
             }
         } catch (e) {
-            console.warn(e);
+            if (e) {
+                console.warn(e);
+            }
         }
     }
 
@@ -68,6 +71,7 @@ class WaitForPlayersPage extends React.Component<WaitForPlayersPageProps, WaitFo
 
     componentDidMount() {
         this.setUpdateInterval();
+        this.props.onPageOpened();
     }
 
     componentWillUnmount() {
@@ -88,15 +92,9 @@ class WaitForPlayersPage extends React.Component<WaitForPlayersPageProps, WaitFo
     }
 
     render() {
-        const playerJoined = this.state.isPlayerJoined;
-
         const opponent = <p><b>{this.state.opponentName}</b> has joined.</p>;
         const waiting = <p>Waiting for your friend (opponent)...</p>;
-        const elementToRender = playerJoined ? opponent : waiting;
-
-        if (playerJoined) {
-            setTimeout(() => this.setState({isNeedToRedirect: true}), 3000);
-        }
+        const elementToRender = this.state.isPlayerJoined ? opponent : waiting;
 
         return (
             <>
@@ -105,7 +103,7 @@ class WaitForPlayersPage extends React.Component<WaitForPlayersPageProps, WaitFo
                         <h3>Hello <b>{this.props.player.playerName}!</b></h3>
                     </Row>
                     <Row></Row>
-                    <Row hidden={playerJoined}>
+                    <Row hidden={this.state.isPlayerJoined}>
                         <h5>Share Game ID with other player:</h5>
                         <Container>
                             <Alert variant="success">{this.props.sessionId}</Alert>
