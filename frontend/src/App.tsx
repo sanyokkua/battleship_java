@@ -12,6 +12,7 @@ import {GameStage, PlayerDto} from "./logic/GameTypes";
 import {GameCreatedOrJoinedResult} from "./ui/pages/common/PagesCommonTypes";
 import PreparationPage from "./ui/pages/PreparationPage";
 import GameplayPage from "./ui/pages/GameplayPage";
+import FinishPage from "./ui/pages/FinishPage";
 
 type AppState = {
     sessionId: string | null,
@@ -100,7 +101,8 @@ class App extends React.Component<any, AppState> {
                             && <Route path="/game/gameplay" element={
                                 <GameplayPage sessionId={this.state.sessionId} player={this.state.playerDto}/>}/>}
 
-                        {/*<Route path="/game/results" element={<FinishPage/>}/>*/}
+                        <Route path="/game/results"
+                               element={<FinishPage player={this.state.playerDto} sessionId={this.state.sessionId}/>}/>
                         <Route path="*" element={<div>Error</div>}/>
                     </Route>
                 </Routes>
