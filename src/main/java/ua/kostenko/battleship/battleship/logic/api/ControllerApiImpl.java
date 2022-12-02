@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Deprecated
 @Log4j2
 @RequiredArgsConstructor
 public class ControllerApiImpl implements ControllerApi {
@@ -67,12 +68,10 @@ public class ControllerApiImpl implements ControllerApi {
         val gameId = UUID.randomUUID()
                          .toString();
 
-        persistence.save(GameState.builder()
-                                  .sessionId(gameId)
-                                  .gameEdition(GameEdition.valueOf(gameEdition))
-                                  .gameStage(GameStage.INITIALIZED)
-                                  .players(new HashSet<>())
-                                  .build());
+        persistence.save(GameState.create(GameEdition.valueOf(gameEdition),
+                                          gameId,
+                                          GameStage.INITIALIZED,
+                                          new HashSet<>()));
 
         return ResponseEntity.status(201)
                              .body(new GameSessionIdDto(gameId));
@@ -209,8 +208,7 @@ public class ControllerApiImpl implements ControllerApi {
 
     @Override
     public ResponseEntity<ShipDto> addShipToField(
-            final String sessionId, final String playerId, final String shipId, final Coordinate coordinate,
-            final String shipDirection) {
+            final String sessionId, final String playerId, final String shipId, final Coordinate coordinate, final String shipDirection) {
         ValidationUtils.validateSessionId(sessionId);
         ValidationUtils.validatePlayerId(playerId);
         ValidationUtils.validateShipId(shipId);
@@ -313,7 +311,7 @@ public class ControllerApiImpl implements ControllerApi {
         final Game game = loadGame(sessionId);
 
         int amount = game.getPlayer(playerId)
-                         .getField()
+                         .getFieldManagement()
                          .getNumberOfUndamagedCells();
 
         return ResponseEntity.ok(new UndamagedCellsDto(amount));
@@ -328,7 +326,7 @@ public class ControllerApiImpl implements ControllerApi {
         final Game game = loadGame(sessionId);
 
         int amount = game.getPlayer(playerId)
-                         .getField()
+                         .getFieldManagement()
                          .getNumberOfNotDestroyedShips();
 
         return ResponseEntity.ok(new NumberOfAliveShipsDto(amount));
@@ -343,7 +341,7 @@ public class ControllerApiImpl implements ControllerApi {
         final Game game = loadGame(sessionId);
 
         int amount = game.getOpponent(playerId)
-                         .getField()
+                         .getFieldManagement()
                          .getNumberOfUndamagedCells();
 
         return ResponseEntity.ok(new UndamagedCellsDto(amount));
@@ -358,7 +356,7 @@ public class ControllerApiImpl implements ControllerApi {
         final Game game = loadGame(sessionId);
 
         int amount = game.getOpponent(playerId)
-                         .getField()
+                         .getFieldManagement()
                          .getNumberOfNotDestroyedShips();
 
         return ResponseEntity.ok(new NumberOfAliveShipsDto(amount));
@@ -430,13 +428,13 @@ public class ControllerApiImpl implements ControllerApi {
                                            .opponentName(opponentPlayer.getPlayerName())
                                            .isPlayerActive(currentPlayer.isActive())
                                            .isOpponentReady(opponentPlayer.isReady())
-                                           .playerNumberOfAliveCells(currentPlayer.getField()
+                                           .playerNumberOfAliveCells(currentPlayer.getFieldManagement()
                                                                                   .getNumberOfUndamagedCells())
-                                           .playerNumberOfAliveShips(currentPlayer.getField()
+                                           .playerNumberOfAliveShips(currentPlayer.getFieldManagement()
                                                                                   .getNumberOfNotDestroyedShips())
-                                           .opponentNumberOfAliveCells(opponentPlayer.getField()
+                                           .opponentNumberOfAliveCells(opponentPlayer.getFieldManagement()
                                                                                      .getNumberOfUndamagedCells())
-                                           .opponentNumberOfAliveShips(opponentPlayer.getField()
+                                           .opponentNumberOfAliveShips(opponentPlayer.getFieldManagement()
                                                                                      .getNumberOfNotDestroyedShips())
                                            .playerField(playerField.getBody())
                                            .opponentField(opponentField.getBody())

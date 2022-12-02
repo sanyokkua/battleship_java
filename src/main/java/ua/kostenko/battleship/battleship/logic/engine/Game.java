@@ -18,8 +18,8 @@ public interface Game {
         return new GameImpl(gameState);
     }
 
-    default Supplier<Field> newField() {
-        return FieldImpl::new;
+    default Supplier<FieldManagement> newField() {
+        return FieldManagementImpl::new;
     }
 
     Player createPlayer(String playerId, String playerName);

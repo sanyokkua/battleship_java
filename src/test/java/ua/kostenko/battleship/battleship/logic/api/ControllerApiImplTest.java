@@ -392,7 +392,7 @@ class ControllerApiImplTest {
 
         var player2ShipCoordinates = FieldUtils.convertToFlatSet(game.get()
                                                                      .getPlayer(sessionIdWithPlayersPlayer2ID)
-                                                                     .getField()
+                                                                     .getFieldManagement()
                                                                      .getField())
                                                .stream()
                                                .filter(Cell::hasShip)
@@ -437,7 +437,7 @@ class ControllerApiImplTest {
 
         var player2ShipCoordinates = FieldUtils.convertToFlatSet(game.get()
                                                                      .getPlayer(sessionIdWithPlayersPlayer2ID)
-                                                                     .getField()
+                                                                     .getFieldManagement()
                                                                      .getField())
                                                .stream()
                                                .filter(Cell::hasShip)
@@ -482,7 +482,7 @@ class ControllerApiImplTest {
 
         var coordinatesOfOpponentShips = FieldUtils.convertToFlatSet(game.get()
                                                                          .getPlayer(sessionIdWithPlayersPlayer2ID)
-                                                                         .getField()
+                                                                         .getFieldManagement()
                                                                          .getField())
                                                    .stream()
                                                    .filter(Cell::hasShip)

@@ -13,7 +13,6 @@ import ua.kostenko.battleship.battleship.logic.engine.utils.CoordinateUtils;
 import ua.kostenko.battleship.battleship.logic.engine.utils.GameUtils;
 import ua.kostenko.battleship.battleship.logic.engine.utils.ShipUtils;
 
-import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -48,7 +47,7 @@ public class GameImpl implements Game {
         val player = Player.builder()
                            .playerId(playerId)
                            .playerName(playerName)
-                           .field(newField().get())
+                           .fieldManagement(newField().get())
                            .allPlayerShips(allAvailableShipsForGame)
                            .shipsNotOnTheField(listOfShipsToPlaceOnField)
                            .build();
@@ -60,14 +59,10 @@ public class GameImpl implements Game {
                                                    .size() == 2 ? GameStage.PREPARATION : GameStage.WAITING_FOR_PLAYERS;
         log.debug("New gameState: {}", currentGameStage);
 
-        this.gameState = GameState.builder()
-                                  .gameEdition(this.gameState.gameEdition())
-                                  .sessionId(this.gameState.sessionId())
-                                  .gameStage(currentGameStage)
-                                  .players(this.gameState.players())
-                                  .lastUpdate(LocalTime.now()
-                                                       .toString())
-                                  .build();
+        this.gameState = GameState.create(this.gameState.gameEdition(),
+                                          this.gameState.sessionId(),
+                                          currentGameStage,
+                                          this.gameState.players());
 
         log.info("Player Created. Game state updated.");
         return player;
@@ -107,7 +102,7 @@ public class GameImpl implements Game {
                                     GameStage.PREPARATION);
 
         val player = getPlayer(playerId);
-        val playerField = player.getField();
+        val playerField = player.getFieldManagement();
         val shipsNotOnTheField = player.getShipsNotOnTheField();
 
         if (shipsNotOnTheField.stream()
@@ -132,7 +127,7 @@ public class GameImpl implements Game {
                                     GameStage.PREPARATION);
 
         val player = getPlayer(playerId);
-        val playerField = player.getField();
+        val playerField = player.getFieldManagement();
 
         val removedShipIdOptional = playerField.removeShip(coordinate);
         if (removedShipIdOptional.isEmpty()) {
@@ -183,12 +178,10 @@ public class GameImpl implements Game {
 
         if (player.isReady() && opponent.isReady()) {
             log.debug("Player and Opponent are ready. Changing game status.");
-            this.gameState = GameState.builder()
-                                      .gameEdition(this.gameState.gameEdition())
-                                      .sessionId(this.gameState.sessionId())
-                                      .gameStage(GameStage.IN_GAME)
-                                      .players(this.gameState.players())
-                                      .build();
+            this.gameState = GameState.create(this.gameState.gameEdition(),
+                                              this.gameState.sessionId(),
+                                              GameStage.IN_GAME,
+                                              this.gameState.players());
             log.info("Game state updated. Current state: {}", this.gameState.gameStage());
         }
     }
@@ -208,7 +201,7 @@ public class GameImpl implements Game {
         }
 
         val opponent = getOpponent(currentPlayerId);
-        val opponentField = opponent.getField();
+        val opponentField = opponent.getFieldManagement();
         val shotResult = opponentField.makeShot(opponentFieldCoordinate);
 
         updateGameState(player, opponent, shotResult);
@@ -226,7 +219,7 @@ public class GameImpl implements Game {
     public Cell[][] getField(final String playerId) {
         log.trace("In method: getField");
         val player = getPlayer(playerId);
-        val playerField = player.getField();
+        val playerField = player.getFieldManagement();
         return playerField.getField();
     }
 
@@ -234,7 +227,7 @@ public class GameImpl implements Game {
     public Cell[][] getOpponentField(final String currentPlayerId) {
         log.trace("In method: getOpponentField");
         val opponent = getOpponent(currentPlayerId);
-        val opponentField = opponent.getField();
+        val opponentField = opponent.getFieldManagement();
         return opponentField.getFieldWithHiddenShips();
     }
 
@@ -302,11 +295,11 @@ public class GameImpl implements Game {
             log.debug("Res: MISS, opponent now is active, player is not");
         }
 
-        val playerField = player.getField();
+        val playerField = player.getFieldManagement();
         val playerShipsAmount = playerField.getNumberOfNotDestroyedShips();
         log.debug("{} shipAmount: {}", player, playerShipsAmount);
 
-        val opponentField = opponent.getField();
+        val opponentField = opponent.getFieldManagement();
         val opponentShipsAmount = opponentField.getNumberOfNotDestroyedShips();
         log.debug("{} shipAmount: {}", opponent, opponentShipsAmount);
 
@@ -319,12 +312,10 @@ public class GameImpl implements Game {
         player.setWinner(opponentIsDestroyed);
         opponent.setWinner(playerIsDestroyed);
 
-        this.gameState = GameState.builder()
-                                  .gameEdition(this.gameState.gameEdition())
-                                  .players(this.gameState.players())
-                                  .sessionId(this.gameState.sessionId())
-                                  .gameStage(newGameState)
-                                  .build();
+        this.gameState = GameState.create(this.gameState.gameEdition(),
+                                          this.gameState.sessionId(),
+                                          newGameState,
+                                          this.gameState.players());
         log.debug("New Game State: {}", gameState);
     }
 }

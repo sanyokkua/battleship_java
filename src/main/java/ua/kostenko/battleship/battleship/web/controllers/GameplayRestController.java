@@ -7,6 +7,7 @@ import ua.kostenko.battleship.battleship.logic.api.ControllerApi;
 import ua.kostenko.battleship.battleship.logic.api.dtos.*;
 import ua.kostenko.battleship.battleship.logic.engine.models.records.Coordinate;
 
+@Deprecated
 @RequestMapping("/api/game/sessions/{sessionId}")
 @RestController
 @RequiredArgsConstructor

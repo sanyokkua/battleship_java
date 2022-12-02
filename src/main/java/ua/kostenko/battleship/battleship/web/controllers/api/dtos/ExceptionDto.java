@@ -1,4 +1,4 @@
-package ua.kostenko.battleship.battleship.web.controllers.dto;
+package ua.kostenko.battleship.battleship.web.controllers.api.dtos;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

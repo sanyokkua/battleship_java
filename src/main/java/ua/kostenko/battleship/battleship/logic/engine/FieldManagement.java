@@ -7,7 +7,7 @@ import ua.kostenko.battleship.battleship.logic.engine.models.records.Ship;
 
 import java.util.Optional;
 
-public interface Field {
+public interface FieldManagement {
 
     void addShip(Coordinate coordinate, Ship ship);
 

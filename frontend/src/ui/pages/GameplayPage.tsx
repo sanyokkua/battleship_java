@@ -89,8 +89,8 @@ class GameplayPage extends React.Component<GameplayPageProps, GameplayPageState>
     }
 
     removeAllIntervals() {
-        for (let i = 0; i < this.updateIntervals.length; i++) {
-            clearInterval(this.updateIntervals[i]);
+        for (const element of this.updateIntervals) {
+            clearInterval(element);
         }
         this.updateIntervals = [];
     }

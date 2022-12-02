@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
-import ua.kostenko.battleship.battleship.logic.engine.Field;
+import ua.kostenko.battleship.battleship.logic.engine.FieldManagement;
 import ua.kostenko.battleship.battleship.logic.engine.models.records.Ship;
 
 import java.util.Set;
@@ -19,7 +19,7 @@ public class Player {
     @NonNull
     private final String playerName;
     @NonNull
-    private final Field field;
+    private final FieldManagement fieldManagement;
     @NonNull
     private final Set<Ship> shipsNotOnTheField;
     @NonNull

@@ -18,10 +18,10 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @Log4j2
-public class FieldImpl implements Field {
+public class FieldManagementImpl implements FieldManagement {
     private final Cell[][] field;
 
-    public FieldImpl() {
+    public FieldManagementImpl() {
         log.trace("Initialized field in constructor");
         this.field = FieldUtils.initializeField();
     }

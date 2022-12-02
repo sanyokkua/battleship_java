@@ -13,6 +13,7 @@ import ua.kostenko.battleship.battleship.web.controllers.dto.PlayerNameDto;
 
 import java.util.Set;
 
+@Deprecated
 @RequestMapping("/api/game/sessions/{sessionId}")
 @RestController
 @RequiredArgsConstructor
@@ -27,8 +28,7 @@ public class GamePreparationRestController {
 
     @PutMapping(value = "players/{playerId}/ships/{shipId}")
     public ResponseEntity<ShipDto> addShipToField(
-            @PathVariable String sessionId, @PathVariable String playerId, @PathVariable String shipId,
-            @RequestBody AddShipToFieldBody addShipToFieldBodyDto) {
+            @PathVariable String sessionId, @PathVariable String playerId, @PathVariable String shipId, @RequestBody AddShipToFieldBody addShipToFieldBodyDto) {
         return controller.addShipToField(sessionId,
                                          playerId,
                                          shipId,

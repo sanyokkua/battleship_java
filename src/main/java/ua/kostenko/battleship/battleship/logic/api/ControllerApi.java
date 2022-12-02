@@ -6,6 +6,7 @@ import ua.kostenko.battleship.battleship.logic.engine.models.records.Coordinate;
 
 import java.util.Set;
 
+@Deprecated
 public interface ControllerApi {
     ResponseEntity<GameEditionsDto> getGameEditions();
 

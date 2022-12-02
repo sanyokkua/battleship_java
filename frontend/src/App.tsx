@@ -19,21 +19,19 @@ type AppState = {
     sessionId: string | null,
     playerDto: PlayerDto | null,
     gameStage: GameStage | null,
-    gameEditions: string[] | [],
     hasPreparation: boolean,
     hasGameplay: boolean,
     hasHasResults: boolean
 };
 
 class App extends React.Component<any, AppState> {
-    // state:AppState = {};
+
     constructor(props: any) {
         super(props);
         this.state = {
             sessionId: null,
             playerDto: null,
             gameStage: null,
-            gameEditions: [],
             hasPreparation: false,
             hasGameplay: false,
             hasHasResults: false
@@ -46,7 +44,6 @@ class App extends React.Component<any, AppState> {
                           sessionId: initialData.sessionId,
                           playerDto: initialData.player,
                           gameStage: initialData.stage,
-                          gameEditions: initialData.gameEditions
                       }, () => this.updateStage());
     }
 
@@ -90,8 +87,7 @@ class App extends React.Component<any, AppState> {
                                                   hasGameplay={this.state.hasGameplay}
                                                   hasHasResults={this.state.hasHasResults}/>}>
 
-                        <Route index element={
-                            <HomePage isDataLoaded={this.state.gameEditions && this.state.gameEditions.length > 0}/>}/>
+                        <Route index element={<HomePage/>}/>
 
                         <Route path="/new" element={
                             <NewGamePage onNewGameSessionCreated={(data) => this.onGameSessionStarted(data)}/>}/>

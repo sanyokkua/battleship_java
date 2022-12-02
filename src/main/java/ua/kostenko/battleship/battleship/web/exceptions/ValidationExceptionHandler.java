@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.*;
-import ua.kostenko.battleship.battleship.web.controllers.dto.ExceptionDto;
+import ua.kostenko.battleship.battleship.web.controllers.api.dtos.ExceptionDto;
 
 @RestControllerAdvice
 public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {

@@ -14,7 +14,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class FieldImplTest {
+public class FieldManagementImplTest {
 
     private static final Ship TEST_SHIP_HORIZONTAL_S1 = Ship.builder()
                                                             .shipId("TEST_SHIP_HORIZONTAL_S1")
@@ -37,7 +37,7 @@ public class FieldImplTest {
 
     @Test
     void testAddShip() {
-        FieldImpl field = new FieldImpl();
+        FieldManagementImpl field = new FieldManagementImpl();
 
         var coordinate = Coordinate.of(0, 0);
         field.addShip(coordinate, TEST_SHIP_HORIZONTAL_S3);
@@ -77,7 +77,7 @@ public class FieldImplTest {
 
     @Test
     void testAddShipFailures() {
-        FieldImpl field = new FieldImpl();
+        FieldManagementImpl field = new FieldManagementImpl();
 
         assertThrows(IllegalArgumentException.class, () -> field.addShip(Coordinate.of(0, 9), TEST_SHIP_HORIZONTAL_S3));
         assertTrue(FieldUtils.getShipsFromField(field.getField())
@@ -100,7 +100,7 @@ public class FieldImplTest {
 
     @Test
     void testRemoveShip() {
-        FieldImpl field = new FieldImpl();
+        FieldManagementImpl field = new FieldManagementImpl();
 
         assertTrue(FieldUtils.convertToFlatSet(field.getField())
                              .stream()
@@ -168,7 +168,7 @@ public class FieldImplTest {
 
     @Test
     void testMakeShot() {
-        FieldImpl field = new FieldImpl();
+        FieldManagementImpl field = new FieldManagementImpl();
         field.addShip(Coordinate.of(0, 0), TEST_SHIP_HORIZONTAL_S1);
         field.addShip(Coordinate.of(4, 5), TEST_SHIP_HORIZONTAL_S3);
         field.addShip(Coordinate.of(5, 2), TEST_SHIP_VERTICAL_S4);
@@ -194,7 +194,7 @@ public class FieldImplTest {
 
     @Test
     void testGetField() {
-        FieldImpl field = new FieldImpl();
+        FieldManagementImpl field = new FieldManagementImpl();
 
         var getField1 = field.getField();
         assertEquals(GameEditionConfiguration.NUMBER_OF_ROWS, getField1.length);
@@ -205,7 +205,7 @@ public class FieldImplTest {
 
     @Test
     void testGetFieldWithHiddenShips() {
-        FieldImpl field = new FieldImpl();
+        FieldManagementImpl field = new FieldManagementImpl();
         field.addShip(Coordinate.of(0, 0), TEST_SHIP_HORIZONTAL_S1);
         field.addShip(Coordinate.of(4, 5), TEST_SHIP_HORIZONTAL_S3);
         field.addShip(Coordinate.of(5, 2), TEST_SHIP_VERTICAL_S4);
@@ -250,7 +250,7 @@ public class FieldImplTest {
 
     @Test
     void testGetAmountOfAliveCells() {
-        FieldImpl field = new FieldImpl();
+        FieldManagementImpl field = new FieldManagementImpl();
         field.addShip(Coordinate.of(0, 0), TEST_SHIP_HORIZONTAL_S1);
         field.addShip(Coordinate.of(4, 5), TEST_SHIP_HORIZONTAL_S3);
         field.addShip(Coordinate.of(5, 2), TEST_SHIP_VERTICAL_S4);
@@ -268,7 +268,7 @@ public class FieldImplTest {
 
     @Test
     void testGetAmountOfAliveShips() {
-        FieldImpl field = new FieldImpl();
+        FieldManagementImpl field = new FieldManagementImpl();
         field.addShip(Coordinate.of(0, 0), TEST_SHIP_HORIZONTAL_S1);
         field.addShip(Coordinate.of(4, 5), TEST_SHIP_HORIZONTAL_S3);
         field.addShip(Coordinate.of(5, 2), TEST_SHIP_VERTICAL_S4);

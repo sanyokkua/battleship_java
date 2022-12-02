@@ -12,6 +12,7 @@ import ua.kostenko.battleship.battleship.logic.api.dtos.GameStageDto;
 import ua.kostenko.battleship.battleship.logic.api.dtos.PlayerBaseInfoDto;
 import ua.kostenko.battleship.battleship.logic.api.dtos.PlayerDto;
 
+@Deprecated
 @RequestMapping("/api/game/sessions/{sessionId}")
 @RestController
 @RequiredArgsConstructor

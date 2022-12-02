@@ -6,8 +6,6 @@ import ua.kostenko.battleship.battleship.logic.engine.config.GameEdition;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.GameStage;
 import ua.kostenko.battleship.battleship.logic.engine.models.records.GameState;
 
-import java.util.HashSet;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -17,24 +15,15 @@ class InMemoryPersistenceTest {
     @BeforeEach
     void before() {
         persistence = new InMemoryPersistence();
-        persistence.save(GameState.builder()
-                                  .sessionId("test_session_1")
-                                  .gameEdition(GameEdition.UKRAINIAN)
-                                  .gameStage(GameStage.IN_GAME)
-                                  .players(new HashSet<>())
-                                  .build());
-        persistence.save(GameState.builder()
-                                  .sessionId("test_session_2")
-                                  .gameEdition(GameEdition.UKRAINIAN)
-                                  .gameStage(GameStage.IN_GAME)
-                                  .players(new HashSet<>())
-                                  .build());
-        persistence.save(GameState.builder()
-                                  .sessionId("test_session_3")
-                                  .gameEdition(GameEdition.UKRAINIAN)
-                                  .gameStage(GameStage.IN_GAME)
-                                  .players(new HashSet<>())
-                                  .build());
+        persistence.save(GameState.create(GameEdition.UKRAINIAN, "test_session_1", GameStage.IN_GAME
+
+        ));
+        persistence.save(GameState.create(GameEdition.UKRAINIAN, "test_session_2", GameStage.IN_GAME
+
+        ));
+        persistence.save(GameState.create(GameEdition.UKRAINIAN, "test_session_3", GameStage.IN_GAME
+
+        ));
     }
 
     @Test
@@ -58,24 +47,15 @@ class InMemoryPersistenceTest {
 
         assertTrue(value1.isEmpty());
 
-        var saved_1 = persistence.save(GameState.builder()
-                                                .sessionId("saved_new_test_session_1")
-                                                .gameEdition(GameEdition.UKRAINIAN)
-                                                .gameStage(GameStage.IN_GAME)
-                                                .players(new HashSet<>())
-                                                .build());
-        var saved_2 = persistence.save(GameState.builder()
-                                                .sessionId("saved_new_test_session_2")
-                                                .gameEdition(GameEdition.UKRAINIAN)
-                                                .gameStage(GameStage.IN_GAME)
-                                                .players(new HashSet<>())
-                                                .build());
-        var saved_3 = persistence.save(GameState.builder()
-                                                .sessionId("saved_new_test_session_3")
-                                                .gameEdition(GameEdition.UKRAINIAN)
-                                                .gameStage(GameStage.IN_GAME)
-                                                .players(new HashSet<>())
-                                                .build());
+        var saved_1 = persistence.save(GameState.create(GameEdition.UKRAINIAN,
+                                                        "saved_new_test_session_1",
+                                                        GameStage.IN_GAME));
+        var saved_2 = persistence.save(GameState.create(GameEdition.UKRAINIAN,
+                                                        "saved_new_test_session_2",
+                                                        GameStage.IN_GAME));
+        var saved_3 = persistence.save(GameState.create(GameEdition.UKRAINIAN,
+                                                        "saved_new_test_session_3",
+                                                        GameStage.IN_GAME));
 
         assertTrue(saved_1.isPresent());
         assertTrue(saved_2.isPresent());

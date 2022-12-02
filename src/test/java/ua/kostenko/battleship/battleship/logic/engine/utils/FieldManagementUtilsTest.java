@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static ua.kostenko.battleship.battleship.logic.engine.config.GameEditionConfiguration.NUMBER_OF_COLUMNS;
 import static ua.kostenko.battleship.battleship.logic.engine.config.GameEditionConfiguration.NUMBER_OF_ROWS;
 
-class FieldUtilsTest {
+class FieldManagementUtilsTest {
 
     @Test
     void testInitializeField() {

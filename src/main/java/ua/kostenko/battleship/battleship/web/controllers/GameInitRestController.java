@@ -8,6 +8,7 @@ import ua.kostenko.battleship.battleship.logic.api.dtos.GameEditionsDto;
 import ua.kostenko.battleship.battleship.logic.api.dtos.GameSessionIdDto;
 import ua.kostenko.battleship.battleship.web.controllers.dto.GameEditionDto;
 
+@Deprecated
 @RequestMapping("/api/game")
 @RestController
 @RequiredArgsConstructor

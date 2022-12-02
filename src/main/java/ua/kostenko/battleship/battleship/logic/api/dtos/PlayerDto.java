@@ -26,7 +26,7 @@ public class PlayerDto {
     private boolean isReady;
 
     public static PlayerDto of(Player player) {
-        val playerField = player.getField();
+        val playerField = player.getFieldManagement();
         return PlayerDto.builder()
                         .playerId(player.getPlayerId())
                         .playerName(player.getPlayerName())

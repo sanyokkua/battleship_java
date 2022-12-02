@@ -15,7 +15,6 @@ import ua.kostenko.battleship.battleship.logic.engine.models.records.GameState;
 import ua.kostenko.battleship.battleship.logic.engine.models.records.Ship;
 import ua.kostenko.battleship.battleship.logic.engine.utils.FieldUtils;
 
-import java.util.HashSet;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -27,7 +26,7 @@ public class GameImplTest {
 
     public static void addShipsToField(Player player) {
         var ships = player.getShipsNotOnTheField();
-        var field = player.getField();
+        var field = player.getFieldManagement();
         var iterator = ships.iterator();
 
         for (int i = 0; i < GameEditionConfiguration.NUMBER_OF_ROWS; i += 2) {
@@ -42,12 +41,7 @@ public class GameImplTest {
 
     @BeforeEach
     void beforeEach() {
-        gameRepresentation = GameState.builder()
-                                      .sessionId(TEST_GAME_ID)
-                                      .gameEdition(GameEdition.UKRAINIAN)
-                                      .gameStage(GameStage.INITIALIZED)
-                                      .players(new HashSet<>())
-                                      .build();
+        gameRepresentation = GameState.create(GameEdition.UKRAINIAN, TEST_GAME_ID, GameStage.INITIALIZED);
         game = Game.fromGameState(gameRepresentation);
     }
 
@@ -387,7 +381,7 @@ public class GameImplTest {
         assertTrue(game.getWinner()
                        .isEmpty());
 
-        FieldUtils.convertToFlatSet(player2.getField()
+        FieldUtils.convertToFlatSet(player2.getFieldManagement()
                                            .getField())
                   .stream()
                   .filter(Cell::hasShip)
@@ -433,7 +427,7 @@ public class GameImplTest {
                            .size());
 
         FieldUtils.convertToFlatSet(game.getPlayer("player_2")
-                                        .getField()
+                                        .getFieldManagement()
                                         .getField())
                   .stream()
                   .filter(Cell::hasShip)

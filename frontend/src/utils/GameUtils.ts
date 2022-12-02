@@ -25,7 +25,6 @@ export type InitialData = {
     sessionId: string | null,
     player: PlayerDto | null,
     stage: GameStage | null,
-    gameEditions: string[]
 }
 
 export async function loadInitialDataAsync(): Promise<InitialData> {
@@ -33,7 +32,6 @@ export async function loadInitialDataAsync(): Promise<InitialData> {
         const sessionId = storage.loadSession();
         const player = storage.loadPlayer();
         const stage = storage.loadStage();
-        const gameEditionsToReturn = await promiseService.getGameEditions();
 
         let sessionIdToReturn = sessionId || null;
         let playerToReturn = player || null;
@@ -43,7 +41,6 @@ export async function loadInitialDataAsync(): Promise<InitialData> {
             sessionId: sessionIdToReturn,
             player: playerToReturn,
             stage: stageToReturn,
-            gameEditions: gameEditionsToReturn.gameEditions
         };
     } catch (e) {
         throw e;
