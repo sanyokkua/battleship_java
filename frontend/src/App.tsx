@@ -1,9 +1,9 @@
 import React from "react";
 import {Alert} from "react-bootstrap";
 import {Route, Routes} from "react-router-dom";
-import {GameStage, PlayerDto} from "./logic/GameTypes";
-import * as gameStorage from "./services/GameStorage";
-import {getStage} from "./services/PromiseGameService";
+import {ResponseCreatedPlayerDto} from "./logic/ApplicationTypes";
+import {getCurrentGameStage} from "./services/BackendRequestService";
+import * as gameStorage from "./services/GameBrowserStorage";
 import ApplicationNavigationBar from "./ui/ApplicationNavigationBar";
 import {GameCreatedOrJoinedResult} from "./ui/pages/common/PagesCommonTypes";
 import FinishPage from "./ui/pages/FinishPage";
@@ -17,8 +17,8 @@ import * as gameUtils from "./utils/GameUtils";
 
 type AppState = {
     sessionId: string | null,
-    playerDto: PlayerDto | null,
-    gameStage: GameStage | null,
+    playerDto: ResponseCreatedPlayerDto | null,
+    gameStage: string | null,
     hasPreparation: boolean,
     hasGameplay: boolean,
     hasHasResults: boolean
@@ -43,13 +43,13 @@ class App extends React.Component<any, AppState> {
         this.setState({
                           sessionId: initialData.sessionId,
                           playerDto: initialData.player,
-                          gameStage: initialData.stage,
+                          gameStage: initialData.stage
                       }, () => this.updateStage());
     }
 
     async updateStage() {
         if (this.state.sessionId && this.state.playerDto) {
-            const gameStageDto = await getStage(this.state.sessionId);
+            const gameStageDto = await getCurrentGameStage(this.state.sessionId);
             this.setState({gameStage: gameStageDto.gameStage}, () => {
                 //INITIALIZED, WAITING_FOR_PLAYERS, PREPARATION, IN_GAME, FINISHED
                 const hasPreparation: boolean = "PREPARATION" === gameStageDto.gameStage;

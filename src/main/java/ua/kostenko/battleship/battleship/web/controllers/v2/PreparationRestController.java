@@ -18,9 +18,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @RequestMapping("/api/v2/game/sessions/{sessionId}")
 public class PreparationRestController implements PreparationControllerApi {
-    private GameControllerV2Api controllerV2Api;
+    private final GameControllerV2Api controllerV2Api;
 
-    @GetMapping(value = "players/{playerId}/state")
+    @GetMapping(value = "players/{playerId}/preparationState")
     @Override
     public ResponseEntity<ResponsePreparationState> getPreparationState(
             @PathVariable final String sessionId, @PathVariable final String playerId) {

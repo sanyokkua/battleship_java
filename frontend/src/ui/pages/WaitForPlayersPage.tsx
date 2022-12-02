@@ -6,11 +6,11 @@ import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
 import Toast from "react-bootstrap/Toast";
 import {Navigate} from "react-router-dom";
-import {PlayerDto} from "../../logic/GameTypes";
-import {getOpponent} from "../../services/PromiseGameService";
+import {ResponseCreatedPlayerDto} from "../../logic/ApplicationTypes";
+import {getOpponentInformation} from "../../services/BackendRequestService";
 
 type WaitForPlayersPageProps = {
-    player: PlayerDto,
+    player: ResponseCreatedPlayerDto,
     sessionId: string,
     onPageOpened: () => void
 };
@@ -41,7 +41,7 @@ class WaitForPlayersPage extends React.Component<WaitForPlayersPageProps, WaitFo
 
     async timerTick() {
         try {
-            const opponentDto = await getOpponent(this.props.sessionId, this.props.player.playerId);
+            const opponentDto = await getOpponentInformation(this.props.sessionId, this.props.player.playerId);
             if (opponentDto && opponentDto.playerName && opponentDto.playerName.length) {
                 const playerName = opponentDto.playerName;
                 this.setState({

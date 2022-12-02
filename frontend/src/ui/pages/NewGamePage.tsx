@@ -3,7 +3,7 @@ import Alert from "react-bootstrap/Alert";
 import Container from "react-bootstrap/Container";
 import ProgressBar from "react-bootstrap/ProgressBar";
 import {Navigate} from "react-router-dom";
-import {getGameEditions} from "../../services/PromiseGameService";
+import {getAvailableGameEditions} from "../../services/BackendRequestService";
 import * as gameUtils from "../../utils/GameUtils";
 import {NewGameFormResultDto} from "../elements/forms/common/FormTypes";
 import NewGameForm from "../elements/forms/NewGameForm";
@@ -40,9 +40,10 @@ class NewGamePage extends React.Component<NewGamePageProps, NewGamePageState> {
 
     async componentDidMount() {
         try {
-            const gameEditionsDto = await getGameEditions();
+            const gameEditionsDto = await getAvailableGameEditions();
             if (!gameEditionsDto || !gameEditionsDto.gameEditions || gameEditionsDto.gameEditions.length === 0) {
-                throw new Error("Game editions are not loaded!");
+                this.setState({formSubmitResult: {failure: true}});
+                return;
             }
             this.setState({
                               isLoading: false,

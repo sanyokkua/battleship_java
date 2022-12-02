@@ -4,7 +4,7 @@ import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
 import {LinkContainer} from "react-router-bootstrap";
 
-function HomePage(props: any) {
+function HomePage() {
     return (
         <div>
             <Container className="d-grid gap-4 w-75-ns p-3">

@@ -68,8 +68,9 @@ export type ResponseShipRemovedDto = {
     deleted: boolean,
 }
 
-export type ResponseShipsNotOnTheBoard = {
-    ships: ShipDto[],
+export type ParamCoordinateDto = {
+    row: number,
+    col: number
 }
 
 export type ParamGameEditionDto = {
@@ -99,4 +100,10 @@ export type ResponseCurrentGameStageDto = {
 
 export type ResponseLastSessionChangeTimeDto = {
     lastId: string,
+}
+
+export type InitialData = {
+    sessionId: string | null,
+    player: ResponseCreatedPlayerDto | null,
+    stage: string | null,
 }

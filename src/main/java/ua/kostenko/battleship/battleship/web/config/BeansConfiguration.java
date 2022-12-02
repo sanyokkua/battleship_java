@@ -2,7 +2,10 @@ package ua.kostenko.battleship.battleship.web.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import ua.kostenko.battleship.battleship.logic.api.*;
+import ua.kostenko.battleship.battleship.logic.api.GameControllerV2Api;
+import ua.kostenko.battleship.battleship.logic.api.GameControllerV2Impl;
+import ua.kostenko.battleship.battleship.logic.api.IdGenerator;
+import ua.kostenko.battleship.battleship.logic.api.IdGeneratorImpl;
 import ua.kostenko.battleship.battleship.logic.persistence.InMemoryPersistence;
 import ua.kostenko.battleship.battleship.logic.persistence.Persistence;
 
@@ -12,11 +15,6 @@ public class BeansConfiguration {
     @Bean
     public Persistence persistence() {
         return new InMemoryPersistence();
-    }
-
-    @Bean
-    public ControllerApi controller(Persistence persistence) {
-        return new ControllerApiImpl(persistence);
     }
 
     @Bean

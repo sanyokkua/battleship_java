@@ -1,6 +1,6 @@
-import {PlayerDto} from "../../../logic/GameTypes";
+import {ResponseCreatedPlayerDto} from "../../../logic/ApplicationTypes";
 
 export type GameCreatedOrJoinedResult = {
     sessionId: string,
-    player: PlayerDto
+    player: ResponseCreatedPlayerDto
 }

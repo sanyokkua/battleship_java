@@ -2,6 +2,8 @@ import axios, {AxiosRequestConfig} from "axios";
 import axiosRetry from "axios-retry";
 import {
     Coordinate,
+    ParamCoordinateDto,
+    ParamGameEditionDto,
     ParamPlayerNameDto,
     ParamShipDto,
     ResponseAvailableGameEditionsDto,
@@ -17,7 +19,7 @@ import {
     ResponseShipRemovedDto,
     ResponseShotResultDto,
     ShipDirection
-} from "../logic/RequestTypes";
+} from "../logic/ApplicationTypes";
 
 axiosRetry(axios, {retries: 3});
 
@@ -38,7 +40,7 @@ export function getAvailableGameEditions(): Promise<ResponseAvailableGameEdition
 export function createGameSession(gameEdition: string): Promise<ResponseCreatedSessionIdDto> {
     const path = `${BASE_API_URL}/sessions`;
 
-    const data = {
+    const data: ParamGameEditionDto = {
         gameEdition: gameEdition
     };
 
@@ -74,7 +76,7 @@ export function getLastSessionChangeTime(sessionId: string): Promise<ResponseLas
 export function getPreparationState(sessionId: string, playerId: string): Promise<ResponsePreparationState> {
     validateStringValue(sessionId);
     validateStringValue(playerId);
-    const path = `${BASE_API_URL}/sessions/${sessionId}/players/${playerId}/state`;
+    const path = `${BASE_API_URL}/sessions/${sessionId}/players/${playerId}/preparationState`;
 
     return axios.get<ResponsePreparationState>(path).then(axiosResponse => axiosResponse.data);
 }
@@ -93,11 +95,6 @@ export function addShipToField(sessionId: string, playerId: string, shipId: stri
     };
 
     return axios.put<ResponseShipAddedDto>(path, data).then(axiosResponse => axiosResponse.data);
-}
-
-export type ParamCoordinateDto = {
-    row: number,
-    col: number
 }
 
 export function removeShipFromField(sessionId: string, playerId: string, coordinate: Coordinate): Promise<ResponseShipRemovedDto> {
@@ -143,7 +140,7 @@ export function getGameStateForPlayer(sessionId: string, playerId: string): Prom
 export function makeShotByField(sessionId: string, playerId: string, coordinate: Coordinate): Promise<ResponseShotResultDto> {
     validateStringValue(sessionId);
     validateStringValue(playerId);
-    const path = `${BASE_API_URL}/sessions/${sessionId}/players/${playerId}/field?shot`;
+    const path = `${BASE_API_URL}/sessions/${sessionId}/players/${playerId}/field/shot`;
 
     const data: ParamCoordinateDto = {
         row: coordinate.row,

@@ -1,5 +1,5 @@
 import React from "react";
-import {CellDto, ShipDto} from "../../../logic/GameTypes";
+import {CellDto, ShipDto} from "../../../logic/ApplicationTypes";
 import {CellClickEventData} from "./common/PreparationTypes";
 import PrepCell from "./PrepCell";
 

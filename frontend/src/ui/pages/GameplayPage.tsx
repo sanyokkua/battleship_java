@@ -8,8 +8,8 @@ import Table from "react-bootstrap/Table";
 import Toast from "react-bootstrap/Toast";
 import ToastContainer from "react-bootstrap/ToastContainer";
 import {Navigate} from "react-router-dom";
-import {CellDto, Coordinate, GameplayStateDto, PlayerDto} from "../../logic/GameTypes";
-import {getGameplayState, getLastUpdate, makeShot} from "../../services/PromiseGameService";
+import {CellDto, Coordinate, ResponseCreatedPlayerDto, ResponseGameplayStateDto} from "../../logic/ApplicationTypes";
+import {getGameStateForPlayer, getLastSessionChangeTime, makeShotByField} from "../../services/BackendRequestService";
 import GameplayField from "../elements/gameplay/GameplayField";
 
 
@@ -41,7 +41,7 @@ function getShipsColor(numberOfShips: number | null | undefined): string {
 
 type GameplayPageProps = {
     sessionId: string,
-    player: PlayerDto,
+    player: ResponseCreatedPlayerDto,
     onPageOpened: () => void
 }
 
@@ -52,7 +52,7 @@ type GameplayPageState = {
     isNeedToRedirect: boolean,
     lastUpdate: string,
     hasHit: boolean,
-    gameState: GameplayStateDto | null
+    gameState: ResponseGameplayStateDto | null
 }
 
 class GameplayPage extends React.Component<GameplayPageProps, GameplayPageState> {
@@ -76,7 +76,7 @@ class GameplayPage extends React.Component<GameplayPageProps, GameplayPageState>
 
     async componentDidMount() {
         try {
-            const gameplayStatus = await getGameplayState(this.props.sessionId, this.props.player.playerId);
+            const gameplayStatus = await getGameStateForPlayer(this.props.sessionId, this.props.player.playerId);
             if (gameplayStatus && gameplayStatus.isPlayerActive && gameplayStatus.isOpponentReady) {
                 await this.updateGameplayInformation();
             } else {
@@ -103,7 +103,7 @@ class GameplayPage extends React.Component<GameplayPageProps, GameplayPageState>
     async updateGameplayInformation() {
         this.setState({isLoading: true}, async () => {
             try {
-                const stateData = await getGameplayState(this.props.sessionId, this.props.player.playerId);
+                const stateData = await getGameStateForPlayer(this.props.sessionId, this.props.player.playerId);
                 if (stateData) {
                     this.setState({gameState: stateData, isLoading: false, isWaiting: !stateData.isOpponentReady});
                     if (stateData.isPlayerActive && stateData.isOpponentReady) {
@@ -125,7 +125,7 @@ class GameplayPage extends React.Component<GameplayPageProps, GameplayPageState>
 
     async timerTick() {
         try {
-            const lastUpdate = await getLastUpdate(this.props.sessionId, this.props.player.playerId);
+            const lastUpdate = await getLastSessionChangeTime(this.props.sessionId);
             if (lastUpdate && lastUpdate.lastId !== this.state.lastUpdate) {
                 this.setState({lastUpdate: lastUpdate.lastId});
                 await this.updateGameplayInformation();
@@ -143,7 +143,7 @@ class GameplayPage extends React.Component<GameplayPageProps, GameplayPageState>
         this.setState({isLoading: true});
         try {
             const coordinate: Coordinate = {row: cell.row, column: cell.col};
-            const result = await makeShot(this.props.sessionId, this.props.player.playerId, coordinate);
+            const result = await makeShotByField(this.props.sessionId, this.props.player.playerId, coordinate);
             if (result && (result.shotResult === "HIT" || result.shotResult === "DESTROYED")) {
                 await this.updateGameplayInformation();
                 this.setState({hasHit: true});

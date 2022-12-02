@@ -4,12 +4,12 @@ import Button from "react-bootstrap/Button";
 import ProgressBar from "react-bootstrap/ProgressBar";
 import Row from "react-bootstrap/Row";
 import {Navigate} from "react-router-dom";
-import {GameplayStateDto, PlayerBaseInfoDto, PlayerDto} from "../../logic/GameTypes";
-import {getGameplayState, getWinner} from "../../services/PromiseGameService";
+import {ResponseCreatedPlayerDto, ResponseGameplayStateDto} from "../../logic/ApplicationTypes";
+import {getGameStateForPlayer} from "../../services/BackendRequestService";
 import GameplayField from "../elements/gameplay/GameplayField";
 
 type FinishPageProps = {
-    player: PlayerDto | null,
+    player: ResponseCreatedPlayerDto | null,
     sessionId: string | null,
     onPageOpened: () => void
 };
@@ -18,8 +18,7 @@ type FinishPageState = {
     isLoading: boolean,
     isErrorHappened: boolean,
     isNeedToRedirect: boolean,
-    gameState: GameplayStateDto | null
-    winner: PlayerBaseInfoDto | null
+    gameplayStatus: ResponseGameplayStateDto | null
 };
 
 class FinishPage extends React.Component<FinishPageProps, FinishPageState> {
@@ -30,22 +29,19 @@ class FinishPage extends React.Component<FinishPageProps, FinishPageState> {
             isLoading: true,
             isErrorHappened: false,
             isNeedToRedirect: false,
-            gameState: null,
-            winner: null
+            gameplayStatus: null
         };
     }
 
     async componentDidMount() {
         try {
             if (this.props.sessionId && this.props.player) {
-                const gameplayStatus = await getGameplayState(this.props.sessionId, this.props.player.playerId);
-                const winnerInfo: PlayerBaseInfoDto = await getWinner(this.props.sessionId);
-                if (gameplayStatus && winnerInfo) {
+                const gameplayStatus = await getGameStateForPlayer(this.props.sessionId, this.props.player.playerId);
+                if (gameplayStatus && gameplayStatus.hasWinner) {
                     this.setState({
                                       isLoading: false,
                                       isErrorHappened: false,
-                                      gameState: gameplayStatus,
-                                      winner: winnerInfo
+                                      gameplayStatus: gameplayStatus
                                   });
                 } else {
                     this.setState({isErrorHappened: true});
@@ -70,14 +66,15 @@ class FinishPage extends React.Component<FinishPageProps, FinishPageState> {
                     {this.state.isLoading && <ProgressBar animated now={100}/>}
                 </Row>
                 <Row hidden={this.state.isLoading} className="text-center">
-                    <h1>Game is finished!</h1>
+                    {this.state.gameplayStatus?.isPlayerWinner ? <h1>You win!</h1> : <h1>You lose!</h1>}
                     <p>
-                        Player <Badge bg="success"> {this.state.winner?.playerName}</Badge> has win this game.
+                        Player <Badge bg="success"> {this.state.gameplayStatus?.winnerPlayerName}</Badge> has win this
+                        game.
                     </p>
                 </Row>
                 <Row>
-                    <p>Field of <b>{this.state.gameState?.opponentName || ""}</b></p>
-                    <GameplayField field={this.state.gameState?.opponentField || []}
+                    <p>Field of <b>{this.state.gameplayStatus?.opponentName || ""}</b></p>
+                    <GameplayField field={this.state.gameplayStatus?.opponentField || []}
                                    isReadOnly={true}
                                    onCellClick={(cell) => console.log(cell)}/>
                 </Row>
@@ -85,8 +82,8 @@ class FinishPage extends React.Component<FinishPageProps, FinishPageState> {
                     <br/>
                 </Row>
                 <Row>
-                    <p>Field of <b>{this.state.gameState?.playerName || ""}</b></p>
-                    <GameplayField field={this.state.gameState?.playerField || []}
+                    <p>Field of <b>{this.state.gameplayStatus?.playerName || ""}</b></p>
+                    <GameplayField field={this.state.gameplayStatus?.playerField || []}
                                    isReadOnly={true}
                                    onCellClick={(cell) => console.log(cell)}/>
 

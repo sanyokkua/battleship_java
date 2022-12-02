@@ -1,5 +1,5 @@
 import React from "react";
-import {CellDto} from "../../../logic/GameTypes";
+import {CellDto} from "../../../logic/ApplicationTypes";
 import Cell from "./Cell";
 import {OnCellClick} from "./common/GameplayTypes";
 

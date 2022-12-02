@@ -1,6 +1,6 @@
 import React from "react";
 import Container from "react-bootstrap/Container";
-import {ShipDto} from "../../../logic/GameTypes";
+import {ShipDto} from "../../../logic/ApplicationTypes";
 import ButtonShip from "./ButtonShip";
 
 type ShipsListProps = {

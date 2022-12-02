@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @RequestMapping("/api/v2/game")
 public class GameSessionCommonRestController implements GameSessionCommonApi {
-    private GameControllerV2Api controllerV2Api;
+    private final GameControllerV2Api controllerV2Api;
 
     @GetMapping("/editions")
     @Override

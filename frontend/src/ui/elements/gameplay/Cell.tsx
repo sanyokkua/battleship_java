@@ -1,6 +1,6 @@
 import React from "react";
 import Button from "react-bootstrap/Button";
-import {CellDto} from "../../../logic/GameTypes";
+import {CellDto} from "../../../logic/ApplicationTypes";
 import {OnCellClick} from "./common/GameplayTypes";
 
 type CellProps = {

@@ -1,4 +1,4 @@
-import {GameStage, PlayerDto} from "../logic/GameTypes";
+import {ResponseCreatedPlayerDto} from "../logic/ApplicationTypes";
 
 const PLAYER = "player_obj";
 const SESSION = "session_str";
@@ -16,14 +16,14 @@ export function loadSession(): string {
     return item ? item : "";
 }
 
-export function savePlayer(playerDto: PlayerDto): void {
+export function savePlayer(playerDto: ResponseCreatedPlayerDto): void {
     if (!playerDto) {
         throw new Error("Player is not valid. Can't be saved to browser.");
     }
     localStorage.setItem(PLAYER, JSON.stringify(playerDto));
 }
 
-export function loadPlayer(): PlayerDto | null {
+export function loadPlayer(): ResponseCreatedPlayerDto | null {
     const loadedDto = localStorage.getItem(PLAYER);
     if (loadedDto) {
         return JSON.parse(loadedDto);
@@ -38,7 +38,7 @@ export function saveStage(gameStage: string): void {
     localStorage.setItem(GAME_STAGE, gameStage);
 }
 
-export function loadStage(): GameStage | null {
-    const item: GameStage = localStorage.getItem(GAME_STAGE) as GameStage;
+export function loadStage(): string | null {
+    const item = localStorage.getItem(GAME_STAGE);
     return item ? item : null;
 }

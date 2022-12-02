@@ -15,7 +15,7 @@ import ua.kostenko.battleship.battleship.web.controllers.api.dtos.gameplay.Respo
 @RequiredArgsConstructor
 @RequestMapping("/api/v2/game/sessions/{sessionId}")
 public class GameplayRestController implements GameplayControllerApi {
-    private GameControllerV2Api controllerV2Api;
+    private final GameControllerV2Api controllerV2Api;
 
 
     @GetMapping(value = "players/{playerId}/state")
@@ -29,7 +29,7 @@ public class GameplayRestController implements GameplayControllerApi {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping(value = "players/{playerId}/field", params = "shot")
+    @PostMapping(value = "players/{playerId}/field/shot")
     @Override
     public ResponseEntity<ResponseShotResultDto> makeShotByField(
             @PathVariable final String sessionId, @PathVariable final String playerId,

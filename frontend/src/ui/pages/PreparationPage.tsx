@@ -7,16 +7,15 @@ import Row from "react-bootstrap/Row";
 import Toast from "react-bootstrap/Toast";
 import ToastContainer from "react-bootstrap/ToastContainer";
 import {Navigate} from "react-router-dom";
-import {CellDto, Coordinate, PlayerDto, ShipDirection, ShipDto} from "../../logic/GameTypes";
-import * as service from "../../services/PromiseGameService";
-import {shipComparator} from "../../utils/GameUtils";
+import {CellDto, Coordinate, ResponseCreatedPlayerDto, ShipDirection, ShipDto} from "../../logic/ApplicationTypes";
+import * as service2 from "../../services/BackendRequestService";
 import {CellClickEventData} from "../elements/preparation/common/PreparationTypes";
 import PrepareField from "../elements/preparation/PrepareField";
 import ShipsList from "../elements/preparation/ShipsList";
 import Status from "../elements/preparation/Status";
 
 type PreparationPageProps = {
-    player: PlayerDto,
+    player: ResponseCreatedPlayerDto,
     sessionId: string,
     onPageOpened: () => void
 };
@@ -73,15 +72,15 @@ class PreparationPage extends React.Component<PreparationPageProps, PreparationP
 
     async timerTick() {
         try {
-            const opponentDto = await service.getOpponent(this.props.sessionId, this.props.player.playerId);
+            const opponentDto = await service2.getOpponentInformation(this.props.sessionId, this.props.player.playerId);
             if (opponentDto) {
                 this.setState({
                                   opponent: {
                                       name: opponentDto.playerName,
-                                      ready: opponentDto.isReady
+                                      ready: opponentDto.ready
                                   }
                               });
-                if (opponentDto.isReady) {
+                if (opponentDto.ready) {
                     // Status from ready can't be changed, we do not need now checking state
                     this.removeAllIntervals();
                 }
@@ -104,17 +103,19 @@ class PreparationPage extends React.Component<PreparationPageProps, PreparationP
     loadData() {
         this.setState({isDataLoaded: false, ships: []});
 
-        service.getPrepareShipsList(this.props.sessionId, this.props.player.playerId)
-               .then(ships => {
-                   ships.sort(shipComparator);
-                   const shipActive = ships.length ? ships[0] : null;
-                   this.setState({ships: ships, chosenShip: shipActive});
-               })
-               .catch(console.warn);
-
-        service.getField(this.props.sessionId, this.props.player.playerId)
-               .then(field => this.setState({field: field, isDataLoaded: true}))
-               .catch(console.warn);
+        service2.getPreparationState(this.props.sessionId, this.props.player.playerId)
+                .then(resp => {
+                    const ships = resp.ships;
+                    const field = resp.field;
+                    const shipActive = ships.length ? ships[0] : null;
+                    this.setState({
+                                      ships: ships,
+                                      chosenShip: shipActive,
+                                      field: field,
+                                      isDataLoaded: true
+                                  });
+                })
+                .catch(console.warn);
     }
 
     handleOnShipChosen(ship: ShipDto) {
@@ -135,7 +136,7 @@ class PreparationPage extends React.Component<PreparationPageProps, PreparationP
         const coordinate: Coordinate = {row: eventCell.cell.row, column: eventCell.cell.col};
 
         if (eventCell.isDelete) {
-            await service.removeShipFromField(this.props.sessionId, this.props.player.playerId, coordinate);
+            await service2.removeShipFromField(this.props.sessionId, this.props.player.playerId, coordinate);
             this.loadData();
             return;
         }
@@ -148,7 +149,7 @@ class PreparationPage extends React.Component<PreparationPageProps, PreparationP
         const direction: ShipDirection = eventCell.direction;
 
         try {
-            await service.addShipToField(
+            await service2.addShipToField(
                 this.props.sessionId,
                 this.props.player.playerId,
                 shipId,
@@ -164,8 +165,8 @@ class PreparationPage extends React.Component<PreparationPageProps, PreparationP
 
     async handleOnReadyButtonClick() {
         try {
-            const result = await service.startGame(this.props.sessionId, this.props.player.playerId);
-            if (result && result.isReady) {
+            const result = await service2.startGame(this.props.sessionId, this.props.player.playerId);
+            if (result && result.ready) {
                 this.setState({playerMadeIsReady: true});
             }
         } catch (e) {
