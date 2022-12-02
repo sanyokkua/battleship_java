@@ -6,10 +6,8 @@ import ua.kostenko.battleship.battleship.web.controllers.api.dtos.gameplay.Respo
 import ua.kostenko.battleship.battleship.web.controllers.api.dtos.gameplay.ResponseShotResultDto;
 
 public interface GameplayControllerApi {
-    //"/api/game/sessions/${sessionId}/players/${playerId}/state");
     ResponseEntity<ResponseGameplayStateDto> getGameStateForPlayer(String sessionId, String playerId);
 
-    //"/api/game/sessions/${sessionId}/players/${playerId}/field?shot");
     ResponseEntity<ResponseShotResultDto> makeShotByField(
             String sessionId, String playerId, ParamCoordinateDto coordinate);
 }

@@ -1,12 +1,12 @@
-package ua.kostenko.battleship.battleship.logic.api;
+package ua.kostenko.battleship.battleship.web.controllers;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import lombok.val;
-import ua.kostenko.battleship.battleship.logic.api.dtos.CellDto;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEditionConfiguration;
 import ua.kostenko.battleship.battleship.logic.engine.models.records.Cell;
+import ua.kostenko.battleship.battleship.web.controllers.api.dtos.CellDto;
 
 @Log4j2
 @NoArgsConstructor(access = AccessLevel.PRIVATE)

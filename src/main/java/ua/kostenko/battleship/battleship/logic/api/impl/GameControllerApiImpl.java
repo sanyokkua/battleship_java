@@ -1,8 +1,11 @@
-package ua.kostenko.battleship.battleship.logic.api;
+package ua.kostenko.battleship.battleship.logic.api.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import lombok.val;
+import ua.kostenko.battleship.battleship.logic.api.GameControllerApi;
+import ua.kostenko.battleship.battleship.logic.api.IdGenerator;
+import ua.kostenko.battleship.battleship.logic.api.ValidationUtils;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameInternalProblemException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameSessionIdIsNotCorrectException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipIdIsNotCorrectException;
@@ -24,7 +27,7 @@ import java.util.List;
 
 @Log4j2
 @RequiredArgsConstructor
-public class GameControllerV2Impl implements GameControllerV2Api {
+public class GameControllerApiImpl implements GameControllerApi {
     private final Persistence persistence;
     private final IdGenerator idGenerator;
 

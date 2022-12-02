@@ -12,7 +12,7 @@ import ua.kostenko.battleship.battleship.logic.engine.models.records.Ship;
 
 import java.util.List;
 
-public interface GameControllerV2Api {
+public interface GameControllerApi {
     List<GameEdition> getAvailableGameEditions();
 
     String createGameSession(String gameEdition);

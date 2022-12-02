@@ -1,4 +1,4 @@
-package ua.kostenko.battleship.battleship.logic.api.dtos;
+package ua.kostenko.battleship.battleship.web.controllers.api.dtos;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;

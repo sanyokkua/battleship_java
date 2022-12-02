@@ -2,6 +2,7 @@ package ua.kostenko.battleship.battleship.logic.api;
 
 import org.junit.jupiter.api.Test;
 import ua.kostenko.battleship.battleship.logic.engine.utils.FieldUtils;
+import ua.kostenko.battleship.battleship.web.controllers.ControllerUtils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;

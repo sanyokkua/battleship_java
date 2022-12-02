@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import ua.kostenko.battleship.battleship.logic.api.dtos.CellDto;
+import ua.kostenko.battleship.battleship.web.controllers.api.dtos.CellDto;
 import ua.kostenko.battleship.battleship.web.controllers.api.dtos.entities.ShipDto;
 
 import java.util.List;

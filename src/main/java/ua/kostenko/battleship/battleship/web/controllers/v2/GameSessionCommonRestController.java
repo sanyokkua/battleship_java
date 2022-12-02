@@ -5,7 +5,7 @@ import lombok.val;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ua.kostenko.battleship.battleship.logic.api.GameControllerV2Api;
+import ua.kostenko.battleship.battleship.logic.api.GameControllerApi;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEdition;
 import ua.kostenko.battleship.battleship.web.controllers.api.GameSessionCommonApi;
 import ua.kostenko.battleship.battleship.web.controllers.api.dtos.session.*;
@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @RequestMapping("/api/v2/game")
 public class GameSessionCommonRestController implements GameSessionCommonApi {
-    private final GameControllerV2Api controllerV2Api;
+    private final GameControllerApi controllerV2Api;
 
     @GetMapping("/editions")
     @Override
