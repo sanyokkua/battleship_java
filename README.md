@@ -4,7 +4,7 @@
 
 This project is developed on Java+Spring Boot (Rest/MVC) to provide REST API and in addition to REST API will
 be developed UI using ReactJS (Typescript).
-It is a rewriting of the [Python version](https://github.com/sanyokkua/game_of_life_py) with a complete redesign of the
+It is a rewriting of the [Python version](https://github.com/sanyokkua/battleship_py) with a complete redesign of the
 UI approach.
 
 PS: I am not expert in the building UI apps and this project should not be used as reference for any production
