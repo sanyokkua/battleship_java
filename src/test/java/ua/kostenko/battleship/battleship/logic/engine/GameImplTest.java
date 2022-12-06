@@ -19,9 +19,9 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@SuppressWarnings("ALL")
 public class GameImplTest {
     private static final String TEST_GAME_ID = "TEST_ID_1";
-    private GameState gameRepresentation;
     private Game game;
 
     public static void addShipsToField(Player player) {
@@ -41,7 +41,7 @@ public class GameImplTest {
 
     @BeforeEach
     void beforeEach() {
-        gameRepresentation = GameState.create(GameEdition.UKRAINIAN, TEST_GAME_ID, GameStage.INITIALIZED);
+        GameState gameRepresentation = GameState.create(GameEdition.UKRAINIAN, TEST_GAME_ID, GameStage.INITIALIZED);
         game = Game.fromGameState(gameRepresentation);
     }
 
@@ -221,8 +221,7 @@ public class GameImplTest {
         val shipFromList = allShipsOfPlayer.stream()
                                            .findAny();
         assert shipFromList.isPresent();
-        assertThrows(IllegalArgumentException.class,
-                     () -> game.addShipToField("player_1", Coordinate.of(9, 9), shipFromList.get()));
+        assertThrows(IllegalArgumentException.class, () -> game.addShipToField("player_1", Coordinate.of(9, 9), shipFromList.get()));
 
     }
 

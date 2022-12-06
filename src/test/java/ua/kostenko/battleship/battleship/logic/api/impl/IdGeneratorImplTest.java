@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class IdGeneratorImplTest {
-    IdGeneratorImpl idGeneratorImpl = new IdGeneratorImpl();
+    private final IdGeneratorImpl idGeneratorImpl = new IdGeneratorImpl();
 
     @Test
     void testGenerateId() {

@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 class IndexControllerTest {
-    IndexController indexController = new IndexController();
+    final IndexController indexController = new IndexController();
 
     @Test
     void testIndex() {

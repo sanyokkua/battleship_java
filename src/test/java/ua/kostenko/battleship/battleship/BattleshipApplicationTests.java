@@ -326,11 +326,10 @@ class BattleshipApplicationTests {
         //GET         /api/v2/game/sessions/{sessionId}/players/{playerId}/preparationState
         var url_get_available_ships =
                 "%s/api/v2/game/sessions/{sessionId}/players/{playerId}/preparationState".formatted(baseUrl);
-        var result = restTemplate.getForObject(url_get_available_ships,
-                                               ResponsePreparationState.class,
-                                               gameSessionIdDto.getSessionId(),
-                                               playerDto.getPlayerId());
-        return result;
+        return restTemplate.getForObject(url_get_available_ships,
+                                         ResponsePreparationState.class,
+                                         gameSessionIdDto.getSessionId(),
+                                         playerDto.getPlayerId());
     }
 
     private void createGameplay(
