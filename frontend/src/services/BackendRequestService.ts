@@ -29,7 +29,7 @@ function validateStringValue(value: string): void {
     }
 }
 
-const BASE_API_URL = "/api/v2/game/";
+const BASE_API_URL = "/api/v2/game";
 
 export function getAvailableGameEditions(): Promise<ResponseAvailableGameEditionsDto> {
     const path = `${BASE_API_URL}/editions`;
