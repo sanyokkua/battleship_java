@@ -63,7 +63,7 @@ Below - you can find a short description of the endpoints.
 - **GET** - /api/v2/game/sessions/{sessionId}/changesTime
 - **GET** - /api/v2/game/editions
 
-## Hot to build and start
+## How to build and start
 
 You need pre-install Java and Maven to build the Spring boot project and run it.
 
