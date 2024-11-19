@@ -92,14 +92,14 @@ public class GameControllerApiImpl implements GameControllerApi {
     public GameStage getCurrentGameStage(final String sessionId) {
         val game = loadGame(sessionId);
         return game.getGameState()
-                   .gameStage();
+                .gameStage();
     }
 
     @Override
     public String getLastSessionChangeTime(final String sessionId) {
         val game = loadGame(sessionId);
         return game.getGameState()
-                   .lastUpdate();
+                .lastUpdate();
     }
 
     @Override
@@ -110,8 +110,8 @@ public class GameControllerApiImpl implements GameControllerApi {
 
         try {
             return game.getShipsNotOnTheField(playerId)
-                       .stream()
-                       .toList();
+                    .stream()
+                    .toList();
         } catch (IllegalArgumentException | IllegalStateException ex) {
             throw new GameInternalProblemException(ex.getMessage());
         }
@@ -130,20 +130,20 @@ public class GameControllerApiImpl implements GameControllerApi {
 
         try {
             val ship = game.getAllShips(playerId)
-                           .stream()
-                           .filter(s -> shipId.equals(s.shipId()))
-                           .findAny()
-                           .orElseThrow(() -> new GameShipIdIsNotCorrectException(
-                                   "Ship (%s) is not found in player ships".formatted(shipId)));
+                    .stream()
+                    .filter(s -> shipId.equals(s.shipId()))
+                    .findAny()
+                    .orElseThrow(() -> new GameShipIdIsNotCorrectException(
+                            "Ship (%s) is not found in player ships".formatted(shipId)));
             val shipDirection = ShipDirection.valueOf(direction);
             game.addShipToField(playerId,
-                                coordinate,
-                                Ship.builder()
-                                    .shipId(ship.shipId())
-                                    .shipDirection(shipDirection)
-                                    .shipSize(ship.shipSize())
-                                    .shipType(ship.shipType())
-                                    .build());
+                    coordinate,
+                    Ship.builder()
+                            .shipId(ship.shipId())
+                            .shipDirection(shipDirection)
+                            .shipSize(ship.shipSize())
+                            .shipType(ship.shipType())
+                            .build());
             saveGame(game);
 
             return ship;
@@ -217,7 +217,7 @@ public class GameControllerApiImpl implements GameControllerApi {
 
         val game = loadGame(sessionId);
         val currentGameStage = game.getGameState()
-                                   .gameStage();
+                .gameStage();
         var currentPlayer = game.getPlayer(playerId);
         var opponentPlayer = game.getOpponent(playerId);
 
@@ -236,20 +236,20 @@ public class GameControllerApiImpl implements GameControllerApi {
         }
 
         return GameplayState.builder()
-                            .playerName(currentPlayer.getPlayerName())
-                            .isPlayerActive(currentPlayer.isActive())
-                            .isPlayerWinner(currentPlayer.isWinner())
-                            .playerNumberOfAliveCells(playerFieldManagement.getNumberOfUndamagedCells())
-                            .playerNumberOfAliveShips(playerFieldManagement.getNumberOfNotDestroyedShips())
-                            .playerField(playerField)
-                            .opponentName(opponentPlayer.getPlayerName())
-                            .isOpponentReady(opponentPlayer.isReady())
-                            .opponentNumberOfAliveCells(opponentFieldManagement.getNumberOfUndamagedCells())
-                            .opponentNumberOfAliveShips(opponentFieldManagement.getNumberOfNotDestroyedShips())
-                            .opponentField(opponentField)
-                            .hasWinner(hasWinner)
-                            .winnerPlayerName(winnerName)
-                            .build();
+                .playerName(currentPlayer.getPlayerName())
+                .isPlayerActive(currentPlayer.isActive())
+                .isPlayerWinner(currentPlayer.isWinner())
+                .playerNumberOfAliveCells(playerFieldManagement.getNumberOfUndamagedCells())
+                .playerNumberOfAliveShips(playerFieldManagement.getNumberOfNotDestroyedShips())
+                .playerField(playerField)
+                .opponentName(opponentPlayer.getPlayerName())
+                .isOpponentReady(opponentPlayer.isReady())
+                .opponentNumberOfAliveCells(opponentFieldManagement.getNumberOfUndamagedCells())
+                .opponentNumberOfAliveShips(opponentFieldManagement.getNumberOfNotDestroyedShips())
+                .opponentField(opponentField)
+                .hasWinner(hasWinner)
+                .winnerPlayerName(winnerName)
+                .build();
     }
 
     @Override

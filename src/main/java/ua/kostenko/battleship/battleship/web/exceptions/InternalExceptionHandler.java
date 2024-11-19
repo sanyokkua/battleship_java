@@ -10,16 +10,29 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameInternalProblemException;
 import ua.kostenko.battleship.battleship.web.api.dtos.ExceptionDto;
 
+/**
+ * Exception handler for internal server errors in the Battleship game.
+ * <p>
+ * The InternalExceptionHandler class handles exceptions related to internal problems during the game.
+ * </p>
+ */
 @RestControllerAdvice
 public class InternalExceptionHandler extends ResponseEntityExceptionHandler {
 
+    /**
+     * Handles GameInternalProblemException exceptions.
+     *
+     * @param ex      the runtime exception thrown during the game
+     * @param request the web request context
+     * @return a ResponseEntity containing the ExceptionDto
+     */
     @ExceptionHandler(value = {GameInternalProblemException.class})
     protected ResponseEntity<Object> handleConflict(RuntimeException ex, WebRequest request) {
         var message = ex.getMessage();
         var body = ExceptionDto.builder()
-                               .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                               .errorMessage(message)
-                               .build();
+                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .errorMessage(message)
+                .build();
         return handleExceptionInternal(ex, body, new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR, request);
     }
 }

@@ -4,9 +4,19 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Data Transfer Object (DTO) for indicating whether a player is ready in the Battleship game.
+ * <p>
+ * The ResponsePlayerReady class is used to transfer the readiness status of a player.
+ * </p>
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class ResponsePlayerReady {
+
+    /**
+     * Indicates whether the player is ready.
+     */
     private boolean ready;
 }

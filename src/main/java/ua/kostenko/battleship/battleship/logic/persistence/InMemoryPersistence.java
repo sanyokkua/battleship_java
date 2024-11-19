@@ -11,14 +11,38 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+/**
+ * Class implementing in-memory persistence for the Battleship game.
+ * <p>
+ * The InMemoryPersistence class provides methods to load, save, and remove game states,
+ * storing them in an in-memory database represented by a {@link Map}.
+ * </p>
+ *
+ * @see Game
+ * @see GameState
+ * @see Persistence
+ */
 @Log4j2
 public class InMemoryPersistence implements Persistence {
+
+    /**
+     * In-memory database to store game states.
+     */
     private final Map<String, GameState> db;
 
+    /**
+     * Constructs a new InMemoryPersistence instance.
+     */
     public InMemoryPersistence() {
         db = new HashMap<>();
     }
 
+    /**
+     * Loads a game by its unique identifier.
+     *
+     * @param id the unique identifier of the game to load
+     * @return an {@link Optional} containing the loaded game, or an empty {@link Optional} if no game is found
+     */
     @Override
     public Optional<Game> load(final String id) {
         log.trace("In method: load");
@@ -40,6 +64,12 @@ public class InMemoryPersistence implements Persistence {
         return Optional.of(game);
     }
 
+    /**
+     * Saves the current state of the game.
+     *
+     * @param gameState the state of the game to save
+     * @return an {@link Optional} containing the saved game, or an empty {@link Optional} if the save operation fails
+     */
     @Override
     public Optional<Game> save(final GameState gameState) {
         log.trace("In method: save");
@@ -47,16 +77,17 @@ public class InMemoryPersistence implements Persistence {
             log.debug("null is passed, Optional.empty() will be returned");
             return Optional.empty();
         }
-        db.put(gameState.sessionId(),
-               GameState.create(gameState.gameEdition(),
-                                gameState.sessionId(),
-                                gameState.gameStage(),
-                                gameState.players()));
+        db.put(gameState.sessionId(), GameState.create(gameState.gameEdition(), gameState.sessionId(), gameState.gameStage(), gameState.players()));
         val game = Game.fromGameState(gameState);
         log.debug("Game: {}", game);
         return Optional.of(game);
     }
 
+    /**
+     * Removes a game by its unique identifier.
+     *
+     * @param id the unique identifier of the game to remove
+     */
     @Override
     public void remove(final String id) {
         log.trace("In method: remove");

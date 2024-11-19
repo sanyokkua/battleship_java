@@ -36,11 +36,11 @@ public class FieldManagementImpl implements FieldManagement {
         log.trace("In method: updateCell");
         log.debug("Updating cell {}", cell);
         this.field[cell.coordinate()
-                       .row()][cell.coordinate()
-                                   .column()] = cell;
+                .row()][cell.coordinate()
+                .column()] = cell;
         return this.field[cell.coordinate()
-                              .row()][cell.coordinate()
-                                          .column()];
+                .row()][cell.coordinate()
+                .column()];
     }
 
     private void validateShipIntersections(Set<Coordinate> shipCoordinates) {
@@ -52,8 +52,8 @@ public class FieldManagementImpl implements FieldManagement {
         shipRegionCoordinates.addAll(neighbourCoordinates);
 
         val atLeastOneCoordinateIsOccupied = shipRegionCoordinates.stream()
-                                                                  .map(this::getCell)
-                                                                  .anyMatch(Cell::hasShip);
+                .map(this::getCell)
+                .anyMatch(Cell::hasShip);
         if (atLeastOneCoordinateIsOccupied) {
             throw new IllegalArgumentException("Ship can't be added. Intersection with other.");
         }
@@ -71,15 +71,15 @@ public class FieldManagementImpl implements FieldManagement {
         validateShipIntersections(shipCoordinates);
 
         shipCoordinates.forEach(c -> updateCell(Cell.builder()
-                                                    .coordinate(c)
-                                                    .ship(ship)
-                                                    .isAvailable(false)
-                                                    .build()));
+                .coordinate(c)
+                .ship(ship)
+                .isAvailable(false)
+                .build()));
         val shipNeighbourCoordinates = CoordinateUtils.buildNeighbourCoordinates(shipCoordinates);
         shipNeighbourCoordinates.forEach(neighbourCoordinate -> updateCell(Cell.builder()
-                                                                               .coordinate(neighbourCoordinate)
-                                                                               .isAvailable(false)
-                                                                               .build()));
+                .coordinate(neighbourCoordinate)
+                .isAvailable(false)
+                .build()));
         updateFieldState();
     }
 
@@ -100,13 +100,13 @@ public class FieldManagementImpl implements FieldManagement {
         val neighbourCells = FieldUtils.findShipNeighbourCells(field, ship);
 
         shipCells.forEach(shipCell -> updateCell(Cell.builder()
-                                                     .coordinate(shipCell.coordinate())
-                                                     .isAvailable(true)
-                                                     .build()));
+                .coordinate(shipCell.coordinate())
+                .isAvailable(true)
+                .build()));
         neighbourCells.forEach(neighbourCell -> updateCell(Cell.builder()
-                                                               .coordinate(neighbourCell.coordinate())
-                                                               .isAvailable(true)
-                                                               .build()));
+                .coordinate(neighbourCell.coordinate())
+                .isAvailable(true)
+                .build()));
         updateFieldState();
         return Optional.of(ship.shipId());
     }
@@ -118,10 +118,10 @@ public class FieldManagementImpl implements FieldManagement {
         CoordinateUtils.validateCoordinate(coordinate);
 
         val cell = updateCell(Cell.builder()
-                                  .coordinate(coordinate)
-                                  .ship(getCell(coordinate).ship())
-                                  .hasShot(true)
-                                  .build());
+                .coordinate(coordinate)
+                .ship(getCell(coordinate).ship())
+                .hasShot(true)
+                .build());
 
         if (!cell.hasShip()) {
             log.debug("PreparationCell doesn't have a ship, shot result is MISS");
@@ -130,7 +130,7 @@ public class FieldManagementImpl implements FieldManagement {
 
         val shipCells = FieldUtils.findShipCells(this.field, cell.ship());
         val isDestroyed = shipCells.stream()
-                                   .allMatch(Cell::hasShot);
+                .allMatch(Cell::hasShot);
         log.debug("ship is destroyed: {}", isDestroyed);
 
         if (isDestroyed) {
@@ -153,11 +153,11 @@ public class FieldManagementImpl implements FieldManagement {
                 val coordinate = Coordinate.of(i, j);
                 val cell = getCell(coordinate);
                 newField[i][j] = Cell.builder()
-                                     .coordinate(coordinate)
-                                     .ship(cell.ship())
-                                     .hasShot(cell.hasShot())
-                                     .isAvailable(cell.isAvailable())
-                                     .build();
+                        .coordinate(coordinate)
+                        .ship(cell.ship())
+                        .hasShot(cell.hasShot())
+                        .isAvailable(cell.isAvailable())
+                        .build();
             }
         }
         log.debug("Copy of the field will be returned");
@@ -175,11 +175,11 @@ public class FieldManagementImpl implements FieldManagement {
                 val cell = getCell(coordinate);
                 val ship = cell.hasShot() && cell.hasShip() ? cell.ship() : null;
                 newField[i][j] = Cell.builder()
-                                     .coordinate(coordinate)
-                                     .ship(ship)
-                                     .hasShot(cell.hasShot())
-                                     .isAvailable(false)
-                                     .build();
+                        .coordinate(coordinate)
+                        .ship(ship)
+                        .hasShot(cell.hasShot())
+                        .isAvailable(false)
+                        .build();
             }
         }
         log.debug("Copy of the field with hidden ships will be returned");
@@ -192,46 +192,46 @@ public class FieldManagementImpl implements FieldManagement {
         final Predicate<Cell> hasShotPredicate = Cell::hasShot;
         final Predicate<Cell> doesntHaveShotPredicate = hasShotPredicate.negate();
         return (int) FieldUtils.convertToFlatSet(field)
-                               .stream()
-                               .filter(doesntHaveShotPredicate)
-                               .count();
+                .stream()
+                .filter(doesntHaveShotPredicate)
+                .count();
     }
 
     @Override
     public int getNumberOfNotDestroyedShips() {
         log.trace("In method: getAmountOfAliveShips");
         return (int) FieldUtils.getShipsFromField(field)
-                               .stream()
-                               .map(ship -> FieldUtils.findShipCells(field, ship))
-                               .filter(s -> s.stream()
-                                             .anyMatch(c -> !c.hasShot()))
-                               .count();
+                .stream()
+                .map(ship -> FieldUtils.findShipCells(field, ship))
+                .filter(s -> s.stream()
+                        .anyMatch(c -> !c.hasShot()))
+                .count();
     }
 
     private void updateFieldState() {
         FieldUtils.getShipsFromField(this.field)
-                  .stream()
-                  .flatMap(ship -> FieldUtils.findShipNeighbourCells(this.field, ship)
-                                             .stream())
-                  .forEach(cell -> updateCell(Cell.builder()
-                                                  .coordinate(cell.coordinate())
-                                                  .isAvailable(false)
-                                                  .build()));
+                .stream()
+                .flatMap(ship -> FieldUtils.findShipNeighbourCells(this.field, ship)
+                        .stream())
+                .forEach(cell -> updateCell(Cell.builder()
+                        .coordinate(cell.coordinate())
+                        .isAvailable(false)
+                        .build()));
     }
 
     private void processDestroyedShip(final Set<Cell> shipCells) {
         log.trace("In method: processDestroyedShip");
         val shipCoordinates = shipCells.stream()
-                                       .map(Cell::coordinate)
-                                       .collect(Collectors.toSet());
+                .map(Cell::coordinate)
+                .collect(Collectors.toSet());
         val neighbourCoordinates = CoordinateUtils.buildNeighbourCoordinates(shipCoordinates)
-                                                  .stream()
-                                                  .map(this::getCell)
-                                                  .collect(Collectors.toSet());
+                .stream()
+                .map(this::getCell)
+                .collect(Collectors.toSet());
         neighbourCoordinates.forEach(c -> updateCell(Cell.builder()
-                                                         .coordinate(c.coordinate())
-                                                         .ship(c.ship())
-                                                         .hasShot(true)
-                                                         .build()));
+                .coordinate(c.coordinate())
+                .ship(c.ship())
+                .hasShot(true)
+                .build()));
     }
 }

@@ -7,10 +7,20 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
+/**
+ * Data Transfer Object (DTO) for the available game editions in the Battleship game.
+ * <p>
+ * The ResponseAvailableGameEditionsDto class is used to transfer data related to the available game editions.
+ * </p>
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ResponseAvailableGameEditionsDto {
+
+    /**
+     * The list of available game editions.
+     */
     private List<String> gameEditions;
 }

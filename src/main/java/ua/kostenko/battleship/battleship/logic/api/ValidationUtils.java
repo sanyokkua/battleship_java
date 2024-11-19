@@ -10,12 +10,31 @@ import ua.kostenko.battleship.battleship.logic.engine.models.enums.ShipDirection
 import ua.kostenko.battleship.battleship.logic.engine.models.records.Coordinate;
 import ua.kostenko.battleship.battleship.logic.engine.utils.CoordinateUtils;
 
+/**
+ * Utility class for handling validation operations in the Battleship game.
+ * <p>
+ * The ValidationUtils class provides methods for validating various game-related entities, such as coordinates, player IDs, session IDs, etc.
+ * </p>
+ *
+ * @see Coordinate
+ * @see ShipDirection
+ * @see GameEdition
+ */
 @Log4j2
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ValidationUtils {
 
+    /**
+     * Template message for logging debug information.
+     */
     private static final String DEBUG_TEMPLATE_MESSAGE = "Validations of: {}";
 
+    /**
+     * Validates if a coordinate is correct.
+     *
+     * @param coordinate the coordinate to validate
+     * @throws GameCoordinateIsNotCorrectIncorrectException if the coordinate is not valid
+     */
     public static void validateCoordinate(Coordinate coordinate) {
         log.debug(DEBUG_TEMPLATE_MESSAGE, coordinate);
         if (!CoordinateUtils.isCorrectCoordinate(coordinate)) {
@@ -23,14 +42,25 @@ public final class ValidationUtils {
         }
     }
 
+    /**
+     * Validates if the player ID is correct.
+     *
+     * @param playerId the player ID to validate
+     * @throws GamePlayerIdIsNotCorrectException if the player ID is not valid
+     */
     public static void validatePlayerId(String playerId) {
         log.debug(DEBUG_TEMPLATE_MESSAGE, playerId);
         if (StringUtils.isBlank(playerId)) {
             throw new GamePlayerIdIsNotCorrectException("Player ID: %s is not VALID!".formatted(playerId));
         }
-
     }
 
+    /**
+     * Validates if the player name is correct.
+     *
+     * @param playerName the player name to validate
+     * @throws GamePlayerNameIsNotCorrectException if the player name is not valid
+     */
     public static void validatePlayerName(String playerName) {
         log.debug(DEBUG_TEMPLATE_MESSAGE, playerName);
         if (StringUtils.isBlank(playerName)) {
@@ -38,6 +68,12 @@ public final class ValidationUtils {
         }
     }
 
+    /**
+     * Validates if the session ID is correct.
+     *
+     * @param sessionId the session ID to validate
+     * @throws GameSessionIdIsNotCorrectException if the session ID is not valid
+     */
     public static void validateSessionId(String sessionId) {
         log.debug(DEBUG_TEMPLATE_MESSAGE, sessionId);
         if (StringUtils.isBlank(sessionId)) {
@@ -45,6 +81,12 @@ public final class ValidationUtils {
         }
     }
 
+    /**
+     * Validates if the ship direction is correct.
+     *
+     * @param shipDirection the ship direction to validate
+     * @throws GameShipDirectionIsNotCorrectException if the ship direction is not valid
+     */
     public static void validateShipDirection(String shipDirection) {
         log.debug(DEBUG_TEMPLATE_MESSAGE, shipDirection);
         if (StringUtils.isBlank(shipDirection)) {
@@ -57,6 +99,12 @@ public final class ValidationUtils {
         }
     }
 
+    /**
+     * Validates if the ship ID is correct.
+     *
+     * @param shipId the ship ID to validate
+     * @throws GameShipIdIsNotCorrectException if the ship ID is not valid
+     */
     public static void validateShipId(String shipId) {
         log.debug(DEBUG_TEMPLATE_MESSAGE, shipId);
         if (StringUtils.isBlank(shipId)) {
@@ -64,6 +112,12 @@ public final class ValidationUtils {
         }
     }
 
+    /**
+     * Validates if the game edition is correct.
+     *
+     * @param gameEdition the game edition to validate
+     * @throws GameEditionIsNotCorrectException if the game edition is not valid
+     */
     public static void validateGameEdition(String gameEdition) {
         log.debug(DEBUG_TEMPLATE_MESSAGE, gameEdition);
         if (StringUtils.isBlank(gameEdition)) {

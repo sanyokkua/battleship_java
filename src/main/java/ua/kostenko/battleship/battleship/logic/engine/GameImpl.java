@@ -33,9 +33,9 @@ public class GameImpl implements Game {
         GameUtils.validatePlayerId(playerId);
         GameUtils.validatePlayerName(playerName);
         GameUtils.validateGameStage(this.gameState.gameStage(),
-                                    "There is no possibility to create player now",
-                                    GameStage.INITIALIZED,
-                                    GameStage.WAITING_FOR_PLAYERS);
+                "There is no possibility to create player now",
+                GameStage.INITIALIZED,
+                GameStage.WAITING_FOR_PLAYERS);
         GameUtils.validateNumberOfPlayers(this.gameState.players());
 
         val allAvailableShipsForGame = Set.copyOf(ShipUtils.generateShips(this.gameState.gameEdition()));
@@ -45,24 +45,24 @@ public class GameImpl implements Game {
         log.debug("Prepare ships: {}", listOfShipsToPlaceOnField);
 
         val player = Player.builder()
-                           .playerId(playerId)
-                           .playerName(playerName)
-                           .fieldManagement(newField().get())
-                           .allPlayerShips(allAvailableShipsForGame)
-                           .shipsNotOnTheField(listOfShipsToPlaceOnField)
-                           .build();
+                .playerId(playerId)
+                .playerName(playerName)
+                .fieldManagement(newField().get())
+                .allPlayerShips(allAvailableShipsForGame)
+                .shipsNotOnTheField(listOfShipsToPlaceOnField)
+                .build();
         this.gameState.players()
-                      .add(player);
+                .add(player);
 
         log.debug("Current gameState: {}", this.gameState.gameStage());
         GameStage currentGameStage = this.gameState.players()
-                                                   .size() == 2 ? GameStage.PREPARATION : GameStage.WAITING_FOR_PLAYERS;
+                .size() == 2 ? GameStage.PREPARATION : GameStage.WAITING_FOR_PLAYERS;
         log.debug("New gameState: {}", currentGameStage);
 
         this.gameState = GameState.create(this.gameState.gameEdition(),
-                                          this.gameState.sessionId(),
-                                          currentGameStage,
-                                          this.gameState.players());
+                this.gameState.sessionId(),
+                currentGameStage,
+                this.gameState.players());
 
         log.info("Player Created. Game state updated.");
         return player;
@@ -98,16 +98,16 @@ public class GameImpl implements Game {
     public void addShipToField(final String playerId, final Coordinate coordinate, final Ship ship) {
         log.trace("In method: addShipToField");
         GameUtils.validateGameStage(this.gameState.gameStage(),
-                                    "Ship can be added only in Preparation stage",
-                                    GameStage.PREPARATION);
+                "Ship can be added only in Preparation stage",
+                GameStage.PREPARATION);
 
         val player = getPlayer(playerId);
         val playerField = player.getFieldManagement();
         val shipsNotOnTheField = player.getShipsNotOnTheField();
 
         if (shipsNotOnTheField.stream()
-                              .noneMatch(s -> ship.shipId()
-                                                  .equals(s.shipId()))) {
+                .noneMatch(s -> ship.shipId()
+                        .equals(s.shipId()))) {
             throw new IllegalArgumentException("Ship %s is not available for add operation".formatted(ship));
         }
 
@@ -115,7 +115,7 @@ public class GameImpl implements Game {
         log.debug("Ship {} added to field with {} for player {}", ship, coordinate, playerId);
 
         shipsNotOnTheField.removeIf(collectionShip -> collectionShip.shipId()
-                                                                    .equals(ship.shipId()));
+                .equals(ship.shipId()));
         log.debug("Ship added to field, removed from the available ships");
     }
 
@@ -123,8 +123,8 @@ public class GameImpl implements Game {
     public Optional<String> removeShipFromField(final String playerId, final Coordinate coordinate) {
         log.trace("In method: removeShipFromField");
         GameUtils.validateGameStage(this.gameState.gameStage(),
-                                    "Ship can be removed only in Preparation stage",
-                                    GameStage.PREPARATION);
+                "Ship can be removed only in Preparation stage",
+                GameStage.PREPARATION);
 
         val player = getPlayer(playerId);
         val playerField = player.getFieldManagement();
@@ -138,8 +138,8 @@ public class GameImpl implements Game {
         val removedShipId = removedShipIdOptional.get();
         val allPlayerShips = player.getAllPlayerShips();
         val foundShipOptional = allPlayerShips.stream()
-                                              .filter(ship -> removedShipId.equals(ship.shipId()))
-                                              .findAny();
+                .filter(ship -> removedShipId.equals(ship.shipId()))
+                .findAny();
 
         if (foundShipOptional.isEmpty()) {
             throw new IllegalArgumentException("Ship %s not found in player ship list".formatted(removedShipId));
@@ -157,8 +157,8 @@ public class GameImpl implements Game {
     public void changePlayerStatusToReady(final String playerId) {
         log.trace("In method: makePlayerReady");
         GameUtils.validateGameStage(this.gameState.gameStage(),
-                                    "State can be changed to ready only in Preparation stage",
-                                    GameStage.PREPARATION);
+                "State can be changed to ready only in Preparation stage",
+                GameStage.PREPARATION);
 
         val player = getPlayer(playerId);
         val shipsNotOnTheField = player.getShipsNotOnTheField();
@@ -179,9 +179,9 @@ public class GameImpl implements Game {
         if (player.isReady() && opponent.isReady()) {
             log.debug("Player and Opponent are ready. Changing game status.");
             this.gameState = GameState.create(this.gameState.gameEdition(),
-                                              this.gameState.sessionId(),
-                                              GameStage.IN_GAME,
-                                              this.gameState.players());
+                    this.gameState.sessionId(),
+                    GameStage.IN_GAME,
+                    this.gameState.players());
             log.info("Game state updated. Current state: {}", this.gameState.gameStage());
         }
     }
@@ -190,8 +190,8 @@ public class GameImpl implements Game {
     public ShotResult makeShot(final String currentPlayerId, final Coordinate opponentFieldCoordinate) {
         log.trace("In method: makeShot");
         GameUtils.validateGameStage(this.gameState.gameStage(),
-                                    "Shot can be made only in IN_GAME stage",
-                                    GameStage.IN_GAME);
+                "Shot can be made only in IN_GAME stage",
+                GameStage.IN_GAME);
         CoordinateUtils.validateCoordinate(opponentFieldCoordinate);
 
         val player = getPlayer(currentPlayerId);
@@ -240,8 +240,8 @@ public class GameImpl implements Game {
         }
 
         val winner = getPlayers().stream()
-                                 .filter(Player::isWinner)
-                                 .findAny();
+                .filter(Player::isWinner)
+                .findAny();
         if (winner.isEmpty()) {
             throw new IllegalStateException("Winner is not found for Finished game.");
         }
@@ -267,13 +267,13 @@ public class GameImpl implements Game {
             throw new IllegalStateException("No players in the game.");
         }
         if (players.stream()
-                   .noneMatch(p -> playerId.equals(p.getPlayerId()))) {
+                .noneMatch(p -> playerId.equals(p.getPlayerId()))) {
             throw new IllegalArgumentException("Player with id %s not found".formatted(playerId));
         }
 
         val optionalPlayer = players.stream()
-                                    .filter(filterPlayerPredicate)
-                                    .findAny();
+                .filter(filterPlayerPredicate)
+                .findAny();
 
         if (optionalPlayer.isEmpty()) {
             throw new IllegalArgumentException("Player with provided filter is not found");
@@ -313,9 +313,9 @@ public class GameImpl implements Game {
         opponent.setWinner(playerIsDestroyed);
 
         this.gameState = GameState.create(this.gameState.gameEdition(),
-                                          this.gameState.sessionId(),
-                                          newGameState,
-                                          this.gameState.players());
+                this.gameState.sessionId(),
+                newGameState,
+                this.gameState.players());
         log.debug("New Game State: {}", gameState);
     }
 }

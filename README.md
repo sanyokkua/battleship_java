@@ -84,6 +84,23 @@ Configuration of the system where the application was developed and tested:
 - **NodeJS**: v16.17.0
 - **Npm**: 8.19.2
 
+Successfully tested on a new system:
+
+- **OS**: Mac OS Sequoia 15.1 (Apple Silicon M1 Pro)
+- **Java**:
+  openjdk version "21.0.5" 2024-10-15 LTS
+  OpenJDK Runtime Environment Temurin-21.0.5+11 (build 21.0.5+11-LTS)
+  OpenJDK 64-Bit Server VM Temurin-21.0.5+11 (build 21.0.5+11-LTS, mixed mode, sharing)
+- **Maven**:
+  Apache Maven 3.9.9
+  Maven home: /Users/ok/Tools/apache-maven
+  Java version: 21.0.5, vendor: Eclipse Adoptium, runtime:
+  /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home
+  Default locale: en_US, platform encoding: UTF-8
+  OS name: "mac os x", version: "15.1", arch: "aarch64", family: "mac"
+- **NodeJS**: v22.11.0
+- **Npm**: 10.9.0
+
 To build and start just run the following command and you will have the up-and-running app
 on **[localhost:8080](localhost:8080)**
 
@@ -93,5 +110,4 @@ mvn clean install && mvn spring-boot:run
 
 ## TODO:
 
-- Add JavaDocs
 - Review test cases
