@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Battleship — Redesign Option A · Modern Naval</title>
+<style>
+:root{
+  --navy:#0b2545; --navy2:#13315c; --sea:#1b4b7a; --steel:#3a6ea5;
+  --teal:#12a8b8; --teal-dark:#0b8494; --gold:#f4a534;
+  --bg:#eef3f9; --surface:#ffffff; --surface-2:#f5f8fc;
+  --ink:#0e2136; --ink-soft:#5a6b80; --line:#dbe4f0;
+  --water:#e7f0fb; --water-line:#c8dcf3;
+  --hit:#e63946; --miss:#9aa8b8; --ship:#12507e; --ship-soft:#d9e8f6;
+  --ok:#2a9d8f; --shadow:0 8px 30px rgba(11,37,69,.10);
+  --radius:16px; --radius-sm:10px;
+  --font:'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:var(--font);color:var(--ink);
+  background-image:radial-gradient(circle at 20% 0%,#dfeaf8 0,transparent 45%),radial-gradient(circle at 90% 10%,#e3f4f6 0,transparent 40%);}
+.wrap{max-width:1280px;margin:0 auto;padding:22px 20px 60px}
+
+/* ---- toolbar ---- */
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:14px;justify-content:space-between;margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand .logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--navy),var(--teal));display:grid;place-items:center;color:#fff;font-size:22px;box-shadow:var(--shadow)}
+.brand h1{font-size:19px;margin:0;letter-spacing:.2px}
+.brand small{display:block;color:var(--ink-soft);font-weight:500;font-size:12.5px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;box-shadow:var(--shadow)}
+.seg button{border:0;background:transparent;padding:8px 12px;border-radius:9px;font-weight:600;font-size:13px;color:var(--ink-soft);cursor:pointer}
+.seg button.active{background:var(--navy);color:#fff}
+.screens{display:flex;flex-wrap:wrap;gap:6px}
+.screens button{border:1px solid var(--line);background:var(--surface);padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:.15s}
+.screens button:hover{border-color:var(--steel);color:var(--sea)}
+.screens button.active{background:var(--teal);border-color:var(--teal);color:#fff}
+
+/* ---- device frame ---- */
+.stage{display:grid;place-items:start center;padding:10px}
+.device{background:var(--surface);border-radius:26px;box-shadow:0 24px 60px rgba(11,37,69,.18);overflow:hidden;border:1px solid var(--line);transition:width .35s ease}
+.device.mobile{width:390px}
+.device.desktop{width:100%;max-width:1120px}
+.device .notch{height:26px;background:var(--navy);display:none}
+.device.mobile .notch{display:flex;align-items:center;justify-content:center}
+.device.mobile .notch::after{content:"";width:120px;height:7px;border-radius:6px;background:rgba(255,255,255,.35)}
+
+/* ---- app chrome ---- */
+.app{display:flex;flex-direction:column;min-height:560px;background:var(--surface-2)}
+.appbar{background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:14px 18px}
+.appbar .l{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
+.appbar .anchor{width:26px;height:26px;border-radius:7px;background:rgba(255,255,255,.14);display:grid;place-items:center;font-size:15px}
+.appbar .r{display:flex;gap:16px;align-items:center;font-size:13.5px}
+.desktop .appbar .r .navlink{opacity:.75;cursor:pointer}
+.desktop .appbar .r .navlink.on{opacity:1;border-bottom:2px solid var(--teal);padding-bottom:2px}
+.mobile .appbar .r .navlink{display:none}
+.mobile .appbar .burger{display:grid}
+.appbar .burger{display:none;width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.14);place-items:center;font-size:16px}
+.desktop .appbar .burger{display:none}
+
+.screen{padding:24px 20px 30px;flex:1;animation:fade .3s}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.desktop .screen{padding:34px 40px 44px}
+
+/* progress bar under appbar */
+.topbar-progress{height:5px;background:var(--water-line);overflow:hidden}
+.topbar-progress i{display:block;height:100%;width:40%;background:linear-gradient(90deg,var(--teal),var(--steel));border-radius:0 4px 4px 0;animation:slide 1.3s infinite}
+@keyframes slide{0%{margin-left:-40%}100%{margin-left:100%}}
+
+/* ---- generic components ---- */
+h2.title{font-size:24px;margin:0 0 4px}
+.desktop h2.title{font-size:30px}
+.sub{color:var(--ink-soft);margin:0 0 22px;font-size:14.5px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;width:100%;border:0;border-radius:var(--radius-sm);
+  padding:15px 18px;font-size:16px;font-weight:700;cursor:pointer;transition:.15s;font-family:inherit}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:linear-gradient(135deg,var(--sea),var(--teal));color:#fff;box-shadow:0 8px 18px rgba(18,80,126,.28)}
+.btn-ghost{background:var(--surface);color:var(--sea);border:2px solid var(--steel)}
+.btn-gold{background:linear-gradient(135deg,#f6b64a,var(--gold));color:#5a3d05;box-shadow:0 8px 18px rgba(244,165,52,.35)}
+.btn-ok{background:linear-gradient(135deg,#34b39c,var(--ok));color:#fff;box-shadow:0 8px 18px rgba(42,157,143,.3)}
+.btn.sm{width:auto;padding:11px 18px;font-size:14px}
+label.fld{display:block;font-weight:600;font-size:13.5px;color:var(--ink-soft);margin:0 0 7px}
+.input,select.input{width:100%;padding:14px 15px;border:1.5px solid var(--line);border-radius:var(--radius-sm);font-size:16px;font-family:inherit;background:var(--surface);color:var(--ink)}
+.input:focus{outline:0;border-color:var(--teal);box-shadow:0 0 0 3px rgba(18,168,184,.15)}
+.stack>*+*{margin-top:18px}
+.hero-illust{font-size:64px;text-align:center;margin:6px 0 10px}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;font-size:12.5px;font-weight:700}
+.pill.warn{background:#fff3dc;color:#a9741a}
+.pill.ok{background:#dcf3ee;color:#1c7d6c}
+.pill.turn{background:#fde4e6;color:#b3242f}
+
+/* ---- home ---- */
+.home-menu{max-width:420px;margin:0 auto;text-align:center}
+.home-menu .hero{background:linear-gradient(135deg,var(--navy),var(--sea));border-radius:22px;color:#fff;padding:34px 24px;margin-bottom:24px;position:relative;overflow:hidden}
+.home-menu .hero::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 80% 120%,rgba(18,168,184,.5),transparent 55%)}
+.home-menu .hero h2{font-size:30px;margin:14px 0 6px;position:relative}
+.home-menu .hero p{margin:0;opacity:.85;position:relative;font-size:14px}
+.home-menu .hero .badge-ship{font-size:60px;position:relative}
+.menu-btns{display:flex;flex-direction:column;gap:14px}
+
+/* ---- share/wait ---- */
+.share-box{display:flex;align-items:center;gap:10px;background:var(--surface-2);border:1.5px dashed var(--steel);border-radius:12px;padding:6px 6px 6px 16px;margin:8px 0 6px}
+.share-box code{flex:1;font-size:14px;color:var(--sea);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.5px}
+.waiting-dots{display:inline-flex;gap:5px;vertical-align:middle;margin-left:6px}
+.waiting-dots i{width:8px;height:8px;border-radius:50%;background:var(--teal);animation:bounce 1s infinite}
+.waiting-dots i:nth-child(2){animation-delay:.15s}.waiting-dots i:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-6px);opacity:1}}
+.step-track{display:flex;justify-content:space-between;margin:0 0 26px;padding:0 4px}
+.step-track .st{flex:1;text-align:center;position:relative;font-size:11.5px;color:var(--ink-soft);font-weight:600}
+.step-track .st::before{content:"";position:absolute;top:11px;left:-50%;width:100%;height:3px;background:var(--line);z-index:0}
+.step-track .st:first-child::before{display:none}
+.step-track .st .dot{width:24px;height:24px;border-radius:50%;background:var(--surface);border:2.5px solid var(--line);margin:0 auto 6px;display:grid;place-items:center;position:relative;z-index:1;font-size:11px}
+.step-track .st.done .dot{background:var(--teal);border-color:var(--teal);color:#fff}
+.step-track .st.active .dot{background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:0 0 0 4px rgba(11,37,69,.12)}
+.step-track .st.active{color:var(--navy)}
+.step-track .st.done::before{background:var(--teal)}
+
+/* ---- board ---- */
+.board-wrap{display:block;width:100%}
+.coord-row{display:grid;grid-template-columns:22px repeat(10,1fr);gap:3px;margin-bottom:3px}
+.coord-row span{text-align:center;font-size:10.5px;font-weight:700;color:var(--ink-soft)}
+.board-row{display:grid;grid-template-columns:22px 1fr;gap:3px;align-items:center}
+.board{display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(10,1fr);gap:3px;aspect-ratio:1/1;width:100%}
+.rlabel{font-size:10.5px;font-weight:700;color:var(--ink-soft);text-align:center}
+.cell{aspect-ratio:1/1;border-radius:6px;background:var(--water);border:1px solid var(--water-line);cursor:pointer;transition:.12s;position:relative;display:grid;place-items:center;font-size:12px}
+.cell:hover{transform:scale(1.06);border-color:var(--teal);z-index:2}
+.cell.ship{background:linear-gradient(135deg,var(--ship),var(--sea));border-color:var(--navy)}
+.cell.avail{background:#eafaf3;border:1px dashed var(--ok)}
+.cell.block{background:#f4f6f9;border-color:#e6ebf1;cursor:not-allowed}
+.cell.hit{background:radial-gradient(circle,#ff6b73,var(--hit));border-color:#b31f2a;color:#fff}
+.cell.miss{background:var(--surface);border-color:var(--line)}
+.cell.miss::after{content:"";width:7px;height:7px;border-radius:50%;background:var(--miss)}
+.cell.sunk{background:linear-gradient(135deg,#7c1420,#b3242f);color:#fff;border-color:#7c1420}
+.cell.ghost{background:rgba(18,168,184,.25);border:1px solid var(--teal)}
+.board.readonly .cell{cursor:default}
+.board.readonly .cell:hover{transform:none}
+
+.board-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.board-head h3{margin:0;font-size:15px}
+.board-head .tag{font-size:11.5px;color:var(--ink-soft);font-weight:600}
+
+/* preparation layout */
+.prep-grid{display:grid;gap:22px}
+.desktop .prep-grid{grid-template-columns:270px 1fr;align-items:start}
+.fleet-panel h4{margin:0 0 4px;font-size:14px}
+.fleet-panel .hint{color:var(--ink-soft);font-size:12.5px;margin:0 0 14px}
+.ship-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px;border:1.5px solid var(--line);border-radius:12px;margin-bottom:10px;cursor:pointer;background:var(--surface);transition:.15s}
+.ship-item:hover{border-color:var(--steel)}
+.ship-item.active{border-color:var(--teal);background:#effbfc;box-shadow:0 0 0 3px rgba(18,168,184,.12)}
+.ship-item.placed{opacity:.5}
+.ship-item .nm{font-weight:700;font-size:13.5px}
+.ship-item .nm small{display:block;font-weight:500;color:var(--ink-soft);font-size:11px}
+.ship-cells{display:flex;gap:3px}
+.ship-cells i{width:15px;height:15px;border-radius:4px;background:linear-gradient(135deg,var(--ship),var(--sea))}
+.dir-toggle{display:flex;gap:8px;margin-bottom:16px}
+.dir-toggle button{flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);font-weight:700;font-size:13px;cursor:pointer;color:var(--ink-soft)}
+.dir-toggle button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* gameplay */
+.scoreboard{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+.player-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 15px;box-shadow:var(--shadow)}
+.player-card.you{border-left:4px solid var(--teal)}
+.player-card.foe{border-left:4px solid var(--hit)}
+.player-card .who{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.player-card .who b{font-size:14.5px}
+.player-card .stat{display:flex;gap:14px}
+.player-card .stat .s{flex:1}
+.player-card .stat .s .lbl{font-size:10.5px;color:var(--ink-soft);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.player-card .stat .s .val{font-size:15px;font-weight:800}
+.mini-bar{height:6px;border-radius:4px;background:var(--line);margin-top:4px;overflow:hidden}
+.mini-bar i{display:block;height:100%;border-radius:4px}
+.turn-banner{display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,#fff,#fde9eb);border:1px solid #f6c9cd;border-radius:12px;padding:12px;margin-bottom:18px;font-weight:700;color:var(--navy);font-size:14.5px}
+.turn-banner.yours{background:linear-gradient(135deg,#fff,#e5f7f4);border-color:#bfe9e1;color:#177a6b}
+
+.boards-area{display:grid;gap:22px}
+.desktop .boards-area{grid-template-columns:1fr 1fr}
+.board-tabs{display:none;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:16px}
+.mobile .board-tabs{display:flex}
+.board-tabs button{flex:1;border:0;background:transparent;padding:10px;border-radius:9px;font-weight:700;font-size:13px;color:var(--ink-soft);cursor:pointer}
+.board-tabs button.on{background:var(--navy);color:#fff}
+.mobile .board-panel.hide{display:none}
+
+/* legend */
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);justify-content:center}
+.legend span{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-soft);font-weight:600}
+.legend span i{width:15px;height:15px;border-radius:5px;display:inline-block}
+.i-water{background:var(--water);border:1px solid var(--water-line)}
+.i-ship{background:linear-gradient(135deg,var(--ship),var(--sea))}
+.i-hit{background:var(--hit)}
+.i-miss{background:var(--surface);border:1px solid var(--line);position:relative}
+.i-sunk{background:#b3242f}
+
+/* results */
+.result-hero{text-align:center;margin-bottom:22px}
+.result-hero .medal{font-size:64px}
+.result-hero h2{font-size:30px;margin:6px 0 4px}
+.result-hero.win h2{color:var(--ok)}
+.result-hero.lose h2{color:var(--hit)}
+.stat-strip{display:flex;justify-content:center;gap:26px;margin:14px 0 4px;flex-wrap:wrap}
+.stat-strip .b{text-align:center}
+.stat-strip .b .n{font-size:22px;font-weight:800;color:var(--navy)}
+.stat-strip .b .l{font-size:11px;color:var(--ink-soft);font-weight:600;text-transform:uppercase}
+
+.note{font-size:12px;color:var(--ink-soft);text-align:center;margin-top:26px}
+.footer-tip{max-width:1120px;margin:20px auto 0;color:var(--ink-soft);font-size:12.5px;text-align:center;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="toolbar">
+    <div class="brand">
+      <div class="logo">⚓</div>
+      <div><h1>Battleship — Finalized Mockup</h1><small>Modern Naval · canonical visual reference · click a screen, toggle device</small></div>
+    </div>
+    <div class="controls">
+      <div class="screens" id="screens"></div>
+      <div class="seg" id="device">
+        <button data-dev="mobile" class="active">📱 Mobile</button>
+        <button data-dev="desktop">🖥️ Desktop</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="device mobile" id="device-frame">
+      <div class="notch"></div>
+      <div class="app" id="app"></div>
+    </div>
+  </div>
+  <div class="footer-tip"><b>Canonical visual reference</b> for the redesign (see SPECIFICATION.md §UI/UX). Modern Naval — nautical grid coordinates (A–J / 1–10), adaptive boards (side‑by‑side on desktop, tabbed on mobile), clear turn state, colour legend. All 8 screens/modes included. Breakpoint demoed via the 📱/🖥️ toggle: mobile ≤ 640px single‑column + board tabs; desktop ≥ 641px multi‑column + side‑by‑side boards.</div>
+</div>
+
+<script>
+const SHIPS = [
+  {id:'carrier', name:'Carrier', size:4, placed:true},
+  {id:'battleship', name:'Battleship', size:3, placed:true},
+  {id:'cruiser', name:'Cruiser', size:3, placed:false},
+  {id:'destroyer', name:'Submarine', size:2, placed:false},
+  {id:'patrol', name:'Patrol Boat', size:1, placed:false},
+];
+const COLS='ABCDEJ'.length; // not used
+const LET=['A','B','C','D','E','F','G','H','I','J'];
+
+function appbar(active){
+  const links=['Home','New','Join','Preparation','Gameplay'];
+  return `<div class="appbar">
+    <div class="l"><span class="anchor">⚓</span> Battleship</div>
+    <div class="r">
+      ${links.map(l=>`<span class="navlink ${l.toLowerCase()===active?'on':''}">${l}</span>`).join('')}
+      <span class="burger">☰</span>
+    </div>
+  </div>`;
+}
+
+function board(opts={}){
+  // type: 'own', 'prep', 'target', 'result-own','result-target'
+  const t=opts.type||'own';
+  let coords='<div class="coord-row"><span></span>'+LET.map(l=>`<span>${l}</span>`).join('')+'</div>';
+  let rows='';
+  for(let r=0;r<10;r++){
+    let cells='';
+    for(let c=0;c<10;c++){
+      cells+=cellFor(t,r,c);
+    }
+    rows+=`<div class="board-row"><span class="rlabel">${r+1}</span><div class="board ${opts.readonly?'readonly':''}">${cells}</div></div>`;
+  }
+  // simpler: put grid with row labels via wrapper
+  let grid='';
+  for(let r=0;r<10;r++){
+    for(let c=0;c<10;c++) grid+=cellFor(t,r,c);
+  }
+  return `<div class="board-wrap">${coords}
+    <div style="display:grid;grid-template-columns:22px 1fr;gap:3px;align-items:stretch">
+      <div style="display:grid;grid-template-rows:repeat(10,1fr);gap:3px">${LET.map((_,i)=>`<span class="rlabel" style="display:grid;place-items:center">${i+1}</span>`).join('')}</div>
+      <div class="board ${opts.readonly?'readonly':''}">${grid}</div>
+    </div></div>`;
+}
+
+// deterministic pseudo layout
+const OWN_SHIPS=new Set(['0-0','0-1','2-3','2-4','2-5','4-0','5-0','6-0','3-8','8-2','8-3','7-6','9-5']);
+const TARGET_HIT=new Set(['1-1','3-4','5-6','2-7','6-6']);
+const TARGET_MISS=new Set(['0-3','4-4','7-2','8-8','1-6','5-1','9-9','3-3']);
+const TARGET_SUNK=new Set(['2-7','6-6']);
+const AVAIL=new Set(['3-3','3-4','3-5','3-6']);
+
+function cellFor(t,r,c){
+  const k=r+'-'+c;
+  if(t==='own'){ return OWN_SHIPS.has(k)?`<div class="cell ship"></div>`:`<div class="cell"></div>`; }
+  if(t==='prep'){
+    if(OWN_SHIPS.has(k)) return `<div class="cell ship"></div>`;
+    if(AVAIL.has(k)) return `<div class="cell ghost"></div>`;
+    return `<div class="cell"></div>`;
+  }
+  if(t==='target'){
+    if(TARGET_SUNK.has(k)) return `<div class="cell sunk">✕</div>`;
+    if(TARGET_HIT.has(k)) return `<div class="cell hit">✕</div>`;
+    if(TARGET_MISS.has(k)) return `<div class="cell miss"></div>`;
+    return `<div class="cell"></div>`;
+  }
+  if(t==='result-target'){
+    if(TARGET_SUNK.has(k)) return `<div class="cell sunk">✕</div>`;
+    if(TARGET_HIT.has(k)||OWN_SHIPS.has(k)) return OWN_SHIPS.has(k)&&!TARGET_HIT.has(k)?`<div class="cell ship"></div>`:`<div class="cell hit">✕</div>`;
+    if(TARGET_MISS.has(k)) return `<div class="cell miss"></div>`;
+    return `<div class="cell"></div>`;
+  }
+  if(t==='result-own'){
+    const hit=new Set(['4-0','5-0','8-2']);
+    if(hit.has(k)) return `<div class="cell hit">✕</div>`;
+    if(OWN_SHIPS.has(k)) return `<div class="cell ship"></div>`;
+    if(TARGET_MISS.has(k)) return `<div class="cell miss"></div>`;
+    return `<div class="cell"></div>`;
+  }
+  return `<div class="cell"></div>`;
+}
+
+function legend(){
+  return `<div class="legend">
+    <span><i class="i-water"></i>Water</span>
+    <span><i class="i-ship"></i>Your ship</span>
+    <span><i class="i-hit"></i>Hit</span>
+    <span><i class="i-miss"></i>Miss</span>
+    <span><i class="i-sunk"></i>Sunk</span>
+  </div>`;
+}
+
+const SCREENS={
+ home:()=>appbar('home')+`<div class="screen"><div class="home-menu">
+    <div class="hero"><div class="badge-ship">🚢</div><h2>Battleship</h2><p>Sink the enemy fleet before they sink yours.</p></div>
+    <div class="menu-btns">
+      <button class="btn btn-primary">＋ New Game</button>
+      <button class="btn btn-ghost">🔗 Join Game</button>
+    </div>
+    <p class="note">Two players · 10×10 grid · classic rules</p>
+  </div></div>`,
+
+ new:()=>appbar('new')+`<div class="screen"><div style="max-width:440px;margin:0 auto">
+    <h2 class="title">New Game</h2><p class="sub">Choose a rule set and your captain name.</p>
+    <div class="card stack">
+      <div><label class="fld">Game edition</label>
+        <select class="input"><option>Ukrainian (10×10 · 10 ships)</option><option>Milton Bradley (10×10 · 5 ships)</option></select></div>
+      <div><label class="fld">Player name</label><input class="input" value="Superman" /></div>
+      <button class="btn btn-primary">Start new game →</button>
+    </div>
+    <p class="note">You'll get a Game ID to share with your opponent.</p>
+  </div></div>`,
+
+ join:()=>appbar('join')+`<div class="screen"><div style="max-width:440px;margin:0 auto">
+    <h2 class="title">Join Game</h2><p class="sub">Paste the Game ID your friend shared with you.</p>
+    <div class="card stack">
+      <div><label class="fld">Player name</label><input class="input" placeholder="Enter your name" value="Batman"/></div>
+      <div><label class="fld">Game ID</label><input class="input" placeholder="xxxxxxxx-xxxx-xxxx-xxxx" value="8f4c23c4-f86e-465c-a208-65f70281bfcb"/>
+        <div style="font-size:11.5px;color:var(--ok);margin-top:6px;font-weight:600">✓ Valid game code</div></div>
+      <button class="btn btn-ok">Join the battle →</button>
+    </div>
+  </div></div>`,
+
+ wait:()=>appbar('new')+`<div class="screen"><div style="max-width:460px;margin:0 auto;text-align:center">
+    <div class="step-track">
+      <div class="st done"><div class="dot">✓</div>Create</div>
+      <div class="st active"><div class="dot">2</div>Waiting</div>
+      <div class="st"><div class="dot">3</div>Prepare</div>
+      <div class="st"><div class="dot">4</div>Battle</div>
+    </div>
+    <div class="hero-illust">🛰️</div>
+    <h2 class="title">Hello, Superman!</h2>
+    <p class="sub">Share this code with your opponent to start.</p>
+    <div class="card">
+      <label class="fld" style="text-align:left">Game ID</label>
+      <div class="share-box"><code>8f4c23c4-f86e-465c-a208-65f70281bfcb</code><button class="btn btn-primary sm">Copy</button></div>
+      <div style="font-size:12px;color:var(--ok);font-weight:600;margin-bottom:12px">✓ Copied to clipboard</div>
+      <div style="font-weight:700;color:var(--navy)">Waiting for your opponent
+        <span class="waiting-dots"><i></i><i></i><i></i></span></div>
+    </div>
+  </div></div>`,
+
+ loading:()=>appbar('new')+`<div class="topbar-progress"><i></i></div><div class="screen"><div style="max-width:420px;margin:60px auto 0;text-align:center">
+    <div class="hero-illust" style="animation:bounce 1.4s infinite">⚓</div>
+    <h2 class="title">Setting up the sea…</h2>
+    <p class="sub">Loading your game session</p>
+  </div></div>`,
+
+ prep:()=>appbar('preparation')+`<div class="screen">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px">
+      <div><h2 class="title" style="font-size:22px">Place your fleet</h2><p class="sub" style="margin:0">3 of 5 ships placed · tap the grid to drop the selected ship</p></div>
+      <span class="pill warn">Opponent: In progress</span>
+    </div>
+    <div class="prep-grid">
+      <div class="fleet-panel card">
+        <h4>Your fleet</h4><p class="hint">Pick a ship, choose direction, tap a cell.</p>
+        <div class="dir-toggle"><button class="on">↔ Horizontal</button><button>↕ Vertical</button></div>
+        ${SHIPS.map(s=>`<div class="ship-item ${s.id==='cruiser'?'active':''} ${s.placed?'placed':''}">
+          <div class="nm">${s.name}<small>${s.size} cell${s.size>1?'s':''}${s.placed?' · placed':''}</small></div>
+          <div class="ship-cells">${Array.from({length:s.size}).map(()=>'<i></i>').join('')}</div></div>`).join('')}
+        <button class="btn btn-gold" style="margin-top:8px">🚀 Auto‑place remaining</button>
+      </div>
+      <div class="board-panel">
+        <div class="board-head"><h3>Your waters</h3><span class="tag">Green dashed = valid drop</span></div>
+        ${board({type:'prep'})}
+        <button class="btn btn-ok" style="margin-top:16px">✓ Ready to go!</button>
+        ${legend()}
+      </div>
+    </div>
+  </div>`,
+
+ gameplay:()=>appbar('gameplay')+`<div class="screen">
+    <div class="scoreboard">
+      <div class="player-card you"><div class="who"><b>You · Superman</b><span class="pill ok">You</span></div>
+        <div class="stat"><div class="s"><div class="lbl">Cells</div><div class="val">88</div><div class="mini-bar"><i style="width:88%;background:var(--ok)"></i></div></div>
+        <div class="s"><div class="lbl">Ships</div><div class="val">9 / 10</div><div class="mini-bar"><i style="width:90%;background:var(--ok)"></i></div></div></div></div>
+      <div class="player-card foe"><div class="who"><b>Batman</b><span class="pill turn">Their turn</span></div>
+        <div class="stat"><div class="s"><div class="lbl">Cells</div><div class="val">61</div><div class="mini-bar"><i style="width:61%;background:var(--gold)"></i></div></div>
+        <div class="s"><div class="lbl">Ships</div><div class="val">6 / 10</div><div class="mini-bar"><i style="width:60%;background:var(--gold)"></i></div></div></div></div>
+    </div>
+    <div class="turn-banner">⏳ Waiting — it's <b style="margin:0 4px">Batman's</b> turn</div>
+    <div class="board-tabs"><button class="on" data-bt="target">🎯 Target grid</button><button data-bt="own">🛡️ Your fleet</button></div>
+    <div class="boards-area">
+      <div class="board-panel bp-target"><div class="board-head"><h3>🎯 Target — Batman's waters</h3><span class="tag">Tap to fire</span></div>${board({type:'target'})}</div>
+      <div class="board-panel bp-own hide"><div class="board-head"><h3>🛡️ Your fleet — Superman</h3><span class="tag">Defensive view</span></div>${board({type:'own',readonly:true})}</div>
+    </div>
+    ${legend()}
+  </div>`,
+
+ results:()=>appbar('gameplay')+`<div class="screen">
+    <div class="result-hero win">
+      <div class="medal">🏆</div><h2>Victory!</h2>
+      <p class="sub">Superman sank the entire enemy fleet.</p>
+      <div class="stat-strip"><div class="b"><div class="n">17</div><div class="l">Hits</div></div>
+        <div class="b"><div class="n">10</div><div class="l">Ships sunk</div></div>
+        <div class="b"><div class="n">6:24</div><div class="l">Time</div></div></div>
+    </div>
+    <div class="boards-area">
+      <div class="board-panel"><div class="board-head"><h3>🎯 Batman's waters</h3><span class="tag">Your shots</span></div>${board({type:'result-target',readonly:true})}</div>
+      <div class="board-panel"><div class="board-head"><h3>🛡️ Your fleet</h3><span class="tag">Enemy shots</span></div>${board({type:'result-own',readonly:true})}</div>
+    </div>
+    ${legend()}
+    <button class="btn btn-primary" style="max-width:320px;margin:22px auto 0">↩ Return to main menu</button>
+  </div>`,
+};
+
+const ORDER=[['home','Home'],['new','New Game'],['join','Join'],['wait','Wait'],['loading','Loading'],['prep','Preparation'],['gameplay','Gameplay'],['results','Results']];
+let current='home';
+const screensEl=document.getElementById('screens');
+ORDER.forEach(([k,label])=>{const b=document.createElement('button');b.textContent=label;b.dataset.k=k;if(k==='home')b.classList.add('active');screensEl.appendChild(b);});
+function paint(){document.getElementById('app').innerHTML=SCREENS[current]();wireBoardTabs();}
+screensEl.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;current=b.dataset.k;[...screensEl.children].forEach(x=>x.classList.toggle('active',x===b));paint();});
+document.getElementById('device').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const dev=b.dataset.dev;document.getElementById('device-frame').className='device '+dev;[...e.currentTarget.children].forEach(x=>x.classList.toggle('active',x===b));});
+function wireBoardTabs(){const tabs=document.querySelector('.board-tabs');if(!tabs)return;tabs.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;[...tabs.children].forEach(x=>x.classList.toggle('on',x===b));const show=b.dataset.bt;document.querySelector('.bp-target').classList.toggle('hide',show!=='target');document.querySelector('.bp-own').classList.toggle('hide',show!=='own');});}
+paint();
+</script>
+</body>
+</html>
