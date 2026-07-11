@@ -1,18 +1,18 @@
 {
   "ships" : [ {
-    "shipId" : "d97f866d-b57d-49c5-ba01-5dc74084ddbb",
+    "shipId" : "4f62293a-8025-487b-a997-6047f64ec866",
     "shipSize" : 2
   }, {
-    "shipId" : "c1311c9e-57eb-4b9f-a62f-376c755cf57f",
+    "shipId" : "eea16f34-b8f0-48f2-8fae-97d4ec5b1cbe",
     "shipSize" : 2
   }, {
-    "shipId" : "d403ff85-9d9f-4614-b1d0-69c7f560c771",
+    "shipId" : "62b1ee79-94c6-4014-b490-5ecd0ac72a58",
     "shipSize" : 3
   }, {
-    "shipId" : "92f121ec-f79a-47e3-8b18-4c7f1953b049",
+    "shipId" : "e8f5e60d-ee66-41c3-9c74-afdc382123ab",
     "shipSize" : 3
   }, {
-    "shipId" : "a45cd0ca-4dea-4eb4-9dc7-10184965ffac",
+    "shipId" : "f6fdc5aa-12ac-4e5c-9866-2ca56f1ae60a",
     "shipSize" : 4
   } ],
   "field" : [ [ {
@@ -259,7 +259,7 @@
     "row" : 4,
     "col" : 0,
     "ship" : {
-      "shipId" : "96baa2e0-e835-4f3a-8fff-d98e3a5894dc",
+      "shipId" : "99d9da35-b9ae-4d68-9cb4-0c1b0cdcc8c8",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -270,7 +270,7 @@
     "row" : 4,
     "col" : 1,
     "ship" : {
-      "shipId" : "96baa2e0-e835-4f3a-8fff-d98e3a5894dc",
+      "shipId" : "99d9da35-b9ae-4d68-9cb4-0c1b0cdcc8c8",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -389,7 +389,7 @@
     "row" : 6,
     "col" : 0,
     "ship" : {
-      "shipId" : "70889491-e7bb-4b43-8c8f-fab18d99ed30",
+      "shipId" : "45072d09-211d-4408-b977-3714bfd234a4",
       "shipType" : "PATROL_BOAT",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 1
@@ -406,7 +406,7 @@
     "row" : 6,
     "col" : 2,
     "ship" : {
-      "shipId" : "ac71a3b9-b1bd-4791-9d4f-e11d6645b5d4",
+      "shipId" : "e3f8c219-f3e6-4127-88a8-2ef06a950d80",
       "shipType" : "PATROL_BOAT",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 1
@@ -519,7 +519,7 @@
     "row" : 8,
     "col" : 0,
     "ship" : {
-      "shipId" : "fce49a60-f7fc-44d2-949c-c9fa038ba0f3",
+      "shipId" : "f55e07bf-a8a1-4a61-bcd7-125cd95dc66b",
       "shipType" : "PATROL_BOAT",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 1
@@ -536,7 +536,7 @@
     "row" : 8,
     "col" : 2,
     "ship" : {
-      "shipId" : "143042ac-3272-47bc-a9a9-a5130716c9f9",
+      "shipId" : "7058f4d7-040c-462c-a776-3b36953b7b2d",
       "shipType" : "PATROL_BOAT",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 1
