@@ -295,7 +295,10 @@ class BattleshipApplicationTests {
 
         var response = restTemplate.exchange(url_post_players_field_shot,
                                              HttpMethod.POST,
-                                             new HttpEntity<>(Coordinate.of(0, 0)),
+                                             new HttpEntity<>(ParamCoordinateDto.builder()
+                                                                                .row(0)
+                                                                                .col(0)
+                                                                                .build()),
                                              ResponseShotResultDto.class,
                                              session.getSessionId(),
                                              player_1.getPlayerId());
