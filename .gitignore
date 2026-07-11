@@ -50,5 +50,9 @@ yarn-error.log*
 /frontend/node
 /frontend/build
 
+# frontend test runner artifacts
+/frontend/playwright-report
+/frontend/test-results
+
 # superpowers subagent-driven-development scratch workspace
 /.superpowers/
