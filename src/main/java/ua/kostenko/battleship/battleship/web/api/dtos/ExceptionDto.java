@@ -26,4 +26,9 @@ public class ExceptionDto {
      * The error message of the exception.
      */
     private String errorMessage;
+
+    /**
+     * The stable, machine-readable error code identifying the exception type.
+     */
+    private String errorCode;
 }

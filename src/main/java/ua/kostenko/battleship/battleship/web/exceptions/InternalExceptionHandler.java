@@ -32,6 +32,7 @@ public class InternalExceptionHandler extends ResponseEntityExceptionHandler {
         var body = ExceptionDto.builder()
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .errorMessage(message)
+                .errorCode("INTERNAL")
                 .build();
         return handleExceptionInternal(ex, body, new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR, request);
     }

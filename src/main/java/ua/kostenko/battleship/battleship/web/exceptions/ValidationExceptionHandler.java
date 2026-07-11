@@ -39,7 +39,28 @@ public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {
         var body = ExceptionDto.builder()
                 .status(HttpStatus.BAD_REQUEST.value())
                 .errorMessage(message)
+                .errorCode(resolveErrorCode(ex))
                 .build();
         return handleExceptionInternal(ex, body, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+    }
+
+    /**
+     * Resolves the stable, machine-readable error code for a given validation-related exception.
+     *
+     * @param ex the runtime exception thrown during the game
+     * @return the stable error code associated with the exception's runtime type
+     */
+    private String resolveErrorCode(RuntimeException ex) {
+        return switch (ex) {
+            case GameCoordinateIsNotCorrectIncorrectException ignored -> "COORDINATE_INVALID";
+            case GameEditionIsNotCorrectException ignored -> "EDITION_INVALID";
+            case GamePlayerIdIsNotCorrectException ignored -> "PLAYER_ID_INVALID";
+            case GamePlayerNameIsNotCorrectException ignored -> "PLAYER_NAME_INVALID";
+            case GameSessionIdIsNotCorrectException ignored -> "SESSION_NOT_FOUND";
+            case GameShipDirectionIsNotCorrectException ignored -> "SHIP_DIRECTION_INVALID";
+            case GameShipIdIsNotCorrectException ignored -> "SHIP_ID_INVALID";
+            case GameStageIsNotCorrectException ignored -> "STAGE_INVALID";
+            default -> null;
+        };
     }
 }
