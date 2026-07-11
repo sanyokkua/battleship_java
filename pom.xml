@@ -18,6 +18,15 @@
 
     <properties>
         <java.version>25</java.version>
+        <!--
+          JaCoCo's `check` goal is bound to the `verify` phase, which Maven's default
+          lifecycle runs before `install`. Coverage does not yet meet the thresholds
+          below (see docs/redesign/artifacts/phase-2-coverage-gap-report.md), so the
+          check is skipped by default to keep `mvn test` / `mvn install` green during
+          Phase 2. Once Tasks 2-6 close the gaps, flip this default to false (or pass
+          -Djacoco.check.skip=false) so `mvn verify` enforces the thresholds.
+        -->
+        <jacoco.check.skip>true</jacoco.check.skip>
     </properties>
     <dependencies>
         <dependency>
@@ -129,6 +138,62 @@
                                     </includes>
                                 </resource>
                             </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.13</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${jacoco.check.skip}</skip>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <element>CLASS</element>
+                                    <includes>
+                                        <include>ua.kostenko.battleship.battleship.web.controllers.rest.*</include>
+                                        <include>ua.kostenko.battleship.battleship.web.exceptions.*</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>1.00</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
                         </configuration>
                     </execution>
                 </executions>
