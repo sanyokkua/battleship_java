@@ -296,4 +296,23 @@ public class FieldManagementImplTest {
 
         assertEquals(0, field.getNumberOfNotDestroyedShips());
     }
+
+    @Test
+    void makeShot_onAlreadyShotCell_returnsSameShotResultAndLeavesStateUnchanged() {
+        FieldManagementImpl field = new FieldManagementImpl();
+        field.addShip(Coordinate.of(0, 0), TEST_SHIP_HORIZONTAL_S1);
+
+        final ShotResult firstShotResult = field.makeShot(Coordinate.of(0, 0));
+        assertEquals(ShotResult.DESTROYED, firstShotResult);
+        final int undamagedCellsAfterFirstShot = field.getNumberOfUndamagedCells();
+        final int notDestroyedShipsAfterFirstShot = field.getNumberOfNotDestroyedShips();
+
+        final ShotResult secondShotResult = field.makeShot(Coordinate.of(0, 0));
+
+        assertEquals(firstShotResult, secondShotResult);
+        assertEquals(ShotResult.DESTROYED, secondShotResult);
+        assertTrue(field.getField()[0][0].hasShot());
+        assertEquals(undamagedCellsAfterFirstShot, field.getNumberOfUndamagedCells());
+        assertEquals(notDestroyedShipsAfterFirstShot, field.getNumberOfNotDestroyedShips());
+    }
 }
