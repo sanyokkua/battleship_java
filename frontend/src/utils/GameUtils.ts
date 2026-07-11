@@ -26,9 +26,9 @@ export async function loadInitialDataAsync(): Promise<InitialData> {
     const player = storage.loadPlayer();
     const stage = storage.loadStage();
 
-    let sessionIdToReturn = sessionId || null;
-    let playerToReturn = player || null;
-    let stageToReturn = stage || null;
+    const sessionIdToReturn = sessionId || null;
+    const playerToReturn = player || null;
+    const stageToReturn = stage || null;
 
     return {
         sessionId: sessionIdToReturn,
