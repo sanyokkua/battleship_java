@@ -3,6 +3,14 @@
 Captured on branch `feature/redesign-v2`, against the current (pre-redesign) backend as it exists
 on this branch. This is a capture-only phase — no production/game-logic code was modified.
 
+> **Update (Phase 1.1):** this document is a Phase 0 capture-in-time snapshot and is intentionally
+> left as-is below — it reflects what was true *before* the backend toolchain upgrade. The Swagger
+> UI 404 finding described in "Swagger UI is currently broken" was fixed in Phase 1.1: springdoc
+> was swapped to `springdoc-openapi-starter-webmvc-ui` 3.0.3, and `/swagger-ui/index.html` and
+> `/v3/api-docs` now both return 200. Node was also bumped to v24.18.0 (LTS) in the same phase. See
+> the "Phase 1.1" entry in `docs/redesign/IMPLEMENTATION_PLAN.md`'s Changelog / decisions section
+> for full details.
+
 ## 1. `mvn clean install`
 
 **Result: BUILD SUCCESS.** Full build including `frontend-maven-plugin` (Node 16.17.0 install +
@@ -51,6 +59,11 @@ Swagger/OpenAPI auto-configuration registers, so both `/swagger-ui.html`,
 pre-existing dependency-version mismatch, unrelated to the redesign work in this phase — logging
 it here rather than "fixing" it, per the hard invariant against touching `src/main` in this
 ticket.
+
+> **Fixed in Phase 1.1.** The springdoc dependency was swapped to
+> `springdoc-openapi-starter-webmvc-ui` 3.0.3 as part of the Java 25 / Spring Boot 4.1.0 upgrade;
+> `/swagger-ui/index.html` and `/v3/api-docs` now both return 200. See the "Phase 1.1" entry in
+> `docs/redesign/IMPLEMENTATION_PLAN.md`'s Changelog / decisions section for details.
 
 ## 3. `mvn test` (full suite)
 
@@ -112,3 +125,9 @@ No blockers. Build, smoke-check, and full test suite all green. One pre-existing
 issue found and documented (Swagger UI 404 due to a Spring Boot 2-era springdoc dependency) and
 one pre-existing engine behavior worth flagging for later phases (out-of-turn shot surfaces as a
 bare 500 instead of a structured 400). Neither was touched, per this phase's capture-only scope.
+
+**Update (Phase 1.1):** the Swagger UI 404 finding above has since been fixed as part of the
+backend toolchain upgrade (springdoc swapped to `springdoc-openapi-starter-webmvc-ui` 3.0.3;
+Node bumped to v24.18.0 LTS). The out-of-turn-shot bare-500 quirk was re-confirmed unchanged and
+remains untouched, per the frozen-logic invariant. See the "Phase 1.1" entry in
+`docs/redesign/IMPLEMENTATION_PLAN.md`'s Changelog / decisions section for the full details.
