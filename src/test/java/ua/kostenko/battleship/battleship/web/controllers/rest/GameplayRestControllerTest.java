@@ -31,11 +31,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * {@link org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest} coverage for
  * {@link GameplayRestController}. {@link GameControllerApi} is mocked so each test exercises only controller
- * wiring: request/path binding, response DTO shape (including the {@link
- * ua.kostenko.battleship.battleship.web.api.dtos.gameplay.ResponseGameplayStateDto#from} field-masking
- * pass-through), and the HTTP status + {@code errorCode} produced by {@link
+ * wiring: request/path binding, response DTO shape (including correct JSON serialization of {@link
+ * ua.kostenko.battleship.battleship.web.api.dtos.gameplay.ResponseGameplayStateDto#from} output, such as
+ * omitting a null {@code ship} field for a controller-supplied {@link Cell} that already arrives unmasked
+ * from the engine layer), and the HTTP status + {@code errorCode} produced by {@link
  * ua.kostenko.battleship.battleship.web.exceptions.ValidationExceptionHandler} for the validation/not-found
- * cases each endpoint's contract documents.
+ * cases each endpoint's contract documents. Note: ship-masking logic itself lives in {@code GameImpl}/{@code
+ * FieldManagementImpl} at the engine layer, which this {@code @WebMvcTest} slice mocks out entirely — it is
+ * not exercised or verified by this test class.
  * <p>
  * Also carries the out-of-turn-shot regression test for the {@link GamePlayerNotActiveException} fix: a shot
  * made by a non-active player must surface as HTTP 400 with {@code errorCode == "PLAYER_NOT_ACTIVE"}.
@@ -57,7 +60,7 @@ class GameplayRestControllerTest {
     // ---- GET /api/v2/game/sessions/{sessionId}/players/{playerId}/state ----
 
     @Test
-    void getGameStateForPlayer_returnsFullGameplayStateShape() throws Exception {
+    void getGameStateForPlayer_returnsFullGameplayStateJsonShapeWithNullShipOmitted() throws Exception {
         var visibleShip = Ship.builder()
                                .shipId("ship-1")
                                .shipType(ShipType.PATROL_BOAT)
@@ -70,7 +73,8 @@ class GameplayRestControllerTest {
                                                     .hasShot(false)
                                                     .isAvailable(false)
                                                     .build());
-        // opponent field: masked (unshot cell with a ship must be hidden -> ship=null, isAvailable=false)
+        // opponent field: cell constructed with ship=null, as it would already arrive from the engine layer
+        // after upstream masking (not performed by this test); verifies the DTO/JSON layer omits a null ship
         var opponentField = fieldWithSingleCell(Cell.builder()
                                                       .coordinate(Coordinate.of(0, 0))
                                                       .ship(null)
@@ -109,7 +113,9 @@ class GameplayRestControllerTest {
                .andExpect(jsonPath("$.isOpponentReady").value(true))
                .andExpect(jsonPath("$.opponentNumberOfAliveCells").value(18))
                .andExpect(jsonPath("$.opponentNumberOfAliveShips").value(9))
-               // masking edge case: opponent's unshot ship cell must not leak the ship in the JSON
+               // JSON shape: a Cell with ship=null (as this test hand-constructs it) must serialize with the
+               // ship field omitted, not null-valued; this checks DTO/Jackson serialization only, not the
+               // engine-layer masking logic that would normally produce such a cell for a real opponent field
                .andExpect(jsonPath("$.opponentField[0][0].ship").doesNotExist())
                .andExpect(jsonPath("$.opponentField[0][0].isAvailable").value(false))
                .andExpect(jsonPath("$.hasWinner").value(false))
