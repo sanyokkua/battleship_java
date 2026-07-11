@@ -14,10 +14,10 @@ new tests, so those tasks have a concrete, numbers-backed punch list instead of 
 | Metric | Missed | Covered | Total | Coverage % |
 |---|---|---|---|---|
 | Instructions | 192 | 3,160 | 3,352 | **94.27%** |
-| Branches | 19 | 148 | 167 | **88.02%** |
-| Lines | 25 | 263 | 288 | **91.32%** |
-| Methods | 6 | 179 | 185 | 96.76% |
-| Classes | 3 | 52 | — | — |
+| Branches | 19 | 148 | 167 | **88.62%** |
+| Lines | 36 | 793 | 829 | **95.66%** |
+| Methods | 6 | 173 | 179 | 96.65% |
+| Classes | 3 | 49 | 52 | 94.23% |
 
 52 classes analyzed. The bundle-wide instruction coverage (94.27%) is already well above
 the 80% bar this phase's `check` rule enforces — that rule is not where the risk is. The
@@ -41,20 +41,20 @@ controller tests existing yet.
 |---|---|---|---|---|
 | `battleship` (root) | 37.5% (3/8) | 33.3% (1/3) | 2 | `BattleshipApplication.main()` — not meaningfully testable/not a priority |
 | `logic.api` (`ValidationUtils`) | 100% | 100% | 0 | fully covered |
-| `logic.api.exceptions` | 87.5% (28/32) | 87.5% (14/16) | 2 | `GameInternalProblemException` itself: 0/2 lines (see §4) |
-| `logic.api.impl` | 83.6% (368/440) | 91.1% (116/130) | 16 | `GameControllerApiImpl` catch-block/error paths under-tested |
-| `logic.engine` | 96.1% (1232/1282) | 99.4% (331/333) | 2 | `GameImpl`/`FieldManagementImpl`/`Game` — near-complete |
-| `logic.engine.config` | 92.4% (180/195) | 96.7% (29/30) | 1 | see dead-code note, §5 |
+| `logic.api.exceptions` | 77.8% (28/36) | 77.8% (14/18) | 4 | `GameInternalProblemException` (0/2 lines) and `GameStageIsNotCorrectException` (0/2 lines) are the uncovered classes (see §4) |
+| `logic.api.impl` | 83.4% (368/441) | 87.9% (116/132) | 16 | `GameControllerApiImpl` catch-block/error paths under-tested |
+| `logic.engine` | 95.8% (1232/1286) | 99.4% (331/333) | 2 | `GameImpl`/`FieldManagementImpl`/`Game` — near-complete |
+| `logic.engine.config` | 93.8% (180/192) | 96.7% (29/30) | 1 | see dead-code note, §5 |
 | `logic.engine.models`, `.enums`, `.records` | 100% | 100% | 0 | fully covered |
-| `logic.engine.utils` | 98.2% (448/456) | 97.6% (82/84) | 2 | near-complete |
+| `logic.engine.utils` | 98.3% (451/459) | 97.7% (84/86) | 2 | near-complete |
 | `logic.persistence` | 100% | 100% | 0 | fully covered |
 | `web.api` (`ControllerUtils`) | 100% | 100% | 0 | fully covered |
 | `web.api.dtos`, `.entities`, `.gameplay` | 100% | 100% | 0 | fully covered (simple DTOs) |
-| `web.api.dtos.preparation` | 61.3% (26/37) | 63.6% (7/11) | 4 | `ResponseShipsNotOnTheBoard` (0/3 lines) is the gap |
+| `web.api.dtos.preparation` | 70.3% (26/37) | 70.0% (7/10) | 3 | `ResponseShipsNotOnTheBoard` (0/3 lines) is the gap |
 | `web.config` (`BeansConfiguration`) | 100% | 100% | 0 | fully covered |
 | `web.controllers` (`IndexController`) | 100% | 100% | 0 | fully covered |
 | **`web.controllers.rest`** | **100% (215/215)** | **100% (65/65)** | **0** | See §3 — covered only incidentally |
-| **`web.exceptions`** | **55.9% (27/48)** | **70.0% (14/20)** | **6** | See §3 — the real gap |
+| **`web.exceptions`** | **56.2% (27/48)** | **57.1% (8/14)** | **6** | See §3 — the real gap |
 
 ## 3. `web.controllers.rest.*` and `web.exceptions.*` in detail
 
@@ -79,7 +79,7 @@ today, but the *coverage that matters* (edge cases, error responses, request val
 failures at the controller boundary) is untested. This is exactly what Tasks 2-3 are meant
 to close with real MockMvc/`@WebMvcTest` or slice tests.
 
-### `web.exceptions` — currently 55.9% instruction / 70.0% line coverage (fails the 100% gate)
+### `web.exceptions` — currently 56.2% instruction / 57.1% line coverage (fails the 100% gate)
 
 | Class | Instructions | Lines |
 |---|---|---|
@@ -150,7 +150,7 @@ switches in scope for this phase (checked `logic.engine.config`, `web.controller
   the `GameInternalProblemException` path to assert correct HTTP status + `ExceptionDto` body.
 - **Task 4** — Engine/edge-case top-ups where this report shows gaps: `logic.persistence`
   eviction paths, `logic.engine.config` editions, `logic.engine.utils` coordinate/ship utils
-  (currently 97.6-98.2%, a handful of missed lines each per §2).
+  (currently 97.7-98.3%, a handful of missed lines each per §2).
 - **Task 5 / Task 6** — (per the plan's remaining Phase 2 tickets) further top-up and the
   final `mvn clean verify` gate validation — flipping `jacoco.check.skip` to `false` (or
   removing the property) once `web.controllers.rest.*` and `web.exceptions.*` both hit 100%
