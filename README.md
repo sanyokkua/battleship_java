@@ -32,36 +32,26 @@ In the ***src*** folder can be found backend code written using Java + Spring Bo
 In order to build deployable JAR file were used maven plugins to copy UI resources from fronted project to the build of
 the java project.
 
-API endpoints created for UI:
+## API endpoints
 
-By [this link](http://localhost:8080/swagger-ui/index.html) on the running spring-boot app can be found Swagger-UI with
-the description of the API.
+The backend exposes 12 REST endpoints across 3 controllers (session/common, preparation, gameplay)
+under `/api/v2/game`. By [this link](http://localhost:8080/swagger-ui.html) on the running
+spring-boot app can be found Swagger-UI with the full interactive description of the API. For the
+complete endpoint table (verbs, paths, request/response DTOs, trigger semantics), see
+[docs/index.md §3 Entry Points](docs/index.md#3-entry-points-inputs).
 
-Below - you can find a short description of the endpoints.
+## Documentation
 
-### game-session-common-rest-controller:
+Full documentation of the current system lives in [`docs/`](docs/):
 
-- **POST** - /api/v2/game/sessions
-- **POST** - /api/v2/game/sessions/{sessionId}/players
-- **GET** - /api/v2/game/sessions/{sessionId}/state
-- **GET** - /api/v2/game/sessions/{sessionId}/changesTime
-- **GET** - /api/v2/game/editions
+- **[docs/index.md](docs/index.md)** — architecture, REST API, business logic (game engine rules,
+  state machine), data contracts, configuration, and how to run.
+- **[docs/architecture.md](docs/architecture.md)** — the `GameStage` state diagram, two sequence
+  diagrams (session setup, gameplay loop), and a game-edition comparison.
 
-### preparation-rest-controller:
-
-- **PUT** - /api/v2/game/sessions/{sessionId}/players/{playerId}/ships/{shipId}
-- **POST** - /api/v2/game/sessions/{sessionId}/players/{playerId}/start
-- **GET** - /api/v2/game/sessions/{sessionId}/players/{playerId}/preparationState
-- **GET** - /api/v2/game/sessions/{sessionId}/players/{playerId}/opponent
-- **DELETE** - /api/v2/game/sessions/{sessionId}/players/{playerId}/ships
-
-### game-session-common-rest-controller:
-
-- **POST** - /api/v2/game/sessions
-- **POST** - /api/v2/game/sessions/{sessionId}/players
-- **GET** - /api/v2/game/sessions/{sessionId}/state
-- **GET** - /api/v2/game/sessions/{sessionId}/changesTime
-- **GET** - /api/v2/game/editions
+For the in-progress v2 modernization (new frontend stack, Java/Spring Boot version bump), see
+[`docs/redesign/README.md`](docs/redesign/README.md) — a separate, frozen plan, not yet
+implemented on `master`.
 
 ## How to build and start
 
@@ -108,6 +98,8 @@ on **[localhost:8080](localhost:8080)**
 mvn clean install && mvn spring-boot:run
 ```
 
-## TODO:
+## Known Gaps
 
-- Review test cases
+See [docs/index.md §13 Additional Notes](docs/index.md#13-additional-notes) for the full,
+verified list (missing REST-controller integration tests, no frontend tests, non-thread-safe
+in-memory persistence, no CORS config, etc.).
