@@ -1,12 +1,12 @@
 ---
 description: Bootstrap a redesign phase using the plan-mode orchestrator prompt in docs/redesign/PHASE_BOOTSTRAP_PROMPT.md
-argument-hint: <phase-number>
+argument-hint: <phase-number: 0-11>
 ---
 
-Phase argument: $1
+Phase argument: $ARGUMENTS
 
-1. Read `docs/redesign/IMPLEMENTATION_PLAN.md`. Find the heading matching `## Phase $1 — ...` and extract its full title text — that is the PHASE value.
-   - If `$1` is empty, not a number, or no matching phase heading exists (valid range: 1–11), STOP: list the 11 phases from `docs/redesign/README.md` ("The 11 phases (execution order)") and ask the user which one to bootstrap. Do not guess.
+1. Read `docs/redesign/IMPLEMENTATION_PLAN.md`. Find the heading matching `## Phase $ARGUMENTS — ...` and extract its full title text — that is the PHASE value.
+   - If `$ARGUMENTS` is empty, not a number, or no matching phase heading exists (valid range: 0–11), STOP: list Phase 0 plus the 11 ordered phases from `docs/redesign/README.md` ("The 11 phases (execution order)") and ask the user which one to bootstrap. Do not guess.
 2. Read `docs/redesign/PHASE_BOOTSTRAP_PROMPT.md` in full.
 3. If not already in plan mode, enter plan mode now (this mirrors the source prompt's "Operate in PLAN MODE. Do NOT modify code or write files yet.").
 4. Follow the ROLE/prompt block from PHASE_BOOTSTRAP_PROMPT.md exactly, with `PHASE` set to the title extracted in step 1. That means, in order:
