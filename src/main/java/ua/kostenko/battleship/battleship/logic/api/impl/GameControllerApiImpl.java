@@ -7,10 +7,12 @@ import ua.kostenko.battleship.battleship.logic.api.GameControllerApi;
 import ua.kostenko.battleship.battleship.logic.api.IdGenerator;
 import ua.kostenko.battleship.battleship.logic.api.ValidationUtils;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameInternalProblemException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GamePlayerNotActiveException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameSessionIdIsNotCorrectException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipIdIsNotCorrectException;
 import ua.kostenko.battleship.battleship.logic.engine.Game;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEdition;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.PlayerNotActiveException;
 import ua.kostenko.battleship.battleship.logic.engine.models.GameplayState;
 import ua.kostenko.battleship.battleship.logic.engine.models.OpponentInfo;
 import ua.kostenko.battleship.battleship.logic.engine.models.Player;
@@ -263,6 +265,8 @@ public class GameControllerApiImpl implements GameControllerApi {
             val shotResult = game.makeShot(playerId, coordinate);
             saveGame(game);
             return shotResult;
+        } catch (PlayerNotActiveException ex) {
+            throw new GamePlayerNotActiveException(ex.getMessage());
         } catch (IllegalArgumentException | IllegalStateException ex) {
             throw new GameInternalProblemException(ex.getMessage());
         }

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEdition;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEditionConfiguration;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.PlayerNotActiveException;
 import ua.kostenko.battleship.battleship.logic.engine.models.Player;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.GameStage;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.ShipDirection;
@@ -373,7 +374,7 @@ public class GameImplTest {
 
         game.makeShot(player1.getPlayerId(), Coordinate.of(1, 0));
 
-        assertThrows(IllegalStateException.class, () -> game.makeShot(player1.getPlayerId(), Coordinate.of(1, 1)));
+        assertThrows(PlayerNotActiveException.class, () -> game.makeShot(player1.getPlayerId(), Coordinate.of(1, 1)));
 
         game.makeShot(player2.getPlayerId(), Coordinate.of(1, 0));
 

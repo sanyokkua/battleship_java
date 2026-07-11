@@ -2,6 +2,7 @@ package ua.kostenko.battleship.battleship.logic.engine;
 
 import lombok.extern.log4j.Log4j2;
 import lombok.val;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.PlayerNotActiveException;
 import ua.kostenko.battleship.battleship.logic.engine.models.Player;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.GameStage;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.ShotResult;
@@ -197,7 +198,7 @@ public class GameImpl implements Game {
         val player = getPlayer(currentPlayerId);
 
         if (!player.isActive()) {
-            throw new IllegalStateException("Player is not active to make a shot");
+            throw new PlayerNotActiveException("Player is not active to make a shot");
         }
 
         val opponent = getOpponent(currentPlayerId);

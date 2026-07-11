@@ -30,6 +30,7 @@ public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {
             GameEditionIsNotCorrectException.class,
             GamePlayerIdIsNotCorrectException.class,
             GamePlayerNameIsNotCorrectException.class,
+            GamePlayerNotActiveException.class,
             GameSessionIdIsNotCorrectException.class,
             GameShipDirectionIsNotCorrectException.class,
             GameShipIdIsNotCorrectException.class,
@@ -56,11 +57,14 @@ public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {
             case GameEditionIsNotCorrectException ignored -> "EDITION_INVALID";
             case GamePlayerIdIsNotCorrectException ignored -> "PLAYER_ID_INVALID";
             case GamePlayerNameIsNotCorrectException ignored -> "PLAYER_NAME_INVALID";
+            case GamePlayerNotActiveException ignored -> "PLAYER_NOT_ACTIVE";
             case GameSessionIdIsNotCorrectException ignored -> "SESSION_NOT_FOUND";
             case GameShipDirectionIsNotCorrectException ignored -> "SHIP_DIRECTION_INVALID";
             case GameShipIdIsNotCorrectException ignored -> "SHIP_ID_INVALID";
             case GameStageIsNotCorrectException ignored -> "STAGE_INVALID";
-            default -> null;
+            default -> throw new IllegalStateException(
+                    "Unmapped exception type for error code resolution: %s".formatted(ex.getClass()
+                            .getName()));
         };
     }
 }
