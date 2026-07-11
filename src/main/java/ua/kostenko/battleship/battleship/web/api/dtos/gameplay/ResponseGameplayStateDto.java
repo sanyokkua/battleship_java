@@ -31,13 +31,13 @@ public class ResponseGameplayStateDto {
      * Indicates whether the player is currently active.
      */
     @JsonProperty("isPlayerActive")
-    private boolean isPlayerActive;
+    private boolean playerActive;
 
     /**
      * Indicates whether the player is the winner.
      */
     @JsonProperty("isPlayerWinner")
-    private boolean isPlayerWinner;
+    private boolean playerWinner;
 
     /**
      * The number of alive cells for the player.
@@ -63,7 +63,7 @@ public class ResponseGameplayStateDto {
      * Indicates whether the opponent is ready.
      */
     @JsonProperty("isOpponentReady")
-    private boolean isOpponentReady;
+    private boolean opponentReady;
 
     /**
      * The number of alive cells for the opponent.
@@ -101,13 +101,13 @@ public class ResponseGameplayStateDto {
         val opponentField = ControllerUtils.mapFieldToFieldDto(gameplayState.getOpponentField());
         return ResponseGameplayStateDto.builder()
                 .playerName(gameplayState.getPlayerName())
-                .isPlayerActive(gameplayState.isPlayerActive())
-                .isPlayerWinner(gameplayState.isPlayerWinner())
+                .playerActive(gameplayState.isPlayerActive())
+                .playerWinner(gameplayState.isPlayerWinner())
                 .playerNumberOfAliveCells(gameplayState.getPlayerNumberOfAliveCells())
                 .playerNumberOfAliveShips(gameplayState.getPlayerNumberOfAliveShips())
                 .playerField(playerField)
                 .opponentName(gameplayState.getOpponentName())
-                .isOpponentReady(gameplayState.isOpponentReady())
+                .opponentReady(gameplayState.isOpponentReady())
                 .opponentNumberOfAliveCells(gameplayState.getOpponentNumberOfAliveCells())
                 .opponentNumberOfAliveShips(gameplayState.getOpponentNumberOfAliveShips())
                 .opponentField(opponentField)

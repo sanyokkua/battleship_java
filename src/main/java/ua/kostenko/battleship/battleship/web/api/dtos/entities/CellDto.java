@@ -44,7 +44,7 @@ public class CellDto {
      * Indicates whether the cell is available for placing a ship.
      */
     @JsonProperty("isAvailable")
-    private boolean isAvailable;
+    private boolean available;
 
     /**
      * Creates a CellDto object from a Cell object.
@@ -59,7 +59,7 @@ public class CellDto {
                 .col(coordinate.column())
                 .ship(cell.ship())
                 .hasShot(cell.hasShot())
-                .isAvailable(cell.isAvailable())
+                .available(cell.isAvailable())
                 .build();
     }
 }
