@@ -50,3 +50,12 @@ Backend tests (JUnit 5 + Mockito + AssertJ + MockMvc via `spring-boot-starter-te
 Target stack per the spec: Java 25 + Spring Boot 4.1.0, Vite + React 19 + TypeScript 5 (replacing CRA), a custom CSS design system (dropping Bootstrap), function components + hooks, Vitest + React Testing Library + Playwright for frontend tests, Docker/Podman packaging on `eclipse-temurin:25-jre`. Explicitly out of scope: no WebSockets/SSE, no new gameplay features, no database, no change to the existing polling model.
 
 `docs/redesign/PHASE_BOOTSTRAP_PROMPT.md` is a reusable plan-mode prompt for starting any one of the 11 phases — use it as the template when picking up redesign work.
+
+## Available Claude Code skills
+
+Two project-scoped skills are installed under `.claude/skills/`:
+
+- **project-navigator** — read-only fast orientation (stack, structure, entry points, config, how pieces connect). Use at the start of any session needing a refresher, or when asked "what is this project" / "where does X live" / "how do I run this."
+- **project-documentation** — generates committed docs (`docs/index.md`, optional `docs/architecture.md`, `docs/diagrams/`) and updates `README.md`, or a scratch `.agent-docs/` folder. Use when asked to "document this project" or "write architecture docs." **Never** targets or overwrites `docs/redesign/` — that folder is the frozen v2 spec described above, not general project documentation.
+
+Both are self-contained (bundled reference docs, scripts, templates) and read-only/non-destructive except for their own documented output paths.
