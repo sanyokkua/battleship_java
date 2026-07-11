@@ -1,6 +1,7 @@
 # Battleship — Redesign & Modernization Specification
 
-**Status:** v2 · **Date:** 2026-07-10 · **Owner:** Oleksandr (sanyokkua)
+**Status:** v3 · **Date:** 2026-07-11 · **Owner:** Oleksandr (sanyokkua)
+**v3 changes:** aligned to current codebase (branch `feature/redesign-v2`, docs `docs/index.md` + `docs/architecture.md`); made game-mode (edition) selection explicit; specified the no-go moat + two-way ship removal in Preparation; added a notifications/dialogs/validation system (§8.7); added English+Ukrainian internationalization (§8.8) with one small additive backend field (`errorCode`).
 
 This is the **mini-specification**: the authoritative description of *what* changes, *what does not*, how the new UI looks and behaves, which dependencies to update/install/remove, how to structure and style the frontend, how it connects to the backend, and the acceptance criteria. The companion documents are:
 
@@ -34,12 +35,14 @@ This is the **mini-specification**: the authoritative description of *what* chan
 - Frontend rebuild: Adapter layer + Widget layer + design system, matching `MOCKUP.html`.
 - Frontend automated tests (unit, component/UI with a mock adapter, Playwright e2e mocked + live).
 - Dockerfile + docker-compose, verified on Docker and Podman.
+- **Internationalization (added v3):** ship the UI in **English (default)** and **Ukrainian**, switchable at runtime (§8.8). All user-facing text — labels, buttons, notifications, validation messages, edition/ship names — must be localizable, with no hard-coded strings in components.
+- **Richer UI feedback (added v3):** an explicit notifications/dialogs/validation system (§8.7).
 - Documentation updates (`README.md`, this folder).
 
 ### 2.2 Out of scope (do NOT implement)
-- **No change to the backend REST API surface** — paths, verbs, request bodies, response DTOs, and status codes remain identical (§6).
+- **Backend REST API is change-controlled, not fully frozen (relaxed in v3).** No *breaking* changes to existing paths, verbs, request bodies, response DTOs, or status codes. **Additive, backwards-compatible changes are allowed only where required to deliver a better frontend** — specifically the i18n `errorCode` field (§8.8.4). Any such change must be documented here and covered by tests. Everything else about the API stays as-is.
 - **No change to game rules/engine logic.** The engine may only be *modified* if Phase 2 testing reveals a genuine bug; such a change must be documented and covered by a regression test.
-- **No new gameplay features**: no WebSockets/SSE, no password protection, no share-links, no ship auto-place, no multi-instance/scaling, no database. Storage stays **in-memory, single instance**.
+- **No new gameplay features**: no WebSockets/SSE, no password protection, no share-links, no ship auto-place, no multi-instance/scaling, no database. Storage stays **in-memory, single instance**. (Localization and richer UI feedback are UI capabilities, not gameplay features, and are in scope.)
 - **No change to the polling model.** The frontend keeps polling the existing endpoints (redesigned UI, same mechanism, encapsulated behind the adapter).
 
 ### 2.3 Confirmed decisions
@@ -51,6 +54,8 @@ This is the **mini-specification**: the authoritative description of *what* chan
 | Backend access | **Adapter (port/interface) + implementations** | One "expectation" of the backend; widgets are transport-agnostic and testable with a mock adapter. |
 | Test runner (FE) | **Vitest + React Testing Library**; **Playwright** for e2e | Native Vite integration; mock-adapter-based UI tests; Playwright for browser e2e. |
 | Runtime image | **eclipse-temurin:25-jre** (multi-stage build) | Official, current, small runtime. |
+| i18n (added v3) | **react-i18next + i18next** (+ `i18next-browser-languagedetector`) | De-facto standard, lightweight, supports interpolation/plurals, JSON resource bundles, persisted language detection. |
+| Error localization (added v3) | **Additive `errorCode` on `ExceptionDto`** | Lets the frontend show localized error text keyed by a stable code instead of the backend's English `errorMessage`. |
 
 ---
 
@@ -118,6 +123,7 @@ This is the **mini-specification**: the authoritative description of *what* chan
 | Update | `frontend-maven-plugin` | 1.12.1 → latest; Node v16 → **Node 24 LTS** |
 | Keep | `spring-boot-starter-web`, `-thymeleaf`, `-test`, `lombok`, `devtools` | (versions managed by Boot 4.1) |
 | Add (later, Phase 2 if needed) | test helpers (e.g. `spring-boot-starter-test` already provides JUnit 5, Mockito, MockMvc, AssertJ) | — |
+| Modify (additive, v3) | `ExceptionDto` → add `errorCode` field + set it in the two exception handlers | For i18n error text (§8.8.4). No new dependency; no route/status change. |
 
 ### 5.2 Frontend (package.json)
 | Action | Package | Notes |
@@ -132,13 +138,14 @@ This is the **mini-specification**: the authoritative description of *what* chan
 | Install | `vite`, `@vitejs/plugin-react` | build tool |
 | Install | `vitest`, `@testing-library/react`, `@testing-library/jest-dom`, `@testing-library/user-event`, `jsdom` | unit/component tests |
 | Install | `@playwright/test` | e2e (mocked + live) |
+| Install (v3) | `i18next`, `react-i18next`, `i18next-browser-languagedetector` | localization (en/uk) — §8.8 |
 | Install (dev) | `@types/react`, `@types/react-dom`, eslint + config | typings/lint |
 
 ---
 
-## 6. Frozen backend API (reference — MUST NOT change)
+## 6. Backend API (reference — no breaking changes; one additive field allowed)
 
-Base path `/api/v2/game`. The frontend adapter maps 1:1 to these.
+Base path `/api/v2/game`. The frontend adapter maps 1:1 to these. The **only** permitted change is the additive `errorCode` on `ExceptionDto` (§8.8.4) — no path/verb/status/existing-field changes.
 
 | Purpose | Method & path | Body |
 |---|---|---|
@@ -156,7 +163,8 @@ Base path `/api/v2/game`. The frontend adapter maps 1:1 to these.
 | Make shot | `POST /sessions/{sessionId}/players/{playerId}/field/shot` | `{row,col}` |
 
 **Stages:** `INITIALIZED`, `WAITING_FOR_PLAYERS`, `PREPARATION`, `IN_GAME`, `FINISHED`.
-**Key DTOs (unchanged):** `CellDto{row,col,ship,hasShot,isAvailable}`, `ShipDto{shipId,shipSize}`, `ResponseGameplayStateDto{playerName,isPlayerActive,isPlayerWinner,playerNumberOfAliveCells,playerNumberOfAliveShips,playerField,opponentName,isOpponentReady,opponentNumberOfAliveCells,opponentNumberOfAliveShips,opponentField,hasWinner,winnerPlayerName}`, `ResponsePreparationState{ships,field}`, `ResponseOpponentInformationDto{playerName,ready}`.
+**Editions ("game modes"):** `GET /editions` returns raw enum names `["UKRAINIAN","MILTON_BRADLEY"]`. Both are 10×10 with **10 ships**; they differ only in ship-size distribution — Ukrainian: Patrol×4 (size 1), Submarine×3 (2), Destroyer×2 (3), Battleship×1 (4) = 20 cells; Milton Bradley: Submarine×4 (2), Destroyer×3 (3), Battleship×2 (4), Carrier×1 (5) = 30 cells. The frontend maps enum → localized label (§8.8).
+**Key DTOs (unchanged except `ExceptionDto`):** `CellDto{row,col,ship,hasShot,isAvailable}` — `isAvailable=false` on occupied cells **and on the 8-neighbour "no-go" moat** around any placed ship (drives the blocked-cell rendering in §8.3/§8.5). `ShipDto{shipId,shipSize}`; `ResponseGameplayStateDto{playerName,isPlayerActive,isPlayerWinner,playerNumberOfAliveCells,playerNumberOfAliveShips,playerField,opponentName,isOpponentReady,opponentNumberOfAliveCells,opponentNumberOfAliveShips,opponentField,hasWinner,winnerPlayerName}`; `ResponsePreparationState{ships,field}`; `ResponseOpponentInformationDto{playerName,ready}`; **`ExceptionDto{status,errorMessage,errorCode?}`** (`errorCode` additive, v3).
 
 ---
 
@@ -210,42 +218,67 @@ Port these CSS variables as the base (values from the mockup):
 - **Type:** system stack; title 24–30px, body 14.5–16px, labels 13.5px.
 
 ### 8.2 Cell state colors (semantic, used everywhere)
-| State | Appearance |
-|---|---|
-| Water (untouched) | `--water` fill, `--water-line` border |
-| Your ship | navy/sea gradient (`--ship`→`--sea`) |
-| Valid drop (prep) | light green fill, dashed `--ok` border |
-| Blocked (prep) | muted grey, not interactive |
-| Hit | red (`--hit`) with ✕ |
-| Miss | white with small grey dot (`--miss`) |
-| Sunk | dark red (`--sunk`) |
+| State | When | Appearance |
+|---|---|---|
+| Water (untouched) | `hasShot=false`, no ship (opponent view) or empty own cell | `--water` fill, `--water-line` border |
+| Your ship | own cell with `ship` | navy/sea gradient (`--ship`→`--sea`) |
+| Valid drop (prep) | hovered/selected placement is legal | light green fill, dashed `--ok` border (`ghost`) |
+| **No-go / blocked (prep)** | `isAvailable=false` && no ship — the 8-neighbour moat around a placed ship | **hatched grey** (repeating diagonal stripes), not interactive |
+| Hit | `hasShot=true` && ship, ship not fully sunk | red (`--hit`) with ✕ |
+| Miss | `hasShot=true` && no ship | white with small grey dot (`--miss`) |
+| Sunk | every cell of the ship hit | dark red (`--sunk`); the auto-revealed moat around it shows as misses |
 
 ### 8.3 Screen-by-screen (bind only to real DTO fields)
 1. **Home** — hero + primary "New Game", secondary "Join Game".
-2. **New Game** — edition `Select` (from `GET /editions`), name `Input`, submit → create session + player; keep name validation.
-3. **Join Game** — name + Game ID inputs; keep 36-char UUID validation; submit → join.
-4. **Wait** — greeting (`Hello, {name}!`), `StepTracker` (Create→Waiting→Prepare→Battle), Game ID box + Copy button (raw session UUID), animated "waiting" indicator; poll opponent every 3s → go to Preparation when both present.
+2. **New Game — game-mode (edition) selection is a first-class step.** Render the editions from `GET /editions` as **selectable mode cards** (not a bare dropdown), each showing the localized edition name, a one-line description, and the ship-size makeup (Ukrainian: 10 ships, sizes 1–4, 20 cells; Milton Bradley: 10 ships, sizes 2–5, 30 cells). A `Select` is an acceptable fallback but the cards are the target. Below: name `Input`, submit → create session + player. Keep name validation (≥2 chars) with an **inline field error** (§8.7).
+3. **Join Game** — name + Game ID inputs; keep 36-char UUID validation with inline validity feedback; submit → join.
+4. **Wait** — greeting (`Hello, {name}!`), `StepTracker` (Create→Waiting→Prepare→Battle), Game ID box + Copy button (raw session UUID) with a **"copied" toast**, animated "waiting" indicator; poll opponent every 3s → go to Preparation when both present.
 5. **Loading** — top `LoadingBar` + centered anchor; reused wherever a fetch is in flight (replaces old spinner/progress).
-6. **Preparation** — `ShipTray` (named ships + sizes), **inline `DirectionToggle` (Horizontal/Vertical)** replacing the modal, `Board` with valid-drop highlight + tap-to-place / tap-to-remove, opponent status `Pill`, "Ready to go!" button, error `Toast`. Calls: `getPreparationState`, `addShip`, `removeShip`, `setReady`.
-7. **Gameplay** — two `PlayerCard`s (cells health from `*NumberOfAliveCells` 0–100, ships from `*NumberOfAliveShips`), `TurnBanner` from `isPlayerActive`, **adaptive boards**: Target = opponent field (tap to `shoot`), Fleet = own field (read-only). Keep 5s poll; redirect to Results when `hasWinner`.
-8. **Results** — win/lose hero from `isPlayerWinner`/`winnerPlayerName`, both boards read-only (hits/misses/ships), "Return to main menu". Show only API-backed stats.
+6. **Preparation** — `ShipTray` (localized ship **names** + sizes), **inline `DirectionToggle` (Horizontal/Vertical)** replacing the old modal, `Board` showing water / placed ships / **valid-drop ghost** / **no-go moat** (from `isAvailable`), opponent status `Pill`. **Ship removal must be obvious and offered two ways:** (a) tap any placed ship on the board, and (b) a **✕ remove button** on each placed ship in the tray. Both call `removeShip(coordinate)` (the tray button uses a coordinate belonging to that ship from `preparationState.field`). A short helper line states both the placement and removal gestures. On a rejected placement → **error toast** ("ships can't touch"); on success → optional success toast. "Ready to go!" is enabled only when all ships are placed; note that removing a ship server-side resets `ready` (§ engine), so the UI must reflect that. Calls: `getPreparationState`, `addShip`, `removeShip`, `setReady`.
+7. **Gameplay** — two `PlayerCard`s (cells health from `*NumberOfAliveCells` 0–100, ships from `*NumberOfAliveShips`), `TurnBanner` from `isPlayerActive`, **adaptive boards**: Target = opponent field (tap to `shoot`), Fleet = own field (read-only). Feedback: **"not your turn" info toast** if the player taps while inactive; **hit/miss/sunk** reflected on the board and optionally as a toast. Keep 5s poll; redirect to Results when `hasWinner`.
+8. **Results** — win/lose hero from `isPlayerWinner`/`winnerPlayerName`, both boards read-only (hits/misses/ships), "Return to main menu". Show only API-backed stats (Ships sunk = edition total − `numberOfAliveShips`).
+
+*(The mockup's "Feedback" chip is a component catalog, not a routed screen — it documents toasts, inline validation, and the confirmation dialog per §8.7.)*
 
 ### 8.4 Adaptivity / responsive rules
 - **Breakpoint:** mobile ≤ **640px**, desktop ≥ **641px** (demoed in the mockup toggle).
-- **Mobile:** single column; `AppBar` collapses to a hamburger; gameplay/results boards use a **tab switch** (Target ↔ Fleet) instead of stacking; forms full-width; touch targets ≥ **44px**.
-- **Desktop:** multi-column; inline `AppBar` nav; gameplay/results boards **side-by-side**; preparation shows tray + board in two columns.
+- **Mobile:** single column; `AppBar` collapses to a hamburger (the **language switch stays reachable**); gameplay/results boards use a **tab switch** (Target ↔ Fleet) instead of stacking; preparation stacks tray above board; forms full-width; touch targets ≥ **44px**.
+- **Desktop:** multi-column; inline `AppBar` nav + language switch; gameplay/results boards **side-by-side**; preparation shows tray + board in two columns.
 - **Board sizing:** the `Board` is a square CSS grid that **fills its container width** (`width:100%`, `aspect-ratio:1/1`) with coordinate rails (A–J columns, 1–10 rows).
 - Content max-widths keep forms readable on large screens (~440–460px form column).
 
 ### 8.5 Excluded mockup elements (NOT API-backed — do not build)
-- **"Auto-place remaining"** button (Preparation) — no endpoint. Omit.
-- **Results "Hits" and "Time"** stats — not tracked by the API. Omit. "Ships sunk" only if derivable (edition total − `numberOfAliveShips`).
+- **"Auto-place remaining"** button — no endpoint. Omit. (Removed from the mockup in v3.)
+- **Results "Hits" and "Time"** stats — not tracked by the API. Omit. Only **"Ships sunk"** is shown (derived: edition total − `numberOfAliveShips`).
 - Any share-link / password / realtime affordance — deferred, out of scope.
 
 ### 8.6 Accessibility
-- Keyboard operable; visible focus rings on all interactive elements.
-- `aria-label`s on icon-only controls (hamburger, copy) and on board cells (include coordinate + state).
-- Color-contrast AA for text and for cell states (don't rely on color alone — hit uses ✕, miss uses a dot).
+- Keyboard operable; visible focus rings on all interactive elements; the language switch and mode cards are real buttons/radios.
+- `aria-label`s on icon-only controls (hamburger, copy, tray remove ✕) and on board cells (include coordinate + state, e.g. "C7, hit"). Toasts use an ARIA live region; the confirmation dialog is a focus-trapped `role="dialog"`.
+- Color-contrast AA for text and cell states (don't rely on color alone — hit uses ✕, miss uses a dot, no-go uses a hatch).
+
+### 8.7 Notifications & user feedback (new in v3)
+Every state change and user action must produce visible feedback. Build a small feedback system (see the mockup's **Feedback** catalog):
+
+- **Toasts** — transient, auto-dismiss, ARIA-live, four variants:
+  - *success* (ship placed, Game ID copied, you ready),
+  - *info* (not your turn, waiting for opponent, opponent is ready),
+  - *warning/hit* (direct hit / ship sunk),
+  - *error* (invalid placement, ship can't touch, join failed, session not found, action in wrong stage).
+- **Inline validation** — field-level errors under inputs (name too short, malformed Game ID), shown on blur/submit; submit disabled until valid.
+- **Confirmation dialog** — focus-trapped modal for destructive/irreversible actions (e.g. "Leave this game?" — the game is in-memory and can't be resumed). Cancel + confirm actions.
+- **Status surfaces** — `TurnBanner`, opponent-status `Pill`, `StepTracker`, and the loading bar convey ambient state without a toast.
+- **Error mapping** — every toast/error message is keyed by a stable identifier and localized (§8.8); the frontend derives the key from `ExceptionDto.errorCode` (preferred) or, as a fallback, from the HTTP status + the action context. Never render the backend's raw English `errorMessage` to the user (keep it for logs).
+
+**Notification catalog (message keys → trigger):** `ship.placed` (200 add), `ship.removed` (200 delete), `place.tooClose`/`place.outOfBounds`/`place.occupied` (coordinate 400), `ready.needAllShips` (start in wrong state), `shot.hit`/`shot.miss`/`shot.sunk` (shot result), `turn.notYours` (tap while inactive), `id.copied`, `join.invalidId`, `session.notFound`, `error.generic` (500). Each key has en + uk text.
+
+### 8.8 Internationalization (new in v3)
+- **Languages:** English (`en`, default/fallback) and Ukrainian (`uk`). Architecture must make adding a third language a matter of adding one resource file.
+- **Library:** `react-i18next` + `i18next` + `i18next-browser-languagedetector`. Resource bundles as JSON namespaces (e.g. `common`, `screens`, `notifications`, `errors`) under `src/i18n/{en,uk}/`.
+- **Coverage:** *all* user-facing text is localized — screen copy, buttons, labels, placeholders, `StepTracker`/tab labels, notifications & validation (§8.7), the confirmation dialog, and **derived display names** for editions (`UKRAINIAN`→"Ukrainian"/"Українська") and ship types (`CARRIER`→"Carrier"/"Авіаносець", etc.). No literal user-facing string may live in a component.
+- **Language selector:** a control in the `AppBar` (EN / УКР), reachable on mobile too; selection persists (localStorage via the language detector) and applies instantly without reload; default English on first visit.
+- **Formatting:** use i18next interpolation for dynamic values (`{{name}}`, counts). Use ICU/plural rules for count-bearing strings ("1 ship" / "5 ships" / Ukrainian plural forms).
+- **8.8.4 Backend support (small additive change):** add an `errorCode` string (stable enum-like values, e.g. `COORDINATE_INVALID`, `SHIP_ID_INVALID`, `STAGE_INVALID`, `EDITION_INVALID`, `PLAYER_NAME_INVALID`, `SESSION_NOT_FOUND`, `INTERNAL`) to `ExceptionDto`, populated by `ValidationExceptionHandler` / `InternalExceptionHandler` from the typed exception. `errorMessage` stays (English, for logs/fallback). This is additive and backwards-compatible; existing consumers ignore the new field. The frontend maps `errorCode` → localized text; if absent, it falls back to status+context mapping so it also works against an un-upgraded backend.
 
 ---
 
@@ -267,8 +300,8 @@ Detailed criteria live in `IMPLEMENTATION_PLAN.md`; the essentials:
 2. **Backend tests** — documented gap analysis; controllers + exception handlers covered; any bug fixed with a regression test; coverage target met (§TESTING_PLAN).
 3. **FE cleanup** — no Bootstrap/CRA/`prop-types` references; dead code removed; app still builds (unstyled acceptable).
 4. **FE tooling** — Vite dev + prod build work; Vite `outDir` aligned with Maven copy; deps installed; type-check clean.
-5. **FE development** — all 8 screens match `MOCKUP.html`; widgets use the adapter only; behavior identical to baseline; responsive per §8.4; excluded items absent.
-6. **FE testing** — unit + component/UI tests pass against `MockGameAdapter`; coverage target met.
+5. **FE development** — all screens match `MOCKUP.html`; widgets use the adapter only; behavior identical to baseline; responsive per §8.4; excluded items absent. Includes: game-mode selection cards, the no-go moat + two-way ship removal (§8.3), the notifications/dialog/validation system (§8.7), and full en/uk localization with a working language switch (§8.8). No hard-coded user-facing strings.
+6. **FE testing** — unit + component/UI tests pass against `MockGameAdapter`; i18n (both locales, no missing keys) and feedback/notification behavior covered; coverage target met.
 7. **Live e2e** — Playwright plays a full single game against a running server and asserts win/lose.
 8. **Verification** — full clean build + manual/automated regression pass; API oracle matches.
 9. **Docker** — image builds via multi-stage; compose runs; best-practices checklist satisfied.

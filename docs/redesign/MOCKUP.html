@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Battleship — Redesign Option A · Modern Naval</title>
+<title>Battleship — Finalized Mockup · Modern Naval</title>
 <style>
 :root{
   --navy:#0b2545; --navy2:#13315c; --sea:#1b4b7a; --steel:#3a6ea5;
@@ -12,7 +12,7 @@
   --ink:#0e2136; --ink-soft:#5a6b80; --line:#dbe4f0;
   --water:#e7f0fb; --water-line:#c8dcf3;
   --hit:#e63946; --miss:#9aa8b8; --ship:#12507e; --ship-soft:#d9e8f6;
-  --ok:#2a9d8f; --shadow:0 8px 30px rgba(11,37,69,.10);
+  --ok:#2a9d8f; --warn:#a9741a; --shadow:0 8px 30px rgba(11,37,69,.10);
   --radius:16px; --radius-sm:10px;
   --font:'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
 }
@@ -20,8 +20,6 @@
 body{margin:0;background:var(--bg);font-family:var(--font);color:var(--ink);
   background-image:radial-gradient(circle at 20% 0%,#dfeaf8 0,transparent 45%),radial-gradient(circle at 90% 10%,#e3f4f6 0,transparent 40%);}
 .wrap{max-width:1280px;margin:0 auto;padding:22px 20px 60px}
-
-/* ---- toolbar ---- */
 .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:14px;justify-content:space-between;margin-bottom:22px}
 .brand{display:flex;align-items:center;gap:12px}
 .brand .logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--navy),var(--teal));display:grid;place-items:center;color:#fff;font-size:22px;box-shadow:var(--shadow)}
@@ -29,14 +27,12 @@ body{margin:0;background:var(--bg);font-family:var(--font);color:var(--ink);
 .brand small{display:block;color:var(--ink-soft);font-weight:500;font-size:12.5px}
 .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;box-shadow:var(--shadow)}
-.seg button{border:0;background:transparent;padding:8px 12px;border-radius:9px;font-weight:600;font-size:13px;color:var(--ink-soft);cursor:pointer}
+.seg button{border:0;background:transparent;padding:8px 12px;border-radius:9px;font-weight:600;font-size:13px;color:var(--ink-soft);cursor:pointer;font-family:inherit}
 .seg button.active{background:var(--navy);color:#fff}
 .screens{display:flex;flex-wrap:wrap;gap:6px}
-.screens button{border:1px solid var(--line);background:var(--surface);padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:.15s}
+.screens button{border:1px solid var(--line);background:var(--surface);padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:.15s;font-family:inherit}
 .screens button:hover{border-color:var(--steel);color:var(--sea)}
 .screens button.active{background:var(--teal);border-color:var(--teal);color:#fff}
-
-/* ---- device frame ---- */
 .stage{display:grid;place-items:start center;padding:10px}
 .device{background:var(--surface);border-radius:26px;box-shadow:0 24px 60px rgba(11,37,69,.18);overflow:hidden;border:1px solid var(--line);transition:width .35s ease}
 .device.mobile{width:390px}
@@ -44,53 +40,48 @@ body{margin:0;background:var(--bg);font-family:var(--font);color:var(--ink);
 .device .notch{height:26px;background:var(--navy);display:none}
 .device.mobile .notch{display:flex;align-items:center;justify-content:center}
 .device.mobile .notch::after{content:"";width:120px;height:7px;border-radius:6px;background:rgba(255,255,255,.35)}
-
-/* ---- app chrome ---- */
-.app{display:flex;flex-direction:column;min-height:560px;background:var(--surface-2)}
+.app{display:flex;flex-direction:column;min-height:560px;background:var(--surface-2);position:relative;overflow:hidden}
 .appbar{background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:14px 18px}
 .appbar .l{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
 .appbar .anchor{width:26px;height:26px;border-radius:7px;background:rgba(255,255,255,.14);display:grid;place-items:center;font-size:15px}
-.appbar .r{display:flex;gap:16px;align-items:center;font-size:13.5px}
+.appbar .r{display:flex;gap:14px;align-items:center;font-size:13.5px}
 .desktop .appbar .r .navlink{opacity:.75;cursor:pointer}
 .desktop .appbar .r .navlink.on{opacity:1;border-bottom:2px solid var(--teal);padding-bottom:2px}
 .mobile .appbar .r .navlink{display:none}
-.mobile .appbar .burger{display:grid}
+.appbar .lang{display:flex;gap:2px;background:rgba(255,255,255,.14);border-radius:8px;padding:3px}
+.appbar .lang button{border:0;background:transparent;color:#fff;opacity:.6;font-weight:800;font-size:11.5px;padding:4px 8px;border-radius:6px;cursor:pointer;font-family:inherit}
+.appbar .lang button.on{background:var(--teal);opacity:1}
 .appbar .burger{display:none;width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.14);place-items:center;font-size:16px}
-.desktop .appbar .burger{display:none}
-
+.mobile .appbar .burger{display:grid}
 .screen{padding:24px 20px 30px;flex:1;animation:fade .3s}
 @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .desktop .screen{padding:34px 40px 44px}
-
-/* progress bar under appbar */
 .topbar-progress{height:5px;background:var(--water-line);overflow:hidden}
 .topbar-progress i{display:block;height:100%;width:40%;background:linear-gradient(90deg,var(--teal),var(--steel));border-radius:0 4px 4px 0;animation:slide 1.3s infinite}
 @keyframes slide{0%{margin-left:-40%}100%{margin-left:100%}}
-
-/* ---- generic components ---- */
 h2.title{font-size:24px;margin:0 0 4px}
 .desktop h2.title{font-size:30px}
 .sub{color:var(--ink-soft);margin:0 0 22px;font-size:14.5px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;width:100%;border:0;border-radius:var(--radius-sm);
-  padding:15px 18px;font-size:16px;font-weight:700;cursor:pointer;transition:.15s;font-family:inherit}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;width:100%;border:0;border-radius:var(--radius-sm);padding:15px 18px;font-size:16px;font-weight:700;cursor:pointer;transition:.15s;font-family:inherit}
 .btn:active{transform:translateY(1px)}
 .btn-primary{background:linear-gradient(135deg,var(--sea),var(--teal));color:#fff;box-shadow:0 8px 18px rgba(18,80,126,.28)}
 .btn-ghost{background:var(--surface);color:var(--sea);border:2px solid var(--steel)}
-.btn-gold{background:linear-gradient(135deg,#f6b64a,var(--gold));color:#5a3d05;box-shadow:0 8px 18px rgba(244,165,52,.35)}
 .btn-ok{background:linear-gradient(135deg,#34b39c,var(--ok));color:#fff;box-shadow:0 8px 18px rgba(42,157,143,.3)}
-.btn.sm{width:auto;padding:11px 18px;font-size:14px}
+.btn-danger{background:linear-gradient(135deg,#ef5867,var(--hit));color:#fff}
+.btn.sm{width:auto;padding:11px 16px;font-size:14px}
 label.fld{display:block;font-weight:600;font-size:13.5px;color:var(--ink-soft);margin:0 0 7px}
 .input,select.input{width:100%;padding:14px 15px;border:1.5px solid var(--line);border-radius:var(--radius-sm);font-size:16px;font-family:inherit;background:var(--surface);color:var(--ink)}
 .input:focus{outline:0;border-color:var(--teal);box-shadow:0 0 0 3px rgba(18,168,184,.15)}
+.input.err{border-color:var(--hit);box-shadow:0 0 0 3px rgba(230,57,70,.14)}
+.field-error{color:var(--hit);font-size:12px;font-weight:600;margin-top:6px;display:flex;gap:5px;align-items:center}
 .stack>*+*{margin-top:18px}
 .hero-illust{font-size:64px;text-align:center;margin:6px 0 10px}
 .pill{display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;font-size:12.5px;font-weight:700}
-.pill.warn{background:#fff3dc;color:#a9741a}
+.pill.warn{background:#fff3dc;color:var(--warn)}
 .pill.ok{background:#dcf3ee;color:#1c7d6c}
 .pill.turn{background:#fde4e6;color:#b3242f}
-
-/* ---- home ---- */
+/* home */
 .home-menu{max-width:420px;margin:0 auto;text-align:center}
 .home-menu .hero{background:linear-gradient(135deg,var(--navy),var(--sea));border-radius:22px;color:#fff;padding:34px 24px;margin-bottom:24px;position:relative;overflow:hidden}
 .home-menu .hero::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 80% 120%,rgba(18,168,184,.5),transparent 55%)}
@@ -98,8 +89,20 @@ label.fld{display:block;font-weight:600;font-size:13.5px;color:var(--ink-soft);m
 .home-menu .hero p{margin:0;opacity:.85;position:relative;font-size:14px}
 .home-menu .hero .badge-ship{font-size:60px;position:relative}
 .menu-btns{display:flex;flex-direction:column;gap:14px}
-
-/* ---- share/wait ---- */
+/* mode cards */
+.mode-cards{display:grid;gap:12px}
+.desktop .mode-cards{grid-template-columns:1fr 1fr}
+.mode-card{text-align:left;border:2px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer;background:var(--surface);transition:.15s;position:relative}
+.mode-card:hover{border-color:var(--steel)}
+.mode-card.on{border-color:var(--teal);background:#effbfc;box-shadow:0 0 0 3px rgba(18,168,184,.12)}
+.mode-card .mc-top{display:flex;align-items:center;justify-content:space-between}
+.mode-card .mc-name{font-weight:800;font-size:15px}
+.mode-card .mc-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-size:12px;color:#fff}
+.mode-card.on .mc-check{background:var(--teal);border-color:var(--teal)}
+.mode-card .mc-desc{color:var(--ink-soft);font-size:12.5px;margin-top:4px}
+.mode-card .mc-ships{display:flex;gap:3px;margin-top:9px;flex-wrap:wrap}
+.mode-card .mc-ships i{height:13px;border-radius:3px;background:linear-gradient(135deg,var(--ship),var(--sea));display:inline-block}
+/* share/wait */
 .share-box{display:flex;align-items:center;gap:10px;background:var(--surface-2);border:1.5px dashed var(--steel);border-radius:12px;padding:6px 6px 6px 16px;margin:8px 0 6px}
 .share-box code{flex:1;font-size:14px;color:var(--sea);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.5px}
 .waiting-dots{display:inline-flex;gap:5px;vertical-align:middle;margin-left:6px}
@@ -115,48 +118,48 @@ label.fld{display:block;font-weight:600;font-size:13.5px;color:var(--ink-soft);m
 .step-track .st.active .dot{background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:0 0 0 4px rgba(11,37,69,.12)}
 .step-track .st.active{color:var(--navy)}
 .step-track .st.done::before{background:var(--teal)}
-
-/* ---- board ---- */
+/* board */
 .board-wrap{display:block;width:100%}
 .coord-row{display:grid;grid-template-columns:22px repeat(10,1fr);gap:3px;margin-bottom:3px}
 .coord-row span{text-align:center;font-size:10.5px;font-weight:700;color:var(--ink-soft)}
-.board-row{display:grid;grid-template-columns:22px 1fr;gap:3px;align-items:center}
+.board-grid{display:grid;grid-template-columns:22px 1fr;gap:3px;align-items:stretch}
 .board{display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(10,1fr);gap:3px;aspect-ratio:1/1;width:100%}
-.rlabel{font-size:10.5px;font-weight:700;color:var(--ink-soft);text-align:center}
+.rlabel{font-size:10.5px;font-weight:700;color:var(--ink-soft);text-align:center;display:grid;place-items:center}
 .cell{aspect-ratio:1/1;border-radius:6px;background:var(--water);border:1px solid var(--water-line);cursor:pointer;transition:.12s;position:relative;display:grid;place-items:center;font-size:12px}
 .cell:hover{transform:scale(1.06);border-color:var(--teal);z-index:2}
 .cell.ship{background:linear-gradient(135deg,var(--ship),var(--sea));border-color:var(--navy)}
-.cell.avail{background:#eafaf3;border:1px dashed var(--ok)}
-.cell.block{background:#f4f6f9;border-color:#e6ebf1;cursor:not-allowed}
 .cell.hit{background:radial-gradient(circle,#ff6b73,var(--hit));border-color:#b31f2a;color:#fff}
 .cell.miss{background:var(--surface);border-color:var(--line)}
 .cell.miss::after{content:"";width:7px;height:7px;border-radius:50%;background:var(--miss)}
 .cell.sunk{background:linear-gradient(135deg,#7c1420,#b3242f);color:#fff;border-color:#7c1420}
 .cell.ghost{background:rgba(18,168,184,.25);border:1px solid var(--teal)}
+.cell.block{background:repeating-linear-gradient(45deg,#eef1f5,#eef1f5 3px,#dbe1ea 3px,#dbe1ea 6px);border-color:#d3dbe6;cursor:not-allowed}
+.cell.block:hover{transform:none;border-color:#d3dbe6}
 .board.readonly .cell{cursor:default}
 .board.readonly .cell:hover{transform:none}
-
-.board-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.board-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px}
 .board-head h3{margin:0;font-size:15px}
-.board-head .tag{font-size:11.5px;color:var(--ink-soft);font-weight:600}
-
-/* preparation layout */
+.board-head .tag{font-size:11.5px;color:var(--ink-soft);font-weight:600;text-align:right}
+/* preparation */
 .prep-grid{display:grid;gap:22px}
-.desktop .prep-grid{grid-template-columns:270px 1fr;align-items:start}
+.desktop .prep-grid{grid-template-columns:290px 1fr;align-items:start}
 .fleet-panel h4{margin:0 0 4px;font-size:14px}
-.fleet-panel .hint{color:var(--ink-soft);font-size:12.5px;margin:0 0 14px}
-.ship-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px;border:1.5px solid var(--line);border-radius:12px;margin-bottom:10px;cursor:pointer;background:var(--surface);transition:.15s}
+.fleet-panel .hint{color:var(--ink-soft);font-size:12px;margin:0 0 14px;line-height:1.5}
+.ship-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;margin-bottom:9px;cursor:pointer;background:var(--surface);transition:.15s}
 .ship-item:hover{border-color:var(--steel)}
 .ship-item.active{border-color:var(--teal);background:#effbfc;box-shadow:0 0 0 3px rgba(18,168,184,.12)}
-.ship-item.placed{opacity:.5}
-.ship-item .nm{font-weight:700;font-size:13.5px}
+.ship-item.placed{background:var(--surface-2)}
+.ship-item .nm{font-weight:700;font-size:13px}
 .ship-item .nm small{display:block;font-weight:500;color:var(--ink-soft);font-size:11px}
+.ship-item .mid{display:flex;align-items:center;gap:8px}
 .ship-cells{display:flex;gap:3px}
-.ship-cells i{width:15px;height:15px;border-radius:4px;background:linear-gradient(135deg,var(--ship),var(--sea))}
+.ship-cells i{width:14px;height:14px;border-radius:4px;background:linear-gradient(135deg,var(--ship),var(--sea))}
+.ship-cells.dim i{background:var(--line)}
+.remove-btn{border:0;background:#fde4e6;color:#b3242f;width:26px;height:26px;border-radius:8px;font-size:14px;cursor:pointer;font-weight:700;display:grid;place-items:center;flex:0 0 auto}
+.remove-btn:hover{background:#fbcfd3}
 .dir-toggle{display:flex;gap:8px;margin-bottom:16px}
-.dir-toggle button{flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);font-weight:700;font-size:13px;cursor:pointer;color:var(--ink-soft)}
+.dir-toggle button{flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);font-weight:700;font-size:13px;cursor:pointer;color:var(--ink-soft);font-family:inherit}
 .dir-toggle button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
-
 /* gameplay */
 .scoreboard{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
 .player-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 15px;box-shadow:var(--shadow)}
@@ -164,33 +167,31 @@ label.fld{display:block;font-weight:600;font-size:13.5px;color:var(--ink-soft);m
 .player-card.foe{border-left:4px solid var(--hit)}
 .player-card .who{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .player-card .who b{font-size:14.5px}
-.player-card .stat{display:flex;gap:14px}
-.player-card .stat .s{flex:1}
-.player-card .stat .s .lbl{font-size:10.5px;color:var(--ink-soft);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
-.player-card .stat .s .val{font-size:15px;font-weight:800}
+.player-card .statrow{display:flex;gap:14px}
+.player-card .s{flex:1}
+.player-card .s .lbl{font-size:10.5px;color:var(--ink-soft);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.player-card .s .val{font-size:15px;font-weight:800}
 .mini-bar{height:6px;border-radius:4px;background:var(--line);margin-top:4px;overflow:hidden}
 .mini-bar i{display:block;height:100%;border-radius:4px}
 .turn-banner{display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,#fff,#fde9eb);border:1px solid #f6c9cd;border-radius:12px;padding:12px;margin-bottom:18px;font-weight:700;color:var(--navy);font-size:14.5px}
 .turn-banner.yours{background:linear-gradient(135deg,#fff,#e5f7f4);border-color:#bfe9e1;color:#177a6b}
-
 .boards-area{display:grid;gap:22px}
 .desktop .boards-area{grid-template-columns:1fr 1fr}
 .board-tabs{display:none;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:16px}
 .mobile .board-tabs{display:flex}
-.board-tabs button{flex:1;border:0;background:transparent;padding:10px;border-radius:9px;font-weight:700;font-size:13px;color:var(--ink-soft);cursor:pointer}
+.board-tabs button{flex:1;border:0;background:transparent;padding:10px;border-radius:9px;font-weight:700;font-size:13px;color:var(--ink-soft);cursor:pointer;font-family:inherit}
 .board-tabs button.on{background:var(--navy);color:#fff}
 .mobile .board-panel.hide{display:none}
-
 /* legend */
-.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);justify-content:center}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);justify-content:center}
 .legend span{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-soft);font-weight:600}
 .legend span i{width:15px;height:15px;border-radius:5px;display:inline-block}
 .i-water{background:var(--water);border:1px solid var(--water-line)}
 .i-ship{background:linear-gradient(135deg,var(--ship),var(--sea))}
 .i-hit{background:var(--hit)}
-.i-miss{background:var(--surface);border:1px solid var(--line);position:relative}
+.i-miss{background:var(--surface);border:1px solid var(--line)}
 .i-sunk{background:#b3242f}
-
+.i-block{background:repeating-linear-gradient(45deg,#eef1f5,#eef1f5 2px,#dbe1ea 2px,#dbe1ea 4px);border:1px solid #d3dbe6}
 /* results */
 .result-hero{text-align:center;margin-bottom:22px}
 .result-hero .medal{font-size:64px}
@@ -201,8 +202,31 @@ label.fld{display:block;font-weight:600;font-size:13.5px;color:var(--ink-soft);m
 .stat-strip .b{text-align:center}
 .stat-strip .b .n{font-size:22px;font-weight:800;color:var(--navy)}
 .stat-strip .b .l{font-size:11px;color:var(--ink-soft);font-weight:600;text-transform:uppercase}
-
 .note{font-size:12px;color:var(--ink-soft);text-align:center;margin-top:26px}
+/* toasts */
+.toast-stack{position:absolute;right:14px;bottom:14px;display:flex;flex-direction:column;gap:10px;z-index:40;max-width:300px}
+.toast{display:flex;gap:10px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-left-width:4px;border-radius:12px;padding:12px 14px;box-shadow:0 10px 30px rgba(11,37,69,.16);animation:slidein .25s}
+@keyframes slidein{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+.toast .ic{font-size:16px;line-height:1.2}
+.toast .tx{font-size:12.5px}
+.toast .tx b{display:block;font-size:13px;margin-bottom:2px}
+.toast.ok{border-left-color:var(--ok)} .toast.ok .ic{color:var(--ok)}
+.toast.err{border-left-color:var(--hit)} .toast.err .ic{color:var(--hit)}
+.toast.warn{border-left-color:var(--gold)} .toast.warn .ic{color:var(--warn)}
+.toast.info{border-left-color:var(--teal)} .toast.info .ic{color:var(--teal-dark)}
+/* dialog */
+.dialog-backdrop{position:absolute;inset:0;background:rgba(11,37,69,.45);display:grid;place-items:center;z-index:50;padding:20px;animation:fade .2s}
+.dialog{background:var(--surface);border-radius:18px;max-width:340px;width:100%;padding:24px;box-shadow:0 30px 60px rgba(11,37,69,.35);text-align:center}
+.dialog .dic{font-size:40px}
+.dialog h3{margin:8px 0 6px;font-size:19px}
+.dialog p{margin:0 0 20px;color:var(--ink-soft);font-size:14px}
+.dialog-actions{display:flex;gap:10px}
+.dialog-actions .btn{padding:12px}
+/* feedback screen */
+.fb-section{margin-bottom:22px}
+.fb-section h4{margin:0 0 10px;font-size:14px;color:var(--sea)}
+.fb-row{display:flex;flex-wrap:wrap;gap:10px}
+.fb-row .toast{position:static;max-width:none;flex:1;min-width:220px}
 .footer-tip{max-width:1120px;margin:20px auto 0;color:var(--ink-soft);font-size:12.5px;text-align:center;line-height:1.7}
 </style>
 </head>
@@ -211,241 +235,254 @@ label.fld{display:block;font-weight:600;font-size:13.5px;color:var(--ink-soft);m
   <div class="toolbar">
     <div class="brand">
       <div class="logo">⚓</div>
-      <div><h1>Battleship — Finalized Mockup</h1><small>Modern Naval · canonical visual reference · click a screen, toggle device</small></div>
+      <div><h1>Battleship — Finalized Mockup</h1><small>Modern Naval · canonical visual reference · pick a screen · toggle device &amp; language</small></div>
     </div>
     <div class="controls">
       <div class="screens" id="screens"></div>
-      <div class="seg" id="device">
-        <button data-dev="mobile" class="active">📱 Mobile</button>
-        <button data-dev="desktop">🖥️ Desktop</button>
-      </div>
+      <div class="seg" id="lang"><button data-lang="en" class="active">EN</button><button data-lang="uk">УКР</button></div>
+      <div class="seg" id="device"><button data-dev="mobile" class="active">📱</button><button data-dev="desktop">🖥️</button></div>
     </div>
   </div>
-
   <div class="stage">
     <div class="device mobile" id="device-frame">
       <div class="notch"></div>
       <div class="app" id="app"></div>
     </div>
   </div>
-  <div class="footer-tip"><b>Canonical visual reference</b> for the redesign (see SPECIFICATION.md §UI/UX). Modern Naval — nautical grid coordinates (A–J / 1–10), adaptive boards (side‑by‑side on desktop, tabbed on mobile), clear turn state, colour legend. All 8 screens/modes included. Breakpoint demoed via the 📱/🖥️ toggle: mobile ≤ 640px single‑column + board tabs; desktop ≥ 641px multi‑column + side‑by‑side boards.</div>
+  <div class="footer-tip"><b>Canonical visual reference</b> (see SPECIFICATION.md §8). Covers game‑mode selection, ship placement with the <b>no‑go moat</b> around ships and <b>tap‑to‑remove</b>, the full <b>notifications / dialogs</b> catalog (the “Feedback” chip), and a live <b>EN / УКР</b> language switch. Breakpoint: mobile ≤ 640px (single column + board tabs) · desktop ≥ 641px (multi‑column + side‑by‑side boards).</div>
 </div>
 
 <script>
-const SHIPS = [
-  {id:'carrier', name:'Carrier', size:4, placed:true},
-  {id:'battleship', name:'Battleship', size:3, placed:true},
-  {id:'cruiser', name:'Cruiser', size:3, placed:false},
-  {id:'destroyer', name:'Submarine', size:2, placed:false},
-  {id:'patrol', name:'Patrol Boat', size:1, placed:false},
-];
-const COLS='ABCDEJ'.length; // not used
-const LET=['A','B','C','D','E','F','G','H','I','J'];
+/* ---------------- i18n dictionary ---------------- */
+const DICT={
+ en:{
+  nav_home:"Home",nav_new:"New",nav_join:"Join",nav_prep:"Preparation",nav_play:"Gameplay",
+  home_tag:"Sink the enemy fleet before they sink yours.",home_new:"New Game",home_join:"Join Game",home_note:"Two players · 10×10 grid · classic rules",
+  new_title:"New Game",new_sub:"Choose a game mode and your captain name.",new_mode:"Game mode",new_name:"Player name",new_start:"Start new game",new_hint:"You'll get a Game ID to share with your opponent.",
+  mode_ukr:"Ukrainian",mode_ukr_d:"10 ships · sizes 1–4 · 20 cells",mode_mb:"Milton Bradley",mode_mb_d:"10 ships · sizes 2–5 · 30 cells",
+  join_title:"Join Game",join_sub:"Paste the Game ID your friend shared with you.",join_id:"Game ID",join_ok:"Valid game code",join_submit:"Join the battle",
+  st_create:"Create",st_wait:"Waiting",st_prep:"Prepare",st_battle:"Battle",
+  wait_hello:"Hello, {name}!",wait_sub:"Share this code with your opponent to start.",wait_copy:"Copy",wait_copied:"Copied to clipboard",wait_waiting:"Waiting for your opponent",
+  load_title:"Setting up the sea…",load_sub:"Loading your game session",
+  prep_title:"Place your fleet",prep_prog:"{p} of {t} ships placed",prep_hint:"Pick a ship, choose a direction, then tap a cell. Tap a placed ship (or ✕) to remove it.",
+  prep_dir_h:"Horizontal",prep_dir_v:"Vertical",prep_fleet:"Your fleet",prep_placed:"placed",prep_ready:"Ready to go!",prep_opp:"Opponent",
+  prep_board:"Your waters",prep_tag:"Hatched = can't place (too close to a ship)",st_inprog:"In progress",st_ready:"Ready",
+  play_you:"You",play_cells:"Cells",play_ships:"Ships",play_yourturn:"Your turn — fire!",play_theirturn:"{name} is taking a shot…",
+  play_target:"Target — {name}'s waters",play_fire:"Tap to fire",play_fleet:"Your fleet",play_def:"Defensive view",tab_target:"Target grid",tab_fleet:"Your fleet",
+  res_win:"Victory!",res_lose:"Defeat",res_winsub:"{name} sank the entire enemy fleet.",res_menu:"Return to main menu",res_hits:"Hits",res_sunk:"Ships sunk",res_time:"Time",
+  lg_water:"Water",lg_ship:"Your ship",lg_hit:"Hit",lg_miss:"Miss",lg_sunk:"Sunk",lg_block:"No-go zone",
+  fb_title:"Notifications & dialogs",fb_sub:"Every state and action gives the player feedback. This catalog is the reference for all messages.",
+  fb_toasts:"Toasts (auto-dismiss)",fb_inline:"Inline validation",fb_dialog:"Confirmation dialog",
+  t_placed_t:"Ship placed",t_placed_m:"Cruiser positioned at C7.",t_bad_t:"Can't place there",t_bad_m:"Ships can't touch — try another spot.",
+  t_turn_t:"Not your turn",t_turn_m:"Hold on — waiting for Batman to shoot.",t_hit_t:"Direct hit!",t_hit_m:"You hit a ship at F6. Fire again!",
+  t_copied_t:"Copied",t_copied_m:"Game ID copied to clipboard.",err_name:"Name must be at least 2 characters.",
+  dlg_title:"Leave this game?",dlg_body:"Your current game will be lost and can't be resumed.",dlg_cancel:"Cancel",dlg_leave:"Leave game",
+  show_dialog:"Preview dialog"
+ },
+ uk:{
+  nav_home:"Головна",nav_new:"Нова",nav_join:"Приєднатися",nav_prep:"Підготовка",nav_play:"Гра",
+  home_tag:"Потопіть ворожий флот раніше, ніж він потопить ваш.",home_new:"Нова гра",home_join:"Приєднатися",home_note:"Двоє гравців · поле 10×10 · класичні правила",
+  new_title:"Нова гра",new_sub:"Оберіть режим гри та ім'я капітана.",new_mode:"Режим гри",new_name:"Ім'я гравця",new_start:"Почати гру",new_hint:"Ви отримаєте ID гри, щоб поділитися із суперником.",
+  mode_ukr:"Українська",mode_ukr_d:"10 кораблів · розміри 1–4 · 20 клітин",mode_mb:"Мілтон Брэдлі",mode_mb_d:"10 кораблів · розміри 2–5 · 30 клітин",
+  join_title:"Приєднатися до гри",join_sub:"Вставте ID гри, який надіслав вам друг.",join_id:"ID гри",join_ok:"Дійсний код гри",join_submit:"У бій",
+  st_create:"Створення",st_wait:"Очікування",st_prep:"Підготовка",st_battle:"Бій",
+  wait_hello:"Вітаємо, {name}!",wait_sub:"Поділіться цим кодом із суперником, щоб почати.",wait_copy:"Копіювати",wait_copied:"Скопійовано",wait_waiting:"Очікуємо на суперника",
+  load_title:"Готуємо море…",load_sub:"Завантаження ігрової сесії",
+  prep_title:"Розставте флот",prep_prog:"{p} з {t} кораблів розставлено",prep_hint:"Оберіть корабель і напрямок, потім торкніться клітини. Торкніться корабля (чи ✕), щоб прибрати.",
+  prep_dir_h:"Горизонтально",prep_dir_v:"Вертикально",prep_fleet:"Ваш флот",prep_placed:"розставлено",prep_ready:"Готово!",prep_opp:"Суперник",
+  prep_board:"Ваші води",prep_tag:"Штрихування = не можна ставити (надто близько до корабля)",st_inprog:"Готується",st_ready:"Готовий",
+  play_you:"Ви",play_cells:"Клітини",play_ships:"Кораблі",play_yourturn:"Ваш хід — вогонь!",play_theirturn:"{name} робить постріл…",
+  play_target:"Ціль — води гравця {name}",play_fire:"Торкніться, щоб стріляти",play_fleet:"Ваш флот",play_def:"Оборонний вигляд",tab_target:"Ціль",tab_fleet:"Ваш флот",
+  res_win:"Перемога!",res_lose:"Поразка",res_winsub:"{name} потопив увесь ворожий флот.",res_menu:"На головну",res_hits:"Влучань",res_sunk:"Потоплено",res_time:"Час",
+  lg_water:"Вода",lg_ship:"Ваш корабель",lg_hit:"Влучання",lg_miss:"Промах",lg_sunk:"Потоплено",lg_block:"Заборонена зона",
+  fb_title:"Сповіщення та діалоги",fb_sub:"Кожен стан і дія дають гравцеві зворотний зв'язок. Цей каталог — джерело всіх повідомлень.",
+  fb_toasts:"Спливаючі сповіщення",fb_inline:"Перевірка полів",fb_dialog:"Діалог підтвердження",
+  t_placed_t:"Корабель розставлено",t_placed_m:"Крейсер розміщено на C7.",t_bad_t:"Сюди не можна",t_bad_m:"Кораблі не можуть торкатися — оберіть інше місце.",
+  t_turn_t:"Не ваш хід",t_turn_m:"Зачекайте — Бетмен робить постріл.",t_hit_t:"Влучання!",t_hit_m:"Ви влучили в корабель на F6. Стріляйте ще!",
+  t_copied_t:"Скопійовано",t_copied_m:"ID гри скопійовано в буфер обміну.",err_name:"Ім'я має містити щонайменше 2 символи.",
+  dlg_title:"Вийти з гри?",dlg_body:"Поточну гру буде втрачено без можливості відновлення.",dlg_cancel:"Скасувати",dlg_leave:"Вийти з гри",
+  show_dialog:"Показати діалог"
+ }
+};
+let LANG='en';
+const t=(k,p={})=>{let s=(DICT[LANG][k]??k);for(const kk in p)s=s.replace('{'+kk+'}',p[kk]);return s;};
 
+/* ---------------- board data ---------------- */
+const LET=['A','B','C','D','E','F','G','H','I','J'];
+const OWN_SHIPS=new Set(['0-0','0-1','2-3','2-4','2-5','4-0','5-0','6-0','3-8','8-2','8-3','7-6','9-5']);
+// preparation demo: a few placed ships + their no-go moat + a valid-drop ghost for the selected ship
+const PREP_PLACED=new Set(['1-1','1-2','1-3','4-6','5-6','7-1']); // a 3-cell H, a 2-cell V, a 1-cell
+const PREP_GHOST=new Set(['8-4','8-5','8-6']); // selected ship valid preview
+function neighbors(set){const b=new Set();for(const k of set){const[r,c]=k.split('-').map(Number);for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){const nr=r+dr,nc=c+dc;if(nr<0||nc<0||nr>9||nc>9)continue;const nk=nr+'-'+nc;if(!set.has(nk))b.add(nk);}}return b;}
+const PREP_BLOCK=neighbors(PREP_PLACED);
+const T_HIT=new Set(['1-1','3-4','5-6','2-7','6-6']);
+const T_MISS=new Set(['0-3','4-4','7-2','8-8','1-6','5-1','9-9','3-3']);
+const T_SUNK=new Set(['2-7','6-6']);
+function cellFor(type,r,c){const k=r+'-'+c;
+  if(type==='own')return OWN_SHIPS.has(k)?'<div class="cell ship"></div>':'<div class="cell"></div>';
+  if(type==='prep'){
+    if(PREP_PLACED.has(k))return '<div class="cell ship"></div>';
+    if(PREP_GHOST.has(k))return '<div class="cell ghost"></div>';
+    if(PREP_BLOCK.has(k))return '<div class="cell block"></div>';
+    return '<div class="cell"></div>';}
+  if(type==='target'){if(T_SUNK.has(k))return '<div class="cell sunk">✕</div>';if(T_HIT.has(k))return '<div class="cell hit">✕</div>';if(T_MISS.has(k))return '<div class="cell miss"></div>';return '<div class="cell"></div>';}
+  if(type==='result-target'){if(T_SUNK.has(k))return '<div class="cell sunk">✕</div>';if(T_HIT.has(k))return '<div class="cell hit">✕</div>';if(OWN_SHIPS.has(k))return '<div class="cell ship"></div>';if(T_MISS.has(k))return '<div class="cell miss"></div>';return '<div class="cell"></div>';}
+  if(type==='result-own'){const h=new Set(['4-0','5-0','8-2']);if(h.has(k))return '<div class="cell hit">✕</div>';if(OWN_SHIPS.has(k))return '<div class="cell ship"></div>';if(T_MISS.has(k))return '<div class="cell miss"></div>';return '<div class="cell"></div>';}
+  return '<div class="cell"></div>';}
+function board(opts={}){const type=opts.type||'own';
+  let coords='<div class="coord-row"><span></span>'+LET.map(l=>`<span>${l}</span>`).join('')+'</div>';
+  let grid='';for(let r=0;r<10;r++)for(let c=0;c<10;c++)grid+=cellFor(type,r,c);
+  let rl='';for(let i=0;i<10;i++)rl+=`<span class="rlabel">${i+1}</span>`;
+  return `<div class="board-wrap">${coords}<div class="board-grid"><div style="display:grid;grid-template-rows:repeat(10,1fr);gap:3px">${rl}</div><div class="board ${opts.readonly?'readonly':''}">${grid}</div></div></div>`;}
+function legend(withBlock){return `<div class="legend">
+  <span><i class="i-water"></i>${t('lg_water')}</span><span><i class="i-ship"></i>${t('lg_ship')}</span>
+  <span><i class="i-hit"></i>${t('lg_hit')}</span><span><i class="i-miss"></i>${t('lg_miss')}</span><span><i class="i-sunk"></i>${t('lg_sunk')}</span>
+  ${withBlock?`<span><i class="i-block"></i>${t('lg_block')}</span>`:''}</div>`;}
+function toast(v,ic,titleKey,msgKey){return `<div class="toast ${v}"><div class="ic">${ic}</div><div class="tx"><b>${t(titleKey)}</b>${t(msgKey)}</div></div>`;}
+
+/* ---------------- fleet (edition = Ukrainian) ---------------- */
+const FLEET=[
+  {id:'battleship',name:'Battleship',uname:'Лінкор',size:4,placed:false},
+  {id:'destroyer1',name:'Destroyer',uname:'Есмінець',size:3,placed:true},
+  {id:'cruiser',name:'Cruiser',uname:'Крейсер',size:3,placed:false,active:true},
+  {id:'sub1',name:'Submarine',uname:'Підводний човен',size:2,placed:true},
+  {id:'patrol1',name:'Patrol Boat',uname:'Патрульний катер',size:1,placed:true},
+];
+function shipName(s){return LANG==='uk'?s.uname:s.name;}
+
+/* ---------------- app bar ---------------- */
 function appbar(active){
-  const links=['Home','New','Join','Preparation','Gameplay'];
+  const links=[['home','nav_home'],['new','nav_new'],['join','nav_join'],['prep','nav_prep'],['gameplay','nav_play']];
   return `<div class="appbar">
     <div class="l"><span class="anchor">⚓</span> Battleship</div>
     <div class="r">
-      ${links.map(l=>`<span class="navlink ${l.toLowerCase()===active?'on':''}">${l}</span>`).join('')}
+      ${links.map(([k,lk])=>`<span class="navlink ${k===active?'on':''}">${t(lk)}</span>`).join('')}
+      <span class="lang">${['en','uk'].map(l=>`<button class="${l===LANG?'on':''}" data-alang="${l}">${l==='en'?'EN':'УКР'}</button>`).join('')}</span>
       <span class="burger">☰</span>
-    </div>
-  </div>`;
-}
-
-function board(opts={}){
-  // type: 'own', 'prep', 'target', 'result-own','result-target'
-  const t=opts.type||'own';
-  let coords='<div class="coord-row"><span></span>'+LET.map(l=>`<span>${l}</span>`).join('')+'</div>';
-  let rows='';
-  for(let r=0;r<10;r++){
-    let cells='';
-    for(let c=0;c<10;c++){
-      cells+=cellFor(t,r,c);
-    }
-    rows+=`<div class="board-row"><span class="rlabel">${r+1}</span><div class="board ${opts.readonly?'readonly':''}">${cells}</div></div>`;
-  }
-  // simpler: put grid with row labels via wrapper
-  let grid='';
-  for(let r=0;r<10;r++){
-    for(let c=0;c<10;c++) grid+=cellFor(t,r,c);
-  }
-  return `<div class="board-wrap">${coords}
-    <div style="display:grid;grid-template-columns:22px 1fr;gap:3px;align-items:stretch">
-      <div style="display:grid;grid-template-rows:repeat(10,1fr);gap:3px">${LET.map((_,i)=>`<span class="rlabel" style="display:grid;place-items:center">${i+1}</span>`).join('')}</div>
-      <div class="board ${opts.readonly?'readonly':''}">${grid}</div>
     </div></div>`;
 }
 
-// deterministic pseudo layout
-const OWN_SHIPS=new Set(['0-0','0-1','2-3','2-4','2-5','4-0','5-0','6-0','3-8','8-2','8-3','7-6','9-5']);
-const TARGET_HIT=new Set(['1-1','3-4','5-6','2-7','6-6']);
-const TARGET_MISS=new Set(['0-3','4-4','7-2','8-8','1-6','5-1','9-9','3-3']);
-const TARGET_SUNK=new Set(['2-7','6-6']);
-const AVAIL=new Set(['3-3','3-4','3-5','3-6']);
-
-function cellFor(t,r,c){
-  const k=r+'-'+c;
-  if(t==='own'){ return OWN_SHIPS.has(k)?`<div class="cell ship"></div>`:`<div class="cell"></div>`; }
-  if(t==='prep'){
-    if(OWN_SHIPS.has(k)) return `<div class="cell ship"></div>`;
-    if(AVAIL.has(k)) return `<div class="cell ghost"></div>`;
-    return `<div class="cell"></div>`;
-  }
-  if(t==='target'){
-    if(TARGET_SUNK.has(k)) return `<div class="cell sunk">✕</div>`;
-    if(TARGET_HIT.has(k)) return `<div class="cell hit">✕</div>`;
-    if(TARGET_MISS.has(k)) return `<div class="cell miss"></div>`;
-    return `<div class="cell"></div>`;
-  }
-  if(t==='result-target'){
-    if(TARGET_SUNK.has(k)) return `<div class="cell sunk">✕</div>`;
-    if(TARGET_HIT.has(k)||OWN_SHIPS.has(k)) return OWN_SHIPS.has(k)&&!TARGET_HIT.has(k)?`<div class="cell ship"></div>`:`<div class="cell hit">✕</div>`;
-    if(TARGET_MISS.has(k)) return `<div class="cell miss"></div>`;
-    return `<div class="cell"></div>`;
-  }
-  if(t==='result-own'){
-    const hit=new Set(['4-0','5-0','8-2']);
-    if(hit.has(k)) return `<div class="cell hit">✕</div>`;
-    if(OWN_SHIPS.has(k)) return `<div class="cell ship"></div>`;
-    if(TARGET_MISS.has(k)) return `<div class="cell miss"></div>`;
-    return `<div class="cell"></div>`;
-  }
-  return `<div class="cell"></div>`;
-}
-
-function legend(){
-  return `<div class="legend">
-    <span><i class="i-water"></i>Water</span>
-    <span><i class="i-ship"></i>Your ship</span>
-    <span><i class="i-hit"></i>Hit</span>
-    <span><i class="i-miss"></i>Miss</span>
-    <span><i class="i-sunk"></i>Sunk</span>
-  </div>`;
-}
-
+/* ---------------- screens ---------------- */
 const SCREENS={
  home:()=>appbar('home')+`<div class="screen"><div class="home-menu">
-    <div class="hero"><div class="badge-ship">🚢</div><h2>Battleship</h2><p>Sink the enemy fleet before they sink yours.</p></div>
-    <div class="menu-btns">
-      <button class="btn btn-primary">＋ New Game</button>
-      <button class="btn btn-ghost">🔗 Join Game</button>
-    </div>
-    <p class="note">Two players · 10×10 grid · classic rules</p>
-  </div></div>`,
+   <div class="hero"><div class="badge-ship">🚢</div><h2>Battleship</h2><p>${t('home_tag')}</p></div>
+   <div class="menu-btns"><button class="btn btn-primary">＋ ${t('home_new')}</button><button class="btn btn-ghost">🔗 ${t('home_join')}</button></div>
+   <p class="note">${t('home_note')}</p></div></div>`,
 
- new:()=>appbar('new')+`<div class="screen"><div style="max-width:440px;margin:0 auto">
-    <h2 class="title">New Game</h2><p class="sub">Choose a rule set and your captain name.</p>
-    <div class="card stack">
-      <div><label class="fld">Game edition</label>
-        <select class="input"><option>Ukrainian (10×10 · 10 ships)</option><option>Milton Bradley (10×10 · 5 ships)</option></select></div>
-      <div><label class="fld">Player name</label><input class="input" value="Superman" /></div>
-      <button class="btn btn-primary">Start new game →</button>
-    </div>
-    <p class="note">You'll get a Game ID to share with your opponent.</p>
-  </div></div>`,
+ new:()=>appbar('new')+`<div class="screen"><div style="max-width:460px;margin:0 auto">
+   <h2 class="title">${t('new_title')}</h2><p class="sub">${t('new_sub')}</p>
+   <div class="card stack">
+     <div><label class="fld">${t('new_mode')}</label>
+       <div class="mode-cards">
+         <div class="mode-card on"><div class="mc-top"><span class="mc-name">🇺🇦 ${t('mode_ukr')}</span><span class="mc-check">✓</span></div><div class="mc-desc">${t('mode_ukr_d')}</div><div class="mc-ships">${[4,3,3,2,1].map((w,i)=>`<i style="width:${w*10}px"></i>`).join('')}</div></div>
+         <div class="mode-card"><div class="mc-top"><span class="mc-name">🎲 ${t('mode_mb')}</span><span class="mc-check"></span></div><div class="mc-desc">${t('mode_mb_d')}</div><div class="mc-ships">${[5,4,3,3,2].map((w)=>`<i style="width:${w*10}px"></i>`).join('')}</div></div>
+       </div></div>
+     <div><label class="fld">${t('new_name')}</label><input class="input" value="Superman"/></div>
+     <button class="btn btn-primary">${t('new_start')} →</button>
+   </div><p class="note">${t('new_hint')}</p></div></div>`,
 
  join:()=>appbar('join')+`<div class="screen"><div style="max-width:440px;margin:0 auto">
-    <h2 class="title">Join Game</h2><p class="sub">Paste the Game ID your friend shared with you.</p>
-    <div class="card stack">
-      <div><label class="fld">Player name</label><input class="input" placeholder="Enter your name" value="Batman"/></div>
-      <div><label class="fld">Game ID</label><input class="input" placeholder="xxxxxxxx-xxxx-xxxx-xxxx" value="8f4c23c4-f86e-465c-a208-65f70281bfcb"/>
-        <div style="font-size:11.5px;color:var(--ok);margin-top:6px;font-weight:600">✓ Valid game code</div></div>
-      <button class="btn btn-ok">Join the battle →</button>
-    </div>
-  </div></div>`,
+   <h2 class="title">${t('join_title')}</h2><p class="sub">${t('join_sub')}</p>
+   <div class="card stack">
+     <div><label class="fld">${t('new_name')}</label><input class="input" value="Batman"/></div>
+     <div><label class="fld">${t('join_id')}</label><input class="input" value="8f4c23c4-f86e-465c-a208-65f70281bfcb"/>
+       <div style="font-size:11.5px;color:var(--ok);margin-top:6px;font-weight:600">✓ ${t('join_ok')}</div></div>
+     <button class="btn btn-ok">${t('join_submit')} →</button>
+   </div></div></div>`,
 
  wait:()=>appbar('new')+`<div class="screen"><div style="max-width:460px;margin:0 auto;text-align:center">
-    <div class="step-track">
-      <div class="st done"><div class="dot">✓</div>Create</div>
-      <div class="st active"><div class="dot">2</div>Waiting</div>
-      <div class="st"><div class="dot">3</div>Prepare</div>
-      <div class="st"><div class="dot">4</div>Battle</div>
-    </div>
-    <div class="hero-illust">🛰️</div>
-    <h2 class="title">Hello, Superman!</h2>
-    <p class="sub">Share this code with your opponent to start.</p>
-    <div class="card">
-      <label class="fld" style="text-align:left">Game ID</label>
-      <div class="share-box"><code>8f4c23c4-f86e-465c-a208-65f70281bfcb</code><button class="btn btn-primary sm">Copy</button></div>
-      <div style="font-size:12px;color:var(--ok);font-weight:600;margin-bottom:12px">✓ Copied to clipboard</div>
-      <div style="font-weight:700;color:var(--navy)">Waiting for your opponent
-        <span class="waiting-dots"><i></i><i></i><i></i></span></div>
-    </div>
-  </div></div>`,
+   <div class="step-track"><div class="st done"><div class="dot">✓</div>${t('st_create')}</div><div class="st active"><div class="dot">2</div>${t('st_wait')}</div><div class="st"><div class="dot">3</div>${t('st_prep')}</div><div class="st"><div class="dot">4</div>${t('st_battle')}</div></div>
+   <div class="hero-illust">🛰️</div><h2 class="title">${t('wait_hello',{name:'Superman'})}</h2><p class="sub">${t('wait_sub')}</p>
+   <div class="card"><label class="fld" style="text-align:left">${t('join_id')}</label>
+     <div class="share-box"><code>8f4c23c4-f86e-465c-a208-65f70281bfcb</code><button class="btn btn-primary sm">${t('wait_copy')}</button></div>
+     <div style="font-size:12px;color:var(--ok);font-weight:600;margin-bottom:12px">✓ ${t('wait_copied')}</div>
+     <div style="font-weight:700;color:var(--navy)">${t('wait_waiting')}<span class="waiting-dots"><i></i><i></i><i></i></span></div></div></div></div>`,
 
  loading:()=>appbar('new')+`<div class="topbar-progress"><i></i></div><div class="screen"><div style="max-width:420px;margin:60px auto 0;text-align:center">
-    <div class="hero-illust" style="animation:bounce 1.4s infinite">⚓</div>
-    <h2 class="title">Setting up the sea…</h2>
-    <p class="sub">Loading your game session</p>
-  </div></div>`,
+   <div class="hero-illust" style="animation:bounce 1.4s infinite">⚓</div><h2 class="title">${t('load_title')}</h2><p class="sub">${t('load_sub')}</p></div></div>`,
 
- prep:()=>appbar('preparation')+`<div class="screen">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px">
-      <div><h2 class="title" style="font-size:22px">Place your fleet</h2><p class="sub" style="margin:0">3 of 5 ships placed · tap the grid to drop the selected ship</p></div>
-      <span class="pill warn">Opponent: In progress</span>
-    </div>
-    <div class="prep-grid">
-      <div class="fleet-panel card">
-        <h4>Your fleet</h4><p class="hint">Pick a ship, choose direction, tap a cell.</p>
-        <div class="dir-toggle"><button class="on">↔ Horizontal</button><button>↕ Vertical</button></div>
-        ${SHIPS.map(s=>`<div class="ship-item ${s.id==='cruiser'?'active':''} ${s.placed?'placed':''}">
-          <div class="nm">${s.name}<small>${s.size} cell${s.size>1?'s':''}${s.placed?' · placed':''}</small></div>
-          <div class="ship-cells">${Array.from({length:s.size}).map(()=>'<i></i>').join('')}</div></div>`).join('')}
-        <button class="btn btn-gold" style="margin-top:8px">🚀 Auto‑place remaining</button>
-      </div>
-      <div class="board-panel">
-        <div class="board-head"><h3>Your waters</h3><span class="tag">Green dashed = valid drop</span></div>
-        ${board({type:'prep'})}
-        <button class="btn btn-ok" style="margin-top:16px">✓ Ready to go!</button>
-        ${legend()}
-      </div>
-    </div>
-  </div>`,
+ prep:()=>appbar('prep')+`<div class="screen">
+   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px">
+     <div><h2 class="title" style="font-size:22px">${t('prep_title')}</h2><p class="sub" style="margin:0">${t('prep_prog',{p:3,t:5})}</p></div>
+     <span class="pill warn">${t('prep_opp')}: ${t('st_inprog')}</span></div>
+   <div class="prep-grid">
+     <div class="fleet-panel card"><h4>${t('prep_fleet')}</h4><p class="hint">${t('prep_hint')}</p>
+       <div class="dir-toggle"><button class="on">↔ ${t('prep_dir_h')}</button><button>↕ ${t('prep_dir_v')}</button></div>
+       ${FLEET.map(s=>`<div class="ship-item ${s.active?'active':''} ${s.placed?'placed':''}">
+          <div class="nm">${shipName(s)}<small>${s.size} ${s.size>1?'cells':'cell'}${s.placed?' · '+t('prep_placed'):''}</small></div>
+          <div class="mid"><div class="ship-cells ${s.placed?'':'dim'}">${Array.from({length:s.size}).map(()=>'<i></i>').join('')}</div>
+          ${s.placed?`<button class="remove-btn" title="${t('prep_placed')}">✕</button>`:''}</div></div>`).join('')}
+     </div>
+     <div class="board-panel"><div class="board-head"><h3>${t('prep_board')}</h3><span class="tag">${t('prep_tag')}</span></div>
+       ${board({type:'prep'})}
+       <button class="btn btn-ok" style="margin-top:16px">✓ ${t('prep_ready')}</button>${legend(true)}</div>
+   </div>
+   <div class="toast-stack">${toast('err','⚠️','t_bad_t','t_bad_m')}</div></div>`,
 
  gameplay:()=>appbar('gameplay')+`<div class="screen">
-    <div class="scoreboard">
-      <div class="player-card you"><div class="who"><b>You · Superman</b><span class="pill ok">You</span></div>
-        <div class="stat"><div class="s"><div class="lbl">Cells</div><div class="val">88</div><div class="mini-bar"><i style="width:88%;background:var(--ok)"></i></div></div>
-        <div class="s"><div class="lbl">Ships</div><div class="val">9 / 10</div><div class="mini-bar"><i style="width:90%;background:var(--ok)"></i></div></div></div></div>
-      <div class="player-card foe"><div class="who"><b>Batman</b><span class="pill turn">Their turn</span></div>
-        <div class="stat"><div class="s"><div class="lbl">Cells</div><div class="val">61</div><div class="mini-bar"><i style="width:61%;background:var(--gold)"></i></div></div>
-        <div class="s"><div class="lbl">Ships</div><div class="val">6 / 10</div><div class="mini-bar"><i style="width:60%;background:var(--gold)"></i></div></div></div></div>
-    </div>
-    <div class="turn-banner">⏳ Waiting — it's <b style="margin:0 4px">Batman's</b> turn</div>
-    <div class="board-tabs"><button class="on" data-bt="target">🎯 Target grid</button><button data-bt="own">🛡️ Your fleet</button></div>
-    <div class="boards-area">
-      <div class="board-panel bp-target"><div class="board-head"><h3>🎯 Target — Batman's waters</h3><span class="tag">Tap to fire</span></div>${board({type:'target'})}</div>
-      <div class="board-panel bp-own hide"><div class="board-head"><h3>🛡️ Your fleet — Superman</h3><span class="tag">Defensive view</span></div>${board({type:'own',readonly:true})}</div>
-    </div>
-    ${legend()}
-  </div>`,
+   <div class="scoreboard">
+     <div class="player-card you"><div class="who"><b>Superman</b><span class="pill ok">${t('play_you')}</span></div>
+       <div class="statrow"><div class="s"><div class="lbl">${t('play_cells')}</div><div class="val">88</div><div class="mini-bar"><i style="width:88%;background:var(--ok)"></i></div></div>
+       <div class="s"><div class="lbl">${t('play_ships')}</div><div class="val">9 / 10</div><div class="mini-bar"><i style="width:90%;background:var(--ok)"></i></div></div></div></div>
+     <div class="player-card foe"><div class="who"><b>Batman</b><span class="pill turn">▶</span></div>
+       <div class="statrow"><div class="s"><div class="lbl">${t('play_cells')}</div><div class="val">61</div><div class="mini-bar"><i style="width:61%;background:var(--gold)"></i></div></div>
+       <div class="s"><div class="lbl">${t('play_ships')}</div><div class="val">6 / 10</div><div class="mini-bar"><i style="width:60%;background:var(--gold)"></i></div></div></div></div></div>
+   <div class="turn-banner">⏳ ${t('play_theirturn',{name:'Batman'})}</div>
+   <div class="board-tabs"><button class="on" data-bt="target">🎯 ${t('tab_target')}</button><button data-bt="own">🛡️ ${t('tab_fleet')}</button></div>
+   <div class="boards-area">
+     <div class="board-panel bp-target"><div class="board-head"><h3>🎯 ${t('play_target',{name:'Batman'})}</h3><span class="tag">${t('play_fire')}</span></div>${board({type:'target'})}</div>
+     <div class="board-panel bp-own hide"><div class="board-head"><h3>🛡️ ${t('play_fleet')}</h3><span class="tag">${t('play_def')}</span></div>${board({type:'own',readonly:true})}</div>
+   </div>${legend(false)}
+   <div class="toast-stack">${toast('info','⏳','t_turn_t','t_turn_m')}</div></div>`,
 
  results:()=>appbar('gameplay')+`<div class="screen">
-    <div class="result-hero win">
-      <div class="medal">🏆</div><h2>Victory!</h2>
-      <p class="sub">Superman sank the entire enemy fleet.</p>
-      <div class="stat-strip"><div class="b"><div class="n">17</div><div class="l">Hits</div></div>
-        <div class="b"><div class="n">10</div><div class="l">Ships sunk</div></div>
-        <div class="b"><div class="n">6:24</div><div class="l">Time</div></div></div>
-    </div>
-    <div class="boards-area">
-      <div class="board-panel"><div class="board-head"><h3>🎯 Batman's waters</h3><span class="tag">Your shots</span></div>${board({type:'result-target',readonly:true})}</div>
-      <div class="board-panel"><div class="board-head"><h3>🛡️ Your fleet</h3><span class="tag">Enemy shots</span></div>${board({type:'result-own',readonly:true})}</div>
-    </div>
-    ${legend()}
-    <button class="btn btn-primary" style="max-width:320px;margin:22px auto 0">↩ Return to main menu</button>
-  </div>`,
+   <div class="result-hero win"><div class="medal">🏆</div><h2>${t('res_win')}</h2><p class="sub">${t('res_winsub',{name:'Superman'})}</p>
+     <div class="stat-strip"><div class="b"><div class="n">10</div><div class="l">${t('res_sunk')}</div></div></div></div>
+   <div class="boards-area">
+     <div class="board-panel"><div class="board-head"><h3>🎯 ${t('play_target',{name:'Batman'})}</h3></div>${board({type:'result-target',readonly:true})}</div>
+     <div class="board-panel"><div class="board-head"><h3>🛡️ ${t('play_fleet')}</h3></div>${board({type:'result-own',readonly:true})}</div>
+   </div>${legend(false)}
+   <button class="btn btn-primary" style="max-width:320px;margin:22px auto 0">↩ ${t('res_menu')}</button></div>`,
+
+ feedback:()=>appbar('home')+`<div class="screen">
+   <h2 class="title" style="font-size:22px">${t('fb_title')}</h2><p class="sub">${t('fb_sub')}</p>
+   <div class="fb-section"><h4>${t('fb_toasts')}</h4><div class="fb-row">
+     ${toast('ok','✅','t_placed_t','t_placed_m')}${toast('info','⏳','t_turn_t','t_turn_m')}
+     ${toast('warn','🎯','t_hit_t','t_hit_m')}${toast('err','⚠️','t_bad_t','t_bad_m')}
+   </div></div>
+   <div class="fb-section"><h4>${t('fb_inline')}</h4>
+     <div class="card" style="max-width:420px"><label class="fld">${t('new_name')}</label><input class="input err" value="S"/><div class="field-error">⚠️ ${t('err_name')}</div></div>
+   </div>
+   <div class="fb-section"><h4>${t('fb_dialog')}</h4><button class="btn btn-ghost sm" id="dlgBtn">${t('show_dialog')}</button></div>
+   <div id="dlgHost"></div></div>`,
 };
 
-const ORDER=[['home','Home'],['new','New Game'],['join','Join'],['wait','Wait'],['loading','Loading'],['prep','Preparation'],['gameplay','Gameplay'],['results','Results']];
+function dialogHTML(){return `<div class="dialog-backdrop" id="dlgBackdrop"><div class="dialog">
+  <div class="dic">🚪</div><h3>${t('dlg_title')}</h3><p>${t('dlg_body')}</p>
+  <div class="dialog-actions"><button class="btn btn-ghost" id="dlgCancel">${t('dlg_cancel')}</button><button class="btn btn-danger" id="dlgLeave">${t('dlg_leave')}</button></div>
+</div></div>`;}
+
+/* ---------------- wiring ---------------- */
+const ORDER=[['home','nav_home'],['new','new_title'],['join','join_title'],['wait','st_wait'],['loading','load_sub'],['prep','prep_title'],['gameplay','nav_play'],['results','res_win'],['feedback','fb_title']];
+const SCREEN_LABELS={home:'Home',new:'New Game',join:'Join',wait:'Wait',loading:'Loading',prep:'Preparation',gameplay:'Gameplay',results:'Results',feedback:'Feedback'};
 let current='home';
 const screensEl=document.getElementById('screens');
-ORDER.forEach(([k,label])=>{const b=document.createElement('button');b.textContent=label;b.dataset.k=k;if(k==='home')b.classList.add('active');screensEl.appendChild(b);});
-function paint(){document.getElementById('app').innerHTML=SCREENS[current]();wireBoardTabs();}
-screensEl.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;current=b.dataset.k;[...screensEl.children].forEach(x=>x.classList.toggle('active',x===b));paint();});
-document.getElementById('device').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const dev=b.dataset.dev;document.getElementById('device-frame').className='device '+dev;[...e.currentTarget.children].forEach(x=>x.classList.toggle('active',x===b));});
+Object.keys(SCREEN_LABELS).forEach(k=>{const b=document.createElement('button');b.textContent=SCREEN_LABELS[k];b.dataset.k=k;if(k==='home')b.classList.add('active');screensEl.appendChild(b);});
+function paint(){document.getElementById('app').innerHTML=SCREENS[current]();wireInApp();}
+function wireInApp(){
+  wireBoardTabs();
+  document.querySelectorAll('[data-alang]').forEach(b=>b.addEventListener('click',()=>setLang(b.dataset.alang)));
+  const dlgBtn=document.getElementById('dlgBtn');
+  if(dlgBtn)dlgBtn.addEventListener('click',()=>{document.getElementById('dlgHost').innerHTML=dialogHTML();
+    document.getElementById('dlgCancel').onclick=()=>document.getElementById('dlgHost').innerHTML='';
+    document.getElementById('dlgLeave').onclick=()=>document.getElementById('dlgHost').innerHTML='';
+    document.getElementById('dlgBackdrop').onclick=e=>{if(e.target.id==='dlgBackdrop')document.getElementById('dlgHost').innerHTML='';};});
+}
 function wireBoardTabs(){const tabs=document.querySelector('.board-tabs');if(!tabs)return;tabs.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;[...tabs.children].forEach(x=>x.classList.toggle('on',x===b));const show=b.dataset.bt;document.querySelector('.bp-target').classList.toggle('hide',show!=='target');document.querySelector('.bp-own').classList.toggle('hide',show!=='own');});}
+function setLang(l){LANG=l;[...document.getElementById('lang').children].forEach(x=>x.classList.toggle('active',x.dataset.lang===l));paint();}
+screensEl.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;current=b.dataset.k;[...screensEl.children].forEach(x=>x.classList.toggle('active',x===b));paint();});
+document.getElementById('lang').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;setLang(b.dataset.lang);});
+document.getElementById('device').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;document.getElementById('device-frame').className='device '+b.dataset.dev;[...e.currentTarget.children].forEach(x=>x.classList.toggle('active',x===b));});
 paint();
 </script>
 </body>

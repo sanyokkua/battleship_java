@@ -1,7 +1,8 @@
 # Battleship — Implementation Plan
 
-**Status:** v2 · **Date:** 2026-07-10
+**Status:** v3 · **Date:** 2026-07-11
 Companion to `SPECIFICATION.md` (what/why), `MOCKUP.html` (visuals), `TESTING_PLAN.md` (tests), `PHASE_BOOTSTRAP_PROMPT.md` (how to start a phase).
+**v3 changes:** Phase 2 gains an additive `ExceptionDto.errorCode` ticket (2.6); Phase 5 gains i18n (5.3), the feedback/notifications system (5.5), the no-go moat + two-way ship removal, and game-mode cards; invariants now forbid hard-coded user-facing strings.
 
 This plan defines **11 ordered phases**. Each phase entry gives its objective, the spec/mockup references to read, the concrete tasks (with sub-tickets where the phase is large), deliverables, per-phase testing, verification, and acceptance criteria.
 
@@ -13,7 +14,7 @@ This plan defines **11 ordered phases**. Each phase entry gives its objective, t
 - **Orchestration:** the **main session only orchestrates**. Each phase (and each sub-ticket) is executed by a **sub-agent** started from `PHASE_BOOTSTRAP_PROMPT.md`. The main session: (1) launches the phase in plan mode via the bootstrap prompt, (2) reviews the produced plan/sub-tickets, (3) dispatches sub-agents to implement, (4) verifies acceptance criteria, (5) records results, (6) proceeds to the next phase.
 - **Sub-ticket rule:** if a phase's scope is large (flagged **SPLIT** below), the phase's first job is to produce sub-tickets `PHASE-<n>.<m>` — each independently implementable and testable — before any code is written.
 - **Phase gate:** a phase is "done" only when its acceptance criteria and its `TESTING_PLAN.md` obligations are green. Do not start the next phase until the gate passes.
-- **Invariants for every phase:** never change the backend API surface (SPEC §6); never change game logic except a Phase-2 bug fix (SPEC §2.2); keep the app building at each phase boundary.
+- **Invariants for every phase:** no *breaking* backend API changes — the only permitted API change is the additive `ExceptionDto.errorCode` for i18n (SPEC §6, §8.8.4); never change game logic except a Phase-2 bug fix (SPEC §2.2); keep the app building at each phase boundary; **no hard-coded user-facing strings** (everything localized, SPEC §8.8).
 
 **Dependency order:** 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11. Phases 1–2 (backend) are independent of 3–7 (frontend) and *may* run in parallel tracks, but 8 (verification) requires both, and 9–11 require 8.
 
@@ -55,7 +56,8 @@ This plan defines **11 ordered phases**. Each phase entry gives its objective, t
 - 2.3 Exception-handler tests (`ValidationExceptionHandler`, `InternalExceptionHandler`): each typed game exception → expected HTTP status + `ExceptionDto`.
 - 2.4 Engine/edge-case top-ups where §2.1 shows gaps (persistence eviction, editions, coordinate/ship utils).
 - 2.5 Bug triage: if a test reveals a defect, fix the minimal cause, document it in this plan's changelog + a regression test.
-**Acceptance:** gap report committed; controllers + handlers covered; coverage target met (TESTING_PLAN); all tests green; any bug fix documented + covered. **No API change.**
+- 2.6 **Additive i18n support (SPEC §8.8.4):** add `errorCode` (stable enum-like string) to `ExceptionDto`; populate it in `ValidationExceptionHandler` (per typed exception) and `InternalExceptionHandler` (`INTERNAL`). Keep `errorMessage`. Add tests asserting each exception → expected `errorCode` + unchanged status/shape. This is the **only** permitted API change and must be backwards-compatible (existing fields untouched).
+**Acceptance:** gap report committed; controllers + handlers covered; coverage target met (TESTING_PLAN); all tests green; any bug fix documented + covered. **No breaking API change; `errorCode` added additively and tested.**
 
 ---
 
@@ -91,17 +93,19 @@ This plan defines **11 ordered phases**. Each phase entry gives its objective, t
 
 ## Phase 5 — Frontend: build the app (Adapter + Widgets + screens)  **[SPLIT]**
 **Objective:** implement the redesigned UI with the adapter/widget architecture, matching `MOCKUP.html`, behavior identical to baseline.
-**Read:** SPEC §4.2, §7, §8 (all), `MOCKUP.html` (all screens). **Testing:** TESTING_PLAN §FE-unit, §FE-component.
+**Read:** SPEC §4.2, §7, §8 (all — incl. §8.7 feedback, §8.8 i18n), `MOCKUP.html` (all screens + the Feedback catalog + EN/УКР toggle). **Testing:** TESTING_PLAN §FE-unit, §FE-component, §FE-i18n.
 **Sub-tickets (produce these first):**
-- 5.1 **Adapter layer:** `GameAdapter` interface (SPEC §7.1), `HttpGameAdapter` (wrap existing endpoints), `MockGameAdapter` (deterministic in-memory), context + `useGameAdapter()`.
+- 5.1 **Adapter layer:** `GameAdapter` interface (SPEC §7.1), `HttpGameAdapter` (wrap existing endpoints; parse `errorCode`), `MockGameAdapter` (deterministic in-memory), context + `useGameAdapter()`.
 - 5.2 **Hooks:** `usePolling` (StrictMode-safe), screen hooks as needed; keep 3s/5s intervals.
-- 5.3 **Design system:** tokens + base CSS (SPEC §8.1–8.2); primitives `Button/Input/Select/Field/Card/Pill/StepTracker/Toast/LoadingBar`.
-- 5.4 **Board system:** `Board` (full-width square grid + A–J/1–10 rails), `BoardCell` (all states SPEC §8.2), `Legend`, `BoardTabs` (mobile adaptivity).
-- 5.5 **AppBar + routing:** `NavLink`-based nav, hamburger on mobile, route table + stage guards (SPEC §7.4).
-- 5.6 **Screens** (one ticket each, bind only to real DTO fields, exclude SPEC §8.5 items):
-  Home · New Game · Join · Wait (StepTracker + copy) · Loading · Preparation (inline `DirectionToggle`, no modal, no auto-place) · Gameplay (PlayerCards + TurnBanner + adaptive boards) · Results (API-backed stats only).
-- 5.7 **Responsive pass:** breakpoints, board tabs, touch targets (SPEC §8.4).
-**Acceptance:** all 8 screens match the mockup at mobile & desktop; widgets consume only the adapter; behavior matches baseline; excluded elements absent; type-check + unit/component tests green.
+- 5.3 **i18n foundation (SPEC §8.8):** set up `react-i18next` + language detector; create `en`/`uk` JSON bundles (namespaces `common/screens/notifications/errors`); `AppBar` language switch (persisted); helpers to localize edition + ship-type enum names. **Establish the "no hard-coded strings" rule for all later tickets.**
+- 5.4 **Design system:** tokens + base CSS (SPEC §8.1–8.2); primitives `Button/Input/Field/Card/Pill/StepTracker/LoadingBar/ModeCard`.
+- 5.5 **Feedback system (SPEC §8.7):** `Toast` (4 variants + ARIA-live host), inline field-error, focus-trapped confirmation `Dialog`; a `useNotify()` hook; error→message mapping keyed off `errorCode` with status+context fallback.
+- 5.6 **Board system:** `Board` (full-width square grid + A–J/1–10 rails), `BoardCell` (all states incl. **no-go/hatched** SPEC §8.2), `Legend` (incl. no-go), `BoardTabs` (mobile adaptivity).
+- 5.7 **AppBar + routing:** `NavLink`-based nav, hamburger on mobile (language switch reachable), route table + stage guards (SPEC §7.4).
+- 5.8 **Screens** (one ticket each, localized, bind only to real DTO fields, exclude SPEC §8.5 items):
+  Home · **New Game (mode cards, correct 10-ship editions)** · Join (inline validation) · Wait (StepTracker + copy toast) · Loading · **Preparation (inline `DirectionToggle`, no-go moat from `isAvailable`, two-way ship removal: tap board + tray ✕, error/success toasts; no auto-place)** · Gameplay (PlayerCards + TurnBanner + adaptive boards + not-your-turn toast) · Results (Ships-sunk only).
+- 5.9 **Responsive pass:** breakpoints, board tabs, touch targets (SPEC §8.4).
+**Acceptance:** all screens match the mockup at mobile & desktop in **both languages**; widgets consume only the adapter; behavior matches baseline; no-go moat + two-way removal + feedback system present; excluded elements absent; no hard-coded user-facing strings; type-check + unit/component/i18n tests green.
 
 ---
 
@@ -180,11 +184,11 @@ This plan defines **11 ordered phases**. Each phase entry gives its objective, t
 | Phase | SPEC sections | Mockup | Testing plan |
 |---|---|---|---|
 | 1 | §4.1, §5.1, §6, §11 | — | Backend-upgrade regression |
-| 2 | §3.1, §6 | — | Backend-unit, Backend-integration, Coverage |
+| 2 | §3.1, §6, §8.8.4 | — | Backend-unit, Backend-integration, Coverage |
 | 3 | §3.2, §5.2, §2.3 | — | FE-build-smoke |
 | 4 | §4.2, §5.2, §7, §9 | — | FE-build-smoke |
-| 5 | §4.2, §7, §8 | all screens | FE-unit, FE-component |
-| 6 | §7 | all screens | FE-unit, FE-component, FE-e2e-mocked |
+| 5 | §4.2, §7, §8 (incl. §8.7, §8.8) | all screens + Feedback + EN/УКР | FE-unit, FE-component, FE-i18n |
+| 6 | §7, §8.7, §8.8 | all screens | FE-unit, FE-component, FE-i18n, FE-e2e-mocked |
 | 7 | §6, §8 | all screens | Live-e2e |
 | 8 | §10 | all screens | all |
 | 9 | §9 | — | Container |

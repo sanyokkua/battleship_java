@@ -19,9 +19,10 @@ AUTHORITATIVE DOCS (read these first, in full):
 - docs/redesign/TESTING_PLAN.md          (the tests this phase owns and must make green)
 
 HARD INVARIANTS (never violate):
-- Do NOT change the backend REST API surface (paths, verbs, request/response DTOs, status codes) — SPEC §6.
+- Do NOT make BREAKING backend REST API changes (paths, verbs, existing request/response fields, status codes) — SPEC §6. The ONLY allowed API change is the additive ExceptionDto.errorCode for i18n (SPEC §8.8.4).
 - Do NOT change game logic, EXCEPT a Phase-2 bug fix, which must be documented + regression-tested.
 - Keep the app building at the phase boundary. Frontend widgets must use the GameAdapter, never call the network directly.
+- NO hard-coded user-facing strings — all text is localized (English + Ukrainian, SPEC §8.8).
 
 DO THE FOLLOWING, IN ORDER, THEN STOP AND PRESENT THE PLAN:
 
