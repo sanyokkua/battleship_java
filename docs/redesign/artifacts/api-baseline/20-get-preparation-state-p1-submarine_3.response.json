@@ -1,0 +1,656 @@
+{
+  "ships" : [ {
+    "shipId" : "fd2ee6e6-c603-4c96-abc9-43b01380c15a",
+    "shipSize" : 2
+  }, {
+    "shipId" : "05a6c247-52d3-45a5-ac66-383d22b9ce1b",
+    "shipSize" : 3
+  }, {
+    "shipId" : "e3b79137-84c6-405e-b418-01e5348f0cf8",
+    "shipSize" : 3
+  }, {
+    "shipId" : "9e6de06c-58c7-4eba-a9a5-365f3ac2345f",
+    "shipSize" : 4
+  } ],
+  "field" : [ [ {
+    "row" : 0,
+    "col" : 0,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 0,
+    "col" : 1,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 0,
+    "col" : 2,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 0,
+    "col" : 3,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 0,
+    "col" : 4,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 0,
+    "col" : 5,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 0,
+    "col" : 6,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 0,
+    "col" : 7,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 0,
+    "col" : 8,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 0,
+    "col" : 9,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  } ], [ {
+    "row" : 1,
+    "col" : 0,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 1,
+    "col" : 1,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 1,
+    "col" : 2,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 1,
+    "col" : 3,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 1,
+    "col" : 4,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 1,
+    "col" : 5,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 1,
+    "col" : 6,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 1,
+    "col" : 7,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 1,
+    "col" : 8,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 1,
+    "col" : 9,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  } ], [ {
+    "row" : 2,
+    "col" : 0,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 2,
+    "col" : 1,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 2,
+    "col" : 2,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 2,
+    "col" : 3,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 2,
+    "col" : 4,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 2,
+    "col" : 5,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 2,
+    "col" : 6,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 2,
+    "col" : 7,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 2,
+    "col" : 8,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 2,
+    "col" : 9,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  } ], [ {
+    "row" : 3,
+    "col" : 0,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 3,
+    "col" : 1,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 3,
+    "col" : 2,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 3,
+    "col" : 3,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 3,
+    "col" : 4,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 3,
+    "col" : 5,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 3,
+    "col" : 6,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 3,
+    "col" : 7,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 3,
+    "col" : 8,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 3,
+    "col" : 9,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  } ], [ {
+    "row" : 4,
+    "col" : 0,
+    "ship" : {
+      "shipId" : "22e6a175-a98b-449f-9fbc-2805edf01b5d",
+      "shipType" : "SUBMARINE",
+      "shipDirection" : "HORIZONTAL",
+      "shipSize" : 2
+    },
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 4,
+    "col" : 1,
+    "ship" : {
+      "shipId" : "22e6a175-a98b-449f-9fbc-2805edf01b5d",
+      "shipType" : "SUBMARINE",
+      "shipDirection" : "HORIZONTAL",
+      "shipSize" : 2
+    },
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 4,
+    "col" : 2,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 4,
+    "col" : 3,
+    "ship" : {
+      "shipId" : "de43b1bf-9401-454c-acfa-618d5e2ff403",
+      "shipType" : "SUBMARINE",
+      "shipDirection" : "HORIZONTAL",
+      "shipSize" : 2
+    },
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 4,
+    "col" : 4,
+    "ship" : {
+      "shipId" : "de43b1bf-9401-454c-acfa-618d5e2ff403",
+      "shipType" : "SUBMARINE",
+      "shipDirection" : "HORIZONTAL",
+      "shipSize" : 2
+    },
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 4,
+    "col" : 5,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 4,
+    "col" : 6,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 4,
+    "col" : 7,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 4,
+    "col" : 8,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 4,
+    "col" : 9,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  } ], [ {
+    "row" : 5,
+    "col" : 0,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 5,
+    "col" : 1,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 5,
+    "col" : 2,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 5,
+    "col" : 3,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 5,
+    "col" : 4,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 5,
+    "col" : 5,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 5,
+    "col" : 6,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 5,
+    "col" : 7,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 5,
+    "col" : 8,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 5,
+    "col" : 9,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  } ], [ {
+    "row" : 6,
+    "col" : 0,
+    "ship" : {
+      "shipId" : "101d3cf7-e9eb-4877-86ea-af082ab16529",
+      "shipType" : "PATROL_BOAT",
+      "shipDirection" : "HORIZONTAL",
+      "shipSize" : 1
+    },
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 6,
+    "col" : 1,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 6,
+    "col" : 2,
+    "ship" : {
+      "shipId" : "49b27f3c-7c60-4cba-a820-397165c6bb4f",
+      "shipType" : "PATROL_BOAT",
+      "shipDirection" : "HORIZONTAL",
+      "shipSize" : 1
+    },
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 6,
+    "col" : 3,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 6,
+    "col" : 4,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 6,
+    "col" : 5,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 6,
+    "col" : 6,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 6,
+    "col" : 7,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 6,
+    "col" : 8,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 6,
+    "col" : 9,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  } ], [ {
+    "row" : 7,
+    "col" : 0,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 7,
+    "col" : 1,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 7,
+    "col" : 2,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 7,
+    "col" : 3,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 7,
+    "col" : 4,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 7,
+    "col" : 5,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 7,
+    "col" : 6,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 7,
+    "col" : 7,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 7,
+    "col" : 8,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 7,
+    "col" : 9,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  } ], [ {
+    "row" : 8,
+    "col" : 0,
+    "ship" : {
+      "shipId" : "8a62b87d-7d16-4798-a052-8f5bd73d1538",
+      "shipType" : "PATROL_BOAT",
+      "shipDirection" : "HORIZONTAL",
+      "shipSize" : 1
+    },
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 8,
+    "col" : 1,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 8,
+    "col" : 2,
+    "ship" : {
+      "shipId" : "a16dd72c-5f3d-4699-bedd-758993d69ae3",
+      "shipType" : "PATROL_BOAT",
+      "shipDirection" : "HORIZONTAL",
+      "shipSize" : 1
+    },
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 8,
+    "col" : 3,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 8,
+    "col" : 4,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 8,
+    "col" : 5,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 8,
+    "col" : 6,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 8,
+    "col" : 7,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 8,
+    "col" : 8,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 8,
+    "col" : 9,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  } ], [ {
+    "row" : 9,
+    "col" : 0,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 9,
+    "col" : 1,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 9,
+    "col" : 2,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 9,
+    "col" : 3,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : false
+  }, {
+    "row" : 9,
+    "col" : 4,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 9,
+    "col" : 5,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 9,
+    "col" : 6,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 9,
+    "col" : 7,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 9,
+    "col" : 8,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  }, {
+    "row" : 9,
+    "col" : 9,
+    "ship" : null,
+    "hasShot" : false,
+    "isAvailable" : true
+  } ] ]
+}

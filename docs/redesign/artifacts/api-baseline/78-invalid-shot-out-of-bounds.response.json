@@ -1,0 +1,4 @@
+{
+  "status" : 400,
+  "errorMessage" : "Coordinate: Coordinate[row=99, column=99] is not VALID!"
+}
