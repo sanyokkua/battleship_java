@@ -8,7 +8,11 @@ import ua.kostenko.battleship.battleship.logic.api.exceptions.GameSessionIdIsNot
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameStageIsNotCorrectException;
 import ua.kostenko.battleship.battleship.web.api.dtos.ExceptionDto;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -55,5 +59,27 @@ class ValidationExceptionHandlerTest {
         var body = (ExceptionDto) response.getBody();
         assertThat(body).isNotNull();
         assertThat(body.getErrorCode()).isEqualTo("STAGE_INVALID");
+    }
+
+    @Test
+    void resolveErrorCode_throwsIllegalStateException_forUnmappedExceptionType() throws Exception {
+        // resolveErrorCode's default branch is a defensive safety net: every exception type registered on the
+        // @ExceptionHandler is also mapped in the switch, so this path cannot be reached through the real
+        // dispatch pipeline. It is exercised directly via reflection to close the coverage gap without
+        // fabricating an unreachable production code path.
+        Method resolveErrorCode = ValidationExceptionHandler.class.getDeclaredMethod("resolveErrorCode",
+                                                                                       RuntimeException.class);
+        resolveErrorCode.setAccessible(true);
+        var unmapped = new IllegalArgumentException("not a typed game exception");
+
+        assertThatThrownBy(() -> {
+            try {
+                resolveErrorCode.invoke(handler, unmapped);
+            } catch (InvocationTargetException e) {
+                throw e.getCause();
+            }
+        }).isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("Unmapped exception type for error code resolution")
+          .hasMessageContaining("IllegalArgumentException");
     }
 }
