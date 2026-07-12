@@ -9,6 +9,10 @@ export default defineConfig({
         setupFiles: ["./src/setupTests.ts"],
         globals: true,
         passWithNoTests: true,
+        // Scope Vitest to src/** only — Vitest's default include glob matches
+        // both *.test.* and *.spec.*, which would otherwise also pick up the
+        // Playwright specs under e2e/** (those run via `npm run test:e2e`).
+        include: ["src/**/*.test.{ts,tsx}"],
         coverage: {
             provider: "v8",
             reporter: ["text", "html", "lcov"],
