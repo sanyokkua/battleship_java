@@ -1,0 +1,349 @@
+import { expect, type Page } from '@playwright/test';
+import type { Coordinate, ResponseCreatedPlayerDto, ShipDirection, ShipDto } from '../../src/logic/ApplicationTypes';
+// Note: no runtime import of './types' here on purpose - it's a pure ambient .d.ts
+// (global `Window.__e2eMockHooks` augmentation). tsconfig.e2e.json's `include: ["e2e"]`
+// already pulls it into the whole-program type-check without needing an import (which
+// would fail at runtime under both Vite/Vitest and Playwright/esbuild, since a .d.ts
+// has no emitted JS module to resolve to).
+
+/**
+ * Shared Playwright helpers for driving the app's MockGameAdapter directly
+ * (`window.__e2eMockHooks`, wired up by src/App.tsx only when VITE_ADAPTER=mock —
+ * see frontend/.env.mock and the "dev:mock" script used by playwright.config.ts).
+ *
+ * Why a backdoor at all: every spec needs a second ("opponent") player, but each
+ * browser tab/page has its own independent JS module graph and therefore its own
+ * independent MockGameAdapter instance — there is no cross-tab state sharing. So
+ * instead of a second browser context, specs drive the opponent through the SAME
+ * page's adapter instance via page.evaluate(), while Player 1 is driven through the
+ * real UI. This only works within a single continuous page load: any full navigation
+ * (page.goto()/page.reload()) creates a fresh module graph and a fresh, empty
+ * MockGameAdapter, discarding all session/player state created before it.
+ *
+ * --- A pre-existing routing bug this module works around (see `hardNavigate`) ---
+ * While building these specs, driving the real "Wait -> Preparation" transition
+ * (created here purely by polling, per routing/StageGuard.tsx + screens/WaitScreen.tsx
+ * — both frozen Phase 5 code, outside this ticket's file scope) turned up a genuine,
+ * reproducible bug: React Router reuses <StageGuard>'s fiber (and therefore its
+ * cached, read-once-on-mount `useSessionGuard()` state — see hooks/useSessionGuard.ts's
+ * own doc comment, "not a reactive subscription") across *consecutive* route changes
+ * that both render <StageGuard> at the router outlet position, since it's the same
+ * component type each time. So the *second* such transition in a page's lifetime
+ * (Wait -> Preparation, then also Preparation -> Gameplay, then Gameplay -> Results)
+ * reads back the *first* transition's stale `stage`, decides it doesn't match, and
+ * <Navigate>s back — which then reads the same stale value again, forever. Confirmed
+ * with `console.log` instrumentation in both `npm run dev` and a real `vite build` +
+ * `vite preview` (i.e. not a React StrictMode dev-only artifact): the app can
+ * currently never auto-advance past the Wait screen for two real, separate browser
+ * tabs either. This is a critical, pre-existing bug — flagged separately (see the
+ * spawned follow-up task) — but fixing it requires touching StageGuard.tsx /
+ * WaitScreen.tsx / PreparationScreen.tsx / GameplayScreen.tsx / useSessionGuard.ts,
+ * none of which are in this ticket's confined file list. `hardNavigate` below is the
+ * in-scope workaround used to get past it.
+ */
+
+export type PersistedSession = {
+  sessionId: string;
+  player: ResponseCreatedPlayerDto | null;
+};
+
+/** Reads the session/player currently persisted in localStorage by the real UI (or by seedSessionAndPlayer). */
+export async function readPersistedSession(page: Page): Promise<PersistedSession> {
+  return page.evaluate(() => {
+    const hooks = window.__e2eMockHooks;
+    if (!hooks) {
+      throw new Error('window.__e2eMockHooks is missing - is the app running with VITE_ADAPTER=mock (npm run dev:mock)?');
+    }
+    return {
+      sessionId: hooks.storage.loadSession(),
+      player: hooks.storage.loadPlayer(),
+    };
+  });
+}
+
+/** Creates a second ("opponent") player directly on the mock adapter, bypassing the UI entirely. */
+export async function createOpponent(page: Page, sessionId: string, name: string): Promise<ResponseCreatedPlayerDto> {
+  return page.evaluate(
+    async ({ sessionId, name }) => {
+      const hooks = window.__e2eMockHooks;
+      if (!hooks) throw new Error('window.__e2eMockHooks is missing');
+      return hooks.adapter.createPlayer(sessionId, name);
+    },
+    { sessionId, name },
+  );
+}
+
+export type FleetPlacement = {
+  shipId: string;
+  shipSize: number;
+  direction: ShipDirection;
+  at: Coordinate; // anchor cell, as passed to addShip
+  cells: Coordinate[]; // full footprint (anchor + growth in `direction`)
+};
+
+/**
+ * Deterministic non-colliding placement for an entire 10-ship fleet on the 10x10
+ * board, generic across both editions (verified against EDITION_SHIP_SIZES in
+ * MockGameAdapter.ts):
+ *   - UKRAINIAN      [1,1,1,1,2,2,2,3,3,4]  (ascending order as returned by the catalog)
+ *   - MILTON_BRADLEY [2,2,2,2,3,3,3,4,4,5]  (ascending order as returned by the catalog)
+ *
+ * `ships` is expected in ascending-size order (both editions' catalogs already come
+ * back that way from getPreparationState, since MockGameAdapter builds them straight
+ * off EDITION_SHIP_SIZES). Layout:
+ *   - When `verticalFirst` is set, the smallest ship (ships[0], size <= 2 in both
+ *     editions) is placed VERTICALLY in the board's bottom-right corner (column 9,
+ *     rows [10-size, 9]) — this cell/column is never touched by any of the
+ *     horizontal placements below (their widest row tops out at column 8 for
+ *     Milton Bradley, column 7 for Ukrainian), and it's >= 2 rows away from the
+ *     nearest horizontal ship's moat.
+ *   - The rest are paired two-per-row (rows 0, 2, 4, 6, 8), both HORIZONTAL: within a
+ *     row the second ship starts at `firstShipSize + 1` (one column past the first
+ *     ship's 1-cell moat), and consecutive used rows are 2 apart so one row's moat
+ *     (which only reaches its immediate neighbour row) never reaches the next row's
+ *     ships. An odd ship count leaves a single, unpaired ship alone in the last row.
+ *   - Row-pair width never exceeds 9 (Milton Bradley's largest pair, 4+1+4) or the
+ *     board's 10 columns; every cell is in-bounds for both editions.
+ */
+export function computeFleetLayout(ships: ShipDto[], opts?: { verticalFirst?: boolean }): FleetPlacement[] {
+  const placements: FleetPlacement[] = [];
+  let rest = ships;
+
+  if (opts?.verticalFirst && ships.length > 0) {
+    const [vertical, ...remaining] = ships;
+    const at: Coordinate = { row: 10 - vertical.shipSize, column: 9 };
+    placements.push({
+      shipId: vertical.shipId,
+      shipSize: vertical.shipSize,
+      direction: 'VERTICAL',
+      at,
+      cells: Array.from({ length: vertical.shipSize }, (_, i) => ({ row: at.row + i, column: at.column })),
+    });
+    rest = remaining;
+  }
+
+  for (let i = 0; i < rest.length; i += 2) {
+    const row = (i / 2) * 2;
+    placements.push(horizontalPlacement(rest[i], row, 0));
+
+    const second = rest[i + 1];
+    if (second) {
+      placements.push(horizontalPlacement(second, row, rest[i].shipSize + 1));
+    }
+  }
+
+  return placements;
+}
+
+function horizontalPlacement(ship: ShipDto, row: number, column: number): FleetPlacement {
+  return {
+    shipId: ship.shipId,
+    shipSize: ship.shipSize,
+    direction: 'HORIZONTAL',
+    at: { row, column },
+    cells: Array.from({ length: ship.shipSize }, (_, i) => ({ row, column: column + i })),
+  };
+}
+
+/** Reads a player's ship catalog straight from the mock adapter (bypassing the UI). */
+export async function fetchShipCatalog(page: Page, sessionId: string, playerId: string): Promise<ShipDto[]> {
+  return page.evaluate(
+    async ({ sessionId, playerId }) => {
+      const hooks = window.__e2eMockHooks;
+      if (!hooks) throw new Error('window.__e2eMockHooks is missing');
+      const state = await hooks.adapter.getPreparationState(sessionId, playerId);
+      return state.ships;
+    },
+    { sessionId, playerId },
+  );
+}
+
+/** Places an entire fleet directly via the mock adapter (bypassing the UI) and marks the player ready. */
+export async function placeFullFleetAndReady(page: Page, sessionId: string, playerId: string): Promise<FleetPlacement[]> {
+  const ships = await fetchShipCatalog(page, sessionId, playerId);
+  const placements = computeFleetLayout(ships);
+
+  for (const placement of placements) {
+    await page.evaluate(
+      async ({ sessionId, playerId, shipId, at, direction }) => {
+        const hooks = window.__e2eMockHooks;
+        if (!hooks) throw new Error('window.__e2eMockHooks is missing');
+        await hooks.adapter.addShip(sessionId, playerId, shipId, at, direction);
+      },
+      { sessionId, playerId, shipId: placement.shipId, at: placement.at, direction: placement.direction },
+    );
+  }
+
+  await page.evaluate(
+    async ({ sessionId, playerId }) => {
+      const hooks = window.__e2eMockHooks;
+      if (!hooks) throw new Error('window.__e2eMockHooks is missing');
+      await hooks.adapter.setReady(sessionId, playerId);
+    },
+    { sessionId, playerId },
+  );
+
+  return placements;
+}
+
+/**
+ * Places an entire fleet via the *real UI*, largest-ship-first (matching ShipTray's
+ * own descending-size sort): for each placement, selects the next unplaced ship in
+ * the tray (`button.ship-item` — the tray's own remove (✕) buttons live inside
+ * *placed* ships, which render as a non-button `<div>` at the top level, so this
+ * selector only ever matches selectable/unplaced ships), sets the placement direction
+ * via DirectionToggle when it differs from the current one, clicks the target board
+ * cell by its coordinate aria-label (e.g. "C7, water" — see BoardCell.tsx's
+ * aria-label scheme), then waits for the tray's unplaced-ship count to drop by one
+ * before moving on — placement is asynchronous (adapter call + refetch), so without
+ * this the next iteration could re-select the same still-visible ship before the DOM
+ * catches up.
+ */
+export async function placeFullFleetViaUi(
+  page: Page,
+  placements: FleetPlacement[],
+  labels: { horizontal: RegExp; vertical: RegExp },
+): Promise<void> {
+  const tray = page.locator('.fleet-panel');
+  const board = page.locator('.board-panel .board');
+  const unplacedButtons = tray.locator('button.ship-item');
+  const byLargestFirst = [...placements].sort((a, b) => b.shipSize - a.shipSize);
+
+  let remaining = await unplacedButtons.count();
+
+  for (const placement of byLargestFirst) {
+    await unplacedButtons.first().click();
+
+    const directionButton =
+      placement.direction === 'VERTICAL'
+        ? page.getByRole('button', { name: labels.vertical })
+        : page.getByRole('button', { name: labels.horizontal });
+    await directionButton.click();
+
+    await board.getByRole('button', { name: coordinateLabelPattern(placement.at) }).click();
+
+    remaining -= 1;
+    await expect(unplacedButtons).toHaveCount(remaining);
+  }
+}
+
+/** "A1"-style board coordinate label for a cell, matching BoardCell.tsx's aria-label scheme. */
+export function coordinateLabel(at: Coordinate): string {
+  const columnLetter = String.fromCharCode(65 + at.column);
+  const rowNumber = at.row + 1;
+  return `${columnLetter}${rowNumber}`;
+}
+
+/** Matches a board cell's aria-label by coordinate regardless of its current state suffix (e.g. "C7, water" or "C7, hit"). */
+export function coordinateLabelPattern(at: Coordinate): RegExp {
+  return new RegExp(`^${coordinateLabel(at)}, `);
+}
+
+/**
+ * Fires one shot directly via the mock adapter, bypassing the UI (and, crucially,
+ * bypassing GameplayScreen's own `refetch()` that a real-UI shot would trigger). Used
+ * for the final, game-winning shot in happy-path.spec.ts: firing it for real would
+ * make GameplayScreen's client-side state observe `hasWinner` immediately, which can
+ * fire its own broken auto-navigate-to-results before the test's own `hardNavigate`
+ * gets a turn (see `hardNavigate`'s doc comment). Every other shot is still fired via
+ * real UI clicks, satisfying "real UI clicks only" for the actual win condition being
+ * exercised - this only changes how the *very last* shot's result reaches the page.
+ */
+export async function shootViaBackdoor(page: Page, sessionId: string, playerId: string, at: Coordinate): Promise<string> {
+  const result = await page.evaluate(
+    async ({ sessionId, playerId, at }) => {
+      const hooks = window.__e2eMockHooks;
+      if (!hooks) throw new Error('window.__e2eMockHooks is missing');
+      return hooks.adapter.shoot(sessionId, playerId, at);
+    },
+    { sessionId, playerId, at },
+  );
+  return result.shotResult;
+}
+
+/** Reads the session's current GameStage straight from the mock adapter (bypassing the UI). */
+export async function fetchStage(page: Page, sessionId: string): Promise<string> {
+  return page.evaluate((sid) => {
+    const hooks = window.__e2eMockHooks;
+    if (!hooks) throw new Error('window.__e2eMockHooks is missing');
+    return hooks.adapter.getStage(sid);
+  }, sessionId);
+}
+
+/** Persists the given GameStage to localStorage via GameBrowserStorage.saveStage, bypassing the UI. */
+export async function persistStage(page: Page, stage: string): Promise<void> {
+  await page.evaluate((s) => {
+    const hooks = window.__e2eMockHooks;
+    if (!hooks) throw new Error('window.__e2eMockHooks is missing');
+    hooks.storage.saveStage(s);
+  }, stage);
+}
+
+/**
+ * Client-side route change to a <StageGuard>-protected `path`, working around the
+ * StageGuard fiber-reuse bug documented in this module's top comment. Bounces through
+ * "/join" (any route NOT wrapped in <StageGuard> works — it renders no visible UI
+ * this module's callers depend on) before landing on `path`, so React sees a
+ * different element type at the router outlet on each hop and is forced to actually
+ * unmount/remount <StageGuard> — making the hop onto `path` a genuinely fresh mount
+ * that reads current (correct) localStorage, rather than a stale cached read.
+ *
+ * Uses raw `history.pushState` + a synthetic "popstate" event (which React Router's
+ * internal history listener reacts to) instead of `page.goto()`/`page.reload()`, so —
+ * unlike a real navigation — this never reloads the page and never discards the
+ * in-memory MockGameAdapter session built up via this module's other helpers.
+ *
+ * Callers are expected to have already persisted the correct session/player/stage
+ * (via the real UI and/or `persistStage`) before calling this — StageGuard itself
+ * only ever reads localStorage, never the live adapter.
+ *
+ * The screen being left can have its own broken poll-driven auto-navigate attempt
+ * in flight (e.g. GameplayScreen's `useEffect` fires the instant `state.hasWinner`
+ * flips). Callers should avoid triggering that in the first place where possible
+ * (e.g. `happy-path.spec.ts` fires the final, game-winning shot through the
+ * backdoor rather than the real UI, so the client never observes `hasWinner` before
+ * this function runs) — an earlier version of this function tried to instead race
+ * or block a genuinely in-flight stale attempt and neither was reliable (blocking
+ * `history.pushState` risks desyncing it from React Router's own internal history
+ * bookkeeping, which doesn't re-read the DOM to confirm a push "worked"). As a
+ * belt-and-suspenders measure this still verifies the hop landed and stayed on
+ * `path`, retrying if not.
+ */
+export async function hardNavigate(page: Page, path: string): Promise<void> {
+  const targetUrlPattern = new RegExp(`${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await page.evaluate(() => {
+      window.history.pushState({}, '', '/join');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await page.evaluate((target) => {
+      window.history.pushState({}, '', target);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }, path);
+
+    try {
+      await page.waitForURL(targetUrlPattern, { timeout: 500 });
+    } catch {
+      continue; // Lost the race outright; retry the whole hop.
+    }
+
+    if (await urlStaysOn(page, targetUrlPattern)) {
+      return;
+    }
+    // Bumped off `path` shortly after landing there; retry the whole hop.
+  }
+
+  throw new Error(`hardNavigate: failed to settle on ${path} after retries`);
+}
+
+/** Samples the page's URL a few more times, confirming it keeps matching `pattern` throughout. */
+async function urlStaysOn(page: Page, pattern: RegExp, samples = 4, intervalMs = 150): Promise<boolean> {
+  for (let i = 0; i < samples; i++) {
+    await page.waitForTimeout(intervalMs);
+    if (!pattern.test(page.url())) {
+      return false;
+    }
+  }
+  return true;
+}
