@@ -8,8 +8,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ua.kostenko.battleship.battleship.logic.api.GameControllerApi;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameOpponentNotFoundException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GamePlayerNotFoundException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipAlreadyPlacedException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipDirectionIsNotCorrectException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipIdIsNotCorrectException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipsNotAllPlacedException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameStageIsNotCorrectException;
 import ua.kostenko.battleship.battleship.logic.engine.models.OpponentInfo;
 import ua.kostenko.battleship.battleship.logic.engine.models.Player;
@@ -102,6 +106,18 @@ class PreparationRestControllerTest {
                .andExpect(jsonPath("$.errorCode").value("STAGE_INVALID"));
     }
 
+    @Test
+    void getPreparationState_playerNotFound_returns400WithPlayerNotFoundErrorCode() throws Exception {
+        when(controllerV2Api.getShipsNotOnTheBoard(SESSION_ID, PLAYER_ID)).thenThrow(new GamePlayerNotFoundException(
+                "stale player id"));
+
+        mockMvc.perform(get("/api/v2/game/sessions/{sessionId}/players/{playerId}/preparationState",
+                             SESSION_ID,
+                             PLAYER_ID))
+               .andExpect(status().isBadRequest())
+               .andExpect(jsonPath("$.errorCode").value("PLAYER_NOT_FOUND"));
+    }
+
     // ---- PUT /api/v2/game/sessions/{sessionId}/players/{playerId}/ships/{shipId} ----
 
     @Test
@@ -155,6 +171,53 @@ class PreparationRestControllerTest {
                                              .content(objectMapper.writeValueAsString(body)))
                .andExpect(status().isBadRequest())
                .andExpect(jsonPath("$.errorCode").value("SHIP_ID_INVALID"));
+    }
+
+    @Test
+    void addShipToField_shipAlreadyPlaced_returns400WithShipAlreadyPlacedErrorCode() throws Exception {
+        when(controllerV2Api.addShipToField(eq(SESSION_ID),
+                                             eq(PLAYER_ID),
+                                             eq("ship-1"),
+                                             any(),
+                                             any())).thenThrow(new GameShipAlreadyPlacedException(
+                "ship already placed"));
+
+        var body = ParamShipDto.builder()
+                                .row(0)
+                                .col(0)
+                                .direction("HORIZONTAL")
+                                .build();
+
+        mockMvc.perform(put("/api/v2/game/sessions/{sessionId}/players/{playerId}/ships/{shipId}",
+                             SESSION_ID,
+                             PLAYER_ID,
+                             "ship-1").contentType(MediaType.APPLICATION_JSON)
+                                       .content(objectMapper.writeValueAsString(body)))
+               .andExpect(status().isBadRequest())
+               .andExpect(jsonPath("$.errorCode").value("SHIP_ALREADY_PLACED"));
+    }
+
+    @Test
+    void addShipToField_wrongStage_returns400WithStageInvalidErrorCode() throws Exception {
+        when(controllerV2Api.addShipToField(eq(SESSION_ID),
+                                             eq(PLAYER_ID),
+                                             eq("ship-1"),
+                                             any(),
+                                             any())).thenThrow(new GameStageIsNotCorrectException("wrong stage"));
+
+        var body = ParamShipDto.builder()
+                                .row(0)
+                                .col(0)
+                                .direction("HORIZONTAL")
+                                .build();
+
+        mockMvc.perform(put("/api/v2/game/sessions/{sessionId}/players/{playerId}/ships/{shipId}",
+                             SESSION_ID,
+                             PLAYER_ID,
+                             "ship-1").contentType(MediaType.APPLICATION_JSON)
+                                       .content(objectMapper.writeValueAsString(body)))
+               .andExpect(status().isBadRequest())
+               .andExpect(jsonPath("$.errorCode").value("STAGE_INVALID"));
     }
 
     @Test
@@ -273,6 +336,23 @@ class PreparationRestControllerTest {
                .andExpect(jsonPath("$.errorCode").value("SESSION_NOT_FOUND"));
     }
 
+    /**
+     * Regression test for the confirmed production bug: a solo player on the Wait screen polling this
+     * endpoint every 3s before a second player has joined must now surface as a clean, structured HTTP 400
+     * with {@code errorCode == "OPPONENT_NOT_FOUND"} — not an unhandled {@code IllegalArgumentException}
+     * reaching the servlet container's default (unstructured) error response.
+     */
+    @Test
+    void getOpponentInformation_soloPlayerPolling_returns400WithOpponentNotFoundErrorCode() throws Exception {
+        when(controllerV2Api.getOpponentInformation(SESSION_ID, PLAYER_ID)).thenThrow(new GameOpponentNotFoundException(
+                "Player with provided filter is not found"));
+
+        mockMvc.perform(get("/api/v2/game/sessions/{sessionId}/players/{playerId}/opponent", SESSION_ID, PLAYER_ID))
+               .andExpect(status().isBadRequest())
+               .andExpect(jsonPath("$.status").value(400))
+               .andExpect(jsonPath("$.errorCode").value("OPPONENT_NOT_FOUND"));
+    }
+
     // ---- POST /api/v2/game/sessions/{sessionId}/players/{playerId}/start ----
 
     @Test
@@ -300,6 +380,16 @@ class PreparationRestControllerTest {
         mockMvc.perform(post("/api/v2/game/sessions/{sessionId}/players/{playerId}/start", SESSION_ID, PLAYER_ID))
                .andExpect(status().isBadRequest())
                .andExpect(jsonPath("$.errorCode").value("STAGE_INVALID"));
+    }
+
+    @Test
+    void startGame_shipsNotAllPlaced_returns400WithShipsNotAllPlacedErrorCode() throws Exception {
+        when(controllerV2Api.startGame(SESSION_ID, PLAYER_ID)).thenThrow(new GameShipsNotAllPlacedException(
+                "ships not all placed"));
+
+        mockMvc.perform(post("/api/v2/game/sessions/{sessionId}/players/{playerId}/start", SESSION_ID, PLAYER_ID))
+               .andExpect(status().isBadRequest())
+               .andExpect(jsonPath("$.errorCode").value("SHIPS_NOT_ALL_PLACED"));
     }
 
     private Cell[][] emptyField() {

@@ -1,5 +1,5 @@
 {
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/301e9b0e-10d5-46d3-b7fa-8ac2b9e4638c/players/0a33409a-414e-4065-ab93-2165933dbb00/field/shot",
+  "path" : "/api/v2/game/sessions/476ca178-3419-4e7d-970a-1f7e14fca568/players/d69f4334-4b09-46cb-a6a6-6b81fa870623/field/shot",
   "status" : 200
 }

@@ -4,6 +4,7 @@ import lombok.NonNull;
 import lombok.extern.log4j.Log4j2;
 import lombok.val;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEditionConfiguration;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.CellAlreadyShotException;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.ShotResult;
 import ua.kostenko.battleship.battleship.logic.engine.models.records.Cell;
 import ua.kostenko.battleship.battleship.logic.engine.models.records.Coordinate;
@@ -117,9 +118,14 @@ public class FieldManagementImpl implements FieldManagement {
         log.debug("Shot to coordinate: {}", coordinate);
         CoordinateUtils.validateCoordinate(coordinate);
 
+        val existingCell = getCell(coordinate);
+        if (existingCell.hasShot()) {
+            throw new CellAlreadyShotException("Cell has already been shot. %s".formatted(coordinate));
+        }
+
         val cell = updateCell(Cell.builder()
                 .coordinate(coordinate)
-                .ship(getCell(coordinate).ship())
+                .ship(existingCell.ship())
                 .hasShot(true)
                 .build());
 

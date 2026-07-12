@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import ua.kostenko.battleship.battleship.logic.api.GameControllerApi;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameEditionIsNotCorrectException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GamePlayerNameIsNotCorrectException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameSessionFullException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameSessionIdIsNotCorrectException;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEdition;
 import ua.kostenko.battleship.battleship.logic.engine.models.Player;
@@ -141,6 +142,23 @@ class GameSessionCommonRestControllerTest {
                                                                                        body)))
                .andExpect(status().isBadRequest())
                .andExpect(jsonPath("$.errorCode").value("SESSION_NOT_FOUND"));
+    }
+
+    @Test
+    void createPlayerInSession_sessionFull_returns400WithSessionFullErrorCode() throws Exception {
+        when(controllerV2Api.createPlayerInSession(eq("session-123"),
+                                                     eq("Alice"))).thenThrow(new GameSessionFullException(
+                "Game can't have more than 2 players"));
+
+        var body = ParamPlayerNameDto.builder()
+                                      .playerName("Alice")
+                                      .build();
+
+        mockMvc.perform(post("/api/v2/game/sessions/session-123/players").contentType(MediaType.APPLICATION_JSON)
+                                                                           .content(objectMapper.writeValueAsString(
+                                                                                   body)))
+               .andExpect(status().isBadRequest())
+               .andExpect(jsonPath("$.errorCode").value("SESSION_FULL"));
     }
 
     // ---- GET /api/v2/game/sessions/{sessionId}/state ----

@@ -1,4 +1,3 @@
-import {useState} from "react";
 import {loadPlayer, loadSession, loadStage} from "../services/GameBrowserStorage";
 import type {ResponseCreatedPlayerDto} from "../logic/ApplicationTypes";
 
@@ -20,11 +19,14 @@ function readSessionGuardState(): SessionGuardState {
 /**
  * Reads persisted session/player/stage from GameBrowserStorage.
  *
- * Read once on mount (useState initializer) — this is a primitive for a
- * future route-guard hook/component to consume, not a reactive subscription
- * to storage changes from other tabs/windows.
+ * Reads fresh on every render — deliberately NOT memoized via useState/useMemo.
+ * The read is three cheap synchronous localStorage calls, and callers (notably
+ * StageGuard, which React Router can reuse across consecutive route transitions
+ * at the same outlet position instead of remounting) need up-to-date data on
+ * every render, not a stale value cached from first mount. This is still not a
+ * reactive subscription to storage changes from other tabs/windows — it only
+ * reflects the value as of whenever the consuming component happens to render.
  */
 export function useSessionGuard(): SessionGuardState {
-    const [state] = useState<SessionGuardState>(readSessionGuardState);
-    return state;
+    return readSessionGuardState();
 }

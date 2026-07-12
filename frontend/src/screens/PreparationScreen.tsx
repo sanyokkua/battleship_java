@@ -146,6 +146,7 @@ export function PreparationScreen() {
     allPlaced,
     loading,
     error,
+    actionTick,
   } = usePreparation(sessionId ?? '', player?.playerId ?? '');
 
   // usePreparation's placeShip/removeShipAt/markReady swallow adapter failures internally
@@ -153,19 +154,43 @@ export function PreparationScreen() {
   // screen can't tell success from failure with a plain try/catch around those calls.
   // `error` only reaches this component on the *next* render, one tick after the internal
   // setError() call, so it can't be read synchronously right after `await`ing the action.
-  // Instead, an effect watching `error` resolves whichever promise is currently "waiting"
-  // for the next update. Every action ends in exactly one setError() call (null on
-  // success, an error on failure — see usePreparation.ts), and every action triggered by
-  // this screen's UI runs to completion (awaited) before the next one can start, so at
-  // most one waiter is ever pending — no request-id bookkeeping needed.
+  // Instead, an effect watching `actionTick` (NOT `error` itself — see usePreparation.ts's
+  // doc comment on `actionTick`: two consecutive successful actions both set `error` to
+  // the same `null` value, and React skips re-running an effect keyed on `[error]` when a
+  // setter is called with an `Object.is`-equal value, so that effect could silently never
+  // fire again after the first successful action) resolves whichever promise is currently
+  // "waiting" for the next update. Every action ends in exactly one actionTick increment
+  // (paired with one setError() call — null on success, an error on failure — see
+  // usePreparation.ts), and every action triggered by this screen's UI runs to completion
+  // (awaited) before the next one can start, so at most one waiter is ever pending — no
+  // request-id bookkeeping needed.
   const waiterRef = useRef<((e: GameAdapterError | null) => void) | null>(null);
+
+  // Set to true immediately before a *placement* runAction call (see handleCellClick's
+  // placement branch below); consumed (read once, reset to false) by the actionTick
+  // effect below, once ships/field have already refreshed. Reset to false at the top of
+  // every OTHER runAction call site so a stray leftover `true` is never misread as "the
+  // action that just completed was a placement".
+  const pendingAutoAdvanceRef = useRef(false);
 
   useEffect(() => {
     if (waiterRef.current) {
       waiterRef.current(error);
       waiterRef.current = null;
     }
-  }, [error]);
+
+    if (pendingAutoAdvanceRef.current) {
+      pendingAutoAdvanceRef.current = false;
+      if (error === null) {
+        // "Next" = the next entry in ShipTray's own sort order among still-unplaced
+        // ships (descending by size, stable ties preserve `ships`' original order).
+        const nextShip = [...ships].sort((a, b) => b.shipSize - a.shipSize)[0];
+        setActiveShipId(nextShip ? nextShip.shipId : null);
+      }
+    }
+    // Deliberately keyed on actionTick, not on `error` itself — see comment above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionTick]);
 
   // Post-ready stage watch: usePreparation doesn't track the player's own stage
   // transition (only opponentReady), so this screen owns polling getStage() itself
@@ -261,6 +286,7 @@ export function PreparationScreen() {
     if (!cell) {
       return;
     }
+    pendingAutoAdvanceRef.current = false;
     const ok = await runAction(() => removeShipAt({ row: cell.row, column: cell.col }));
     if (ok) {
       notify.success('ship.removed');
@@ -277,6 +303,7 @@ export function PreparationScreen() {
     // removes it, regardless of whether a ship is currently selected for placement.
     if (cell.ship != null) {
       const shipId = cell.ship.shipId;
+      pendingAutoAdvanceRef.current = false;
       const ok = await runAction(() => removeShipAt({ row, column: col }));
       if (ok) {
         notify.success('ship.removed');
@@ -302,10 +329,10 @@ export function PreparationScreen() {
       return;
     }
 
+    pendingAutoAdvanceRef.current = true;
     const ok = await runAction(() => placeShip(activeShipId, { row, column: col }));
     if (ok) {
       notify.success('ship.placed');
-      setActiveShipId(null);
     }
   }
 
@@ -314,6 +341,7 @@ export function PreparationScreen() {
       notify.warn('ready.needAllShips');
       return;
     }
+    pendingAutoAdvanceRef.current = false;
     const ok = await runAction(() => markReady());
     if (ok) {
       setWatchingStage(true);

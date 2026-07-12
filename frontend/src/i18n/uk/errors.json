@@ -4,6 +4,7 @@
   "PLAYER_ID_INVALID": "Гравця не знайдено.",
   "PLAYER_NAME_INVALID": "Це ім'я недійсне — використайте щонайменше 2 символи.",
   "PLAYER_NOT_ACTIVE": "Зараз не ваш хід.",
+  "CELL_ALREADY_SHOT": "Ви вже стріляли по цій клітині.",
   "SESSION_NOT_FOUND": "Цю ігрову сесію не знайдено.",
   "SHIP_DIRECTION_INVALID": "Цей напрямок корабля недійсний.",
   "SHIP_ID_INVALID": "Цей корабель недійсний.",

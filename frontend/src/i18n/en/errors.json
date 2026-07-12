@@ -4,6 +4,7 @@
   "PLAYER_ID_INVALID": "Player not found.",
   "PLAYER_NAME_INVALID": "That name isn't valid — use at least 2 characters.",
   "PLAYER_NOT_ACTIVE": "It's not your turn.",
+  "CELL_ALREADY_SHOT": "You've already fired at this cell.",
   "SESSION_NOT_FOUND": "That game session wasn't found.",
   "SHIP_DIRECTION_INVALID": "That ship direction isn't valid.",
   "SHIP_ID_INVALID": "That ship isn't valid.",

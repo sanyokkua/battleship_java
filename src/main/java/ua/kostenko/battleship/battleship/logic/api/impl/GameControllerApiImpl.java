@@ -6,13 +6,24 @@ import lombok.val;
 import ua.kostenko.battleship.battleship.logic.api.GameControllerApi;
 import ua.kostenko.battleship.battleship.logic.api.IdGenerator;
 import ua.kostenko.battleship.battleship.logic.api.ValidationUtils;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameCellAlreadyShotException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameInternalProblemException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameOpponentNotFoundException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GamePlayerNotActiveException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GamePlayerNotFoundException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameSessionFullException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameSessionIdIsNotCorrectException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipAlreadyPlacedException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipIdIsNotCorrectException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipsNotAllPlacedException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameStageIsNotCorrectException;
 import ua.kostenko.battleship.battleship.logic.engine.Game;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEdition;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.CellAlreadyShotException;
 import ua.kostenko.battleship.battleship.logic.engine.exceptions.PlayerNotActiveException;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.SessionFullException;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.ShipNotAvailableForAddException;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.ShipsNotAllPlacedException;
 import ua.kostenko.battleship.battleship.logic.engine.models.GameplayState;
 import ua.kostenko.battleship.battleship.logic.engine.models.OpponentInfo;
 import ua.kostenko.battleship.battleship.logic.engine.models.Player;
@@ -85,7 +96,11 @@ public class GameControllerApiImpl implements GameControllerApi {
             val player = game.createPlayer(playerId, playerName);
             saveGame(game);
             return player;
-        } catch (IllegalArgumentException | IllegalStateException ex) {
+        } catch (SessionFullException ex) {
+            throw new GameSessionFullException(ex.getMessage());
+        } catch (IllegalStateException ex) {
+            throw new GameStageIsNotCorrectException(ex.getMessage());
+        } catch (IllegalArgumentException ex) {
             throw new GameInternalProblemException(ex.getMessage());
         }
     }
@@ -114,7 +129,9 @@ public class GameControllerApiImpl implements GameControllerApi {
             return game.getShipsNotOnTheField(playerId)
                     .stream()
                     .toList();
-        } catch (IllegalArgumentException | IllegalStateException ex) {
+        } catch (IllegalArgumentException ex) {
+            throw new GamePlayerNotFoundException(ex.getMessage());
+        } catch (IllegalStateException ex) {
             throw new GameInternalProblemException(ex.getMessage());
         }
     }
@@ -149,7 +166,13 @@ public class GameControllerApiImpl implements GameControllerApi {
             saveGame(game);
 
             return ship;
-        } catch (IllegalArgumentException | IllegalStateException ex) {
+        } catch (GameShipIdIsNotCorrectException ex) {
+            throw ex;
+        } catch (ShipNotAvailableForAddException ex) {
+            throw new GameShipAlreadyPlacedException(ex.getMessage());
+        } catch (IllegalStateException ex) {
+            throw new GameStageIsNotCorrectException(ex.getMessage());
+        } catch (IllegalArgumentException ex) {
             throw new GameInternalProblemException(ex.getMessage());
         }
     }
@@ -168,7 +191,9 @@ public class GameControllerApiImpl implements GameControllerApi {
             saveGame(game);
 
             return ship;
-        } catch (IllegalArgumentException | IllegalStateException ex) {
+        } catch (IllegalStateException ex) {
+            throw new GameStageIsNotCorrectException(ex.getMessage());
+        } catch (IllegalArgumentException ex) {
             throw new GameInternalProblemException(ex.getMessage());
         }
     }
@@ -179,8 +204,12 @@ public class GameControllerApiImpl implements GameControllerApi {
 
         val game = loadGame(sessionId);
 
-        val opponent = game.getOpponent(playerId);
-        return new OpponentInfo(opponent.getPlayerName(), opponent.isReady());
+        try {
+            val opponent = game.getOpponent(playerId);
+            return new OpponentInfo(opponent.getPlayerName(), opponent.isReady());
+        } catch (IllegalArgumentException ex) {
+            throw new GameOpponentNotFoundException(ex.getMessage());
+        }
     }
 
     @Override
@@ -190,7 +219,9 @@ public class GameControllerApiImpl implements GameControllerApi {
         val game = loadGame(sessionId);
         try {
             return game.getField(playerId);
-        } catch (IllegalArgumentException | IllegalStateException ex) {
+        } catch (IllegalArgumentException ex) {
+            throw new GamePlayerNotFoundException(ex.getMessage());
+        } catch (IllegalStateException ex) {
             throw new GameInternalProblemException(ex.getMessage());
         }
     }
@@ -208,7 +239,11 @@ public class GameControllerApiImpl implements GameControllerApi {
             saveGame(game);
 
             return player;
-        } catch (IllegalArgumentException | IllegalStateException ex) {
+        } catch (ShipsNotAllPlacedException ex) {
+            throw new GameShipsNotAllPlacedException(ex.getMessage());
+        } catch (IllegalStateException ex) {
+            throw new GameStageIsNotCorrectException(ex.getMessage());
+        } catch (IllegalArgumentException ex) {
             throw new GameInternalProblemException(ex.getMessage());
         }
     }
@@ -220,8 +255,20 @@ public class GameControllerApiImpl implements GameControllerApi {
         val game = loadGame(sessionId);
         val currentGameStage = game.getGameState()
                 .gameStage();
-        var currentPlayer = game.getPlayer(playerId);
-        var opponentPlayer = game.getOpponent(playerId);
+
+        Player currentPlayer;
+        try {
+            currentPlayer = game.getPlayer(playerId);
+        } catch (IllegalArgumentException ex) {
+            throw new GamePlayerNotFoundException(ex.getMessage());
+        }
+
+        Player opponentPlayer;
+        try {
+            opponentPlayer = game.getOpponent(playerId);
+        } catch (IllegalArgumentException ex) {
+            throw new GameOpponentNotFoundException(ex.getMessage());
+        }
 
         val playerFieldManagement = currentPlayer.getFieldManagement();
         val opponentFieldManagement = opponentPlayer.getFieldManagement();
@@ -267,7 +314,11 @@ public class GameControllerApiImpl implements GameControllerApi {
             return shotResult;
         } catch (PlayerNotActiveException ex) {
             throw new GamePlayerNotActiveException(ex.getMessage());
-        } catch (IllegalArgumentException | IllegalStateException ex) {
+        } catch (CellAlreadyShotException ex) {
+            throw new GameCellAlreadyShotException(ex.getMessage());
+        } catch (IllegalStateException ex) {
+            throw new GameStageIsNotCorrectException(ex.getMessage());
+        } catch (IllegalArgumentException ex) {
             throw new GameInternalProblemException(ex.getMessage());
         }
     }

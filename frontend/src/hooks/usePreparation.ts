@@ -18,6 +18,16 @@ export type PreparationHookState = {
     allPlaced: boolean; // every ship in `ships` appears somewhere in `field`
     loading: boolean;
     error: GameAdapterError | null;
+    // Increments on every placeShip/removeShipAt/markReady completion (success or
+    // failure), independent of whether `error`'s actual value changed. Consumers
+    // that need to react to "an action just settled" (e.g. PreparationScreen's
+    // one-tick success/failure handshake) should watch this instead of `error`
+    // directly: two consecutive successful actions both set `error` to the same
+    // `null` value, and React bails out of re-running effects keyed on `[error]`
+    // when a state setter is called with a value that's `Object.is`-equal to the
+    // current one - so an effect keyed on `[error]` alone can silently miss a
+    // successful action that happens to follow another successful action.
+    actionTick: number;
 };
 
 function toAdapterError(e: unknown, context: string): GameAdapterError {
@@ -39,6 +49,7 @@ export function usePreparation(sessionId: string, playerId: string): Preparation
     const [opponentReady, setOpponentReady] = useState<boolean>(false);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<GameAdapterError | null>(null);
+    const [actionTick, setActionTick] = useState<number>(0);
 
     const refetch = useCallback(async () => {
         const state = await adapter.getPreparationState(sessionId, playerId);
@@ -94,6 +105,8 @@ export function usePreparation(sessionId: string, playerId: string): Preparation
             setError(null);
         } catch (e) {
             setError(toAdapterError(e, "usePreparation:placeShip"));
+        } finally {
+            setActionTick(t => t + 1);
         }
     }, [adapter, sessionId, playerId, direction, refetch]);
 
@@ -104,6 +117,8 @@ export function usePreparation(sessionId: string, playerId: string): Preparation
             setError(null);
         } catch (e) {
             setError(toAdapterError(e, "usePreparation:removeShipAt"));
+        } finally {
+            setActionTick(t => t + 1);
         }
     }, [adapter, sessionId, playerId, refetch]);
 
@@ -113,6 +128,8 @@ export function usePreparation(sessionId: string, playerId: string): Preparation
             setError(null);
         } catch (e) {
             setError(toAdapterError(e, "usePreparation:markReady"));
+        } finally {
+            setActionTick(t => t + 1);
         }
     }, [adapter, sessionId, playerId]);
 
@@ -129,6 +146,7 @@ export function usePreparation(sessionId: string, playerId: string): Preparation
         opponentReady,
         allPlaced: computeAllPlaced(ships, field),
         loading,
-        error
+        error,
+        actionTick
     };
 }

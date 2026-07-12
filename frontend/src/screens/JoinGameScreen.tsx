@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useGameAdapter } from '../adapters/GameAdapterContext';
 import { GameAdapterError, isGameAdapterError } from '../adapters/AdapterErrors';
@@ -17,9 +17,11 @@ export function JoinGameScreen() {
   const adapter = useGameAdapter();
   const { push } = useToastContext();
 
+  const [searchParams] = useSearchParams();
+
   const [name, setName] = useState('');
   const [nameTouched, setNameTouched] = useState(false);
-  const [gameId, setGameId] = useState('');
+  const [gameId, setGameId] = useState(() => searchParams.get('id') ?? '');
   const [gameIdTouched, setGameIdTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 

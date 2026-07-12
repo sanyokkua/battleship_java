@@ -8,10 +8,13 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ua.kostenko.battleship.battleship.logic.api.GameControllerApi;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameCellAlreadyShotException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameCoordinateIsNotCorrectIncorrectException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameOpponentNotFoundException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GamePlayerIdIsNotCorrectException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GamePlayerNotActiveException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameSessionIdIsNotCorrectException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameStageIsNotCorrectException;
 import ua.kostenko.battleship.battleship.logic.engine.models.GameplayState;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.ShipType;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.ShotResult;
@@ -147,6 +150,23 @@ class GameplayRestControllerTest {
                .andExpect(jsonPath("$.errorCode").value("SESSION_NOT_FOUND"));
     }
 
+    /**
+     * Regression test for the confirmed production bug: a solo player on the Wait screen polling this
+     * endpoint every 5s before a second player has joined must now surface as a clean, structured HTTP 400
+     * with {@code errorCode == "OPPONENT_NOT_FOUND"} — not an unhandled {@code IllegalArgumentException}
+     * reaching the servlet container's default (unstructured) error response.
+     */
+    @Test
+    void getGameStateForPlayer_soloPlayerPolling_returns400WithOpponentNotFoundErrorCode() throws Exception {
+        when(controllerV2Api.getGameState(SESSION_ID, PLAYER_ID)).thenThrow(new GameOpponentNotFoundException(
+                "Player with provided filter is not found"));
+
+        mockMvc.perform(get("/api/v2/game/sessions/{sessionId}/players/{playerId}/state", SESSION_ID, PLAYER_ID))
+               .andExpect(status().isBadRequest())
+               .andExpect(jsonPath("$.status").value(400))
+               .andExpect(jsonPath("$.errorCode").value("OPPONENT_NOT_FOUND"));
+    }
+
     // ---- POST /api/v2/game/sessions/{sessionId}/players/{playerId}/field/shot ----
 
     @Test
@@ -232,6 +252,51 @@ class GameplayRestControllerTest {
                .andExpect(jsonPath("$.status").value(400))
                .andExpect(jsonPath("$.errorCode").value("PLAYER_NOT_ACTIVE"))
                .andExpect(jsonPath("$.errorMessage").value("Player is not active"));
+    }
+
+    /**
+     * Regression test for the cell-re-shoot fix: shooting a cell that was already shot must surface as
+     * HTTP 400 with {@code errorCode == "CELL_ALREADY_SHOT"}, not as a 500 or a silently-accepted shot.
+     */
+    @Test
+    void makeShotByField_alreadyShotCell_returns400WithCellAlreadyShotErrorCode() throws Exception {
+        when(controllerV2Api.makeShotByField(eq(SESSION_ID),
+                                              eq(PLAYER_ID),
+                                              any())).thenThrow(new GameCellAlreadyShotException(
+                "Cell has already been shot"));
+
+        var body = ParamCoordinateDto.builder()
+                                      .row(2)
+                                      .col(2)
+                                      .build();
+
+        mockMvc.perform(post("/api/v2/game/sessions/{sessionId}/players/{playerId}/field/shot",
+                              SESSION_ID,
+                              PLAYER_ID).contentType(MediaType.APPLICATION_JSON)
+                                         .content(objectMapper.writeValueAsString(body)))
+               .andExpect(status().isBadRequest())
+               .andExpect(jsonPath("$.status").value(400))
+               .andExpect(jsonPath("$.errorCode").value("CELL_ALREADY_SHOT"))
+               .andExpect(jsonPath("$.errorMessage").value("Cell has already been shot"));
+    }
+
+    @Test
+    void makeShotByField_wrongStage_returns400WithStageInvalidErrorCode() throws Exception {
+        when(controllerV2Api.makeShotByField(eq(SESSION_ID),
+                                              eq(PLAYER_ID),
+                                              any())).thenThrow(new GameStageIsNotCorrectException("wrong stage"));
+
+        var body = ParamCoordinateDto.builder()
+                                      .row(2)
+                                      .col(2)
+                                      .build();
+
+        mockMvc.perform(post("/api/v2/game/sessions/{sessionId}/players/{playerId}/field/shot",
+                              SESSION_ID,
+                              PLAYER_ID).contentType(MediaType.APPLICATION_JSON)
+                                         .content(objectMapper.writeValueAsString(body)))
+               .andExpect(status().isBadRequest())
+               .andExpect(jsonPath("$.errorCode").value("STAGE_INVALID"));
     }
 
     private Cell[][] fieldWithSingleCell(Cell cellAtOrigin) {

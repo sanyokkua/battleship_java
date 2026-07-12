@@ -193,6 +193,36 @@ describe('GameplayScreen', () => {
     expect(shootSpy).not.toHaveBeenCalled();
   });
 
+  it('clicking an already-shot target cell again does not call shoot a second time', async () => {
+    const { sessionId, p1, p1Name } = await setUpInGameSession(adapterInstance);
+    saveSession(sessionId);
+    savePlayer({ playerId: p1, playerName: p1Name });
+    saveStage('IN_GAME');
+
+    const shootSpy = vi.spyOn(adapterInstance, 'shoot');
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderGameplayScreen();
+
+    await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+
+    const targetPanel = document.querySelector('.bp-target')!;
+    const targetCell = within(targetPanel as HTMLElement).getAllByRole('button')[0];
+    await user.click(targetCell);
+
+    await waitFor(() => expect(shootSpy).toHaveBeenCalledTimes(1));
+
+    // Once shot, that cell must re-render as a non-interactive div (BoardCell fix) — confirm
+    // the click target is no longer a button before attempting the second click.
+    const cellAtOrigin = (targetPanel as HTMLElement).querySelectorAll('.cell')[0];
+    await waitFor(() => expect(cellAtOrigin.tagName).toBe('DIV'));
+
+    await user.click(cellAtOrigin);
+
+    // Defense-in-depth: even if something re-triggered handleShot for that same location,
+    // it must not call shoot() a second time.
+    expect(shootSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('own (fleet) board is read-only: clicking a fleet-board cell does not call shoot', async () => {
     const { sessionId, p1, p1Name } = await setUpInGameSession(adapterInstance);
     saveSession(sessionId);
@@ -246,6 +276,105 @@ describe('GameplayScreen', () => {
 
     expect(targetPanel).not.toHaveClass('hide');
     expect(fleetPanel).toHaveClass('hide');
+  });
+
+  it('auto-switches to the Fleet tab when the turn passes to the opponent', async () => {
+    const { sessionId, p1, p2, p1Name } = await setUpInGameSession(adapterInstance);
+    saveSession(sessionId);
+    savePlayer({ playerId: p1, playerName: p1Name });
+    saveStage('IN_GAME');
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderGameplayScreen();
+
+    await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+
+    const targetPanel = document.querySelector('.bp-target')!;
+    const fleetPanel = document.querySelector('.bp-fleet')!;
+    expect(targetPanel).not.toHaveClass('hide');
+    expect(fleetPanel).toHaveClass('hide');
+
+    // Fire a real UI shot at a guaranteed-empty cell (found via the opponent's own
+    // preparation-state field, which reveals ship placement) so it resolves as a MISS and
+    // flips the active player to the opponent — without clicking any tab manually.
+    const p2Prep = await adapterInstance.getPreparationState(sessionId, p2);
+    const { row, col } = findEmptyCell(p2Prep.field);
+    const targetCell = within(targetPanel as HTMLElement).getAllByRole('button')[row * 10 + col];
+    await user.click(targetCell);
+
+    await waitFor(() => expect(screen.getByText(/is taking a shot/)).toBeInTheDocument());
+    await waitFor(() => expect(fleetPanel).not.toHaveClass('hide'));
+    expect(targetPanel).toHaveClass('hide');
+  });
+
+  it('auto-switches back to the Target tab when the turn returns', async () => {
+    const { sessionId, p1, p2, p1Name } = await setUpInGameSession(adapterInstance);
+    saveSession(sessionId);
+    savePlayer({ playerId: p1, playerName: p1Name });
+    saveStage('IN_GAME');
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderGameplayScreen();
+
+    await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+
+    const targetPanel = document.querySelector('.bp-target')!;
+    const fleetPanel = document.querySelector('.bp-fleet')!;
+
+    // Fire as p1 at a guaranteed-empty cell (MISS) to flip the turn to p2.
+    const p2Prep = await adapterInstance.getPreparationState(sessionId, p2);
+    const { row, col } = findEmptyCell(p2Prep.field);
+    const targetCell = within(targetPanel as HTMLElement).getAllByRole('button')[row * 10 + col];
+    await user.click(targetCell);
+
+    await waitFor(() => expect(fleetPanel).not.toHaveClass('hide'));
+
+    // Take the opponent's turn via a direct adapter call (a guaranteed-empty cell on p1's
+    // own field, from p1's preparation state) so it resolves as a MISS and flips the active
+    // player back to p1.
+    const p1Prep = await adapterInstance.getPreparationState(sessionId, p1);
+    const opponentShot = findEmptyCell(p1Prep.field);
+    await act(async () => {
+      await adapterInstance.shoot(sessionId, p2, { row: opponentShot.row, column: opponentShot.col });
+    });
+
+    // Advance past the 5s poll boundary so useGameplay's next refetch observes the flip.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5100);
+    });
+
+    await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+    await waitFor(() => expect(targetPanel).not.toHaveClass('hide'));
+    expect(fleetPanel).toHaveClass('hide');
+  });
+
+  it('does not force the tab away from a manual mid-turn switch on an unrelated poll tick', async () => {
+    const { sessionId, p1, p1Name } = await setUpInGameSession(adapterInstance);
+    saveSession(sessionId);
+    savePlayer({ playerId: p1, playerName: p1Name });
+    saveStage('IN_GAME');
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderGameplayScreen();
+
+    await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+
+    // Manually switch to the Fleet tab mid-turn (player remains active throughout).
+    await user.click(screen.getByRole('tab', { name: 'Your fleet' }));
+
+    const targetPanel = document.querySelector('.bp-target')!;
+    const fleetPanel = document.querySelector('.bp-fleet')!;
+    expect(fleetPanel).not.toHaveClass('hide');
+    expect(targetPanel).toHaveClass('hide');
+
+    // Advance past a poll tick with nothing flipping isPlayerActive (same player still active)
+    // — a same-value poll refetch must not reset the tab back to Target.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5100);
+    });
+
+    expect(fleetPanel).not.toHaveClass('hide');
+    expect(targetPanel).toHaveClass('hide');
   });
 
   it('redirects to /game/results once hasWinner becomes true', async () => {

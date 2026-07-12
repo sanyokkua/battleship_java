@@ -73,6 +73,39 @@ describe('BoardCell', () => {
     expect(screen.getByLabelText('C3, water')).toBeInTheDocument();
   });
 
+  it('renders an already-shot hit cell in target mode as a non-interactive div and does not fire onClick', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    const c = cell({ ship: { shipId: 's1', shipSize: 2 }, hasShot: true });
+    render(<BoardCell cell={c} mode="target" sunk={false} isGhost={false} onClick={onClick} />);
+    const el = screen.getByLabelText('C3, hit');
+    expect(el.tagName).toBe('DIV');
+    await user.click(el);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('renders an already-shot miss cell (no ship) in target mode as a non-interactive div and does not fire onClick', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    const c = cell({ hasShot: true, ship: null });
+    render(<BoardCell cell={c} mode="target" sunk={false} isGhost={false} onClick={onClick} />);
+    const el = screen.getByLabelText('C3, miss');
+    expect(el.tagName).toBe('DIV');
+    await user.click(el);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('renders an already-shot sunk cell in target mode as a non-interactive div and does not fire onClick', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    const c = cell({ ship: { shipId: 's1', shipSize: 2 }, hasShot: true });
+    render(<BoardCell cell={c} mode="target" sunk={true} isGhost={false} onClick={onClick} />);
+    const el = screen.getByLabelText('C3, sunk');
+    expect(el.tagName).toBe('DIV');
+    await user.click(el);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
   it('uses column letter and 1-based row number in the aria-label', () => {
     const c: CellDto = { row: 6, col: 5, ship: null, hasShot: false, isAvailable: true };
     render(<BoardCell cell={c} mode="own" sunk={false} isGhost={false} />);

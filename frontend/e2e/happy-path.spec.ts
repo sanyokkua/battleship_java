@@ -42,7 +42,7 @@ test('happy path: create -> wait -> prepare -> play -> results (win)', async ({ 
   await expect(page.getByText('Hello, Ada!')).toBeVisible();
   await expect(page.getByText('Waiting for your opponent')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Copy' }).click();
+  await page.getByRole('button', { name: 'Copy', exact: true }).click();
   await expect(page.getByText('Game ID copied to clipboard.')).toBeVisible();
 
   const { sessionId, player } = await readPersistedSession(page);

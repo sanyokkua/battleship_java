@@ -179,6 +179,29 @@ describe('ResultsScreen', () => {
     expect(shootSpy).not.toHaveBeenCalled();
   });
 
+  it('shows the opponent\'s un-hit ships on the result-target board when viewed by the losing player', async () => {
+    // setUpFinishedGame(true) has the winner (Alice/p1) go first and never miss (she shoots
+    // only known ship cells drawn from the deterministic placement layout), so the loser (Bob)
+    // never gets an active turn and therefore never fires a single shot at Alice's board. From
+    // Bob's perspective, 100% of Alice's ship cells are still hasShot=false at game end — the
+    // exact trigger scenario for bug 2 (opponent's un-hit ships not shown on the Results
+    // screen's result-target board).
+    const { adapter, sessionId, bob } = await setUpFinishedGame(true);
+    saveSession(sessionId);
+    savePlayer(bob);
+
+    renderResultsScreen(adapter);
+
+    await screen.findByText('Defeat');
+
+    // Sanity: Bob (loser) never took a shot, so Alice's field is entirely un-hit from his view.
+    const state = await adapter.getGameState(sessionId, bob.playerId);
+    expect(state.opponentField.some(row => row.some(cell => cell.hasShot))).toBe(false);
+
+    const shipCells = document.querySelectorAll('.cell-ship');
+    expect(shipCells.length).toBeGreaterThan(0);
+  });
+
   it('clicking "Return to main menu" clears storage and navigates to /', async () => {
     const { adapter, sessionId, alice } = await setUpFinishedGame(true);
     saveSession(sessionId);

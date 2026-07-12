@@ -6,7 +6,7 @@
     "row" : 0,
     "col" : 0,
     "ship" : {
-      "shipId" : "2fbb07bf-8ec5-4725-8345-f49db57c8aa0",
+      "shipId" : "9ab264f1-92f6-448e-b78e-c28412e791e1",
       "shipType" : "BATTLESHIP",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 4
@@ -17,7 +17,7 @@
     "row" : 0,
     "col" : 1,
     "ship" : {
-      "shipId" : "2fbb07bf-8ec5-4725-8345-f49db57c8aa0",
+      "shipId" : "9ab264f1-92f6-448e-b78e-c28412e791e1",
       "shipType" : "BATTLESHIP",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 4
@@ -28,7 +28,7 @@
     "row" : 0,
     "col" : 2,
     "ship" : {
-      "shipId" : "2fbb07bf-8ec5-4725-8345-f49db57c8aa0",
+      "shipId" : "9ab264f1-92f6-448e-b78e-c28412e791e1",
       "shipType" : "BATTLESHIP",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 4
@@ -39,7 +39,7 @@
     "row" : 0,
     "col" : 3,
     "ship" : {
-      "shipId" : "2fbb07bf-8ec5-4725-8345-f49db57c8aa0",
+      "shipId" : "9ab264f1-92f6-448e-b78e-c28412e791e1",
       "shipType" : "BATTLESHIP",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 4
@@ -146,7 +146,7 @@
     "row" : 2,
     "col" : 0,
     "ship" : {
-      "shipId" : "2eea4d83-a587-463a-9285-8c80b210c539",
+      "shipId" : "b499a384-153a-42bf-a856-5030a940faa7",
       "shipType" : "DESTROYER",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 3
@@ -157,7 +157,7 @@
     "row" : 2,
     "col" : 1,
     "ship" : {
-      "shipId" : "2eea4d83-a587-463a-9285-8c80b210c539",
+      "shipId" : "b499a384-153a-42bf-a856-5030a940faa7",
       "shipType" : "DESTROYER",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 3
@@ -168,7 +168,7 @@
     "row" : 2,
     "col" : 2,
     "ship" : {
-      "shipId" : "2eea4d83-a587-463a-9285-8c80b210c539",
+      "shipId" : "b499a384-153a-42bf-a856-5030a940faa7",
       "shipType" : "DESTROYER",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 3
@@ -191,7 +191,7 @@
     "row" : 2,
     "col" : 5,
     "ship" : {
-      "shipId" : "39155f06-48e4-40dc-96d5-18341a9bd9f6",
+      "shipId" : "b7490433-8442-46e2-a38b-e94b09ebaff7",
       "shipType" : "DESTROYER",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 3
@@ -202,7 +202,7 @@
     "row" : 2,
     "col" : 6,
     "ship" : {
-      "shipId" : "39155f06-48e4-40dc-96d5-18341a9bd9f6",
+      "shipId" : "b7490433-8442-46e2-a38b-e94b09ebaff7",
       "shipType" : "DESTROYER",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 3
@@ -213,7 +213,7 @@
     "row" : 2,
     "col" : 7,
     "ship" : {
-      "shipId" : "39155f06-48e4-40dc-96d5-18341a9bd9f6",
+      "shipId" : "b7490433-8442-46e2-a38b-e94b09ebaff7",
       "shipType" : "DESTROYER",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 3
@@ -296,7 +296,7 @@
     "row" : 4,
     "col" : 0,
     "ship" : {
-      "shipId" : "522bc908-abf5-44cd-ac2b-3a361af7e9ed",
+      "shipId" : "92c130de-6a5b-4e93-bdf3-d2422eacc061",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -307,7 +307,7 @@
     "row" : 4,
     "col" : 1,
     "ship" : {
-      "shipId" : "522bc908-abf5-44cd-ac2b-3a361af7e9ed",
+      "shipId" : "92c130de-6a5b-4e93-bdf3-d2422eacc061",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -324,7 +324,7 @@
     "row" : 4,
     "col" : 3,
     "ship" : {
-      "shipId" : "23426b76-3ff6-48b0-8504-1ef45f1eabcf",
+      "shipId" : "5625d7a6-b045-4636-8b6b-02b264d34968",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -335,7 +335,7 @@
     "row" : 4,
     "col" : 4,
     "ship" : {
-      "shipId" : "23426b76-3ff6-48b0-8504-1ef45f1eabcf",
+      "shipId" : "5625d7a6-b045-4636-8b6b-02b264d34968",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -352,7 +352,7 @@
     "row" : 4,
     "col" : 6,
     "ship" : {
-      "shipId" : "aba47d51-2229-4333-bd88-fcf2b2769806",
+      "shipId" : "7e21615a-95a6-4836-bad8-383aacb1d643",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -363,7 +363,7 @@
     "row" : 4,
     "col" : 7,
     "ship" : {
-      "shipId" : "aba47d51-2229-4333-bd88-fcf2b2769806",
+      "shipId" : "7e21615a-95a6-4836-bad8-383aacb1d643",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -446,7 +446,7 @@
     "row" : 6,
     "col" : 0,
     "ship" : {
-      "shipId" : "21b4823f-f388-4057-b951-a73a097b2e04",
+      "shipId" : "3b8b062e-441a-40f7-a77a-1d4d48f41048",
       "shipType" : "PATROL_BOAT",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 1
@@ -463,7 +463,7 @@
     "row" : 6,
     "col" : 2,
     "ship" : {
-      "shipId" : "8b16fa59-2506-4a53-90ec-d546f77de68d",
+      "shipId" : "21915529-2fa8-486b-9b28-fed8b8e960e8",
       "shipType" : "PATROL_BOAT",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 1
@@ -576,7 +576,7 @@
     "row" : 8,
     "col" : 0,
     "ship" : {
-      "shipId" : "9119458e-15ac-4f25-89b3-19dbee240509",
+      "shipId" : "06787312-a31a-4716-b885-2129becfd916",
       "shipType" : "PATROL_BOAT",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 1
@@ -593,7 +593,7 @@
     "row" : 8,
     "col" : 2,
     "ship" : {
-      "shipId" : "376087ce-d6b4-42db-ab3a-2576b80a8a69",
+      "shipId" : "f2a62bfe-c4a9-4356-ab77-5f843c1f72f4",
       "shipType" : "PATROL_BOAT",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 1
@@ -710,7 +710,7 @@
     "row" : 0,
     "col" : 0,
     "ship" : {
-      "shipId" : "f6a903ca-ac95-4184-9716-59cee95b98d1",
+      "shipId" : "89e51032-d9c7-4f13-85ec-e0a443a6c263",
       "shipType" : "BATTLESHIP",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 4
@@ -721,7 +721,7 @@
     "row" : 0,
     "col" : 1,
     "ship" : {
-      "shipId" : "f6a903ca-ac95-4184-9716-59cee95b98d1",
+      "shipId" : "89e51032-d9c7-4f13-85ec-e0a443a6c263",
       "shipType" : "BATTLESHIP",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 4
@@ -732,7 +732,7 @@
     "row" : 0,
     "col" : 2,
     "ship" : {
-      "shipId" : "f6a903ca-ac95-4184-9716-59cee95b98d1",
+      "shipId" : "89e51032-d9c7-4f13-85ec-e0a443a6c263",
       "shipType" : "BATTLESHIP",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 4
@@ -743,7 +743,7 @@
     "row" : 0,
     "col" : 3,
     "ship" : {
-      "shipId" : "f6a903ca-ac95-4184-9716-59cee95b98d1",
+      "shipId" : "89e51032-d9c7-4f13-85ec-e0a443a6c263",
       "shipType" : "BATTLESHIP",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 4
@@ -850,7 +850,7 @@
     "row" : 2,
     "col" : 0,
     "ship" : {
-      "shipId" : "c252f1bf-d6c2-4b21-ac2b-b564629c80cb",
+      "shipId" : "993ab307-7c65-47d2-b603-ce4fcb4f0e56",
       "shipType" : "DESTROYER",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 3
@@ -861,7 +861,7 @@
     "row" : 2,
     "col" : 1,
     "ship" : {
-      "shipId" : "c252f1bf-d6c2-4b21-ac2b-b564629c80cb",
+      "shipId" : "993ab307-7c65-47d2-b603-ce4fcb4f0e56",
       "shipType" : "DESTROYER",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 3
@@ -872,7 +872,7 @@
     "row" : 2,
     "col" : 2,
     "ship" : {
-      "shipId" : "c252f1bf-d6c2-4b21-ac2b-b564629c80cb",
+      "shipId" : "993ab307-7c65-47d2-b603-ce4fcb4f0e56",
       "shipType" : "DESTROYER",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 3
@@ -895,7 +895,7 @@
     "row" : 2,
     "col" : 5,
     "ship" : {
-      "shipId" : "1ad935bc-beb4-473a-9a82-ac733aba736c",
+      "shipId" : "2099715d-d90b-4876-af76-a11903419648",
       "shipType" : "DESTROYER",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 3
@@ -906,7 +906,7 @@
     "row" : 2,
     "col" : 6,
     "ship" : {
-      "shipId" : "1ad935bc-beb4-473a-9a82-ac733aba736c",
+      "shipId" : "2099715d-d90b-4876-af76-a11903419648",
       "shipType" : "DESTROYER",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 3
@@ -917,7 +917,7 @@
     "row" : 2,
     "col" : 7,
     "ship" : {
-      "shipId" : "1ad935bc-beb4-473a-9a82-ac733aba736c",
+      "shipId" : "2099715d-d90b-4876-af76-a11903419648",
       "shipType" : "DESTROYER",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 3
@@ -1000,7 +1000,7 @@
     "row" : 4,
     "col" : 0,
     "ship" : {
-      "shipId" : "302d7403-53d8-45df-a3af-065b3b313ae6",
+      "shipId" : "15e3d58d-45af-44bc-981f-6f30d0e042d9",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -1011,7 +1011,7 @@
     "row" : 4,
     "col" : 1,
     "ship" : {
-      "shipId" : "302d7403-53d8-45df-a3af-065b3b313ae6",
+      "shipId" : "15e3d58d-45af-44bc-981f-6f30d0e042d9",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -1028,7 +1028,7 @@
     "row" : 4,
     "col" : 3,
     "ship" : {
-      "shipId" : "87a2f11d-c126-4d74-ae08-fcf5c721dd66",
+      "shipId" : "2105eeb4-10d2-4934-94da-f6ac08a79915",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -1039,7 +1039,7 @@
     "row" : 4,
     "col" : 4,
     "ship" : {
-      "shipId" : "87a2f11d-c126-4d74-ae08-fcf5c721dd66",
+      "shipId" : "2105eeb4-10d2-4934-94da-f6ac08a79915",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -1056,7 +1056,7 @@
     "row" : 4,
     "col" : 6,
     "ship" : {
-      "shipId" : "cb695035-9f2c-4a4a-ad56-1f7ddacc2347",
+      "shipId" : "62af587a-db76-4b33-856c-6fdcaafd0c14",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -1067,7 +1067,7 @@
     "row" : 4,
     "col" : 7,
     "ship" : {
-      "shipId" : "cb695035-9f2c-4a4a-ad56-1f7ddacc2347",
+      "shipId" : "62af587a-db76-4b33-856c-6fdcaafd0c14",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -1150,7 +1150,7 @@
     "row" : 6,
     "col" : 0,
     "ship" : {
-      "shipId" : "b8292de3-0a66-47aa-8291-deb9e90f4ffb",
+      "shipId" : "da25953f-7a8c-4b6c-a05f-6a9d50981771",
       "shipType" : "PATROL_BOAT",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 1
@@ -1167,7 +1167,7 @@
     "row" : 6,
     "col" : 2,
     "ship" : {
-      "shipId" : "13c43a86-ce4c-4c2c-adf8-2f90e9aad826",
+      "shipId" : "d3bcac70-916b-4a25-a867-7c38a0314566",
       "shipType" : "PATROL_BOAT",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 1
@@ -1280,7 +1280,7 @@
     "row" : 8,
     "col" : 0,
     "ship" : {
-      "shipId" : "da02183e-a5e0-4579-877c-5ce8fb74676b",
+      "shipId" : "cd4a8110-edae-4208-8942-354df26e0a93",
       "shipType" : "PATROL_BOAT",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 1
@@ -1297,7 +1297,7 @@
     "row" : 8,
     "col" : 2,
     "ship" : {
-      "shipId" : "acfdfacb-5d01-4eb3-b731-ca7e4122b21a",
+      "shipId" : "269817c8-af4d-4a0f-a965-4a220409ffd8",
       "shipType" : "PATROL_BOAT",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 1

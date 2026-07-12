@@ -30,6 +30,7 @@
     "hello": "Hello, {{name}}!",
     "subtitle": "Share this code with your opponent to start.",
     "copy": "Copy",
+    "copyLink": "Copy link",
     "copied": "Copied to clipboard",
     "waiting": "Waiting for your opponent"
   },

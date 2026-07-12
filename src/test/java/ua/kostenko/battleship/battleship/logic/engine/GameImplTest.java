@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEdition;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEditionConfiguration;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.CellAlreadyShotException;
 import ua.kostenko.battleship.battleship.logic.engine.exceptions.PlayerNotActiveException;
 import ua.kostenko.battleship.battleship.logic.engine.models.Player;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.GameStage;
@@ -326,7 +327,12 @@ public class GameImplTest {
         var shotResultHit = game.makeShot("player_1", Coordinate.of(0, 0));
         assertTrue(Set.of(ShotResult.HIT, ShotResult.DESTROYED)
                       .contains(shotResultHit));
-        var shotResultMiss = game.makeShot("player_1", Coordinate.of(1, 0));
+        // (9, 9) is guaranteed to be untouched water: addShipsToField only places ships on
+        // even rows (0, 2, 4, ...), and the only ship destroyed above is the one at (0, 0),
+        // whose auto-revealed moat is confined to rows 0-1 — so this cell was never marked
+        // hasShot by either placement or the moat reveal, unlike (1, 0) which the destroyed
+        // ship's moat does cover.
+        var shotResultMiss = game.makeShot("player_1", Coordinate.of(9, 9));
         assertEquals(ShotResult.MISS, shotResultMiss);
 
     }
@@ -392,6 +398,30 @@ public class GameImplTest {
         var winner = game.getWinner();
         assertTrue(winner.isPresent());
         assertEquals(player1, winner.get());
+    }
+
+    @Test
+    void testMakeShot_onAlreadyShotShipCell_throwsCellAlreadyShotException() {
+        var player1 = game.createPlayer("player_1", "player_name_1");
+        var player2 = game.createPlayer("player_2", "player_name_2");
+        addShipsToField(player1);
+        addShipsToField(player2);
+        game.changePlayerStatusToReady(player1.getPlayerId());
+        game.changePlayerStatusToReady(player2.getPlayerId());
+
+        var coordinate = Coordinate.of(0, 0);
+        assertTrue(player2.getFieldManagement()
+                          .getField()[0][0].hasShip());
+
+        // Deliberately shoot a ship cell (not a miss) so the player stays active per the turn
+        // rule, isolating this from PlayerNotActiveException.
+        var firstShotResult = game.makeShot(player1.getPlayerId(), coordinate);
+        assertTrue(Set.of(ShotResult.HIT, ShotResult.DESTROYED)
+                      .contains(firstShotResult));
+        assertTrue(player1.isActive());
+
+        assertThrows(CellAlreadyShotException.class,
+                     () -> game.makeShot(player1.getPlayerId(), coordinate));
     }
 
     @Test

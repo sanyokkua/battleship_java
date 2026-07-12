@@ -3,6 +3,8 @@ package ua.kostenko.battleship.battleship.logic.engine;
 import lombok.extern.log4j.Log4j2;
 import lombok.val;
 import ua.kostenko.battleship.battleship.logic.engine.exceptions.PlayerNotActiveException;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.ShipNotAvailableForAddException;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.ShipsNotAllPlacedException;
 import ua.kostenko.battleship.battleship.logic.engine.models.Player;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.GameStage;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.ShotResult;
@@ -109,7 +111,7 @@ public class GameImpl implements Game {
         if (shipsNotOnTheField.stream()
                 .noneMatch(s -> ship.shipId()
                         .equals(s.shipId()))) {
-            throw new IllegalArgumentException("Ship %s is not available for add operation".formatted(ship));
+            throw new ShipNotAvailableForAddException("Ship %s is not available for add operation".formatted(ship));
         }
 
         playerField.addShip(coordinate, ship);
@@ -165,7 +167,7 @@ public class GameImpl implements Game {
         val shipsNotOnTheField = player.getShipsNotOnTheField();
 
         if (!shipsNotOnTheField.isEmpty()) {
-            throw new IllegalStateException("Player can't be made ready. Player has ships not added to the field");
+            throw new ShipsNotAllPlacedException("Player can't be made ready. Player has ships not added to the field");
         }
 
         player.setReady(true);

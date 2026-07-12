@@ -14,13 +14,17 @@
   "shot": {
     "hit": { "title": "Direct hit!", "message": "You hit a ship. Fire again!" },
     "miss": { "title": "Miss", "message": "No ship there." },
-    "sunk": { "title": "Ship sunk!", "message": "You sank an enemy ship!" }
+    "sunk": { "title": "Ship sunk!", "message": "You sank an enemy ship!" },
+    "alreadyShot": { "title": "Already shot", "message": "You've already fired at this cell." }
   },
   "turn": {
     "notYours": { "title": "Not your turn", "message": "Wait for your opponent to take their shot." }
   },
   "id": {
     "copied": { "title": "Copied", "message": "Game ID copied to clipboard." }
+  },
+  "link": {
+    "copied": { "title": "Link copied", "message": "Join link copied to clipboard." }
   },
   "join": {
     "invalidId": { "title": "Invalid Game ID", "message": "Check the ID and try again." }

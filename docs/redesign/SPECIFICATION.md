@@ -42,7 +42,7 @@ This is the **mini-specification**: the authoritative description of *what* chan
 ### 2.2 Out of scope (do NOT implement)
 - **Backend REST API is change-controlled, not fully frozen (relaxed in v3).** No *breaking* changes to existing paths, verbs, request bodies, response DTOs, or status codes. **Additive, backwards-compatible changes are allowed only where required to deliver a better frontend** — specifically the i18n `errorCode` field (§8.8.4). Any such change must be documented here and covered by tests. Everything else about the API stays as-is.
 - **No change to game rules/engine logic.** The engine may only be *modified* if Phase 2 testing reveals a genuine bug; such a change must be documented and covered by a regression test.
-- **No new gameplay features**: no WebSockets/SSE, no password protection, no share-links, no ship auto-place, no multi-instance/scaling, no database. Storage stays **in-memory, single instance**. (Localization and richer UI feedback are UI capabilities, not gameplay features, and are in scope.)
+- **No new gameplay features**: no WebSockets/SSE, no password protection, no ship auto-place, no multi-instance/scaling, no database. Storage stays **in-memory, single instance**. (Localization, richer UI feedback, and the shareable join link are UI capabilities, not gameplay features, and are in scope.)
 - **No change to the polling model.** The frontend keeps polling the existing endpoints (redesigned UI, same mechanism, encapsulated behind the adapter).
 
 ### 2.3 Confirmed decisions
@@ -231,8 +231,8 @@ Port these CSS variables as the base (values from the mockup):
 ### 8.3 Screen-by-screen (bind only to real DTO fields)
 1. **Home** — hero + primary "New Game", secondary "Join Game".
 2. **New Game — game-mode (edition) selection is a first-class step.** Render the editions from `GET /editions` as **selectable mode cards** (not a bare dropdown), each showing the localized edition name, a one-line description, and the ship-size makeup (Ukrainian: 10 ships, sizes 1–4, 20 cells; Milton Bradley: 10 ships, sizes 2–5, 30 cells). A `Select` is an acceptable fallback but the cards are the target. Below: name `Input`, submit → create session + player. Keep name validation (≥2 chars) with an **inline field error** (§8.7).
-3. **Join Game** — name + Game ID inputs; keep 36-char UUID validation with inline validity feedback; submit → join.
-4. **Wait** — greeting (`Hello, {name}!`), `StepTracker` (Create→Waiting→Prepare→Battle), Game ID box + Copy button (raw session UUID) with a **"copied" toast**, animated "waiting" indicator; poll opponent every 3s → go to Preparation when both present.
+3. **Join Game** — name + Game ID inputs; keep 36-char UUID validation with inline validity feedback; submit → join. The Game ID field may arrive pre-filled via a `?id=` query param from a shared join link (see Wait screen below) — the valid-code checkmark shows immediately in that case, with no user interaction required.
+4. **Wait** — greeting (`Hello, {name}!`), `StepTracker` (Create→Waiting→Prepare→Battle), Game ID box + Copy button (raw session UUID) with a **"copied" toast**, plus a **"Copy link" button** that copies a shareable `${window.location.origin}/join?id=<sessionId>` URL (same-origin — SPA and API share one Spring Boot instance — with its own **"link copied" toast**), animated "waiting" indicator; poll opponent every 3s → go to Preparation when both present.
 5. **Loading** — top `LoadingBar` + centered anchor; reused wherever a fetch is in flight (replaces old spinner/progress).
 6. **Preparation** — `ShipTray` (localized ship **names** + sizes), **inline `DirectionToggle` (Horizontal/Vertical)** replacing the old modal, `Board` showing water / placed ships / **valid-drop ghost** / **no-go moat** (from `isAvailable`), opponent status `Pill`. **Ship removal must be obvious and offered two ways:** (a) tap any placed ship on the board, and (b) a **✕ remove button** on each placed ship in the tray. Both call `removeShip(coordinate)` (the tray button uses a coordinate belonging to that ship from `preparationState.field`). A short helper line states both the placement and removal gestures. On a rejected placement → **error toast** ("ships can't touch"); on success → optional success toast. "Ready to go!" is enabled only when all ships are placed; note that removing a ship server-side resets `ready` (§ engine), so the UI must reflect that. Calls: `getPreparationState`, `addShip`, `removeShip`, `setReady`.
 7. **Gameplay** — two `PlayerCard`s (cells health from `*NumberOfAliveCells` 0–100, ships from `*NumberOfAliveShips`), `TurnBanner` from `isPlayerActive`, **adaptive boards**: Target = opponent field (tap to `shoot`), Fleet = own field (read-only). Feedback: **"not your turn" info toast** if the player taps while inactive; **hit/miss/sunk** reflected on the board and optionally as a toast. Keep 5s poll; redirect to Results when `hasWinner`.
@@ -250,7 +250,7 @@ Port these CSS variables as the base (values from the mockup):
 ### 8.5 Excluded mockup elements (NOT API-backed — do not build)
 - **"Auto-place remaining"** button — no endpoint. Omit. (Removed from the mockup in v3.)
 - **Results "Hits" and "Time"** stats — not tracked by the API. Omit. Only **"Ships sunk"** is shown (derived: edition total − `numberOfAliveShips`).
-- Any share-link / password / realtime affordance — deferred, out of scope.
+- Any password / realtime affordance — deferred, out of scope. (Share-links were previously deferred here too, but are now in scope — see the Wait screen's "Copy link" button in §8.3 item 4.)
 
 ### 8.6 Accessibility
 - Keyboard operable; visible focus rings on all interactive elements; the language switch and mode cards are real buttons/radios.

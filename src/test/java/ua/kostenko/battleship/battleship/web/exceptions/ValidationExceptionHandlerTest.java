@@ -3,8 +3,14 @@ package ua.kostenko.battleship.battleship.web.exceptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.context.request.WebRequest;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameCellAlreadyShotException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameCoordinateIsNotCorrectIncorrectException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameOpponentNotFoundException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GamePlayerNotFoundException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameSessionFullException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameSessionIdIsNotCorrectException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipAlreadyPlacedException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipsNotAllPlacedException;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.GameStageIsNotCorrectException;
 import ua.kostenko.battleship.battleship.web.api.dtos.ExceptionDto;
 
@@ -51,6 +57,20 @@ class ValidationExceptionHandlerTest {
     }
 
     @Test
+    void handleConflict_setsCellAlreadyShotErrorCode_forCellAlreadyShotException() {
+        var ex = new GameCellAlreadyShotException("cell already shot");
+
+        var response = handler.handleConflict(ex, webRequest);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        var body = (ExceptionDto) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(body.getErrorMessage()).isEqualTo("cell already shot");
+        assertThat(body.getErrorCode()).isEqualTo("CELL_ALREADY_SHOT");
+    }
+
+    @Test
     void handleConflict_setsStageInvalidErrorCode_forStageException() {
         var ex = new GameStageIsNotCorrectException("wrong stage");
 
@@ -59,6 +79,71 @@ class ValidationExceptionHandlerTest {
         var body = (ExceptionDto) response.getBody();
         assertThat(body).isNotNull();
         assertThat(body.getErrorCode()).isEqualTo("STAGE_INVALID");
+    }
+
+    @Test
+    void handleConflict_setsPlayerNotFoundErrorCode_forPlayerNotFoundException() {
+        var ex = new GamePlayerNotFoundException("player not found");
+
+        var response = handler.handleConflict(ex, webRequest);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        var body = (ExceptionDto) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getErrorMessage()).isEqualTo("player not found");
+        assertThat(body.getErrorCode()).isEqualTo("PLAYER_NOT_FOUND");
+    }
+
+    @Test
+    void handleConflict_setsOpponentNotFoundErrorCode_forOpponentNotFoundException() {
+        var ex = new GameOpponentNotFoundException("opponent not found");
+
+        var response = handler.handleConflict(ex, webRequest);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        var body = (ExceptionDto) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getErrorMessage()).isEqualTo("opponent not found");
+        assertThat(body.getErrorCode()).isEqualTo("OPPONENT_NOT_FOUND");
+    }
+
+    @Test
+    void handleConflict_setsShipsNotAllPlacedErrorCode_forShipsNotAllPlacedException() {
+        var ex = new GameShipsNotAllPlacedException("ships not all placed");
+
+        var response = handler.handleConflict(ex, webRequest);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        var body = (ExceptionDto) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getErrorMessage()).isEqualTo("ships not all placed");
+        assertThat(body.getErrorCode()).isEqualTo("SHIPS_NOT_ALL_PLACED");
+    }
+
+    @Test
+    void handleConflict_setsShipAlreadyPlacedErrorCode_forShipAlreadyPlacedException() {
+        var ex = new GameShipAlreadyPlacedException("ship already placed");
+
+        var response = handler.handleConflict(ex, webRequest);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        var body = (ExceptionDto) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getErrorMessage()).isEqualTo("ship already placed");
+        assertThat(body.getErrorCode()).isEqualTo("SHIP_ALREADY_PLACED");
+    }
+
+    @Test
+    void handleConflict_setsSessionFullErrorCode_forSessionFullException() {
+        var ex = new GameSessionFullException("session full");
+
+        var response = handler.handleConflict(ex, webRequest);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        var body = (ExceptionDto) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getErrorMessage()).isEqualTo("session full");
+        assertThat(body.getErrorCode()).isEqualTo("SESSION_FULL");
     }
 
     @Test

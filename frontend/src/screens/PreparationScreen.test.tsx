@@ -183,6 +183,51 @@ describe('PreparationScreen', () => {
     await waitFor(() => expect(setReadySpy).toHaveBeenCalledWith(sessionId, playerId));
   });
 
+  it('auto-advances to the next ship after a successful placement, so a second board tap places without reselecting the tray', async () => {
+    const user = userEvent.setup();
+    const { adapter, sessionId, playerId } = await setUpSeededSession();
+    const addShipSpy = vi.spyOn(adapter, 'addShip');
+
+    renderPrepScreen(adapter);
+    await waitForBoardToLoad();
+
+    await user.click(firstPatrolBoatButton());
+    await user.click(screen.getByRole('button', { name: /^A1,/ }));
+
+    await waitFor(() => expect(addShipSpy).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByText('1 of 10 ships placed')).toBeInTheDocument());
+
+    // No further tray click — auto-advance should already have selected the next
+    // ship (UKRAINIAN fleet's remaining largest unplaced ship: the size-4 Battleship,
+    // per ShipTray's own descending-by-size sort order). Tap a cell far from A1's moat
+    // (row 0, cols 0-1) so a HORIZONTAL size-4 placement there is unambiguously valid.
+    await user.click(screen.getByRole('button', { name: /^F1,/ }));
+
+    await waitFor(() => expect(addShipSpy).toHaveBeenCalledTimes(2));
+    expect(addShipSpy).toHaveBeenNthCalledWith(2, sessionId, playerId, expect.any(String), { row: 0, column: 5 }, 'HORIZONTAL');
+    expect(await screen.findByText('2 of 10 ships placed')).toBeInTheDocument();
+  });
+
+  it('does not auto-advance the tray selection when the server rejects a placement', async () => {
+    const user = userEvent.setup();
+    const { adapter } = await setUpSeededSession();
+    vi.spyOn(adapter, 'addShip').mockRejectedValueOnce(
+      new GameAdapterError('Unknown shipId', { httpStatus: 400, errorCode: 'SHIP_ID_INVALID', context: 'addShip' }),
+    );
+
+    renderPrepScreen(adapter);
+    await waitForBoardToLoad();
+
+    const shipButton = firstPatrolBoatButton();
+    await user.click(shipButton);
+    await user.click(screen.getByRole('button', { name: /^A1,/ }));
+
+    expect(await screen.findByText("That ship isn't valid.")).toBeInTheDocument();
+
+    // The previously-active ship must still be active — no auto-advance on failure.
+    expect(shipButton).toHaveClass('active');
+  });
+
   it('shows an error toast for an out-of-bounds client-side pre-check placement', async () => {
     const user = userEvent.setup();
     const { adapter } = await setUpSeededSession();

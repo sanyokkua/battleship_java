@@ -26,14 +26,20 @@ public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {
      * @param request the web request context
      * @return a ResponseEntity containing the ExceptionDto
      */
-    @ExceptionHandler(value = {GameCoordinateIsNotCorrectIncorrectException.class,
+    @ExceptionHandler(value = {GameCellAlreadyShotException.class,
+            GameCoordinateIsNotCorrectIncorrectException.class,
             GameEditionIsNotCorrectException.class,
+            GameOpponentNotFoundException.class,
             GamePlayerIdIsNotCorrectException.class,
             GamePlayerNameIsNotCorrectException.class,
             GamePlayerNotActiveException.class,
+            GamePlayerNotFoundException.class,
+            GameSessionFullException.class,
             GameSessionIdIsNotCorrectException.class,
+            GameShipAlreadyPlacedException.class,
             GameShipDirectionIsNotCorrectException.class,
             GameShipIdIsNotCorrectException.class,
+            GameShipsNotAllPlacedException.class,
             GameStageIsNotCorrectException.class})
     protected ResponseEntity<Object> handleConflict(RuntimeException ex, WebRequest request) {
         var message = ex.getMessage();
@@ -53,14 +59,20 @@ public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {
      */
     private String resolveErrorCode(RuntimeException ex) {
         return switch (ex) {
+            case GameCellAlreadyShotException ignored -> "CELL_ALREADY_SHOT";
             case GameCoordinateIsNotCorrectIncorrectException ignored -> "COORDINATE_INVALID";
             case GameEditionIsNotCorrectException ignored -> "EDITION_INVALID";
+            case GameOpponentNotFoundException ignored -> "OPPONENT_NOT_FOUND";
             case GamePlayerIdIsNotCorrectException ignored -> "PLAYER_ID_INVALID";
             case GamePlayerNameIsNotCorrectException ignored -> "PLAYER_NAME_INVALID";
             case GamePlayerNotActiveException ignored -> "PLAYER_NOT_ACTIVE";
+            case GamePlayerNotFoundException ignored -> "PLAYER_NOT_FOUND";
+            case GameSessionFullException ignored -> "SESSION_FULL";
             case GameSessionIdIsNotCorrectException ignored -> "SESSION_NOT_FOUND";
+            case GameShipAlreadyPlacedException ignored -> "SHIP_ALREADY_PLACED";
             case GameShipDirectionIsNotCorrectException ignored -> "SHIP_DIRECTION_INVALID";
             case GameShipIdIsNotCorrectException ignored -> "SHIP_ID_INVALID";
+            case GameShipsNotAllPlacedException ignored -> "SHIPS_NOT_ALL_PLACED";
             case GameStageIsNotCorrectException ignored -> "STAGE_INVALID";
             default -> throw new IllegalStateException(
                     "Unmapped exception type for error code resolution: %s".formatted(ex.getClass()

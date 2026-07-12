@@ -18,6 +18,7 @@
         "noEmit": true
     },
     "include": [
-        "e2e"
+        "e2e",
+        "e2e-live"
     ]
 }

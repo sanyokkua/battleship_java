@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useSessionGuard } from '../hooks/useSessionGuard';
@@ -64,6 +64,28 @@ export function GameplayScreen() {
     }
   }, [state?.hasWinner, navigate]);
 
+  // Tracks the previous isPlayerActive value purely to detect an actual flip — starts
+  // `undefined` so the *first* time state loads (regardless of whether the player
+  // happens to start active or waiting) is never mistaken for a flip and never forces
+  // the tab away from its default ('target'). Only forces a switch AT THE MOMENT the
+  // value changes, never on a same-value re-render (e.g. a same-value poll refetch
+  // every 5s) — so a manual tab switch made mid-turn is never fought.
+  const prevIsPlayerActiveRef = useRef<boolean | undefined>(undefined);
+
+  useEffect(() => {
+    if (!state) return;
+    const current = state.isPlayerActive;
+    const prev = prevIsPlayerActiveRef.current;
+    if (prev !== undefined && prev !== current) {
+      setActiveTab(current ? 'target' : 'fleet');
+    }
+    prevIsPlayerActiveRef.current = current;
+    // Deliberately keyed on state?.isPlayerActive only — see comment above; re-running this
+    // effect on every `state` reference change (e.g. same-value poll refetch) would defeat
+    // the "only fire on an actual flip" guard this effect exists to provide.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.isPlayerActive]);
+
   if (!sessionId || !player) {
     // Defensive only — StageGuard at the routing layer is responsible for redirecting
     // away from this screen when session/player data isn't present.
@@ -91,6 +113,10 @@ export function GameplayScreen() {
     if (!state) return;
     if (!state.isPlayerActive) {
       notify.info('turn.notYours');
+      return;
+    }
+    if (state.opponentField[row][column].hasShot) {
+      notify.info('shot.alreadyShot');
       return;
     }
 

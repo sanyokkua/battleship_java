@@ -24,7 +24,12 @@ const STATE_LABEL: Record<ResolvedState, string> = {
 };
 
 // Modes where a player's own ships are actually visible on the board.
-const OWN_SHIP_VISIBLE_MODES: ReadonlySet<BoardMode> = new Set<BoardMode>(['own', 'prep', 'result-own']);
+const OWN_SHIP_VISIBLE_MODES: ReadonlySet<BoardMode> = new Set<BoardMode>([
+  'own',
+  'prep',
+  'result-own',
+  'result-target',
+]);
 
 function resolveState(cell: CellDto, mode: BoardMode, sunk: boolean, isGhost: boolean): ResolvedState {
   if (mode === 'prep' && isGhost) {
@@ -57,7 +62,7 @@ export function BoardCell({ cell, mode, sunk, isGhost, readonly, onClick }: Boar
   const rowNumber = cell.row + 1;
   const ariaLabel = `${columnLetter}${rowNumber}, ${STATE_LABEL[state]}`;
 
-  const isBlocked = state === 'block';
+  const isBlocked = state === 'block' || (mode === 'target' && cell.hasShot);
   const isClickable = Boolean(onClick) && !readonly && !isBlocked;
 
   const className = `cell cell-${state}`;

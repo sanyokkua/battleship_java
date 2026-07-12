@@ -1,5 +1,5 @@
 {
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/301e9b0e-10d5-46d3-b7fa-8ac2b9e4638c/changesTime",
+  "path" : "/api/v2/game/sessions/476ca178-3419-4e7d-970a-1f7e14fca568/changesTime",
   "status" : 200
 }

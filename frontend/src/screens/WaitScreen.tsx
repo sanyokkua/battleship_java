@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import copy from 'copy-to-clipboard';
 import { useSessionGuard } from '../hooks/useSessionGuard';
 import { useWaitRoom } from '../hooks/useWaitRoom';
 import { saveStage } from '../services/GameBrowserStorage';
@@ -48,12 +49,21 @@ export function WaitScreen() {
 
   async function handleCopy() {
     if (!sessionId) return;
-    try {
-      await navigator.clipboard.writeText(sessionId);
+    // copy-to-clipboard falls back to a hidden-element + document.execCommand('copy')
+    // when the async navigator.clipboard API is unavailable (e.g. plain-HTTP LAN
+    // addresses, which aren't a "secure context"), and never throws.
+    const ok = await copy(sessionId);
+    if (ok) {
       notify.success('id.copied');
-    } catch {
-      // Clipboard API can fail/be unavailable in some contexts — non-critical convenience
-      // feature, so just skip the toast rather than surfacing an error.
+    }
+  }
+
+  async function handleCopyLink() {
+    if (!sessionId) return;
+    const link = `${window.location.origin}/join?id=${sessionId}`;
+    const ok = await copy(link);
+    if (ok) {
+      notify.success('link.copied');
     }
   }
 
@@ -72,6 +82,9 @@ export function WaitScreen() {
             <code>{sessionId}</code>
             <Button variant="primary" size="sm" onClick={handleCopy}>
               {t('screens:wait.copy')}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleCopyLink}>
+              {t('screens:wait.copyLink')}
             </Button>
           </div>
           <div className="waiting-line">

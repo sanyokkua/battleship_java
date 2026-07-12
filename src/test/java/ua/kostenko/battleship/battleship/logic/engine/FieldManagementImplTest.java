@@ -2,6 +2,7 @@ package ua.kostenko.battleship.battleship.logic.engine;
 
 import org.junit.jupiter.api.Test;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEditionConfiguration;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.CellAlreadyShotException;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.ShipDirection;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.ShipType;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.ShotResult;
@@ -298,7 +299,7 @@ public class FieldManagementImplTest {
     }
 
     @Test
-    void makeShot_onAlreadyShotCell_returnsSameShotResultAndLeavesStateUnchanged() {
+    void makeShot_onAlreadyShotDestroyedCell_throwsCellAlreadyShotExceptionAndLeavesStateUnchanged() {
         FieldManagementImpl field = new FieldManagementImpl();
         field.addShip(Coordinate.of(0, 0), TEST_SHIP_HORIZONTAL_S1);
 
@@ -307,12 +308,50 @@ public class FieldManagementImplTest {
         final int undamagedCellsAfterFirstShot = field.getNumberOfUndamagedCells();
         final int notDestroyedShipsAfterFirstShot = field.getNumberOfNotDestroyedShips();
 
-        final ShotResult secondShotResult = field.makeShot(Coordinate.of(0, 0));
+        assertThrows(CellAlreadyShotException.class, () -> field.makeShot(Coordinate.of(0, 0)));
 
-        assertEquals(firstShotResult, secondShotResult);
-        assertEquals(ShotResult.DESTROYED, secondShotResult);
         assertTrue(field.getField()[0][0].hasShot());
         assertEquals(undamagedCellsAfterFirstShot, field.getNumberOfUndamagedCells());
         assertEquals(notDestroyedShipsAfterFirstShot, field.getNumberOfNotDestroyedShips());
+    }
+
+    @Test
+    void makeShot_onAlreadyShotMissCell_throwsCellAlreadyShotExceptionAndLeavesStateUnchanged() {
+        FieldManagementImpl field = new FieldManagementImpl();
+        field.addShip(Coordinate.of(0, 0), TEST_SHIP_HORIZONTAL_S1);
+
+        final ShotResult firstShotResult = field.makeShot(Coordinate.of(5, 5));
+        assertEquals(ShotResult.MISS, firstShotResult);
+        final int undamagedCellsAfterFirstShot = field.getNumberOfUndamagedCells();
+        final int notDestroyedShipsAfterFirstShot = field.getNumberOfNotDestroyedShips();
+
+        assertThrows(CellAlreadyShotException.class, () -> field.makeShot(Coordinate.of(5, 5)));
+
+        assertTrue(field.getField()[5][5].hasShot());
+        assertEquals(undamagedCellsAfterFirstShot, field.getNumberOfUndamagedCells());
+        assertEquals(notDestroyedShipsAfterFirstShot, field.getNumberOfNotDestroyedShips());
+    }
+
+    @Test
+    void makeShot_onMoatCellAutoRevealedByDestroyedShip_throwsCellAlreadyShotException() {
+        FieldManagementImpl field = new FieldManagementImpl();
+        field.addShip(Coordinate.of(0, 0), TEST_SHIP_HORIZONTAL_S1);
+
+        final ShotResult shotResult = field.makeShot(Coordinate.of(0, 0));
+        assertEquals(ShotResult.DESTROYED, shotResult);
+
+        // (1, 1) is a diagonal neighbour of the destroyed 1-cell ship at (0, 0); it is
+        // auto-revealed as a moat cell (hasShot=true, no ship) by processDestroyedShip.
+        final Coordinate moatCoordinate = Coordinate.of(1, 1);
+        assertTrue(field.getField()[1][1].hasShot());
+        assertFalse(field.getField()[1][1].hasShip());
+
+        final int undamagedCellsBeforeSecondShot = field.getNumberOfUndamagedCells();
+        final int notDestroyedShipsBeforeSecondShot = field.getNumberOfNotDestroyedShips();
+
+        assertThrows(CellAlreadyShotException.class, () -> field.makeShot(moatCoordinate));
+
+        assertEquals(undamagedCellsBeforeSecondShot, field.getNumberOfUndamagedCells());
+        assertEquals(notDestroyedShipsBeforeSecondShot, field.getNumberOfNotDestroyedShips());
     }
 }

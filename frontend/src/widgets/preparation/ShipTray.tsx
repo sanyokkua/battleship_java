@@ -16,7 +16,8 @@ export type ShipTrayProps = {
 /**
  * Fleet tray card — ported from MOCKUP.html's `.fleet-panel`: a label + hint line,
  * then one `ShipItem` per fleet entry, biggest ships first (matches the mockup's
- * fleet ordering).
+ * fleet ordering), with placed ships sorted before unplaced ones within each same-size
+ * group.
  */
 export function ShipTray({
   ships,
@@ -29,7 +30,7 @@ export function ShipTray({
   cellPluralLabel,
   removeLabel,
 }: ShipTrayProps) {
-  const sorted = [...ships].sort((a, b) => b.shipSize - a.shipSize);
+  const sorted = [...ships].sort((a, b) => b.shipSize - a.shipSize || Number(b.placed) - Number(a.placed));
 
   return (
     <div className="fleet-panel card">

@@ -1,15 +1,15 @@
 {
   "ships" : [ {
-    "shipId" : "aba47d51-2229-4333-bd88-fcf2b2769806",
+    "shipId" : "7e21615a-95a6-4836-bad8-383aacb1d643",
     "shipSize" : 2
   }, {
-    "shipId" : "2eea4d83-a587-463a-9285-8c80b210c539",
+    "shipId" : "b499a384-153a-42bf-a856-5030a940faa7",
     "shipSize" : 3
   }, {
-    "shipId" : "39155f06-48e4-40dc-96d5-18341a9bd9f6",
+    "shipId" : "b7490433-8442-46e2-a38b-e94b09ebaff7",
     "shipSize" : 3
   }, {
-    "shipId" : "2fbb07bf-8ec5-4725-8345-f49db57c8aa0",
+    "shipId" : "9ab264f1-92f6-448e-b78e-c28412e791e1",
     "shipSize" : 4
   } ],
   "field" : [ [ {
@@ -256,7 +256,7 @@
     "row" : 4,
     "col" : 0,
     "ship" : {
-      "shipId" : "522bc908-abf5-44cd-ac2b-3a361af7e9ed",
+      "shipId" : "92c130de-6a5b-4e93-bdf3-d2422eacc061",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -267,7 +267,7 @@
     "row" : 4,
     "col" : 1,
     "ship" : {
-      "shipId" : "522bc908-abf5-44cd-ac2b-3a361af7e9ed",
+      "shipId" : "92c130de-6a5b-4e93-bdf3-d2422eacc061",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -284,7 +284,7 @@
     "row" : 4,
     "col" : 3,
     "ship" : {
-      "shipId" : "23426b76-3ff6-48b0-8504-1ef45f1eabcf",
+      "shipId" : "5625d7a6-b045-4636-8b6b-02b264d34968",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -295,7 +295,7 @@
     "row" : 4,
     "col" : 4,
     "ship" : {
-      "shipId" : "23426b76-3ff6-48b0-8504-1ef45f1eabcf",
+      "shipId" : "5625d7a6-b045-4636-8b6b-02b264d34968",
       "shipType" : "SUBMARINE",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 2
@@ -396,7 +396,7 @@
     "row" : 6,
     "col" : 0,
     "ship" : {
-      "shipId" : "21b4823f-f388-4057-b951-a73a097b2e04",
+      "shipId" : "3b8b062e-441a-40f7-a77a-1d4d48f41048",
       "shipType" : "PATROL_BOAT",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 1
@@ -413,7 +413,7 @@
     "row" : 6,
     "col" : 2,
     "ship" : {
-      "shipId" : "8b16fa59-2506-4a53-90ec-d546f77de68d",
+      "shipId" : "21915529-2fa8-486b-9b28-fed8b8e960e8",
       "shipType" : "PATROL_BOAT",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 1
@@ -526,7 +526,7 @@
     "row" : 8,
     "col" : 0,
     "ship" : {
-      "shipId" : "9119458e-15ac-4f25-89b3-19dbee240509",
+      "shipId" : "06787312-a31a-4716-b885-2129becfd916",
       "shipType" : "PATROL_BOAT",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 1
@@ -543,7 +543,7 @@
     "row" : 8,
     "col" : 2,
     "ship" : {
-      "shipId" : "376087ce-d6b4-42db-ab3a-2576b80a8a69",
+      "shipId" : "f2a62bfe-c4a9-4356-ab77-5f843c1f72f4",
       "shipType" : "PATROL_BOAT",
       "shipDirection" : "HORIZONTAL",
       "shipSize" : 1

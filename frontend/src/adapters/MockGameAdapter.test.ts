@@ -184,6 +184,30 @@ describe("MockGameAdapter", () => {
         expect(afterState.isPlayerActive).toBe(true);
     });
 
+    it("shoot rejects a second shot at the same already-shot coordinate with CELL_ALREADY_SHOT", async () => {
+        const {sessionId, p1, p2} = await setUpTwoPlayerSession(adapter);
+        await placeAllShips(adapter, sessionId, p1);
+        await placeAllShips(adapter, sessionId, p2);
+        await adapter.setReady(sessionId, p1);
+        await adapter.setReady(sessionId, p2);
+
+        // Shoot a ship cell of size > 1 so the shot resolves HIT (not DESTROYED/MISS) and the
+        // turn stays with p1 — a MISS would switch activePlayerId to p2, which would make a
+        // second shoot() call by p1 fail on the (unrelated) PLAYER_NOT_ACTIVE check instead of
+        // exercising the CELL_ALREADY_SHOT guard this test targets.
+        const p2Prep = await adapter.getPreparationState(sessionId, p2);
+        const shipCoord = findShipCellOfSize(p2Prep.field, 2);
+
+        const firstShot = await adapter.shoot(sessionId, p1, {row: shipCoord.row, column: shipCoord.col});
+        expect(firstShot.shotResult).toBe("HIT");
+
+        const stateAfterFirstShot = await adapter.getGameState(sessionId, p1);
+        expect(stateAfterFirstShot.isPlayerActive).toBe(true);
+
+        await expect(adapter.shoot(sessionId, p1, {row: shipCoord.row, column: shipCoord.col}))
+            .rejects.toMatchObject({errorCode: "CELL_ALREADY_SHOT"});
+    });
+
     it("getGameState does not leak un-shot opponent ship positions anywhere on the board", async () => {
         const {sessionId, p1, p2} = await setUpTwoPlayerSession(adapter);
         await placeAllShips(adapter, sessionId, p1);

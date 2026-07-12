@@ -16,6 +16,13 @@ import { WaitScreen } from './WaitScreen';
  * wrapped in act() to avoid flakiness.
  */
 
+// WaitScreen copies via copy-to-clipboard (not navigator.clipboard directly) so the
+// Copy/Copy-link buttons keep working on plain-HTTP LAN addresses, where jsdom (like
+// a real non-secure-context browser) has no usable navigator.clipboard/execCommand.
+// Mock the module so we can assert on its calls without depending on jsdom internals.
+const copyMock = vi.fn().mockResolvedValue(true);
+vi.mock('copy-to-clipboard', () => ({ default: (text: string) => copyMock(text) }));
+
 function renderWaitScreen(adapter: MockGameAdapter) {
   return render(
     <GameAdapterProvider adapter={adapter}>
@@ -36,10 +43,8 @@ describe('WaitScreen', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText: vi.fn().mockResolvedValue(undefined) },
-      configurable: true,
-    });
+    copyMock.mockReset();
+    copyMock.mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -74,15 +79,56 @@ describe('WaitScreen', () => {
 
     await waitFor(() => expect(screen.getByText('Hello, Alice!')).toBeInTheDocument());
 
-    // fireEvent (not userEvent) here deliberately: userEvent.click's pointer/focus
-    // event simulation in this jsdom version clobbers the navigator.clipboard stub
-    // defined above (observed empirically), which fireEvent's plain click does not.
+    // fireEvent (not userEvent) here deliberately, matching this file's existing
+    // convention for the clipboard buttons.
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
     });
 
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(sessionId);
+    expect(copyMock).toHaveBeenCalledWith(sessionId);
     await waitFor(() => expect(screen.getByText('Game ID copied to clipboard.')).toBeInTheDocument());
+  });
+
+  it('copies a shareable join link and shows the "link copied" toast when Copy link is clicked', async () => {
+    const adapter = new MockGameAdapter();
+    const sessionId = await adapter.createSession('UKRAINIAN');
+    const player = await adapter.createPlayer(sessionId, 'Alice');
+    saveSession(sessionId);
+    savePlayer(player);
+
+    renderWaitScreen(adapter);
+
+    await waitFor(() => expect(screen.getByText('Hello, Alice!')).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy link' }));
+    });
+
+    // jsdom's default test origin, per this project's vitest.config.ts (jsdom
+    // environment, no custom testEnvironmentOptions.url), is http://localhost:3000.
+    expect(copyMock).toHaveBeenCalledWith(`http://localhost:3000/join?id=${sessionId}`);
+    await waitFor(() => expect(screen.getByText('Join link copied to clipboard.')).toBeInTheDocument());
+  });
+
+  it('shows no toast when the underlying copy fails', async () => {
+    copyMock.mockResolvedValue(false);
+
+    const adapter = new MockGameAdapter();
+    const sessionId = await adapter.createSession('UKRAINIAN');
+    const player = await adapter.createPlayer(sessionId, 'Alice');
+    saveSession(sessionId);
+    savePlayer(player);
+
+    renderWaitScreen(adapter);
+
+    await waitFor(() => expect(screen.getByText('Hello, Alice!')).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    });
+
+    expect(copyMock).toHaveBeenCalledWith(sessionId);
+    expect(screen.queryByText('Game ID copied to clipboard.')).not.toBeInTheDocument();
   });
 
   it('navigates to /game/preparation once the opponent joins and the stage advances', async () => {

@@ -364,7 +364,7 @@ export class MockGameAdapter implements GameAdapter {
             isOpponentReady: opponent.ready,
             opponentNumberOfAliveCells: opponentCounts.aliveCells,
             opponentNumberOfAliveShips: opponentCounts.aliveShips,
-            opponentField: this.opponentVisibleField(opponent.field),
+            opponentField: this.opponentVisibleField(opponent.field, session.stage === "FINISHED"),
             hasWinner: session.hasWinner,
             winnerPlayerName: session.winnerPlayerName ?? ""
         };
@@ -402,6 +402,13 @@ export class MockGameAdapter implements GameAdapter {
         }
 
         const targetCell = opponent.field[at.row][at.column];
+        if (targetCell.hasShot) {
+            throw new GameAdapterError("Cell has already been shot", {
+                httpStatus: 400,
+                errorCode: "CELL_ALREADY_SHOT",
+                context: "shoot"
+            });
+        }
         targetCell.hasShot = true;
 
         let shotResult: "HIT" | "MISS" | "DESTROYED" = "MISS";
@@ -430,13 +437,14 @@ export class MockGameAdapter implements GameAdapter {
 
     // --- internal helpers ---
 
-    private opponentVisibleField(opponentField: CellDto[][]): CellDto[][] {
+    private opponentVisibleField(opponentField: CellDto[][], revealAll: boolean): CellDto[][] {
         // Only reveal ship info for cells that have actually been shot at (or fully sunk ships,
-        // which are already all-hasShot=true by construction) — never leak un-shot ship positions.
+        // which are already all-hasShot=true by construction) — never leak un-shot ship positions,
+        // unless the game has finished (revealAll), in which case the full fleet is shown.
         return opponentField.map(row => row.map(cell => ({
             row: cell.row,
             col: cell.col,
-            ship: cell.hasShot ? (cell.ship ? {...cell.ship} : null) : null,
+            ship: (cell.hasShot || revealAll) ? (cell.ship ? {...cell.ship} : null) : null,
             hasShot: cell.hasShot,
             isAvailable: cell.isAvailable
         })));

@@ -8,12 +8,12 @@ import { ToastProvider } from '../widgets/feedback/ToastContext';
 import { ToastStack } from '../widgets/feedback/ToastStack';
 import { JoinGameScreen } from './JoinGameScreen';
 
-function renderJoinScreen(adapter: MockGameAdapter) {
+function renderJoinScreen(adapter: MockGameAdapter, initialEntry = '/join') {
   return render(
     <GameAdapterProvider adapter={adapter}>
       <ToastProvider>
         <ToastStack />
-        <MemoryRouter initialEntries={['/join']}>
+        <MemoryRouter initialEntries={[initialEntry]}>
           <Routes>
             <Route path="/join" element={<JoinGameScreen />} />
             <Route path="/game/wait" element={<div>Wait route</div>} />
@@ -99,6 +99,14 @@ describe('JoinGameScreen', () => {
     expect(await screen.findByText('Wait route')).toBeInTheDocument();
     expect(createPlayerSpy).toHaveBeenCalledWith(uuidGameId, 'Batman');
     expect(getStageSpy).toHaveBeenCalledWith(uuidGameId);
+  });
+
+  it('pre-fills the Game ID field from a ?id= query param and shows the valid checkmark immediately', async () => {
+    const uuidGameId = '8f4c23c4-f86e-465c-a208-65f70281bfcb';
+    renderJoinScreen(new MockGameAdapter(), `/join?id=${uuidGameId}`);
+
+    expect(screen.getByLabelText('Game ID')).toHaveValue(uuidGameId);
+    expect(await screen.findByText('Valid game code')).toBeInTheDocument();
   });
 
   it('surfaces an error toast and does not navigate for a well-formed but unknown session id', async () => {
