@@ -1,0 +1,40 @@
+{
+  "appName": "Battleship",
+  "nav": {
+    "home": "Home",
+    "new": "New",
+    "join": "Join",
+    "prep": "Preparation",
+    "gameplay": "Gameplay",
+    "menu": "Menu",
+    "languageSwitch": "Language"
+  },
+  "button": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "copy": "Copy",
+    "back": "Back"
+  },
+  "edition": {
+    "ukrainian": {
+      "name": "Ukrainian",
+      "description": "10 ships · sizes 1–4 · 20 cells"
+    },
+    "milton_bradley": {
+      "name": "Milton Bradley",
+      "description": "10 ships · sizes 2–5 · 30 cells"
+    }
+  },
+  "shipType": {
+    "patrol_boat_one": "Patrol Boat",
+    "patrol_boat_other": "Patrol Boats",
+    "submarine_one": "Submarine",
+    "submarine_other": "Submarines",
+    "destroyer_one": "Destroyer",
+    "destroyer_other": "Destroyers",
+    "battleship_one": "Battleship",
+    "battleship_other": "Battleships",
+    "carrier_one": "Carrier",
+    "carrier_other": "Carriers"
+  }
+}

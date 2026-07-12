@@ -1,0 +1,23 @@
+/* Ported from MOCKUP.html's .input / .input:focus / .input.err */
+
+.input {
+    width: 100%;
+    padding: 14px 15px;
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius-sm);
+    font-size: 16px;
+    font-family: inherit;
+    background: var(--surface);
+    color: var(--ink);
+}
+
+.input:focus {
+    outline: 0;
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(18, 168, 184, .15);
+}
+
+.input.err {
+    border-color: var(--hit);
+    box-shadow: 0 0 0 3px rgba(230, 57, 70, .14);
+}

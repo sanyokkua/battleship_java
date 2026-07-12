@@ -107,3 +107,9 @@ export type InitialData = {
     player: ResponseCreatedPlayerDto | null,
     stage: string | null,
 }
+
+export type ExceptionDto = {
+    status: number,
+    errorMessage: string,
+    errorCode?: string,
+}

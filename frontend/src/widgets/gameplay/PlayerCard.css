@@ -1,0 +1,64 @@
+/* Ported from MOCKUP.html's gameplay `.player-card` rules. */
+
+.player-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 13px 15px;
+  box-shadow: var(--shadow);
+}
+
+.player-card.you {
+  border-left: 4px solid var(--teal);
+}
+
+.player-card.foe {
+  border-left: 4px solid var(--hit);
+}
+
+.player-card .who {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.player-card .who b {
+  font-size: 14.5px;
+}
+
+.player-card .statrow {
+  display: flex;
+  gap: 14px;
+}
+
+.player-card .s {
+  flex: 1;
+}
+
+.player-card .s .lbl {
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.player-card .s .val {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.mini-bar {
+  height: 6px;
+  border-radius: 4px;
+  background: var(--line);
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.mini-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+}

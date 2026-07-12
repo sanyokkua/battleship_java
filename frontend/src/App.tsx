@@ -1,11 +1,23 @@
-import {Route, Routes} from "react-router-dom";
+import { useMemo } from 'react';
+import { HttpGameAdapter } from './adapters/HttpGameAdapter';
+import { GameAdapterProvider } from './adapters/GameAdapterContext';
+import { ToastProvider } from './widgets/feedback/ToastContext';
+import { ToastStack } from './widgets/feedback/ToastStack';
+import { AppBar } from './widgets/layout/AppBar';
+import { AppRoutes } from './routing/AppRoutes';
 
 function App() {
-    return (
-        <Routes>
-            <Route path="*" element={<div>Battleship — rebuild in progress (Phase 5)</div>}/>
-        </Routes>
-    );
+  const adapter = useMemo(() => new HttpGameAdapter(), []);
+
+  return (
+    <GameAdapterProvider adapter={adapter}>
+      <ToastProvider>
+        <AppBar />
+        <AppRoutes />
+        <ToastStack />
+      </ToastProvider>
+    </GameAdapterProvider>
+  );
 }
 
 export default App;

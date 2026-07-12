@@ -1,0 +1,52 @@
+/*
+ * Home screen — hero banner + primary menu buttons.
+ * Ported from MOCKUP.html's `.home-menu` / `.hero` / `.menu-btns` rules
+ * (`.screen` and `.note` are shared globals defined in design/base.css).
+ */
+
+.home-menu {
+    max-width: 420px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.home-menu .hero {
+    background: linear-gradient(135deg, var(--navy), var(--sea));
+    border-radius: 22px;
+    color: #fff;
+    padding: 34px 24px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+}
+
+.home-menu .hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 80% 120%, rgba(18, 168, 184, .5), transparent 55%);
+}
+
+.home-menu .hero h2 {
+    font-size: 30px;
+    margin: 14px 0 6px;
+    position: relative;
+}
+
+.home-menu .hero p {
+    margin: 0;
+    opacity: .85;
+    position: relative;
+    font-size: 14px;
+}
+
+.home-menu .hero .badge-ship {
+    font-size: 60px;
+    position: relative;
+}
+
+.menu-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}

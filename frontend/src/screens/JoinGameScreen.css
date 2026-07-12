@@ -1,0 +1,21 @@
+/*
+ * Join Game screen — name + Game ID form with inline positive validity feedback.
+ * Ported from MOCKUP.html's `join:()=>...` screen-render function
+ * (`.screen`, `.title`, `.sub`, `.card.stack` are shared globals defined in
+ * design/base.css; `.fld` / `.field-error` from Field.css).
+ */
+
+.join-game-screen {
+    max-width: 440px;
+    margin: 0 auto;
+}
+
+.field-valid {
+    font-size: 11.5px;
+    color: var(--ok);
+    margin-top: 6px;
+    font-weight: 600;
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}

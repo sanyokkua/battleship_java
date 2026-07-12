@@ -1,0 +1,103 @@
+/*
+ * Base CSS — resets, background, typography conventions and generic layout
+ * scaffolding shared across every screen. Ported from MOCKUP.html's global
+ * rule-sets (body, .screen, h2.title, .sub, .card, .stack). Component-specific
+ * styling lives in each component's own .css file, not here.
+ *
+ * Typography convention used throughout this design system (per SPEC §8.1):
+ *   - `h2.title` — screen titles, 24px (mobile) / 30px (desktop, via a real
+ *     `@media (min-width: 641px)` query — see below; the mockup's own
+ *     `.desktop h2.title` is a demo-only device-preview toggle class that
+ *     doesn't exist in the real app, per this project's established
+ *     convention, e.g. widgets/board/BoardTabs.css)
+ *   - `.sub`     — screen subtitles / helper copy, 14.5px, `--ink-soft`
+ *   - `label.fld`/labels generally — 13.5px, semi-bold, `--ink-soft`
+ *   - body text (`.card`, general prose) — 14.5–16px, `--ink`
+ * These are base *element/utility* classes (not component CSS modules) because
+ * they're shared scaffolding used by many screens/components alike, matching the
+ * mockup's own approach of plain global classes.
+ */
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--bg);
+    font-family: var(--font);
+    color: var(--ink);
+    font-size: 14.5px;
+    line-height: 1.5;
+    background-image:
+        radial-gradient(circle at 20% 0%, #dfeaf8 0, transparent 45%),
+        radial-gradient(circle at 90% 10%, #e3f4f6 0, transparent 40%);
+}
+
+/* Screen scaffolding — a routed page's outer padding + entrance animation. */
+.screen {
+    padding: 24px 20px 30px;
+    flex: 1;
+    animation: fade .3s;
+}
+
+@keyframes fade {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (min-width: 641px) {
+    .screen {
+        padding: 34px 40px 44px;
+    }
+}
+
+/* Screen title / subtitle typography. */
+h2.title {
+    font-size: 24px;
+    margin: 0 0 4px;
+}
+
+@media (min-width: 641px) {
+    h2.title {
+        font-size: 30px;
+    }
+}
+
+.sub {
+    color: var(--ink-soft);
+    margin: 0 0 22px;
+    font-size: 14.5px;
+}
+
+/* Generic surface card used as the base container for forms/panels. */
+.card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px;
+    box-shadow: var(--shadow);
+}
+
+/* Vertical rhythm helper: stacks children with consistent spacing. */
+.stack > * + * {
+    margin-top: 18px;
+}
+
+.note {
+    font-size: 12px;
+    color: var(--ink-soft);
+    text-align: center;
+    margin-top: 26px;
+}

@@ -1,0 +1,34 @@
+{
+  "ship": {
+    "placed": { "title": "Ship placed", "message": "Ship positioned on the board." },
+    "removed": { "title": "Ship removed", "message": "Ship removed from the board." }
+  },
+  "place": {
+    "tooClose": { "title": "Can't place there", "message": "Ships can't touch — try another spot." },
+    "outOfBounds": { "title": "Can't place there", "message": "That placement goes off the board." },
+    "occupied": { "title": "Can't place there", "message": "That cell is already occupied." }
+  },
+  "ready": {
+    "needAllShips": { "title": "Not ready yet", "message": "Place all your ships before marking ready." }
+  },
+  "shot": {
+    "hit": { "title": "Direct hit!", "message": "You hit a ship. Fire again!" },
+    "miss": { "title": "Miss", "message": "No ship there." },
+    "sunk": { "title": "Ship sunk!", "message": "You sank an enemy ship!" }
+  },
+  "turn": {
+    "notYours": { "title": "Not your turn", "message": "Wait for your opponent to take their shot." }
+  },
+  "id": {
+    "copied": { "title": "Copied", "message": "Game ID copied to clipboard." }
+  },
+  "join": {
+    "invalidId": { "title": "Invalid Game ID", "message": "Check the ID and try again." }
+  },
+  "session": {
+    "notFound": { "title": "Session not found", "message": "This game session no longer exists." }
+  },
+  "error": {
+    "generic": { "title": "Something went wrong", "message": "Please try again." }
+  }
+}

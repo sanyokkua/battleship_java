@@ -1,0 +1,50 @@
+{
+  "appName": "Battleship",
+  "nav": {
+    "home": "Головна",
+    "new": "Нова",
+    "join": "Приєднатися",
+    "prep": "Підготовка",
+    "gameplay": "Гра",
+    "menu": "Меню",
+    "languageSwitch": "Мова"
+  },
+  "button": {
+    "cancel": "Скасувати",
+    "confirm": "Підтвердити",
+    "copy": "Копіювати",
+    "back": "Назад"
+  },
+  "edition": {
+    "ukrainian": {
+      "name": "Українська",
+      "description": "10 кораблів · розміри 1–4 · 20 клітин"
+    },
+    "milton_bradley": {
+      "name": "Мілтон Бредлі",
+      "description": "10 кораблів · розміри 2–5 · 30 клітин"
+    }
+  },
+  "shipType": {
+    "patrol_boat_one": "Патрульний катер",
+    "patrol_boat_few": "Патрульні катери",
+    "patrol_boat_many": "Патрульних катерів",
+    "patrol_boat_other": "Патрульного катера",
+    "submarine_one": "Підводний човен",
+    "submarine_few": "Підводні човни",
+    "submarine_many": "Підводних човнів",
+    "submarine_other": "Підводного човна",
+    "destroyer_one": "Есмінець",
+    "destroyer_few": "Есмінці",
+    "destroyer_many": "Есмінців",
+    "destroyer_other": "Есмінця",
+    "battleship_one": "Лінкор",
+    "battleship_few": "Лінкори",
+    "battleship_many": "Лінкорів",
+    "battleship_other": "Лінкора",
+    "carrier_one": "Авіаносець",
+    "carrier_few": "Авіаносці",
+    "carrier_many": "Авіаносців",
+    "carrier_other": "Авіаносця"
+  }
+}

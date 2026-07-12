@@ -42,3 +42,14 @@ export function loadStage(): string | null {
     const item = localStorage.getItem(GAME_STAGE);
     return item ? item : null;
 }
+
+/**
+ * Clears all persisted session/player/stage data. Used when the player
+ * leaves an in-progress game (e.g. via the AppBar's "Leave this game?"
+ * confirmation) or otherwise returns to the menu.
+ */
+export function clearGameData(): void {
+    localStorage.removeItem(SESSION);
+    localStorage.removeItem(PLAYER);
+    localStorage.removeItem(GAME_STAGE);
+}

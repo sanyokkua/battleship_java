@@ -1,0 +1,25 @@
+/* Ported from MOCKUP.html's .topbar-progress / i / @keyframes slide */
+
+.topbar-progress {
+    height: 5px;
+    background: var(--water-line);
+    overflow: hidden;
+}
+
+.topbar-progress i {
+    display: block;
+    height: 100%;
+    width: 40%;
+    background: linear-gradient(90deg, var(--teal), var(--steel));
+    border-radius: 0 4px 4px 0;
+    animation: slide 1.3s infinite;
+}
+
+@keyframes slide {
+    0% {
+        margin-left: -40%;
+    }
+    100% {
+        margin-left: 100%;
+    }
+}

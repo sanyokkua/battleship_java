@@ -1,0 +1,94 @@
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 37, 69, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 1100;
+  padding: 20px;
+  animation: dialog-fade 0.2s;
+}
+
+@keyframes dialog-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.dialog {
+  background: var(--surface);
+  border-radius: 18px;
+  max-width: 340px;
+  width: 100%;
+  padding: 24px;
+  box-shadow: 0 30px 60px rgba(11, 37, 69, 0.35);
+  text-align: center;
+}
+
+.dialog:focus {
+  outline: none;
+}
+
+.dialog .dic {
+  font-size: 40px;
+}
+
+.dialog h3 {
+  margin: 8px 0 6px;
+  font-size: 19px;
+  color: var(--ink);
+}
+
+.dialog p {
+  margin: 0 0 20px;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.dialog-actions .btn {
+  padding: 12px;
+}
+
+.dialog .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-sm, 10px);
+  padding: 15px 18px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.15s;
+  font-family: inherit;
+}
+
+.dialog .btn:active {
+  transform: translateY(1px);
+}
+
+.dialog .btn:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+.dialog .btn-ghost {
+  background: var(--surface);
+  color: var(--sea);
+  border: 2px solid var(--steel);
+}
+
+.dialog .btn-danger {
+  background: linear-gradient(135deg, #ef5867, var(--hit));
+  color: #fff;
+}
