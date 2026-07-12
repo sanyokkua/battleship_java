@@ -36,10 +36,11 @@
     },
     "scripts": {
         "dev": "vite",
+        "dev:mock": "vite --mode mock",
         "build": "tsc && vite build",
         "preview": "vite preview",
         "test": "vitest run",
-        "test:e2e": "playwright test --pass-with-no-tests",
+        "test:e2e": "playwright test",
         "lint": "eslint ."
     },
     "browserslist": {
