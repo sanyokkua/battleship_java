@@ -14,6 +14,11 @@ export type LegendProps = {
     labels: LegendLabels;
 };
 
+/**
+ * Renders the board's key/legend: an icon + label for each cell state (water, ship,
+ * hit, miss, sunk), plus an optional "no-go" (blocked) entry when `withNoGo` is true
+ * — used in preparation mode where blocked cells are a distinct state.
+ */
 export function Legend({withNoGo, labels}: LegendProps) {
     return (
         <div className="legend">

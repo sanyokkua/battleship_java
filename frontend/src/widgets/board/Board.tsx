@@ -2,6 +2,13 @@ import type {CellDto} from '../../logic/ApplicationTypes';
 import {BoardCell} from './BoardCell';
 import './Board.css';
 
+/**
+ * Which board a `Board` renders and how its cells should be interpreted:
+ * - `own` — the player's own field during gameplay (ships visible).
+ * - `target` — the opponent's field during gameplay (ships hidden unless shot).
+ * - `prep` — the player's own field during preparation (ships visible, ghost/block states apply).
+ * - `result-own` / `result-target` — read-only post-game views of either field (ships visible).
+ */
 export type BoardMode = 'own' | 'target' | 'prep' | 'result-own' | 'result-target';
 
 export type BoardProps = {
@@ -15,6 +22,10 @@ export type BoardProps = {
 const COLUMN_LETTERS = Array.from({length: 10}, (_, i) => String.fromCharCode(65 + i));
 const ROW_NUMBERS = Array.from({length: 10}, (_, i) => i + 1);
 
+/**
+ * Derives the set of ship IDs whose every cell has been shot, so `Board` can
+ * render those ships as "sunk" rather than merely "hit".
+ */
 function computeSunkShipIds(field: CellDto[][]): Set<string> {
     const cellsByShip = new Map<string, CellDto[]>();
     for (const row of field) {
@@ -39,6 +50,12 @@ function computeSunkShipIds(field: CellDto[][]): Set<string> {
     return sunk;
 }
 
+/**
+ * Renders a 10x10 game board with column (A-J) and row (1-10) coordinate labels,
+ * delegating each cell's visual state to `BoardCell`. Sunk-ship detection and
+ * ghost-cell (prep-mode drop preview) lookup are computed once here and passed
+ * down per cell.
+ */
 export function Board({field, mode, readonly, onCellClick, ghostCells}: BoardProps) {
     const sunkShipIds = computeSunkShipIds(field);
 

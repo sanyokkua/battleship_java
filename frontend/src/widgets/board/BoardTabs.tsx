@@ -7,6 +7,12 @@ export type BoardTabsProps = {
     fleetLabel: string;
 };
 
+/**
+ * Two-tab switcher (ARIA `tablist`/`tab`) between the "target" (opponent) and "fleet"
+ * (own) boards during gameplay. Purely controlled — `active` selects the highlighted
+ * tab and `onChange` is called with the tapped tab's id; rendering the corresponding
+ * board is the caller's responsibility.
+ */
 export function BoardTabs({active, onChange, targetLabel, fleetLabel}: BoardTabsProps) {
     return (
         <div className="board-tabs" role="tablist">

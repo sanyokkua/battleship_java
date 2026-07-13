@@ -11,6 +11,7 @@ export type BoardCellProps = {
     onClick?: () => void;
 };
 
+/** The visual/interactive state a single cell resolves to, driving both its CSS class and aria-label. */
 type ResolvedState = 'ghost' | 'sunk' | 'hit' | 'miss' | 'ship' | 'block' | 'water';
 
 const STATE_LABEL: Record<ResolvedState, string> = {
@@ -31,6 +32,12 @@ const OWN_SHIP_VISIBLE_MODES: ReadonlySet<BoardMode> = new Set<BoardMode>([
     'result-target',
 ]);
 
+/**
+ * Resolves a cell's DTO plus its board context (mode, precomputed sunk/ghost flags)
+ * into a single `ResolvedState`. In target-style modes this deliberately withholds
+ * ship state for cells that haven't been shot yet, regardless of what the DTO carries,
+ * so an opponent's unshot ships are never visually revealed.
+ */
 function resolveState(cell: CellDto, mode: BoardMode, sunk: boolean, isGhost: boolean): ResolvedState {
     if (mode === 'prep' && isGhost) {
         return 'ghost';
@@ -56,6 +63,12 @@ function resolveState(cell: CellDto, mode: BoardMode, sunk: boolean, isGhost: bo
     return 'water';
 }
 
+/**
+ * Renders a single board cell as either a clickable `<button>` (when `onClick` is
+ * provided, the cell isn't `readonly`, and it isn't blocked/already-shot) or a plain
+ * `<div>` otherwise. Derives its visual state, coordinate-based aria-label (e.g. "B4, hit"),
+ * and hit/sunk symbol from `resolveState`.
+ */
 export function BoardCell({cell, mode, sunk, isGhost, readonly, onClick}: BoardCellProps) {
     const state = resolveState(cell, mode, sunk, isGhost);
     const columnLetter = String.fromCharCode(65 + cell.col);
