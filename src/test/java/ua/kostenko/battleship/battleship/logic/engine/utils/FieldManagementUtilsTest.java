@@ -269,4 +269,133 @@ class FieldManagementUtilsTest {
         assertTrue(shipNeighbourCells.stream()
                                      .anyMatch(c -> testField[0][2].equals(c)));
     }
+
+    @Test
+    void testGetShipsFromField_noShipsOnField_returnsEmptySet() {
+        final Cell[][] testField = FieldUtils.initializeField();
+        final Set<Ship> shipsFromField = FieldUtils.getShipsFromField(testField);
+        assertEquals(0, shipsFromField.size());
+        assertTrue(shipsFromField.isEmpty());
+    }
+
+    @Test
+    void testFindShipCells_shipNotPlacedOnField_returnsEmptySet() {
+        final Cell[][] testField = FieldUtils.initializeField();
+        var unplacedShip = Ship.builder()
+                               .shipId("test_id_unplaced")
+                               .shipSize(2)
+                               .shipType(ShipType.DESTROYER)
+                               .shipDirection(ShipDirection.HORIZONTAL)
+                               .build();
+        final Set<Cell> shipCells = FieldUtils.findShipCells(testField, unplacedShip);
+        assertEquals(0, shipCells.size());
+        assertTrue(shipCells.isEmpty());
+    }
+
+    @Test
+    void testFindShipNeighbourCells_shipAtBottomRightCorner() {
+        var testField = FieldUtils.initializeField();
+        var shipCorner = Ship.builder()
+                             .shipId("test_id_corner")
+                             .shipSize(2)
+                             .shipType(ShipType.DESTROYER)
+                             .shipDirection(ShipDirection.HORIZONTAL)
+                             .build();
+        testField[NUMBER_OF_ROWS - 1][NUMBER_OF_COLUMNS - 2] = Cell.builder()
+                                                                   .coordinate(Coordinate.of(NUMBER_OF_ROWS - 1, NUMBER_OF_COLUMNS - 2))
+                                                                   .ship(shipCorner)
+                                                                   .hasShot(false)
+                                                                   .isAvailable(false)
+                                                                   .build();
+        testField[NUMBER_OF_ROWS - 1][NUMBER_OF_COLUMNS - 1] = Cell.builder()
+                                                                   .coordinate(Coordinate.of(NUMBER_OF_ROWS - 1, NUMBER_OF_COLUMNS - 1))
+                                                                   .ship(shipCorner)
+                                                                   .hasShot(false)
+                                                                   .isAvailable(false)
+                                                                   .build();
+        final Set<Cell> shipNeighbourCells = FieldUtils.findShipNeighbourCells(testField, shipCorner);
+        assertEquals(4, shipNeighbourCells.size());
+        assertTrue(shipNeighbourCells.stream()
+                                     .anyMatch(c -> testField[NUMBER_OF_ROWS - 2][NUMBER_OF_COLUMNS - 2].equals(c)));
+        assertTrue(shipNeighbourCells.stream()
+                                     .anyMatch(c -> testField[NUMBER_OF_ROWS - 2][NUMBER_OF_COLUMNS - 1].equals(c)));
+        assertTrue(shipNeighbourCells.stream()
+                                     .anyMatch(c -> testField[NUMBER_OF_ROWS - 1][NUMBER_OF_COLUMNS - 3].equals(c)));
+        assertTrue(shipNeighbourCells.stream()
+                                     .anyMatch(c -> testField[NUMBER_OF_ROWS - 2][NUMBER_OF_COLUMNS - 3].equals(c)));
+    }
+
+    @Test
+    void testFindShipNeighbourCells_shipAlongTopEdge() {
+        var testField = FieldUtils.initializeField();
+        var shipTopEdge = Ship.builder()
+                              .shipId("test_id_top_edge")
+                              .shipSize(2)
+                              .shipType(ShipType.DESTROYER)
+                              .shipDirection(ShipDirection.HORIZONTAL)
+                              .build();
+        testField[0][4] = Cell.builder()
+                              .coordinate(Coordinate.of(0, 4))
+                              .ship(shipTopEdge)
+                              .hasShot(false)
+                              .isAvailable(false)
+                              .build();
+        testField[0][5] = Cell.builder()
+                              .coordinate(Coordinate.of(0, 5))
+                              .ship(shipTopEdge)
+                              .hasShot(false)
+                              .isAvailable(false)
+                              .build();
+        final Set<Cell> shipNeighbourCells = FieldUtils.findShipNeighbourCells(testField, shipTopEdge);
+        assertEquals(6, shipNeighbourCells.size());
+        assertTrue(shipNeighbourCells.stream()
+                                     .anyMatch(c -> testField[0][3].equals(c)));
+        assertTrue(shipNeighbourCells.stream()
+                                     .anyMatch(c -> testField[0][6].equals(c)));
+        assertTrue(shipNeighbourCells.stream()
+                                     .anyMatch(c -> testField[1][3].equals(c)));
+        assertTrue(shipNeighbourCells.stream()
+                                     .anyMatch(c -> testField[1][4].equals(c)));
+        assertTrue(shipNeighbourCells.stream()
+                                     .anyMatch(c -> testField[1][5].equals(c)));
+        assertTrue(shipNeighbourCells.stream()
+                                     .anyMatch(c -> testField[1][6].equals(c)));
+    }
+
+    @Test
+    void testFindShipNeighbourCells_shipAlongLeftEdge() {
+        var testField = FieldUtils.initializeField();
+        var shipLeftEdge = Ship.builder()
+                               .shipId("test_id_left_edge")
+                               .shipSize(2)
+                               .shipType(ShipType.DESTROYER)
+                               .shipDirection(ShipDirection.VERTICAL)
+                               .build();
+        testField[4][0] = Cell.builder()
+                              .coordinate(Coordinate.of(4, 0))
+                              .ship(shipLeftEdge)
+                              .hasShot(false)
+                              .isAvailable(false)
+                              .build();
+        testField[5][0] = Cell.builder()
+                              .coordinate(Coordinate.of(5, 0))
+                              .ship(shipLeftEdge)
+                              .hasShot(false)
+                              .isAvailable(false)
+                              .build();
+        final Set<Cell> shipNeighbourCells = FieldUtils.findShipNeighbourCells(testField, shipLeftEdge);
+        assertEquals(6, shipNeighbourCells.size());
+        assertTrue(shipNeighbourCells.stream()
+                                     .anyMatch(c -> testField[3][0].equals(c)));
+        assertTrue(shipNeighbourCells.stream()
+                                     .anyMatch(c -> testField[3][1].equals(c)));
+        assertTrue(shipNeighbourCells.stream()
+                                     .anyMatch(c -> testField[4][1].equals(c)));
+        assertTrue(shipNeighbourCells.stream()
+                                     .anyMatch(c -> testField[5][1].equals(c)));
+        assertTrue(shipNeighbourCells.stream()
+                                     .anyMatch(c -> testField[6][0].equals(c)));
+        assertTrue(shipNeighbourCells.stream()
+                                     .anyMatch(c -> testField[6][1].equals(c)));
+    }
 } 
