@@ -26,7 +26,7 @@
           Phase 2. Once Tasks 2-6 close the gaps, flip this default to false (or pass
           -Djacoco.check.skip=false) so `mvn verify` enforces the thresholds.
         -->
-        <jacoco.check.skip>true</jacoco.check.skip>
+        <jacoco.check.skip>false</jacoco.check.skip>
     </properties>
     <dependencies>
         <dependency>

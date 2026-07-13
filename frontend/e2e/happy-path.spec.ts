@@ -14,9 +14,14 @@ import {
   shootViaBackdoor,
 } from './support/mockBackdoor';
 
-// Clipboard permissions are required for the Wait screen's "Copy" control
-// (navigator.clipboard.writeText) to succeed and fire the "copied" toast.
-test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
+// No clipboard permissions are granted here on purpose: the Wait screen's "Copy"
+// control uses the `copy-to-clipboard` library, which falls back to a hidden-element
+// + document.execCommand('copy') whenever the async navigator.clipboard API isn't
+// available or isn't permitted, and never throws (see WaitScreen.tsx's handleCopy).
+// Granting 'clipboard-read'/'clipboard-write' via test.use({ permissions }) is a
+// Chromium-only capability - Firefox and WebKit reject those permission strings
+// outright ("Unknown permission") and fail before the page even loads - so this test
+// must not request them if it's going to run cross-browser.
 
 test('happy path: create -> wait -> prepare -> play -> results (win)', async ({ page }) => {
   // Three stage-transition boundaries plus ~30 real-UI board interactions comfortably
