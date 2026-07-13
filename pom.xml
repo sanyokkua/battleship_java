@@ -221,6 +221,24 @@
                         </configuration>
                     </execution>
                     <execution>
+                        <!--
+                          Without this execution, `mvn clean package` only succeeds if a developer
+                          already ran `npm install` by hand (frontend/node_modules is git-ignored).
+                          On a clean checkout (or a Docker build context) the build would fail at
+                          `vite: not found`. Bound to the same default phase as install-node-and-npm
+                          (generate-resources) so declaration order runs it before "npm build"
+                          (bound to compile). Uses `npm ci` (not `npm install`) since
+                          frontend/package-lock.json is committed, giving reproducible installs.
+                        -->
+                        <id>npm ci</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>ci</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
                         <id>npm build</id>
                         <goals>
                             <goal>npm</goal>

@@ -11,381 +11,381 @@
 }, {
   "slug" : "03-create-player-1",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players",
   "status" : 201
 }, {
   "slug" : "04-create-player-2",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players",
   "status" : 201
 }, {
   "slug" : "05-get-session-state",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/state",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/state",
   "status" : 200
 }, {
   "slug" : "06-get-changes-time",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/changesTime",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/changesTime",
   "status" : 200
 }, {
   "slug" : "07-get-preparation-state-p1-initial",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/preparationState",
   "status" : 200
 }, {
   "slug" : "08-get-preparation-state-p1-patrol_boat_1",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/preparationState",
   "status" : 200
 }, {
   "slug" : "09-put-ship-p1-patrol_boat_1",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/ships/2baba600-5f6a-4edf-a7f3-2423643e2d80",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/ships/ac3143cb-9d46-46f6-81ed-b16644189a2b",
   "status" : 200
 }, {
   "slug" : "10-get-preparation-state-p1-patrol_boat_2",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/preparationState",
   "status" : 200
 }, {
   "slug" : "11-put-ship-p1-patrol_boat_2",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/ships/6a6df8e1-a0e3-4020-8495-a765ac45b875",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/ships/a0be893a-5cc5-4505-8a3a-0f175f93720b",
   "status" : 200
 }, {
   "slug" : "12-get-preparation-state-p1-patrol_boat_3",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/preparationState",
   "status" : 200
 }, {
   "slug" : "13-put-ship-p1-patrol_boat_3",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/ships/fd117e1f-aee5-4933-9de9-457bf4daa454",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/ships/1e7e1c58-8560-42f1-836d-5aa1ffadf022",
   "status" : 200
 }, {
   "slug" : "14-get-preparation-state-p1-patrol_boat_4",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/preparationState",
   "status" : 200
 }, {
   "slug" : "15-put-ship-p1-patrol_boat_4",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/ships/9c6fbe4d-757d-4ea9-b614-26d6d25a9131",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/ships/47ac4199-f8e3-483c-bfcc-c9281c7ff230",
   "status" : 200
 }, {
   "slug" : "16-get-preparation-state-p1-submarine_1",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/preparationState",
   "status" : 200
 }, {
   "slug" : "17-put-ship-p1-submarine_1",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/ships/d68ef9b9-7980-4d7b-8735-e601d007469a",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/ships/f7f08e0d-08c2-4808-b238-31f253ba3398",
   "status" : 200
 }, {
   "slug" : "18-get-preparation-state-p1-submarine_2",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/preparationState",
   "status" : 200
 }, {
   "slug" : "19-put-ship-p1-submarine_2",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/ships/a7904918-68bf-4f16-a6d6-cd6c30c94c44",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/ships/a41e8373-f77a-4b95-9fe5-a031801a8ea4",
   "status" : 200
 }, {
   "slug" : "20-get-preparation-state-p1-submarine_3",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/preparationState",
   "status" : 200
 }, {
   "slug" : "21-put-ship-p1-submarine_3",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/ships/93168082-43c7-415e-8faa-2d54ed1a42fb",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/ships/42ce569c-d9fd-49e7-b0a3-2b205786288c",
   "status" : 200
 }, {
   "slug" : "22-get-preparation-state-p1-destroyer_1",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/preparationState",
   "status" : 200
 }, {
   "slug" : "23-put-ship-p1-destroyer_1",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/ships/03c0467b-8b9c-4c4c-b8d1-46ba0b929707",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/ships/41959706-ab90-47fe-afa4-64917f5bb925",
   "status" : 200
 }, {
   "slug" : "24-get-preparation-state-p1-destroyer_2",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/preparationState",
   "status" : 200
 }, {
   "slug" : "25-put-ship-p1-destroyer_2",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/ships/410c9a23-673f-4394-9e6f-a776f0b8817a",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/ships/377b87d3-1e48-4194-90e0-0d953f70e87b",
   "status" : 200
 }, {
   "slug" : "26-get-preparation-state-p1-battleship",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/preparationState",
   "status" : 200
 }, {
   "slug" : "27-put-ship-p1-battleship",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/ships/a41a92e4-4231-4f13-a812-5b6325105a9c",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/ships/623c7380-4f42-411b-a3f1-0bb9f96e5bdd",
   "status" : 200
 }, {
   "slug" : "28-get-preparation-state-p2-patrol_boat_1",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/preparationState",
   "status" : 200
 }, {
   "slug" : "29-put-ship-p2-patrol_boat_1",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/ships/6ca98475-7aaa-4214-9c35-f4e54cb555b4",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/ships/1caf3ffe-d29b-4a2d-96b3-86b9310bfa33",
   "status" : 200
 }, {
   "slug" : "30-get-preparation-state-p2-patrol_boat_2",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/preparationState",
   "status" : 200
 }, {
   "slug" : "31-put-ship-p2-patrol_boat_2",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/ships/1624e201-9f15-45ac-bcfb-b810eb4ace3e",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/ships/bc0abda7-a269-4673-abcf-0abdb9abbd00",
   "status" : 200
 }, {
   "slug" : "32-get-preparation-state-p2-patrol_boat_3",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/preparationState",
   "status" : 200
 }, {
   "slug" : "33-put-ship-p2-patrol_boat_3",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/ships/d0682fa5-fcd2-4246-a7af-cd7567398d1b",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/ships/84c6cd4a-6f4e-453f-872a-640945bc5ac6",
   "status" : 200
 }, {
   "slug" : "34-get-preparation-state-p2-patrol_boat_4",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/preparationState",
   "status" : 200
 }, {
   "slug" : "35-put-ship-p2-patrol_boat_4",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/ships/bb280f6c-0846-49ff-adae-c6b45de17185",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/ships/d89094ba-5928-40a9-aa35-11f8e54fd648",
   "status" : 200
 }, {
   "slug" : "36-get-preparation-state-p2-submarine_1",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/preparationState",
   "status" : 200
 }, {
   "slug" : "37-put-ship-p2-submarine_1",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/ships/06d86fa4-fdd3-4dcc-bf47-f80cb8306b5b",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/ships/cb04b44a-77c8-41a8-ba7c-5f4708bcd171",
   "status" : 200
 }, {
   "slug" : "38-get-preparation-state-p2-submarine_2",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/preparationState",
   "status" : 200
 }, {
   "slug" : "39-put-ship-p2-submarine_2",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/ships/69bdfc68-0213-4bcd-ab56-9603eec94240",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/ships/877c861e-538d-4e84-8a45-8ccea7ecc194",
   "status" : 200
 }, {
   "slug" : "40-get-preparation-state-p2-submarine_3",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/preparationState",
   "status" : 200
 }, {
   "slug" : "41-put-ship-p2-submarine_3",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/ships/4e68c6c3-345b-456a-ac79-59878421a3c8",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/ships/306b3ab1-1171-4f88-9257-1c7ee2616d8f",
   "status" : 200
 }, {
   "slug" : "42-get-preparation-state-p2-destroyer_1",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/preparationState",
   "status" : 200
 }, {
   "slug" : "43-put-ship-p2-destroyer_1",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/ships/71aa6fe6-bd91-416a-adfa-e8dcd1be1479",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/ships/c2c9068b-1183-49e3-bea0-d663e76cf633",
   "status" : 200
 }, {
   "slug" : "44-get-preparation-state-p2-destroyer_2",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/preparationState",
   "status" : 200
 }, {
   "slug" : "45-put-ship-p2-destroyer_2",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/ships/0ec67bde-dfdc-4727-80f0-422c6d42c71e",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/ships/7a5c0c5b-9f7e-42de-9db0-bab2ab69f7c0",
   "status" : 200
 }, {
   "slug" : "46-get-preparation-state-p2-battleship",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/preparationState",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/preparationState",
   "status" : 200
 }, {
   "slug" : "47-put-ship-p2-battleship",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/ships/ba6fbd0b-a19c-436e-bf1d-a1cfb627401e",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/ships/42936be5-aeb2-47ef-94b5-2c6048968f4c",
   "status" : 200
 }, {
   "slug" : "48-delete-ship-p1-battleship",
   "method" : "DELETE",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/ships",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/ships",
   "status" : 200
 }, {
   "slug" : "49-put-ship-p1-battleship-readd",
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/ships/a41a92e4-4231-4f13-a812-5b6325105a9c",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/ships/623c7380-4f42-411b-a3f1-0bb9f96e5bdd",
   "status" : 200
 }, {
   "slug" : "50-start-p1",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/start",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/start",
   "status" : 200
 }, {
   "slug" : "51-start-p2",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/start",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/start",
   "status" : 200
 }, {
   "slug" : "52-get-opponent-p1",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/opponent",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/opponent",
   "status" : 200
 }, {
   "slug" : "53-get-gameplay-state-p1-initial",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/state",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/state",
   "status" : 200
 }, {
   "slug" : "54-shot-miss-r9-c9",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "55-shot-miss-r9-c9",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/field/shot",
   "status" : 200
 }, {
   "slug" : "56-shot-hit-r4-c0",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "57-shot-destroyed-r4-c1",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "58-shot-hit-r0-c0",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "59-shot-hit-r0-c1",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "60-shot-hit-r0-c2",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "61-shot-destroyed-r0-c3",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "62-shot-hit-r2-c0",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "63-shot-hit-r2-c1",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "64-shot-destroyed-r2-c2",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "65-shot-hit-r2-c5",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "66-shot-hit-r2-c6",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "67-shot-destroyed-r2-c7",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "68-shot-hit-r4-c3",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "69-shot-destroyed-r4-c4",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "70-shot-hit-r4-c6",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "71-shot-destroyed-r4-c7",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "72-shot-destroyed-r6-c0",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "73-shot-destroyed-r6-c2",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "74-shot-destroyed-r8-c0",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "75-shot-destroyed-r8-c2",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 200
 }, {
   "slug" : "76-get-gameplay-state-p1-final",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/state",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/state",
   "status" : 200
 }, {
   "slug" : "77-get-gameplay-state-p2-final",
   "method" : "GET",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/b9ecfaf1-233f-4562-b26f-826b3930ce28/state",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/6150cd4a-96c9-4d71-b2c4-026da4c06857/state",
   "status" : 200
 }, {
   "slug" : "78-invalid-shot-out-of-bounds",
   "method" : "POST",
-  "path" : "/api/v2/game/sessions/1fd87961-f221-4d5f-b611-f147a4978f1b/players/aae5d9bc-0441-4425-b406-fd764d8993ad/field/shot",
+  "path" : "/api/v2/game/sessions/dabb9678-bba0-4335-a0a8-068fd942088a/players/05fe6eeb-dbe4-4a50-adf1-94f84aa9b759/field/shot",
   "status" : 400
 } ]
