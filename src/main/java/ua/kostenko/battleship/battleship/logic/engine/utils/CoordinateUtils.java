@@ -30,6 +30,8 @@ import java.util.stream.Collectors;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class CoordinateUtils {
 
+    private static final Set<Coordinate> NEIGHBOUR_OFFSETS = Set.of(Coordinate.of(-1, -1), Coordinate.of(-1, 0), Coordinate.of(-1, 1), Coordinate.of(0, -1), Coordinate.of(0, 1), Coordinate.of(1, -1), Coordinate.of(1, 0), Coordinate.of(1, 1));
+
     /**
      * Checks if a given coordinate is valid within the game board dimensions.
      *
@@ -84,12 +86,11 @@ public final class CoordinateUtils {
         log.trace("In method: buildNeighbourCoordinates");
         val row = currentCoordinate.row();
         val col = currentCoordinate.column();
-        val modifiers = Set.of(Coordinate.of(-1, -1), Coordinate.of(-1, 0), Coordinate.of(-1, 1), Coordinate.of(0, -1), Coordinate.of(0, 1), Coordinate.of(1, -1), Coordinate.of(1, 0), Coordinate.of(1, 1));
-        return modifiers.stream().map(modifier -> {
+        return NEIGHBOUR_OFFSETS.stream().map(modifier -> {
             val neighbourRow = row + modifier.row();
             val neighbourCol = col + modifier.column();
             return Coordinate.of(neighbourRow, neighbourCol);
-        }).filter(CoordinateUtils::isCorrectCoordinate).filter(coordinate -> !currentCoordinate.equals(coordinate)).collect(Collectors.toSet());
+        }).filter(CoordinateUtils::isCorrectCoordinate).collect(Collectors.toSet());
     }
 
     /**
@@ -104,12 +105,12 @@ public final class CoordinateUtils {
         Set<Coordinate> coordinates = new HashSet<>();
         val row = coordinate.row();
         val col = coordinate.column();
+        val isHorizontal = ShipDirection.HORIZONTAL == ship.shipDirection();
+        log.debug(isHorizontal ? "For Horizontal ship" : "For Vertical ship");
         for (int diff = 0; diff < ship.shipSize(); diff++) {
-            if (ShipDirection.HORIZONTAL == ship.shipDirection()) {
-                log.debug("For Horizontal ship");
+            if (isHorizontal) {
                 coordinates.add(Coordinate.of(row, col + diff));
             } else {
-                log.debug("For Vertical ship");
                 coordinates.add(Coordinate.of(row + diff, col));
             }
         }
