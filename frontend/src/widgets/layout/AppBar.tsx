@@ -26,6 +26,23 @@ const IN_GAME_LINKS: NavItem[] = [
 // Stages during which navigating away should prompt a "leave this game?" confirmation.
 const LEAVE_CONFIRM_STAGES = new Set(['PREPARATION', 'IN_GAME']);
 
+/**
+ * Top navigation bar — ported from MOCKUP.html's `.appbar` (anchor + app name on
+ * the left, a burger-collapsible nav on the right with an EN/УКР language switch).
+ * Rendered once at the app shell level, above the routed screen.
+ *
+ * Session-awareness: reads the persisted session/player/stage via useSessionGuard
+ * (not a live network call) to decide whether to show the in-game links
+ * ("Preparation"/"Gameplay", via IN_GAME_LINKS) alongside the always-visible
+ * Home/New/Join links.
+ *
+ * Leave-game confirmation: while in PREPARATION or IN_GAME (LEAVE_CONFIRM_STAGES),
+ * clicking any nav link intercepts the navigation and opens a ConfirmDialog instead
+ * of navigating immediately. Confirming clears persisted game data (clearGameData)
+ * and then navigates to the originally-clicked destination; canceling just closes
+ * the dialog. Outside those stages, or with no active session, links navigate
+ * normally and clicking one also closes the mobile burger menu.
+ */
 export function AppBar() {
     const {t, i18n} = useTranslation('common');
     const {sessionId, player, stage} = useSessionGuard();

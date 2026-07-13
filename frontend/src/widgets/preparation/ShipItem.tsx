@@ -1,17 +1,17 @@
 export type ShipItemData = {
     shipId: string;
-    shipSize: number;
-    typeName: string;
-    placed: boolean;
-    active: boolean;
+    shipSize: number; // ship length in cells, i.e. number of "chip" indicators rendered
+    typeName: string; // already-localized ship type name (e.g. "Carrier")
+    placed: boolean; // true once the player has placed this ship on their board
+    active: boolean; // true when this is the currently-selected ship for placement
 };
 
 export type ShipItemProps = {
     ship: ShipItemData;
     cellLabel: string; // already-localized "N cell(s)" text, e.g. "3 cells"
     removeLabel: string; // aria-label for the remove (✕) button
-    onSelect: () => void;
-    onRemove?: () => void;
+    onSelect: () => void; // invoked when an unplaced ship row is clicked, selects it for placement
+    onRemove?: () => void; // invoked when the remove (✕) button on a placed ship is clicked
 };
 
 /**
