@@ -6,6 +6,17 @@ import './ToastStack.css';
 
 const AUTO_DISMISS_MS = 4000;
 
+/**
+ * Renders the live toast queue from {@link useToastContext} and auto-dismisses
+ * each toast after `AUTO_DISMISS_MS`.
+ *
+ * Timers are tracked in a `Map` keyed by toast id (a ref, not state, since timer
+ * handles are an imperative side effect that shouldn't trigger re-renders): the
+ * first effect starts a timer for any newly-added toast and clears timers for
+ * toasts no longer in the list (dismissed some other way, e.g. by the user), and
+ * the second effect clears every outstanding timer on unmount. Renders `null`
+ * when the queue is empty, so it's safe to mount unconditionally.
+ */
 export function ToastStack() {
     const {toasts, dismiss} = useToastContext();
     const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());

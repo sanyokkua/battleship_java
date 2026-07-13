@@ -2,6 +2,7 @@ import type {ReactNode} from 'react';
 import {useEffect, useRef} from 'react';
 import './ConfirmDialog.css';
 
+/** Props for {@link ConfirmDialog}. Rendering is entirely controlled via `open`. */
 export type ConfirmDialogProps = {
     open: boolean;
     icon?: ReactNode;
@@ -19,6 +20,16 @@ const FOCUSABLE_SELECTOR =
 const TITLE_ID = 'confirm-dialog-title';
 const BODY_ID = 'confirm-dialog-body';
 
+/**
+ * Modal confirm/cancel dialog with focus-trapping and Escape-to-cancel.
+ *
+ * Renders `null` when `open` is false (no exit animation to wait for). While open,
+ * it snapshots `document.activeElement`, moves focus to the first focusable element
+ * inside the dialog, traps Tab/Shift+Tab within it, and restores the previously
+ * focused element on close/unmount — standard modal-dialog accessibility behavior
+ * (see `role="dialog"` + `aria-modal` below). Clicking the backdrop itself (not its
+ * children) triggers `onCancel`, matching the Escape-key behavior.
+ */
 export function ConfirmDialog({
                                   open,
                                   icon,

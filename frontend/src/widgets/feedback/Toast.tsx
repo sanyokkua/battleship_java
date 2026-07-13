@@ -8,6 +8,13 @@ const VARIANT_ICON: Record<ToastData['variant'], string> = {
     err: '⚠️',
 };
 
+/**
+ * Renders a single toast's content (icon, title, message, dismiss button).
+ *
+ * Presentational only — no timers, no ARIA live-region role (see {@link ToastHost}
+ * for that) and no queue access; callers ({@link ToastStack}) own placement and
+ * lifecycle, this just draws one toast and reports dismiss clicks by id.
+ */
 export function Toast({toast, onDismiss}: { toast: ToastData; onDismiss: (id: string) => void }) {
     return (
         <div className={`toast ${toast.variant}`}>
