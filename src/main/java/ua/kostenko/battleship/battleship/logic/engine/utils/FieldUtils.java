@@ -64,7 +64,7 @@ public final class FieldUtils {
      */
     public static Set<Ship> getShipsFromField(Cell[][] field) {
         log.trace("In method: getShipsFromField");
-        return convertToFlatSet(field).stream().filter(Cell::hasShip).map(Cell::ship).collect(Collectors.toSet());
+        return occupiedCells(field).stream().map(Cell::ship).collect(Collectors.toSet());
     }
 
     /**
@@ -76,7 +76,7 @@ public final class FieldUtils {
      */
     public static Set<Cell> findShipCells(Cell[][] field, Ship ship) {
         log.trace("In method: findShipCells");
-        return convertToFlatSet(field).stream().filter(Cell::hasShip).filter(c -> ship.equals(c.ship())).collect(Collectors.toSet());
+        return occupiedCells(field).stream().filter(c -> ship.equals(c.ship())).collect(Collectors.toSet());
 
     }
 
@@ -93,6 +93,27 @@ public final class FieldUtils {
         val shipCoordinates = shipCells.stream().map(Cell::coordinate).collect(Collectors.toSet());
         val neighbourCoordinates = CoordinateUtils.buildNeighbourCoordinates(shipCoordinates);
 
-        return neighbourCoordinates.stream().map(c -> field[c.row()][c.column()]).collect(Collectors.toSet());
+        return neighbourCoordinates.stream().map(c -> getCell(field, c)).collect(Collectors.toSet());
+    }
+
+    /**
+     * Extracts all cells that contain ships from the game field.
+     *
+     * @param field the 2D array representing the game field
+     * @return a set of cells that have ships
+     */
+    private static Set<Cell> occupiedCells(Cell[][] field) {
+        return convertToFlatSet(field).stream().filter(Cell::hasShip).collect(Collectors.toSet());
+    }
+
+    /**
+     * Retrieves a specific cell from the field by coordinate.
+     *
+     * @param field the 2D array representing the game field
+     * @param coordinate the coordinate of the cell to retrieve
+     * @return the cell at the specified coordinate
+     */
+    private static Cell getCell(Cell[][] field, Coordinate coordinate) {
+        return field[coordinate.row()][coordinate.column()];
     }
 }
