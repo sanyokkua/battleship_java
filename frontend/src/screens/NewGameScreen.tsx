@@ -32,6 +32,15 @@ function shipSizesFor(edition: string): number[] {
     return sizes;
 }
 
+/**
+ * Create-new-game screen ("/new") — loads the available game editions via
+ * `GameAdapter.getEditions()` (through `useGameAdapter()`) on mount, lets the
+ * player pick an edition and enter a name, then calls `createSession`,
+ * `createPlayer`, and `getStage` to start a session. On success it persists
+ * the session, player, and stage to browser storage and navigates to
+ * `WaitScreen` ("/game/wait"); on failure it surfaces a toast via
+ * `useToastContext`.
+ */
 export function NewGameScreen() {
     const {t} = useTranslation(['screens', 'common', 'notifications', 'errors']);
     const navigate = useNavigate();

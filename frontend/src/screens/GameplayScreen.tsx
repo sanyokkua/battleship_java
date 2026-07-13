@@ -23,6 +23,13 @@ const TOTAL_SHIPS = 10;
 
 type MaxCells = { player: number | null; opponent: number | null };
 
+/**
+ * Active-battle screen ("/game/gameplay") — shown during the `IN_GAME` stage.
+ * Polls live game state and issues shots via `useGameplay`, renders the
+ * target/fleet boards with `Board`/`BoardTabs`, and auto-switches the active
+ * tab when the turn flips. Once `state.hasWinner` is observed it persists the
+ * `FINISHED` stage and navigates to `ResultsScreen` ("/game/results").
+ */
 export function GameplayScreen() {
     const {t} = useTranslation(['screens', 'notifications', 'errors']);
     const navigate = useNavigate();

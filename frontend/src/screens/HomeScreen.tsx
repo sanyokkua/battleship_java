@@ -3,6 +3,11 @@ import {useNavigate} from 'react-router-dom';
 import {Button} from '../design/components/Button/Button';
 import './HomeScreen.css';
 
+/**
+ * Landing screen ("/") — the entry point before any session exists. Offers
+ * navigation to `NewGameScreen` ("/new") or `JoinGameScreen` ("/join"); reads
+ * no session state and calls no adapter methods itself.
+ */
 export function HomeScreen() {
     const {t} = useTranslation('screens');
     const {t: tCommon} = useTranslation('common');

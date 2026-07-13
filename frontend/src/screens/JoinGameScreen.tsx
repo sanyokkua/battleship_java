@@ -11,6 +11,14 @@ import {useToastContext} from '../widgets/feedback/ToastContext';
 import {resolveErrorMessageKey} from '../widgets/feedback/errorMapping';
 import './JoinGameScreen.css';
 
+/**
+ * Join-existing-game screen ("/join") — collects a player name and a session
+ * (game) id, optionally pre-filled from a `?id=` query param (e.g. a shared
+ * invite link), and calls `GameAdapter.createPlayer` then `getStage` via
+ * `useGameAdapter()` to join the session. On success it persists the session,
+ * player, and stage to browser storage and navigates to `WaitScreen`
+ * ("/game/wait"); on failure it surfaces a toast via `useToastContext`.
+ */
 export function JoinGameScreen() {
     const {t} = useTranslation(['screens', 'notifications', 'errors']);
     const navigate = useNavigate();

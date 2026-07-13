@@ -19,8 +19,13 @@ import './ResultsScreen.css';
 const TOTAL_SHIPS_PER_EDITION = 10;
 
 /**
- * Results screen — ported from MOCKUP.html's `results:()=>...` screen-render
- * function (`.result-hero`, `.stat-strip`, `.boards-area`/`.board-panel`).
+ * Game-over screen ("/game/results") — shown during the `FINISHED` stage.
+ * Fetches the final game state once (no polling) via
+ * `GameAdapter.getGameState()` through `useGameAdapter()`, renders both
+ * boards read-only, and lets the player return to `HomeScreen` (clearing
+ * persisted session data first). Ported from MOCKUP.html's `results:()=>...`
+ * screen-render function (`.result-hero`, `.stat-strip`,
+ * `.boards-area`/`.board-panel`).
  *
  * SPEC §8.3 screen 8: win/lose hero from isPlayerWinner/winnerPlayerName, both
  * boards read-only, "Return to main menu". SPEC §8.5 explicitly excludes the

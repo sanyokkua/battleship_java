@@ -81,6 +81,7 @@ function inBounds(c: Coordinate): boolean {
     return c.row >= 0 && c.row < 10 && c.column >= 0 && c.column < 10;
 }
 
+/** Reason a client-side ship placement was rejected before calling the adapter; see {@link validatePlacement}. */
 export type PlacementRejection = 'outOfBounds' | 'occupied' | 'tooClose' | null;
 
 /**
@@ -124,6 +125,16 @@ export function validatePlacement(field: CellDto[][], at: Coordinate, size: numb
     return null;
 }
 
+/**
+ * Ship-placement screen ("/game/preparation") — shown during the `PREPARATION`
+ * stage. Delegates fleet/board/placement state to `usePreparation` (which
+ * wraps `GameAdapter` calls for placing/removing ships and marking ready) and
+ * runs its own 3s poll via `usePolling`/`useGameAdapter().getStage` once the
+ * player has readied up, to detect the server advancing to `IN_GAME` and
+ * navigate to `GameplayScreen` ("/game/gameplay"). Click-to-place/click-to-remove
+ * placements are pre-validated client-side via {@link validatePlacement}
+ * before the adapter call is made.
+ */
 export function PreparationScreen() {
     const {t} = useTranslation(['screens', 'notifications', 'errors', 'common']);
     const navigate = useNavigate();

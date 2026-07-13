@@ -15,6 +15,13 @@ import './WaitScreen.css';
 // means the wait is over and we should move on.
 const STILL_WAITING_STAGES = new Set(['INITIALIZED', 'WAITING_FOR_PLAYERS']);
 
+/**
+ * Post-join waiting room ("/game/wait") — shown while `GameStage` is
+ * `INITIALIZED` or `WAITING_FOR_PLAYERS`. Polls session status via
+ * `useWaitRoom` and, once the stage advances past waiting, persists the new
+ * stage and navigates to `PreparationScreen` ("/game/preparation"). Also lets
+ * the player copy the session id or a shareable join link to the clipboard.
+ */
 export function WaitScreen() {
     const {t} = useTranslation('screens');
     const navigate = useNavigate();
