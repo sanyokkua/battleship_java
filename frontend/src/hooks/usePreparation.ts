@@ -4,29 +4,47 @@ import {GameAdapterError, isGameAdapterError} from "../adapters/AdapterErrors";
 import {usePolling} from "./usePolling";
 import type {CellDto, Coordinate, ShipDirection, ShipDto} from "../logic/ApplicationTypes";
 
+/**
+ * Return type of {@link usePreparation}.
+ */
 export type PreparationHookState = {
+    /** Ships available to (or already) placed for the current player, as returned by the adapter. */
     ships: ShipDto[];
+    /** Current player's board, as a 2D grid of cells (rows of `CellDto`). */
     field: CellDto[][];
+    /** Orientation applied to the next ship placed via `placeShip`. */
     direction: ShipDirection;
+    /** Updates `direction` for subsequent `placeShip` calls. */
     setDirection: (d: ShipDirection) => void;
+    /** ID of the ship currently selected for placement in the UI, or `null` if none is selected. */
     activeShipId: string | null;
+    /** Updates `activeShipId`. */
     setActiveShipId: (id: string | null) => void;
+    /** Places ship `shipId` at `at` (using the current `direction`), then refetches `ships`/`field`. */
     placeShip: (shipId: string, at: Coordinate) => Promise<void>;
+    /** Removes whichever ship occupies cell `at`, then refetches `ships`/`field`. */
     removeShipAt: (at: Coordinate) => Promise<void>;
+    /** Marks the current player as ready to start the game. */
     markReady: () => Promise<void>;
+    /** Whether the opponent has marked themselves ready, per the latest poll. */
     opponentReady: boolean;
-    allPlaced: boolean; // every ship in `ships` appears somewhere in `field`
+    /** `true` once every ship in `ships` appears somewhere in `field`. */
+    allPlaced: boolean;
+    /** `true` until the initial fetch (on mount) has completed. */
     loading: boolean;
+    /** Error from the most recent init/poll/action attempt, or `null` if it succeeded. */
     error: GameAdapterError | null;
-    // Increments on every placeShip/removeShipAt/markReady completion (success or
-    // failure), independent of whether `error`'s actual value changed. Consumers
-    // that need to react to "an action just settled" (e.g. PreparationScreen's
-    // one-tick success/failure handshake) should watch this instead of `error`
-    // directly: two consecutive successful actions both set `error` to the same
-    // `null` value, and React bails out of re-running effects keyed on `[error]`
-    // when a state setter is called with a value that's `Object.is`-equal to the
-    // current one - so an effect keyed on `[error]` alone can silently miss a
-    // successful action that happens to follow another successful action.
+    /**
+     * Increments on every placeShip/removeShipAt/markReady completion (success or
+     * failure), independent of whether `error`'s actual value changed. Consumers
+     * that need to react to "an action just settled" (e.g. PreparationScreen's
+     * one-tick success/failure handshake) should watch this instead of `error`
+     * directly: two consecutive successful actions both set `error` to the same
+     * `null` value, and React bails out of re-running effects keyed on `[error]`
+     * when a state setter is called with a value that's `Object.is`-equal to the
+     * current one - so an effect keyed on `[error]` alone can silently miss a
+     * successful action that happens to follow another successful action.
+     */
     actionTick: number;
 };
 
@@ -40,6 +58,21 @@ function computeAllPlaced(ships: ShipDto[], field: CellDto[][]): boolean {
     );
 }
 
+/**
+ * Drives the ship-placement (preparation) screen: fetches the current player's ships/field
+ * on mount, polls the opponent's ready state every 3s, and exposes place/remove/ready actions.
+ *
+ * The initial fetch and the opponent poll are independent: the initial fetch runs once (in a
+ * mount effect, guarded against a stale response via a `cancelled` flag), while `pollOpponent`
+ * runs continuously via {@link usePolling} for the lifetime of the hook — preparation has no
+ * "done" state that would turn polling off the way {@link useGameplay}/`useWaitRoom` do,
+ * since the screen itself unmounts (on navigation) once both players are ready.
+ *
+ * @param sessionId - ID of the game session.
+ * @param playerId - ID of the current player within that session.
+ * @returns Board/ship state, opponent readiness, loading/error flags, and placement actions —
+ * see {@link PreparationHookState}.
+ */
 export function usePreparation(sessionId: string, playerId: string): PreparationHookState {
     const adapter = useGameAdapter();
     const [ships, setShips] = useState<ShipDto[]>([]);

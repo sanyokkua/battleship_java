@@ -1,9 +1,15 @@
 import {loadPlayer, loadSession, loadStage} from "../services/GameBrowserStorage";
 import type {ResponseCreatedPlayerDto} from "../logic/ApplicationTypes";
 
+/**
+ * Return type of {@link useSessionGuard}.
+ */
 export type SessionGuardState = {
+    /** Persisted session ID, or `null` if none has been saved (`loadSession()` returned `""`). */
     sessionId: string | null;
+    /** Persisted player, or `null` if none has been saved. */
     player: ResponseCreatedPlayerDto | null;
+    /** Persisted `GameStage` string, or `null` if none has been saved. */
     stage: string | null;
 };
 
@@ -26,6 +32,8 @@ function readSessionGuardState(): SessionGuardState {
  * every render, not a stale value cached from first mount. This is still not a
  * reactive subscription to storage changes from other tabs/windows — it only
  * reflects the value as of whenever the consuming component happens to render.
+ *
+ * @returns The persisted session/player/stage snapshot — see {@link SessionGuardState}.
  */
 export function useSessionGuard(): SessionGuardState {
     return readSessionGuardState();

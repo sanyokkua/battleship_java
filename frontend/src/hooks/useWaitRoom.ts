@@ -4,16 +4,36 @@ import {GameAdapterError, isGameAdapterError} from "../adapters/AdapterErrors";
 import {usePolling} from "./usePolling";
 import type {ResponseOpponentInformationDto} from "../logic/ApplicationTypes";
 
+/**
+ * Return type of {@link useWaitRoom}.
+ */
 export type WaitRoomState = {
+    /** Latest opponent info fetched from the adapter, or `null` before the first successful poll. */
     opponent: ResponseOpponentInformationDto | null;
+    /** Latest `GameStage` string fetched from the adapter, or `null` before the first successful poll. */
     stage: string | null;
+    /** `true` until the first poll (success or failure) has completed. */
     loading: boolean;
+    /** Error from the most recent poll attempt, or `null` if it succeeded. */
     error: GameAdapterError | null;
 };
 
 // Stages at or after PREPARATION mean the wait is over — no point polling further.
 const WAIT_OVER_STAGES = new Set(["PREPARATION", "IN_GAME", "FINISHED"]);
 
+/**
+ * Polls opponent presence and session stage while waiting for a second player to join.
+ *
+ * Polls every 3s via {@link usePolling}, fetching opponent info and stage concurrently.
+ * Once the stage reaches `WAIT_OVER_STAGES` (`PREPARATION`, `IN_GAME`, or `FINISHED`),
+ * polling is switched off (via `enabled`) and further ticks are also short-circuited
+ * through a ref flag (`doneRef`) so an in-flight tick scheduled just before the switch
+ * takes effect is still a no-op.
+ *
+ * @param sessionId - ID of the game session.
+ * @param playerId - ID of the current player within that session.
+ * @returns Opponent/stage snapshot and loading/error flags — see {@link WaitRoomState}.
+ */
 export function useWaitRoom(sessionId: string, playerId: string): WaitRoomState {
     const adapter = useGameAdapter();
     const [opponent, setOpponent] = useState<ResponseOpponentInformationDto | null>(null);
