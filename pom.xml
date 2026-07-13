@@ -19,12 +19,9 @@
     <properties>
         <java.version>25</java.version>
         <!--
-          JaCoCo's `check` goal is bound to the `verify` phase, which Maven's default
-          lifecycle runs before `install`. Coverage does not yet meet the thresholds
-          below (see docs/redesign/artifacts/phase-2-coverage-gap-report.md), so the
-          check is skipped by default to keep `mvn test` / `mvn install` green during
-          Phase 2. Once Tasks 2-6 close the gaps, flip this default to false (or pass
-          -Djacoco.check.skip=false) so `mvn verify` enforces the thresholds.
+          JaCoCo's `check` goal is bound to the `verify` phase (part of the default
+          `install` lifecycle). Coverage thresholds below are enforced by default;
+          pass -Djacoco.check.skip=true to skip the check locally if needed.
         -->
         <jacoco.check.skip>false</jacoco.check.skip>
     </properties>

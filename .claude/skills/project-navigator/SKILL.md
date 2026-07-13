@@ -41,8 +41,9 @@ repository (or a folder containing several repositories) **without modifying any
 Single-module Maven project: Java 17 + Spring Boot 3.3.5 backend under
 `ua.kostenko.battleship.battleship` (REST Controller → API/Service → Engine → Persistence), CRA/
 TypeScript frontend in `frontend/`, bundled into one JAR (see root `CLAUDE.md` for the full
-architecture map — read that first). The repo is mid-redesign (`feature/redesign-v2`); `docs/redesign/`
-is a frozen, hand-maintained v2 spec — treat it as current, authoritative context, not stale content.
+architecture map — read that first). Current, authoritative architecture and API documentation live
+in `docs/architecture.md` and `docs/index.md` — read those first for anything beyond this quick
+orientation.
 
 ## When to use
 

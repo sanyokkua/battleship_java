@@ -47,10 +47,7 @@ configuration, and infrastructure — accurately and from source, never invented
 Single-module Maven project: Java 17 + Spring Boot 3.3.5 backend under
 `ua.kostenko.battleship.battleship` (REST Controller → API/Service → Engine → Persistence), CRA/
 TypeScript frontend in `frontend/`, bundled into one JAR (see root `CLAUDE.md` for the full
-architecture map — read that first). The repo is mid-redesign (`feature/redesign-v2`); `docs/redesign/`
-is a frozen, hand-maintained v2 spec, not something to regenerate, summarize away, or treat as stale.
-**Never write or overwrite anything under `docs/redesign/`**, and don't fold its content into generated
-`docs/index.md`/`docs/architecture.md` — treat it as a sibling, not an input to rewrite.
+architecture map — read that first).
 
 ## When to use
 
