@@ -18,6 +18,22 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+/**
+ * Implementation of the {@link FieldManagement} interface.
+ * <p>
+ * The FieldManagementImpl class manages a single player's board of {@link Cell}s: it validates and places ships
+ * (including their surrounding no-placement neighbour cells), removes ships, resolves shots into
+ * {@link ShotResult} outcomes (marking neighbouring cells as shot-at once a ship is fully destroyed, and
+ * rejecting shots at cells already shot), and returns both full and hidden-ship views of the field along with
+ * counts of undamaged cells and surviving ships.
+ * </p>
+ *
+ * @see FieldManagement
+ * @see Coordinate
+ * @see Ship
+ * @see Cell
+ * @see ShotResult
+ */
 @Log4j2
 public class FieldManagementImpl implements FieldManagement {
     private final Cell[][] field;

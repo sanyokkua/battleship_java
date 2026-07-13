@@ -21,6 +21,22 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
+/**
+ * Implementation of the {@link Game} interface.
+ * <p>
+ * The GameImpl class drives the Battleship game state machine: it creates and looks up players, manages ship
+ * placement on their fields, transitions the game between stages ({@link GameStage#INITIALIZED},
+ * {@link GameStage#WAITING_FOR_PLAYERS}, {@link GameStage#PREPARATION}, {@link GameStage#IN_GAME},
+ * {@link GameStage#FINISHED}) as players are added, become ready, and take shots, and exposes the resulting
+ * {@link GameState} for persistence.
+ * </p>
+ *
+ * @see Game
+ * @see GameState
+ * @see GameStage
+ * @see Player
+ * @see FieldManagement
+ */
 @Log4j2
 public class GameImpl implements Game {
     private GameState gameState;
