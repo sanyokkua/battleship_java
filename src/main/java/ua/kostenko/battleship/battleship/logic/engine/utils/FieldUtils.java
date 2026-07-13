@@ -77,7 +77,6 @@ public final class FieldUtils {
     public static Set<Cell> findShipCells(Cell[][] field, Ship ship) {
         log.trace("In method: findShipCells");
         return occupiedCells(field).stream().filter(c -> ship.equals(c.ship())).collect(Collectors.toSet());
-
     }
 
     /**
@@ -109,7 +108,7 @@ public final class FieldUtils {
     /**
      * Retrieves a specific cell from the field by coordinate.
      *
-     * @param field the 2D array representing the game field
+     * @param field      the 2D array representing the game field
      * @param coordinate the coordinate of the cell to retrieve
      * @return the cell at the specified coordinate
      */
