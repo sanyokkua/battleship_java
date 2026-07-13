@@ -1,8 +1,7 @@
 /*
- * Design tokens — ported verbatim from docs/redesign/MOCKUP.html's `:root { ... }` block
- * (kept in sync with SPECIFICATION.md §8.1). Do not hand-edit values here without
- * updating the mockup reference first — this file must stay byte-for-byte consistent
- * with the canonical visual reference.
+ * Design tokens — ported verbatim from the v2 mockup's `:root { ... }` block.
+ * Treat these values as the canonical visual reference for the design system;
+ * avoid hand-editing them casually since other components depend on them.
  */
 :root {
     --navy: #0b2545;

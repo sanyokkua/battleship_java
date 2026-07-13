@@ -403,6 +403,7 @@ battleship_java/
 ├── docs/
 │   ├── index.md                    # this file
 │   ├── architecture.md             # deeper diagrams
+│   ├── openapi.json                # generated OpenAPI 3 spec (see `mvn verify`)
 │   └── img/                        # README screenshots
 ├── src/
 │   ├── main/java/ua/kostenko/battleship/battleship/
