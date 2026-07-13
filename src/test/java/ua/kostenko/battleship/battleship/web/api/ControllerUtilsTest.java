@@ -21,9 +21,9 @@ public class ControllerUtilsTest {
                 assertEquals(field[i][j].hasShot(), fieldDto[i][j].isHasShot());
                 assertEquals(field[i][j].isAvailable(), fieldDto[i][j].isAvailable());
                 assertEquals(field[i][j].coordinate()
-                                        .row(), fieldDto[i][j].getRow());
+                        .row(), fieldDto[i][j].getRow());
                 assertEquals(field[i][j].coordinate()
-                                        .column(), fieldDto[i][j].getCol());
+                        .column(), fieldDto[i][j].getCol());
             }
         }
 

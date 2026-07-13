@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import type { ToastData } from './ToastContext';
+import type {ReactNode} from 'react';
+import type {ToastData} from './ToastContext';
 
 /**
  * ARIA wiring for a single toast.
@@ -13,13 +13,13 @@ import type { ToastData } from './ToastContext';
  * no wrapping region, and is a well-supported pattern for toast/notification lists.
  */
 export function toastAriaRole(variant: ToastData['variant']): 'status' | 'alert' {
-  return variant === 'err' ? 'alert' : 'status';
+    return variant === 'err' ? 'alert' : 'status';
 }
 
-export function ToastHost({ toast, children }: { toast: ToastData; children: ReactNode }) {
-  return (
-    <div role={toastAriaRole(toast.variant)}>
-      {children}
-    </div>
-  );
+export function ToastHost({toast, children}: { toast: ToastData; children: ReactNode }) {
+    return (
+        <div role={toastAriaRole(toast.variant)}>
+            {children}
+        </div>
+    );
 }

@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.battleship.web.api.dtos;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,15 +21,18 @@ public class ExceptionDto {
     /**
      * The status code of the exception.
      */
+    @Schema(description = "HTTP status code", example = "400")
     private int status;
 
     /**
      * The error message of the exception.
      */
+    @Schema(description = "Human-readable error message")
     private String errorMessage;
 
     /**
      * The stable, machine-readable error code identifying the exception type.
      */
+    @Schema(description = "Stable, machine-readable error code identifying the exception type", example = "SESSION_NOT_FOUND")
     private String errorCode;
 }

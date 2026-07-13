@@ -6,70 +6,70 @@
  */
 
 .result-hero {
-  text-align: center;
-  margin-bottom: 22px;
+    text-align: center;
+    margin-bottom: 22px;
 }
 
 .result-hero .medal {
-  font-size: 64px;
+    font-size: 64px;
 }
 
 .result-hero h2 {
-  font-size: 30px;
-  margin: 6px 0 4px;
+    font-size: 30px;
+    margin: 6px 0 4px;
 }
 
 .result-hero.win h2 {
-  color: var(--ok);
+    color: var(--ok);
 }
 
 .result-hero.lose h2 {
-  color: var(--hit);
+    color: var(--hit);
 }
 
 .stat-strip {
-  display: flex;
-  justify-content: center;
-  gap: 26px;
-  margin: 14px 0 4px;
-  flex-wrap: wrap;
+    display: flex;
+    justify-content: center;
+    gap: 26px;
+    margin: 14px 0 4px;
+    flex-wrap: wrap;
 }
 
 .stat-strip .b {
-  text-align: center;
+    text-align: center;
 }
 
 .stat-strip .b .n {
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--navy);
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--navy);
 }
 
 .stat-strip .b .l {
-  font-size: 11px;
-  color: var(--ink-soft);
-  font-weight: 600;
-  text-transform: uppercase;
+    font-size: 11px;
+    color: var(--ink-soft);
+    font-weight: 600;
+    text-transform: uppercase;
 }
 
 .boards-area {
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
 }
 
 .board-panel {
-  flex: 1;
-  min-width: 0;
+    flex: 1;
+    min-width: 0;
 }
 
 .results-menu-btn {
-  max-width: 320px;
-  margin: 22px auto 0;
+    max-width: 320px;
+    margin: 22px auto 0;
 }
 
 @media (min-width: 641px) {
-  .boards-area {
-    flex-direction: row;
-  }
+    .boards-area {
+        flex-direction: row;
+    }
 }

@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.battleship.web.api.dtos.session;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,5 +21,6 @@ public class ResponseCreatedSessionIdDto {
     /**
      * The unique identifier of the created session.
      */
+    @Schema(description = "Newly created session's identifier")
     private String sessionId;
 }

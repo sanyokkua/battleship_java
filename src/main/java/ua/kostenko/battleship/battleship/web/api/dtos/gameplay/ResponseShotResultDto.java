@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.battleship.web.api.dtos.gameplay;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,5 +21,6 @@ public class ResponseShotResultDto {
     /**
      * The result of the shot, represented as a string.
      */
+    @Schema(description = "Outcome of the shot", allowableValues = {"MISS", "HIT", "DESTROYED"})
     private String shotResult;
 }

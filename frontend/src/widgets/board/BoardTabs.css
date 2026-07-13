@@ -1,36 +1,36 @@
 .board-tabs {
-  display: none;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 4px;
-  margin-bottom: 16px;
+    display: none;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 16px;
 }
 
 .board-tabs button {
-  flex: 1;
-  border: 0;
-  background: transparent;
-  padding: 10px;
-  border-radius: 9px;
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--ink-soft);
-  cursor: pointer;
-  font-family: inherit;
-  /* SPEC §8.4 touch-target audit: this control only renders at the mobile
-   * breakpoint (.board-tabs is display:none above 640px), so top up its hit
-   * area to the 44px minimum. */
-  min-height: 44px;
+    flex: 1;
+    border: 0;
+    background: transparent;
+    padding: 10px;
+    border-radius: 9px;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-family: inherit;
+    /* SPEC §8.4 touch-target audit: this control only renders at the mobile
+     * breakpoint (.board-tabs is display:none above 640px), so top up its hit
+     * area to the 44px minimum. */
+    min-height: 44px;
 }
 
 .board-tabs button.on {
-  background: var(--navy);
-  color: #fff;
+    background: var(--navy);
+    color: #fff;
 }
 
 @media (max-width: 640px) {
-  .board-tabs {
-    display: flex;
-  }
+    .board-tabs {
+        display: flex;
+    }
 }

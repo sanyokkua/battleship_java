@@ -3,15 +3,7 @@ package ua.kostenko.battleship.battleship.web.exceptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.context.request.WebRequest;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameCellAlreadyShotException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameCoordinateIsNotCorrectIncorrectException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameOpponentNotFoundException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GamePlayerNotFoundException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameSessionFullException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameSessionIdIsNotCorrectException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipAlreadyPlacedException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipsNotAllPlacedException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameStageIsNotCorrectException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.*;
 import ua.kostenko.battleship.battleship.web.api.dtos.ExceptionDto;
 
 import java.lang.reflect.InvocationTargetException;
@@ -153,7 +145,7 @@ class ValidationExceptionHandlerTest {
         // dispatch pipeline. It is exercised directly via reflection to close the coverage gap without
         // fabricating an unreachable production code path.
         Method resolveErrorCode = ValidationExceptionHandler.class.getDeclaredMethod("resolveErrorCode",
-                                                                                       RuntimeException.class);
+                RuntimeException.class);
         resolveErrorCode.setAccessible(true);
         var unmapped = new IllegalArgumentException("not a typed game exception");
 
@@ -164,7 +156,7 @@ class ValidationExceptionHandlerTest {
                 throw e.getCause();
             }
         }).isInstanceOf(IllegalStateException.class)
-          .hasMessageContaining("Unmapped exception type for error code resolution")
-          .hasMessageContaining("IllegalArgumentException");
+                .hasMessageContaining("Unmapped exception type for error code resolution")
+                .hasMessageContaining("IllegalArgumentException");
     }
 }

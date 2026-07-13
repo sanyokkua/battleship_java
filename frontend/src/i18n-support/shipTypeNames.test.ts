@@ -1,7 +1,7 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import {beforeAll, describe, expect, it} from 'vitest';
 import i18n from '../i18n';
-import type { ShipType } from '../logic/ApplicationTypes';
-import { getShipTypeLabel } from './shipTypeNames';
+import type {ShipType} from '../logic/ApplicationTypes';
+import {getShipTypeLabel} from './shipTypeNames';
 
 const SHIP_TYPES: ShipType[] = ['PATROL_BOAT', 'SUBMARINE', 'DESTROYER', 'BATTLESHIP', 'CARRIER'];
 

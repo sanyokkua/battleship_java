@@ -1,6 +1,6 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import {beforeAll, describe, expect, it} from 'vitest';
 import i18n from '../i18n';
-import { getEditionDescription, getEditionLabel } from './editionNames';
+import {getEditionDescription, getEditionLabel} from './editionNames';
 
 const EDITIONS = ['UKRAINIAN', 'MILTON_BRADLEY'];
 

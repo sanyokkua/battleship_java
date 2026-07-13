@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import {describe, expect, it} from 'vitest';
 import enCommon from './en/common.json';
 import enScreens from './en/screens.json';
 import enNotifications from './en/notifications.json';

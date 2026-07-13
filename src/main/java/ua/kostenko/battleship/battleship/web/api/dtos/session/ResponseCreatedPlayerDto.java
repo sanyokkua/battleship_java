@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.battleship.web.api.dtos.session;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,10 +21,12 @@ public class ResponseCreatedPlayerDto {
     /**
      * The unique identifier of the player.
      */
+    @Schema(description = "Newly created player's identifier")
     private String playerId;
 
     /**
      * The name of the player.
      */
+    @Schema(description = "Player's display name")
     private String playerName;
 }

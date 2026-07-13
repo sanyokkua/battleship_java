@@ -1,5 +1,5 @@
 {
   "method" : "PUT",
-  "path" : "/api/v2/game/sessions/62ba795b-cf53-45d0-9eb3-b97bce152496/players/91dae2bb-4a4f-4e22-ab5c-ab7e81afbb01/ships/2798252f-98ea-4e46-8fd8-5a2f75515c8f",
+  "path" : "/api/v2/game/sessions/8108e149-1d36-45e5-937a-059a3c328433/players/8eaa37b5-bd2c-4993-b0e9-a55b6023f8dd/ships/caa3b430-ae4e-4c0c-9298-49f7d8d10ee2",
   "status" : 200
 }

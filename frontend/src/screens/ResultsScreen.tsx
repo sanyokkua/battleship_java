@@ -1,14 +1,14 @@
-import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { useSessionGuard } from '../hooks/useSessionGuard';
-import { useGameAdapter } from '../adapters/GameAdapterContext';
-import { clearGameData } from '../services/GameBrowserStorage';
-import { Board } from '../widgets/board/Board';
-import { Legend } from '../widgets/board/Legend';
-import { Button } from '../design/components/Button/Button';
-import { LoadingView } from '../widgets/layout/LoadingView';
-import type { ResponseGameplayStateDto } from '../logic/ApplicationTypes';
+import {useEffect, useState} from 'react';
+import {useTranslation} from 'react-i18next';
+import {useNavigate} from 'react-router-dom';
+import {useSessionGuard} from '../hooks/useSessionGuard';
+import {useGameAdapter} from '../adapters/GameAdapterContext';
+import {clearGameData} from '../services/GameBrowserStorage';
+import {Board} from '../widgets/board/Board';
+import {Legend} from '../widgets/board/Legend';
+import {Button} from '../design/components/Button/Button';
+import {LoadingView} from '../widgets/layout/LoadingView';
+import type {ResponseGameplayStateDto} from '../logic/ApplicationTypes';
 import './ResultsScreen.css';
 
 // Total ships per edition is fixed at 10 (Ukrainian and Milton Bradley both use a
@@ -36,90 +36,90 @@ const TOTAL_SHIPS_PER_EDITION = 10;
  * fleet") — it never claims *you* did anything you didn't.
  */
 export function ResultsScreen() {
-  const { t } = useTranslation('screens');
-  const navigate = useNavigate();
-  const adapter = useGameAdapter();
-  const { sessionId, player } = useSessionGuard();
+    const {t} = useTranslation('screens');
+    const navigate = useNavigate();
+    const adapter = useGameAdapter();
+    const {sessionId, player} = useSessionGuard();
 
-  const [state, setState] = useState<ResponseGameplayStateDto | null>(null);
-  const [error, setError] = useState(false);
+    const [state, setState] = useState<ResponseGameplayStateDto | null>(null);
+    const [error, setError] = useState(false);
 
-  useEffect(() => {
-    if (!sessionId || !player) return;
-    adapter
-      .getGameState(sessionId, player.playerId)
-      .then(setState)
-      .catch(() => setError(true));
-    // Fetch once — the game is over, no polling needed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    useEffect(() => {
+        if (!sessionId || !player) return;
+        adapter
+            .getGameState(sessionId, player.playerId)
+            .then(setState)
+            .catch(() => setError(true));
+        // Fetch once — the game is over, no polling needed.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-  if (!sessionId || !player) {
-    // Defensive only — StageGuard at the routing layer is responsible for redirecting
-    // away from this screen when session/player data isn't present.
-    return null;
-  }
+    if (!sessionId || !player) {
+        // Defensive only — StageGuard at the routing layer is responsible for redirecting
+        // away from this screen when session/player data isn't present.
+        return null;
+    }
 
-  if (error) {
-    return <LoadingView title={t('screens:loading.title')} subtitle={t('screens:loading.subtitle')} />;
-  }
+    if (error) {
+        return <LoadingView title={t('screens:loading.title')} subtitle={t('screens:loading.subtitle')}/>;
+    }
 
-  if (!state) {
-    return <LoadingView title={t('screens:loading.title')} subtitle={t('screens:loading.subtitle')} />;
-  }
+    if (!state) {
+        return <LoadingView title={t('screens:loading.title')} subtitle={t('screens:loading.subtitle')}/>;
+    }
 
-  function handleReturnToMenu() {
-    clearGameData();
-    navigate('/', { replace: true });
-  }
+    function handleReturnToMenu() {
+        clearGameData();
+        navigate('/', {replace: true});
+    }
 
-  const win = state.isPlayerWinner;
-  const shipsSunk = TOTAL_SHIPS_PER_EDITION - state.opponentNumberOfAliveShips;
+    const win = state.isPlayerWinner;
+    const shipsSunk = TOTAL_SHIPS_PER_EDITION - state.opponentNumberOfAliveShips;
 
-  const legendLabels = {
-    water: t('screens:legend.water'),
-    ship: t('screens:legend.ship'),
-    hit: t('screens:legend.hit'),
-    miss: t('screens:legend.miss'),
-    sunk: t('screens:legend.sunk'),
-  };
+    const legendLabels = {
+        water: t('screens:legend.water'),
+        ship: t('screens:legend.ship'),
+        hit: t('screens:legend.hit'),
+        miss: t('screens:legend.miss'),
+        sunk: t('screens:legend.sunk'),
+    };
 
-  return (
-    <div className="screen">
-      <div className={`result-hero ${win ? 'win' : 'lose'}`}>
-        <div className="medal" aria-hidden="true">
-          {win ? '🏆' : '💥'}
+    return (
+        <div className="screen">
+            <div className={`result-hero ${win ? 'win' : 'lose'}`}>
+                <div className="medal" aria-hidden="true">
+                    {win ? '🏆' : '💥'}
+                </div>
+                <h2 className="title">{win ? t('screens:results.win') : t('screens:results.lose')}</h2>
+                <p className="sub">{t('screens:results.winSubtitle', {name: state.winnerPlayerName})}</p>
+                <div className="stat-strip">
+                    <div className="b">
+                        <div className="n">{shipsSunk}</div>
+                        <div className="l">{t('screens:results.shipsSunk')}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="boards-area">
+                <div className="board-panel">
+                    <div className="board-head">
+                        <h3>{t('screens:gameplay.targetBoard', {name: state.opponentName})}</h3>
+                    </div>
+                    <Board mode="result-target" field={state.opponentField} readonly/>
+                </div>
+                <div className="board-panel">
+                    <div className="board-head">
+                        <h3>{t('screens:gameplay.fleetLabel')}</h3>
+                    </div>
+                    <Board mode="result-own" field={state.playerField} readonly/>
+                </div>
+            </div>
+
+            <Legend withNoGo={false} labels={legendLabels}/>
+
+            <Button variant="primary" className="results-menu-btn" onClick={handleReturnToMenu}>
+                {t('screens:results.menuButton')}
+            </Button>
         </div>
-        <h2 className="title">{win ? t('screens:results.win') : t('screens:results.lose')}</h2>
-        <p className="sub">{t('screens:results.winSubtitle', { name: state.winnerPlayerName })}</p>
-        <div className="stat-strip">
-          <div className="b">
-            <div className="n">{shipsSunk}</div>
-            <div className="l">{t('screens:results.shipsSunk')}</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="boards-area">
-        <div className="board-panel">
-          <div className="board-head">
-            <h3>{t('screens:gameplay.targetBoard', { name: state.opponentName })}</h3>
-          </div>
-          <Board mode="result-target" field={state.opponentField} readonly />
-        </div>
-        <div className="board-panel">
-          <div className="board-head">
-            <h3>{t('screens:gameplay.fleetLabel')}</h3>
-          </div>
-          <Board mode="result-own" field={state.playerField} readonly />
-        </div>
-      </div>
-
-      <Legend withNoGo={false} labels={legendLabels} />
-
-      <Button variant="primary" className="results-menu-btn" onClick={handleReturnToMenu}>
-        {t('screens:results.menuButton')}
-      </Button>
-    </div>
-  );
+    );
 }

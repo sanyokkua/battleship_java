@@ -172,7 +172,10 @@ describe("MockGameAdapter", () => {
         expect(hiddenCell.ship).toBeNull();
         expect(hiddenCell.hasShot).toBe(false);
 
-        const shotResult = await adapter.shoot(sessionId, p1, {row: oneCellShipCoord.row, column: oneCellShipCoord.col});
+        const shotResult = await adapter.shoot(sessionId, p1, {
+            row: oneCellShipCoord.row,
+            column: oneCellShipCoord.col
+        });
         expect(shotResult.shotResult).toBe("DESTROYED");
 
         const afterState = await adapter.getGameState(sessionId, p1);

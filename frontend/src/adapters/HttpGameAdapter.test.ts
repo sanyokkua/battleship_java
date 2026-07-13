@@ -101,7 +101,10 @@ describe("HttpGameAdapter", () => {
         const result = await adapter.addShip("session-1", "p1", "ship-1", {row: 0, column: 0}, "HORIZONTAL");
 
         expect(result).toBe(dto);
-        expect(mockedService.addShipToField).toHaveBeenCalledWith("session-1", "p1", "ship-1", {row: 0, column: 0}, "HORIZONTAL");
+        expect(mockedService.addShipToField).toHaveBeenCalledWith("session-1", "p1", "ship-1", {
+            row: 0,
+            column: 0
+        }, "HORIZONTAL");
     });
 
     it("removeShip delegates to removeShipFromField", async () => {

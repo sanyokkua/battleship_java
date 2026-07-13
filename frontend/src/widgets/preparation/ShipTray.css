@@ -1,111 +1,111 @@
 /* Ported from MOCKUP.html's `.fleet-panel` / `.ship-item` / `.ship-cells` / `.remove-btn` rules. */
 
 .fleet-panel h4 {
-  margin: 0 0 4px;
-  font-size: 14px;
+    margin: 0 0 4px;
+    font-size: 14px;
 }
 
 .fleet-panel .hint {
-  color: var(--ink-soft);
-  font-size: 12px;
-  margin: 0 0 14px;
-  line-height: 1.5;
+    color: var(--ink-soft);
+    font-size: 12px;
+    margin: 0 0 14px;
+    line-height: 1.5;
 }
 
 .ship-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
-  border: 1.5px solid var(--line);
-  border-radius: 12px;
-  margin-bottom: 9px;
-  cursor: pointer;
-  background: var(--surface);
-  transition: 0.15s;
-  width: 100%;
-  text-align: left;
-  font-family: inherit;
-  min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    margin-bottom: 9px;
+    cursor: pointer;
+    background: var(--surface);
+    transition: 0.15s;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+    min-height: 44px;
 }
 
 .ship-item:hover {
-  border-color: var(--steel);
+    border-color: var(--steel);
 }
 
 .ship-item.active {
-  border-color: var(--teal);
-  background: #effbfc;
-  box-shadow: 0 0 0 3px rgba(18, 168, 184, 0.12);
+    border-color: var(--teal);
+    background: #effbfc;
+    box-shadow: 0 0 0 3px rgba(18, 168, 184, 0.12);
 }
 
 .ship-item.placed {
-  background: var(--surface-2);
-  cursor: default;
+    background: var(--surface-2);
+    cursor: default;
 }
 
 .ship-item .nm {
-  font-weight: 700;
-  font-size: 13px;
+    font-weight: 700;
+    font-size: 13px;
 }
 
 .ship-item .nm small {
-  display: block;
-  font-weight: 500;
-  color: var(--ink-soft);
-  font-size: 11px;
+    display: block;
+    font-weight: 500;
+    color: var(--ink-soft);
+    font-size: 11px;
 }
 
 .ship-item .mid {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .ship-cells {
-  display: flex;
-  gap: 3px;
+    display: flex;
+    gap: 3px;
 }
 
 .ship-cells i {
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
-  background: linear-gradient(135deg, var(--ship), var(--sea));
-  display: block;
-  font-style: normal;
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, var(--ship), var(--sea));
+    display: block;
+    font-style: normal;
 }
 
 .ship-cells.dim i {
-  background: var(--line);
+    background: var(--line);
 }
 
 .remove-btn {
-  border: 0;
-  background: #fde4e6;
-  color: #b3242f;
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  font-weight: 700;
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
+    border: 0;
+    background: #fde4e6;
+    color: #b3242f;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
 }
 
 .remove-btn:hover {
-  background: #fbcfd3;
+    background: #fbcfd3;
 }
 
 /* SPEC §8.4 touch-target audit: the mockup's 26x26px icon button is too small
  * for a 44px mobile hit area. Desktop keeps the compact mockup sizing (mouse
  * pointer, no minimum needed); mobile grows the button itself to 44px. */
 @media (max-width: 640px) {
-  .remove-btn {
-    width: 44px;
-    height: 44px;
-  }
+    .remove-btn {
+        width: 44px;
+        height: 44px;
+    }
 }

@@ -1,21 +1,21 @@
-import type { GameAdapterError } from '../../adapters/AdapterErrors';
+import type {GameAdapterError} from '../../adapters/AdapterErrors';
 
 /**
  * The 10 backend error codes known to the `errors` i18n namespace (see
  * frontend/src/i18n/en/errors.json). Each maps to itself as the i18n key.
  */
 const KNOWN_ERROR_CODES = new Set([
-  'COORDINATE_INVALID',
-  'EDITION_INVALID',
-  'PLAYER_ID_INVALID',
-  'PLAYER_NAME_INVALID',
-  'PLAYER_NOT_ACTIVE',
-  'CELL_ALREADY_SHOT',
-  'SESSION_NOT_FOUND',
-  'SHIP_DIRECTION_INVALID',
-  'SHIP_ID_INVALID',
-  'STAGE_INVALID',
-  'INTERNAL',
+    'COORDINATE_INVALID',
+    'EDITION_INVALID',
+    'PLAYER_ID_INVALID',
+    'PLAYER_NAME_INVALID',
+    'PLAYER_NOT_ACTIVE',
+    'CELL_ALREADY_SHOT',
+    'SESSION_NOT_FOUND',
+    'SHIP_DIRECTION_INVALID',
+    'SHIP_ID_INVALID',
+    'STAGE_INVALID',
+    'INTERNAL',
 ]);
 
 /**
@@ -33,15 +33,15 @@ const KNOWN_ERROR_CODES = new Set([
  * currently has no context-specific keys, so `context` is accepted but unused for now.
  */
 export function resolveErrorMessageKey(err: GameAdapterError, context?: string): string {
-  void context;
+    void context;
 
-  if (err.errorCode && KNOWN_ERROR_CODES.has(err.errorCode)) {
-    return err.errorCode;
-  }
+    if (err.errorCode && KNOWN_ERROR_CODES.has(err.errorCode)) {
+        return err.errorCode;
+    }
 
-  if (err.httpStatus === 500) {
-    return 'INTERNAL';
-  }
+    if (err.httpStatus === 500) {
+        return 'INTERNAL';
+    }
 
-  return 'generic';
+    return 'generic';
 }

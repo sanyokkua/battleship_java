@@ -17,9 +17,7 @@ import java.util.List;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
  * {@link org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest} coverage for {@link IndexController}'s
@@ -48,10 +46,10 @@ class IndexControllerRoutingTest {
             "/game/results"})
     void clientSideRoute_directLoad_forwardsToIndexView(final String path) throws Exception {
         mockMvc.perform(get(path))
-               .andExpect(status().isOk())
-               .andExpect(view().name("index"))
-               .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
-               .andExpect(content().string(containsString("<div id=\"root\">")));
+                .andExpect(status().isOk())
+                .andExpect(view().name("index"))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+                .andExpect(content().string(containsString("<div id=\"root\">")));
     }
 
     /**
@@ -63,9 +61,9 @@ class IndexControllerRoutingTest {
         when(controllerV2Api.getAvailableGameEditions()).thenReturn(List.of(GameEdition.UKRAINIAN));
 
         mockMvc.perform(get("/api/v2/game/editions"))
-               .andExpect(status().isOk())
-               .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-               .andExpect(content().string(containsString("UKRAINIAN")));
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(content().string(containsString("UKRAINIAN")));
     }
 
     /**

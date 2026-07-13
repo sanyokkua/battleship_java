@@ -9,29 +9,29 @@
  */
 
 .gameplay-screen {
-  max-width: 920px;
-  margin: 0 auto;
+    max-width: 920px;
+    margin: 0 auto;
 }
 
 .scoreboard {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 18px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 18px;
 }
 
 .boards-area {
-  display: grid;
-  gap: 22px;
-  grid-template-columns: 1fr 1fr;
+    display: grid;
+    gap: 22px;
+    grid-template-columns: 1fr 1fr;
 }
 
 @media (max-width: 640px) {
-  .boards-area {
-    grid-template-columns: 1fr;
-  }
+    .boards-area {
+        grid-template-columns: 1fr;
+    }
 
-  .board-panel.hide {
-    display: none;
-  }
+    .board-panel.hide {
+        display: none;
+    }
 }

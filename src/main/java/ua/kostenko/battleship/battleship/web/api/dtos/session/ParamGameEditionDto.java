@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.battleship.web.api.dtos.session;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,5 +21,6 @@ public class ParamGameEditionDto {
     /**
      * The name of the game edition.
      */
+    @Schema(description = "Game edition name", allowableValues = {"UKRAINIAN", "MILTON_BRADLEY"})
     private String gameEdition;
 }

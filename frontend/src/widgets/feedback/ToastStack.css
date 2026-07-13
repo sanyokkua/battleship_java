@@ -1,11 +1,11 @@
 .toast-stack {
-  position: fixed;
-  right: 14px;
-  bottom: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  z-index: 1000;
-  max-width: 300px;
-  width: calc(100% - 28px);
+    position: fixed;
+    right: 14px;
+    bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 1000;
+    max-width: 300px;
+    width: calc(100% - 28px);
 }

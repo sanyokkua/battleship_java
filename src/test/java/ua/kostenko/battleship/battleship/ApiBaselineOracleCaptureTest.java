@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -54,17 +54,27 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ApiBaselineOracleCaptureTest {
 
     private static final Path ARTIFACTS_DIR = Path.of("docs", "redesign", "artifacts", "api-baseline");
-
+    private static final List<Placement> SHIP_LAYOUT = List.of(
+            // 4 x PATROL_BOAT (size 1)
+            new Placement("PATROL_BOAT_1", 6, 0, ShipDirection.HORIZONTAL),
+            new Placement("PATROL_BOAT_2", 6, 2, ShipDirection.HORIZONTAL),
+            new Placement("PATROL_BOAT_3", 8, 0, ShipDirection.HORIZONTAL),
+            new Placement("PATROL_BOAT_4", 8, 2, ShipDirection.HORIZONTAL),
+            // 3 x SUBMARINE (size 2)
+            new Placement("SUBMARINE_1", 4, 0, ShipDirection.HORIZONTAL),
+            new Placement("SUBMARINE_2", 4, 3, ShipDirection.HORIZONTAL),
+            new Placement("SUBMARINE_3", 4, 6, ShipDirection.HORIZONTAL),
+            // 2 x DESTROYER (size 3)
+            new Placement("DESTROYER_1", 2, 0, ShipDirection.HORIZONTAL),
+            new Placement("DESTROYER_2", 2, 5, ShipDirection.HORIZONTAL),
+            // 1 x BATTLESHIP (size 4)
+            new Placement("BATTLESHIP", 0, 0, ShipDirection.HORIZONTAL));
+    private final ObjectMapper objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+    private final List<StepRecord> manifest = new ArrayList<>();
     @LocalServerPort
     private int port;
-
     @Autowired
     private TestRestTemplate restTemplate;
-
-    private final ObjectMapper objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
-
-    private final List<StepRecord> manifest = new ArrayList<>();
-
     /**
      * Single source of truth for the "NN" prefix of every captured file. Every HTTP call in this
      * test goes through {@link #call(String, HttpMethod, String, Object, Class)}, which pulls the
@@ -72,8 +82,19 @@ class ApiBaselineOracleCaptureTest {
      * filename, regardless of how the surrounding game logic is structured or reordered.
      */
     private int stepCounter = 0;
-
     private String baseUrl;
+
+    private static int expectedSizeFor(String shipTypeKey) {
+        if (shipTypeKey.startsWith("BATTLESHIP")) {
+            return 4;
+        } else if (shipTypeKey.startsWith("DESTROYER")) {
+            return 3;
+        } else if (shipTypeKey.startsWith("SUBMARINE")) {
+            return 2;
+        } else {
+            return 1;
+        }
+    }
 
     /**
      * Drives one full deterministic two-player game on the UKRAINIAN edition and captures every
@@ -88,79 +109,79 @@ class ApiBaselineOracleCaptureTest {
 
         // ---- GET /api/v2/game/editions ----
         var editionsResponse = call("get-editions",
-                                     HttpMethod.GET,
-                                     "/api/v2/game/editions",
-                                     null,
-                                     ResponseAvailableGameEditionsDto.class);
+                HttpMethod.GET,
+                "/api/v2/game/editions",
+                null,
+                ResponseAvailableGameEditionsDto.class);
         assertThat(editionsResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(editionsResponse.getBody()).isNotNull();
         assertThat(editionsResponse.getBody()
-                                    .getGameEditions()).contains(GameEdition.UKRAINIAN.name(),
-                                                                  GameEdition.MILTON_BRADLEY.name());
+                .getGameEditions()).contains(GameEdition.UKRAINIAN.name(),
+                GameEdition.MILTON_BRADLEY.name());
 
         // ---- POST /api/v2/game/sessions ----
         var sessionResponse = call("create-session",
-                                    HttpMethod.POST,
-                                    "/api/v2/game/sessions",
-                                    new ParamGameEditionDto(GameEdition.UKRAINIAN.name()),
-                                    ResponseCreatedSessionIdDto.class);
+                HttpMethod.POST,
+                "/api/v2/game/sessions",
+                new ParamGameEditionDto(GameEdition.UKRAINIAN.name()),
+                ResponseCreatedSessionIdDto.class);
         assertThat(sessionResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(sessionResponse.getBody()).isNotNull();
         var sessionId = sessionResponse.getBody()
-                                        .getSessionId();
+                .getSessionId();
         assertThat(sessionId).isNotBlank();
 
         // ---- POST .../players x2 ----
         var player1Response = call("create-player-1",
-                                    HttpMethod.POST,
-                                    "/api/v2/game/sessions/%s/players".formatted(sessionId),
-                                    new ParamPlayerNameDto("Player_1"),
-                                    ResponseCreatedPlayerDto.class);
+                HttpMethod.POST,
+                "/api/v2/game/sessions/%s/players".formatted(sessionId),
+                new ParamPlayerNameDto("Player_1"),
+                ResponseCreatedPlayerDto.class);
         assertThat(player1Response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         var player1Id = player1Response.getBody()
-                                        .getPlayerId();
+                .getPlayerId();
         assertThat(player1Id).isNotBlank();
 
         var player2Response = call("create-player-2",
-                                    HttpMethod.POST,
-                                    "/api/v2/game/sessions/%s/players".formatted(sessionId),
-                                    new ParamPlayerNameDto("Player_2"),
-                                    ResponseCreatedPlayerDto.class);
+                HttpMethod.POST,
+                "/api/v2/game/sessions/%s/players".formatted(sessionId),
+                new ParamPlayerNameDto("Player_2"),
+                ResponseCreatedPlayerDto.class);
         assertThat(player2Response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         var player2Id = player2Response.getBody()
-                                        .getPlayerId();
+                .getPlayerId();
         assertThat(player2Id).isNotBlank();
 
         // ---- GET .../state (session game stage) ----
         var stateResponse = call("get-session-state",
-                                  HttpMethod.GET,
-                                  "/api/v2/game/sessions/%s/state".formatted(sessionId),
-                                  null,
-                                  ResponseCurrentGameStageDto.class);
+                HttpMethod.GET,
+                "/api/v2/game/sessions/%s/state".formatted(sessionId),
+                null,
+                ResponseCurrentGameStageDto.class);
         assertThat(stateResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(stateResponse.getBody()
-                                 .getGameStage()).isNotBlank();
+                .getGameStage()).isNotBlank();
 
         // ---- GET .../changesTime ----
         var changesTimeResponse = call("get-changes-time",
-                                        HttpMethod.GET,
-                                        "/api/v2/game/sessions/%s/changesTime".formatted(sessionId),
-                                        null,
-                                        ResponseLastSessionChangeTimeDto.class);
+                HttpMethod.GET,
+                "/api/v2/game/sessions/%s/changesTime".formatted(sessionId),
+                null,
+                ResponseLastSessionChangeTimeDto.class);
         assertThat(changesTimeResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(changesTimeResponse.getBody()
-                                       .getLastId()).isNotBlank();
+                .getLastId()).isNotBlank();
 
         // ---- GET .../preparationState (player 1, before any ship placed) ----
         var prepStateResponse = call("get-preparation-state-p1-initial",
-                                      HttpMethod.GET,
-                                      "/api/v2/game/sessions/%s/players/%s/preparationState".formatted(sessionId,
-                                                                                                        player1Id),
-                                      null,
-                                      ResponsePreparationState.class);
+                HttpMethod.GET,
+                "/api/v2/game/sessions/%s/players/%s/preparationState".formatted(sessionId,
+                        player1Id),
+                null,
+                ResponsePreparationState.class);
         assertThat(prepStateResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         var initialShips = prepStateResponse.getBody()
-                                             .getShips();
+                .getShips();
         assertThat(initialShips).hasSize(10);
 
         // ---- PUT ships for player 1 (all 10 ships, deterministic layout) ----
@@ -172,65 +193,65 @@ class ApiBaselineOracleCaptureTest {
         // ---- DELETE one already-placed ship for player 1, then PUT it back ----
         // Battleship (size 4) for player 1 is anchored at (0,0), HORIZONTAL.
         var deleteResponse = call("delete-ship-p1-battleship",
-                                   HttpMethod.DELETE,
-                                   "/api/v2/game/sessions/%s/players/%s/ships".formatted(sessionId, player1Id),
-                                   new ParamCoordinateDto(0, 0),
-                                   ResponseShipRemovedDto.class);
+                HttpMethod.DELETE,
+                "/api/v2/game/sessions/%s/players/%s/ships".formatted(sessionId, player1Id),
+                new ParamCoordinateDto(0, 0),
+                ResponseShipRemovedDto.class);
         assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(deleteResponse.getBody()
-                                  .isDeleted()).isTrue();
+                .isDeleted()).isTrue();
 
         var battleshipId = player1ShipIds.get("BATTLESHIP");
         var reAddBattleshipResponse = call("put-ship-p1-battleship-readd",
-                                            HttpMethod.PUT,
-                                            "/api/v2/game/sessions/%s/players/%s/ships/%s".formatted(sessionId,
-                                                                                                      player1Id,
-                                                                                                      battleshipId),
-                                            new ParamShipDto(0, 0, ShipDirection.HORIZONTAL.name()),
-                                            ResponseShipAddedDto.class);
+                HttpMethod.PUT,
+                "/api/v2/game/sessions/%s/players/%s/ships/%s".formatted(sessionId,
+                        player1Id,
+                        battleshipId),
+                new ParamShipDto(0, 0, ShipDirection.HORIZONTAL.name()),
+                ResponseShipAddedDto.class);
         assertThat(reAddBattleshipResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(reAddBattleshipResponse.getBody()
-                                           .getShipId()).isEqualTo(battleshipId);
+                .getShipId()).isEqualTo(battleshipId);
 
         // ---- POST .../start x2 ----
         var startP1Response = call("start-p1",
-                                    HttpMethod.POST,
-                                    "/api/v2/game/sessions/%s/players/%s/start".formatted(sessionId, player1Id),
-                                    null,
-                                    ResponsePlayerReady.class);
+                HttpMethod.POST,
+                "/api/v2/game/sessions/%s/players/%s/start".formatted(sessionId, player1Id),
+                null,
+                ResponsePlayerReady.class);
         assertThat(startP1Response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(startP1Response.getBody()
-                                   .isReady()).isTrue();
+                .isReady()).isTrue();
 
         var startP2Response = call("start-p2",
-                                    HttpMethod.POST,
-                                    "/api/v2/game/sessions/%s/players/%s/start".formatted(sessionId, player2Id),
-                                    null,
-                                    ResponsePlayerReady.class);
+                HttpMethod.POST,
+                "/api/v2/game/sessions/%s/players/%s/start".formatted(sessionId, player2Id),
+                null,
+                ResponsePlayerReady.class);
         assertThat(startP2Response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(startP2Response.getBody()
-                                   .isReady()).isTrue();
+                .isReady()).isTrue();
 
         // ---- GET .../opponent ----
         var opponentResponse = call("get-opponent-p1",
-                                     HttpMethod.GET,
-                                     "/api/v2/game/sessions/%s/players/%s/opponent".formatted(sessionId, player1Id),
-                                     null,
-                                     ResponseOpponentInformationDto.class);
+                HttpMethod.GET,
+                "/api/v2/game/sessions/%s/players/%s/opponent".formatted(sessionId, player1Id),
+                null,
+                ResponseOpponentInformationDto.class);
         assertThat(opponentResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(opponentResponse.getBody()
-                                    .getPlayerName()).isEqualTo("Player_2");
+                .getPlayerName()).isEqualTo("Player_2");
 
         // ---- GET .../state (gameplay state, player 1) ----
         var gameplayStateResponse = call("get-gameplay-state-p1-initial",
-                                          HttpMethod.GET,
-                                          "/api/v2/game/sessions/%s/players/%s/state".formatted(sessionId,
-                                                                                                 player1Id),
-                                          null,
-                                          ResponseGameplayStateDto.class);
+                HttpMethod.GET,
+                "/api/v2/game/sessions/%s/players/%s/state".formatted(sessionId,
+                        player1Id),
+                null,
+                ResponseGameplayStateDto.class);
         assertThat(gameplayStateResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(gameplayStateResponse.getBody()
-                                         .isHasWinner()).isFalse();
+                .isHasWinner()).isFalse();
 
         // ---- Shots: player 1 fires at player 2's board until player 2's fleet is destroyed ----
         // Player 2's fleet layout mirrors player 1's (see placeAllShips / SHIP_LAYOUT).
@@ -298,76 +319,50 @@ class ApiBaselineOracleCaptureTest {
 
         // ---- Final GET .../state for BOTH players, expecting hasWinner = true ----
         var finalStateP1 = call("get-gameplay-state-p1-final",
-                                 HttpMethod.GET,
-                                 "/api/v2/game/sessions/%s/players/%s/state".formatted(sessionId, player1Id),
-                                 null,
-                                 ResponseGameplayStateDto.class);
+                HttpMethod.GET,
+                "/api/v2/game/sessions/%s/players/%s/state".formatted(sessionId, player1Id),
+                null,
+                ResponseGameplayStateDto.class);
         assertThat(finalStateP1.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(finalStateP1.getBody()
-                                .isHasWinner()).isTrue();
+                .isHasWinner()).isTrue();
         assertThat(finalStateP1.getBody()
-                                .getWinnerPlayerName()).isEqualTo("Player_1");
+                .getWinnerPlayerName()).isEqualTo("Player_1");
         assertThat(finalStateP1.getBody()
-                                .isPlayerWinner()).isTrue();
+                .isPlayerWinner()).isTrue();
 
         var finalStateP2 = call("get-gameplay-state-p2-final",
-                                 HttpMethod.GET,
-                                 "/api/v2/game/sessions/%s/players/%s/state".formatted(sessionId, player2Id),
-                                 null,
-                                 ResponseGameplayStateDto.class);
+                HttpMethod.GET,
+                "/api/v2/game/sessions/%s/players/%s/state".formatted(sessionId, player2Id),
+                null,
+                ResponseGameplayStateDto.class);
         assertThat(finalStateP2.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(finalStateP2.getBody()
-                                .isHasWinner()).isTrue();
+                .isHasWinner()).isTrue();
         assertThat(finalStateP2.getBody()
-                                .getWinnerPlayerName()).isEqualTo("Player_1");
+                .getWinnerPlayerName()).isEqualTo("Player_1");
         assertThat(finalStateP2.getBody()
-                                .isPlayerWinner()).isFalse();
+                .isPlayerWinner()).isFalse();
 
         // ---- One deliberately invalid call: shot with out-of-bounds coordinates ----
         var invalidShotResponse = call("invalid-shot-out-of-bounds",
-                                        HttpMethod.POST,
-                                        "/api/v2/game/sessions/%s/players/%s/field/shot".formatted(sessionId,
-                                                                                                    player1Id),
-                                        new ParamCoordinateDto(99, 99),
-                                        ExceptionDto.class);
+                HttpMethod.POST,
+                "/api/v2/game/sessions/%s/players/%s/field/shot".formatted(sessionId,
+                        player1Id),
+                new ParamCoordinateDto(99, 99),
+                ExceptionDto.class);
         assertThat(invalidShotResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(invalidShotResponse.getBody()).isNotNull();
         assertThat(invalidShotResponse.getBody()
-                                       .getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+                .getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
         assertThat(invalidShotResponse.getBody()
-                                       .getErrorMessage()).isNotBlank();
+                .getErrorMessage()).isNotBlank();
 
         // ---- Write manifest.json ----
         writeJson("manifest.json", manifest);
 
         assertThat(manifest).hasSizeGreaterThanOrEqualTo(12);
     }
-
-    /**
-     * Ship layout shared by both players: a set of (shipType, row, col, direction) placements
-     * on the 10x10 UKRAINIAN board, chosen so that no two ships (or their 8-directional
-     * neighbour cells) touch. Order matches ascending ship size, matching the order the
-     * preparationState endpoint returns (see PreparationRestController#getPreparationState,
-     * which sorts by shipSize ascending).
-     */
-    private record Placement(String shipTypeKey, int row, int col, ShipDirection direction) {
-    }
-
-    private static final List<Placement> SHIP_LAYOUT = List.of(
-            // 4 x PATROL_BOAT (size 1)
-            new Placement("PATROL_BOAT_1", 6, 0, ShipDirection.HORIZONTAL),
-            new Placement("PATROL_BOAT_2", 6, 2, ShipDirection.HORIZONTAL),
-            new Placement("PATROL_BOAT_3", 8, 0, ShipDirection.HORIZONTAL),
-            new Placement("PATROL_BOAT_4", 8, 2, ShipDirection.HORIZONTAL),
-            // 3 x SUBMARINE (size 2)
-            new Placement("SUBMARINE_1", 4, 0, ShipDirection.HORIZONTAL),
-            new Placement("SUBMARINE_2", 4, 3, ShipDirection.HORIZONTAL),
-            new Placement("SUBMARINE_3", 4, 6, ShipDirection.HORIZONTAL),
-            // 2 x DESTROYER (size 3)
-            new Placement("DESTROYER_1", 2, 0, ShipDirection.HORIZONTAL),
-            new Placement("DESTROYER_2", 2, 5, ShipDirection.HORIZONTAL),
-            // 1 x BATTLESHIP (size 4)
-            new Placement("BATTLESHIP", 0, 0, ShipDirection.HORIZONTAL));
 
     /**
      * Places all 10 ships for the given player, in ascending-size order (matching the order
@@ -381,67 +376,55 @@ class ApiBaselineOracleCaptureTest {
         var shipIdByKey = new LinkedHashMap<String, String>();
         for (var placement : SHIP_LAYOUT) {
             var prepState = call("get-preparation-state-%s-%s".formatted(playerSlug,
-                                                                          placement.shipTypeKey()
-                                                                                   .toLowerCase()),
-                                  HttpMethod.GET,
-                                  "/api/v2/game/sessions/%s/players/%s/preparationState".formatted(sessionId,
-                                                                                                    playerId),
-                                  null,
-                                  ResponsePreparationState.class);
+                            placement.shipTypeKey()
+                                    .toLowerCase()),
+                    HttpMethod.GET,
+                    "/api/v2/game/sessions/%s/players/%s/preparationState".formatted(sessionId,
+                            playerId),
+                    null,
+                    ResponsePreparationState.class);
             assertThat(prepState.getStatusCode()).isEqualTo(HttpStatus.OK);
             var remainingShips = prepState.getBody()
-                                           .getShips();
+                    .getShips();
             assertThat(remainingShips).isNotEmpty();
             // Ships not yet placed are returned smallest-first; take the smallest remaining one
             // that matches this placement's expected size, keeping placement deterministic.
             var expectedSize = expectedSizeFor(placement.shipTypeKey());
             var shipToPlace = remainingShips.stream()
-                                             .filter(s -> s.getShipSize() == expectedSize)
-                                             .findFirst()
-                                             .orElseThrow();
+                    .filter(s -> s.getShipSize() == expectedSize)
+                    .findFirst()
+                    .orElseThrow();
 
             var putResponse = call("put-ship-%s-%s".formatted(playerSlug,
-                                                               placement.shipTypeKey()
-                                                                        .toLowerCase()),
-                                    HttpMethod.PUT,
-                                    "/api/v2/game/sessions/%s/players/%s/ships/%s".formatted(sessionId,
-                                                                                              playerId,
-                                                                                              shipToPlace.getShipId()),
-                                    new ParamShipDto(placement.row(), placement.col(), placement.direction()
-                                                                                                 .name()),
-                                    ResponseShipAddedDto.class);
+                            placement.shipTypeKey()
+                                    .toLowerCase()),
+                    HttpMethod.PUT,
+                    "/api/v2/game/sessions/%s/players/%s/ships/%s".formatted(sessionId,
+                            playerId,
+                            shipToPlace.getShipId()),
+                    new ParamShipDto(placement.row(), placement.col(), placement.direction()
+                            .name()),
+                    ResponseShipAddedDto.class);
             assertThat(putResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(putResponse.getBody()
-                                   .getShipId()).isEqualTo(shipToPlace.getShipId());
+                    .getShipId()).isEqualTo(shipToPlace.getShipId());
 
             shipIdByKey.put(placement.shipTypeKey(), shipToPlace.getShipId());
         }
         return shipIdByKey;
     }
 
-    private static int expectedSizeFor(String shipTypeKey) {
-        if (shipTypeKey.startsWith("BATTLESHIP")) {
-            return 4;
-        } else if (shipTypeKey.startsWith("DESTROYER")) {
-            return 3;
-        } else if (shipTypeKey.startsWith("SUBMARINE")) {
-            return 2;
-        } else {
-            return 1;
-        }
-    }
-
     private void shotAndAssert(String sessionId, String shooterPlayerId, int row, int col, String expectedResult)
             throws IOException {
         var response = call("shot-%s-r%d-c%d".formatted(expectedResult.toLowerCase(), row, col),
-                             HttpMethod.POST,
-                             "/api/v2/game/sessions/%s/players/%s/field/shot".formatted(sessionId, shooterPlayerId),
-                             new ParamCoordinateDto(row, col),
-                             ResponseShotResultDto.class);
+                HttpMethod.POST,
+                "/api/v2/game/sessions/%s/players/%s/field/shot".formatted(sessionId, shooterPlayerId),
+                new ParamCoordinateDto(row, col),
+                ResponseShotResultDto.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody()
-                            .getShotResult()).isEqualTo(expectedResult);
+                .getShotResult()).isEqualTo(expectedResult);
     }
 
     /**
@@ -467,11 +450,11 @@ class ApiBaselineOracleCaptureTest {
         writeJson(finalSlug + ".response.json", response.getBody());
 
         var meta = new MetaRecord(method.name(), path, response.getStatusCode()
-                                                                .value());
+                .value());
         writeJson(finalSlug + ".meta.json", meta);
 
         manifest.add(new StepRecord(finalSlug, method.name(), path, response.getStatusCode()
-                                                                             .value()));
+                .value()));
 
         return response;
     }
@@ -479,6 +462,16 @@ class ApiBaselineOracleCaptureTest {
     private void writeJson(String fileName, Object value) throws IOException {
         var json = objectMapper.writeValueAsString(value);
         Files.writeString(ARTIFACTS_DIR.resolve(fileName), json);
+    }
+
+    /**
+     * Ship layout shared by both players: a set of (shipType, row, col, direction) placements
+     * on the 10x10 UKRAINIAN board, chosen so that no two ships (or their 8-directional
+     * neighbour cells) touch. Order matches ascending ship size, matching the order the
+     * preparationState endpoint returns (see PreparationRestController#getPreparationState,
+     * which sorts by shipSize ascending).
+     */
+    private record Placement(String shipTypeKey, int row, int col, ShipDirection direction) {
     }
 
     private record MetaRecord(String method, String path, int status) {

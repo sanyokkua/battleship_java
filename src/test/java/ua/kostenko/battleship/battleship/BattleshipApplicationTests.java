@@ -4,9 +4,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -50,7 +50,7 @@ class BattleshipApplicationTests {
 
     @BeforeEach
     void beforeEach() {
-        baseUrl = "http://localhost:" + port + "";
+        baseUrl = "http://localhost:" + port;
     }
 
     @Test
@@ -59,9 +59,9 @@ class BattleshipApplicationTests {
         var url_get_editions = "%s/api/v2/game/editions".formatted(baseUrl);
 
         var response = restTemplate.exchange(url_get_editions,
-                                             HttpMethod.GET,
-                                             HttpEntity.EMPTY,
-                                             ResponseAvailableGameEditionsDto.class);
+                HttpMethod.GET,
+                HttpEntity.EMPTY,
+                ResponseAvailableGameEditionsDto.class);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
@@ -84,9 +84,9 @@ class BattleshipApplicationTests {
         var requestBody = new HttpEntity<>(new ParamGameEditionDto(GameEdition.UKRAINIAN.name()));
 
         var response = this.restTemplate.exchange(url_post_sessions,
-                                                  HttpMethod.POST,
-                                                  requestBody,
-                                                  ResponseCreatedSessionIdDto.class);
+                HttpMethod.POST,
+                requestBody,
+                ResponseCreatedSessionIdDto.class);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertNotNull(response.getBody());
@@ -104,10 +104,10 @@ class BattleshipApplicationTests {
         var playerRequestBody = new HttpEntity<>(new ParamPlayerNameDto("Player_1"));
 
         var response = restTemplate.exchange(url_post_player,
-                                             HttpMethod.POST,
-                                             playerRequestBody,
-                                             ResponseCreatedPlayerDto.class,
-                                             sessionResponse.getSessionId());
+                HttpMethod.POST,
+                playerRequestBody,
+                ResponseCreatedPlayerDto.class,
+                sessionResponse.getSessionId());
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertNotNull(response.getBody());
@@ -134,43 +134,43 @@ class BattleshipApplicationTests {
             var player2Ships = getPreparationState(session, player2);
 
             var player1AddShipRequest = new HttpEntity<>(new ParamShipDto(coordinate.row(),
-                                                                          coordinate.column(),
-                                                                          ShipDirection.HORIZONTAL.name()));
+                    coordinate.column(),
+                    ShipDirection.HORIZONTAL.name()));
             var player2AddShipRequest = new HttpEntity<>(new ParamShipDto(coordinate.row(),
-                                                                          coordinate.column(),
-                                                                          ShipDirection.HORIZONTAL.name()));
+                    coordinate.column(),
+                    ShipDirection.HORIZONTAL.name()));
 
             var player1Ship = new LinkedList<>(player1Ships.getShips()).pop();
             var player2Ship = new LinkedList<>(player2Ships.getShips()).pop();
 
             var player1ShipAdded = restTemplate.exchange(url_put_add_ships,
-                                                         HttpMethod.PUT,
-                                                         player1AddShipRequest,
-                                                         ResponseShipAddedDto.class,
-                                                         session.getSessionId(),
-                                                         player1.getPlayerId(),
-                                                         player1Ship.getShipId());
+                    HttpMethod.PUT,
+                    player1AddShipRequest,
+                    ResponseShipAddedDto.class,
+                    session.getSessionId(),
+                    player1.getPlayerId(),
+                    player1Ship.getShipId());
             assertNotNull(player1ShipAdded);
             assertNotNull(player1ShipAdded.getBody());
             assertEquals(HttpStatus.OK, player1ShipAdded.getStatusCode());
             assertEquals(player1Ship.getShipId(),
-                         player1ShipAdded.getBody()
-                                         .getShipId());
+                    player1ShipAdded.getBody()
+                            .getShipId());
 
             var player2ShipAdded = restTemplate.exchange(url_put_add_ships,
-                                                         HttpMethod.PUT,
-                                                         player2AddShipRequest,
-                                                         ResponseShipAddedDto.class,
-                                                         session.getSessionId(),
-                                                         player2.getPlayerId(),
-                                                         player2Ship.getShipId());
+                    HttpMethod.PUT,
+                    player2AddShipRequest,
+                    ResponseShipAddedDto.class,
+                    session.getSessionId(),
+                    player2.getPlayerId(),
+                    player2Ship.getShipId());
 
             assertNotNull(player2ShipAdded);
             assertNotNull(player2ShipAdded.getBody());
             assertEquals(HttpStatus.OK, player2ShipAdded.getStatusCode());
             assertEquals(player2Ship.getShipId(),
-                         player2ShipAdded.getBody()
-                                         .getShipId());
+                    player2ShipAdded.getBody()
+                            .getShipId());
         });
 
     }
@@ -188,11 +188,11 @@ class BattleshipApplicationTests {
 
 
         var response = restTemplate.exchange(url_delete_ship,
-                                             HttpMethod.DELETE,
-                                             new HttpEntity<>(new ParamCoordinateDto(0, 0)),
-                                             ResponseShipRemovedDto.class,
-                                             session.getSessionId(),
-                                             player1.getPlayerId());
+                HttpMethod.DELETE,
+                new HttpEntity<>(new ParamCoordinateDto(0, 0)),
+                ResponseShipRemovedDto.class,
+                session.getSessionId(),
+                player1.getPlayerId());
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
 
@@ -200,11 +200,11 @@ class BattleshipApplicationTests {
         assertTrue(removed.isDeleted());
 
         var responseEmpty = restTemplate.exchange(url_delete_ship,
-                                                  HttpMethod.DELETE,
-                                                  new HttpEntity<>(new ParamCoordinateDto(0, 0)),
-                                                  ResponseShipRemovedDto.class,
-                                                  session.getSessionId(),
-                                                  player1.getPlayerId());
+                HttpMethod.DELETE,
+                new HttpEntity<>(new ParamCoordinateDto(0, 0)),
+                ResponseShipRemovedDto.class,
+                session.getSessionId(),
+                player1.getPlayerId());
 
         assertEquals(HttpStatus.OK, responseEmpty.getStatusCode());
         assertNotNull(responseEmpty.getBody());
@@ -225,34 +225,34 @@ class BattleshipApplicationTests {
 
 
         var shipsResponse = restTemplate.exchange(url_get_available_ships,
-                                                  HttpMethod.GET,
-                                                  HttpEntity.EMPTY,
-                                                  ResponsePreparationState.class,
-                                                  session.getSessionId(),
-                                                  player1.getPlayerId());
+                HttpMethod.GET,
+                HttpEntity.EMPTY,
+                ResponsePreparationState.class,
+                session.getSessionId(),
+                player1.getPlayerId());
 
         assertEquals(HttpStatus.OK, shipsResponse.getStatusCode());
         assertNotNull(shipsResponse.getBody());
         var state = shipsResponse.getBody();
         assertEquals(10,
-                     state.getShips()
-                          .size());
+                state.getShips()
+                        .size());
 
         addShipsForPlayer(session, player1);
 
         shipsResponse = restTemplate.exchange(url_get_available_ships,
-                                              HttpMethod.GET,
-                                              HttpEntity.EMPTY,
-                                              ResponsePreparationState.class,
-                                              session.getSessionId(),
-                                              player1.getPlayerId());
+                HttpMethod.GET,
+                HttpEntity.EMPTY,
+                ResponsePreparationState.class,
+                session.getSessionId(),
+                player1.getPlayerId());
 
         assertEquals(HttpStatus.OK, shipsResponse.getStatusCode());
         assertNotNull(shipsResponse.getBody());
         state = shipsResponse.getBody();
         assertEquals(0,
-                     state.getShips()
-                          .size());
+                state.getShips()
+                        .size());
 
     }
 
@@ -268,11 +268,11 @@ class BattleshipApplicationTests {
         addShipsForPlayer(session, player_2);
 
         var response = restTemplate.exchange(url_post_players_start,
-                                             HttpMethod.POST,
-                                             HttpEntity.EMPTY,
-                                             ResponsePlayerReady.class,
-                                             session.getSessionId(),
-                                             player_1.getPlayerId());
+                HttpMethod.POST,
+                HttpEntity.EMPTY,
+                ResponsePlayerReady.class,
+                session.getSessionId(),
+                player_1.getPlayerId());
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
@@ -294,20 +294,20 @@ class BattleshipApplicationTests {
         createGameplay(session, player_1, player_2);
 
         var response = restTemplate.exchange(url_post_players_field_shot,
-                                             HttpMethod.POST,
-                                             new HttpEntity<>(ParamCoordinateDto.builder()
-                                                                                .row(0)
-                                                                                .col(0)
-                                                                                .build()),
-                                             ResponseShotResultDto.class,
-                                             session.getSessionId(),
-                                             player_1.getPlayerId());
+                HttpMethod.POST,
+                new HttpEntity<>(ParamCoordinateDto.builder()
+                        .row(0)
+                        .col(0)
+                        .build()),
+                ResponseShotResultDto.class,
+                session.getSessionId(),
+                player_1.getPlayerId());
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(Set.of(ShotResult.HIT.name(), ShotResult.DESTROYED.name())
-                      .contains(response.getBody()
-                                        .getShotResult()));
+                .contains(response.getBody()
+                        .getShotResult()));
     }
 
     private ResponseCreatedSessionIdDto createNewGameSession() {
@@ -321,9 +321,9 @@ class BattleshipApplicationTests {
         var url_post_player = "%s/api/v2/game/sessions/{sessionId}/players".formatted(baseUrl);
         var playerRequestBody = new ParamPlayerNameDto(playerName);
         return restTemplate.postForObject(url_post_player,
-                                          playerRequestBody,
-                                          ResponseCreatedPlayerDto.class,
-                                          gameSessionIdDto.getSessionId());
+                playerRequestBody,
+                ResponseCreatedPlayerDto.class,
+                gameSessionIdDto.getSessionId());
     }
 
     private ResponsePreparationState getPreparationState(
@@ -332,9 +332,9 @@ class BattleshipApplicationTests {
         var url_get_available_ships =
                 "%s/api/v2/game/sessions/{sessionId}/players/{playerId}/preparationState".formatted(baseUrl);
         return restTemplate.getForObject(url_get_available_ships,
-                                         ResponsePreparationState.class,
-                                         gameSessionIdDto.getSessionId(),
-                                         playerDto.getPlayerId());
+                ResponsePreparationState.class,
+                gameSessionIdDto.getSessionId(),
+                playerDto.getPlayerId());
     }
 
     private void createGameplay(
@@ -346,16 +346,16 @@ class BattleshipApplicationTests {
         var url_post_players_start = "%s/api/v2/game/sessions/{sessionId}/players/{playerId}/start".formatted(baseUrl);
 
         restTemplate.postForObject(url_post_players_start,
-                                   null,
-                                   ResponseCreatedPlayerDto.class,
-                                   gameSessionIdDto.getSessionId(),
-                                   player1.getPlayerId());
+                null,
+                ResponseCreatedPlayerDto.class,
+                gameSessionIdDto.getSessionId(),
+                player1.getPlayerId());
 
         restTemplate.postForObject(url_post_players_start,
-                                   null,
-                                   ResponseCreatedPlayerDto.class,
-                                   gameSessionIdDto.getSessionId(),
-                                   player2.getPlayerId());
+                null,
+                ResponseCreatedPlayerDto.class,
+                gameSessionIdDto.getSessionId(),
+                player2.getPlayerId());
     }
 
     private void addShipsForPlayer(ResponseCreatedSessionIdDto gameSessionIdDto, ResponseCreatedPlayerDto playerDto) {
@@ -364,16 +364,16 @@ class BattleshipApplicationTests {
         getCoordinates().forEach(coordinate -> {
             var playerShips = getPreparationState(gameSessionIdDto, playerDto);
             var playerShipAddRequestBody = new HttpEntity<>(new ParamShipDto(coordinate.row(),
-                                                                             coordinate.column(),
-                                                                             ShipDirection.HORIZONTAL.name()));
+                    coordinate.column(),
+                    ShipDirection.HORIZONTAL.name()));
             var playerShipToAdd = new LinkedList<>(playerShips.getShips()).pop();
             restTemplate.exchange(url_post_add_ships,
-                                  HttpMethod.PUT,
-                                  playerShipAddRequestBody,
-                                  ResponseShipAddedDto.class,
-                                  gameSessionIdDto.getSessionId(),
-                                  playerDto.getPlayerId(),
-                                  playerShipToAdd.getShipId());
+                    HttpMethod.PUT,
+                    playerShipAddRequestBody,
+                    ResponseShipAddedDto.class,
+                    gameSessionIdDto.getSessionId(),
+                    playerDto.getPlayerId(),
+                    playerShipToAdd.getShipId());
         });
     }
 

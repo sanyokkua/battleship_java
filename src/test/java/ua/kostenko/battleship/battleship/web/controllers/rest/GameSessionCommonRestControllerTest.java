@@ -23,8 +23,10 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * {@link org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest} coverage for
@@ -36,11 +38,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(GameSessionCommonRestController.class)
 class GameSessionCommonRestControllerTest {
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
     @Autowired
     private MockMvc mockMvc;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
     @MockitoBean
     private GameControllerApi controllerV2Api;
 
@@ -49,13 +49,13 @@ class GameSessionCommonRestControllerTest {
     @Test
     void getAvailableGameEditions_returnsEditionsSortedReverseAlphabetically() throws Exception {
         when(controllerV2Api.getAvailableGameEditions()).thenReturn(List.of(GameEdition.UKRAINIAN,
-                                                                              GameEdition.MILTON_BRADLEY));
+                GameEdition.MILTON_BRADLEY));
 
         mockMvc.perform(get("/api/v2/game/editions"))
-               .andExpect(status().isOk())
-               .andExpect(jsonPath("$.gameEditions[0]").value("UKRAINIAN"))
-               .andExpect(jsonPath("$.gameEditions[1]").value("MILTON_BRADLEY"))
-               .andExpect(jsonPath("$.gameEditions.length()").value(2));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.gameEditions[0]").value("UKRAINIAN"))
+                .andExpect(jsonPath("$.gameEditions[1]").value("MILTON_BRADLEY"))
+                .andExpect(jsonPath("$.gameEditions.length()").value(2));
     }
 
     // ---- POST /api/v2/game/sessions ----
@@ -65,13 +65,13 @@ class GameSessionCommonRestControllerTest {
         when(controllerV2Api.createGameSession(GameEdition.UKRAINIAN.name())).thenReturn("session-123");
 
         var body = ParamGameEditionDto.builder()
-                                       .gameEdition(GameEdition.UKRAINIAN.name())
-                                       .build();
+                .gameEdition(GameEdition.UKRAINIAN.name())
+                .build();
 
         mockMvc.perform(post("/api/v2/game/sessions").contentType(MediaType.APPLICATION_JSON)
-                                                       .content(objectMapper.writeValueAsString(body)))
-               .andExpect(status().isCreated())
-               .andExpect(jsonPath("$.sessionId").value("session-123"));
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.sessionId").value("session-123"));
     }
 
     @Test
@@ -80,15 +80,15 @@ class GameSessionCommonRestControllerTest {
                 "bad edition"));
 
         var body = ParamGameEditionDto.builder()
-                                       .gameEdition("NOT_AN_EDITION")
-                                       .build();
+                .gameEdition("NOT_AN_EDITION")
+                .build();
 
         mockMvc.perform(post("/api/v2/game/sessions").contentType(MediaType.APPLICATION_JSON)
-                                                       .content(objectMapper.writeValueAsString(body)))
-               .andExpect(status().isBadRequest())
-               .andExpect(jsonPath("$.status").value(400))
-               .andExpect(jsonPath("$.errorMessage").value("bad edition"))
-               .andExpect(jsonPath("$.errorCode").value("EDITION_INVALID"));
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.errorMessage").value("bad edition"))
+                .andExpect(jsonPath("$.errorCode").value("EDITION_INVALID"));
     }
 
     // ---- POST /api/v2/game/sessions/{sessionId}/players ----
@@ -99,66 +99,66 @@ class GameSessionCommonRestControllerTest {
         when(controllerV2Api.createPlayerInSession("session-123", "Alice")).thenReturn(createdPlayer);
 
         var body = ParamPlayerNameDto.builder()
-                                      .playerName("Alice")
-                                      .build();
+                .playerName("Alice")
+                .build();
 
         mockMvc.perform(post("/api/v2/game/sessions/session-123/players").contentType(MediaType.APPLICATION_JSON)
-                                                                           .content(objectMapper.writeValueAsString(
-                                                                                   body)))
-               .andExpect(status().isCreated())
-               .andExpect(jsonPath("$.playerId").value("player-1"))
-               .andExpect(jsonPath("$.playerName").value("Alice"));
+                        .content(objectMapper.writeValueAsString(
+                                body)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.playerId").value("player-1"))
+                .andExpect(jsonPath("$.playerName").value("Alice"));
     }
 
     @Test
     void createPlayerInSession_invalidPlayerName_returns400WithPlayerNameInvalidErrorCode() throws Exception {
         when(controllerV2Api.createPlayerInSession(eq("session-123"),
-                                                     eq(""))).thenThrow(new GamePlayerNameIsNotCorrectException(
+                eq(""))).thenThrow(new GamePlayerNameIsNotCorrectException(
                 "bad name"));
 
         var body = ParamPlayerNameDto.builder()
-                                      .playerName("")
-                                      .build();
+                .playerName("")
+                .build();
 
         mockMvc.perform(post("/api/v2/game/sessions/session-123/players").contentType(MediaType.APPLICATION_JSON)
-                                                                           .content(objectMapper.writeValueAsString(
-                                                                                   body)))
-               .andExpect(status().isBadRequest())
-               .andExpect(jsonPath("$.errorCode").value("PLAYER_NAME_INVALID"));
+                        .content(objectMapper.writeValueAsString(
+                                body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("PLAYER_NAME_INVALID"));
     }
 
     @Test
     void createPlayerInSession_sessionNotFound_returns400WithSessionNotFoundErrorCode() throws Exception {
         when(controllerV2Api.createPlayerInSession(eq("unknown-session"),
-                                                     eq("Alice"))).thenThrow(new GameSessionIdIsNotCorrectException(
+                eq("Alice"))).thenThrow(new GameSessionIdIsNotCorrectException(
                 "unknown session"));
 
         var body = ParamPlayerNameDto.builder()
-                                      .playerName("Alice")
-                                      .build();
+                .playerName("Alice")
+                .build();
 
         mockMvc.perform(post("/api/v2/game/sessions/unknown-session/players").contentType(MediaType.APPLICATION_JSON)
-                                                                               .content(objectMapper.writeValueAsString(
-                                                                                       body)))
-               .andExpect(status().isBadRequest())
-               .andExpect(jsonPath("$.errorCode").value("SESSION_NOT_FOUND"));
+                        .content(objectMapper.writeValueAsString(
+                                body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("SESSION_NOT_FOUND"));
     }
 
     @Test
     void createPlayerInSession_sessionFull_returns400WithSessionFullErrorCode() throws Exception {
         when(controllerV2Api.createPlayerInSession(eq("session-123"),
-                                                     eq("Alice"))).thenThrow(new GameSessionFullException(
+                eq("Alice"))).thenThrow(new GameSessionFullException(
                 "Game can't have more than 2 players"));
 
         var body = ParamPlayerNameDto.builder()
-                                      .playerName("Alice")
-                                      .build();
+                .playerName("Alice")
+                .build();
 
         mockMvc.perform(post("/api/v2/game/sessions/session-123/players").contentType(MediaType.APPLICATION_JSON)
-                                                                           .content(objectMapper.writeValueAsString(
-                                                                                   body)))
-               .andExpect(status().isBadRequest())
-               .andExpect(jsonPath("$.errorCode").value("SESSION_FULL"));
+                        .content(objectMapper.writeValueAsString(
+                                body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("SESSION_FULL"));
     }
 
     // ---- GET /api/v2/game/sessions/{sessionId}/state ----
@@ -168,8 +168,8 @@ class GameSessionCommonRestControllerTest {
         when(controllerV2Api.getCurrentGameStage("session-123")).thenReturn(GameStage.PREPARATION);
 
         mockMvc.perform(get("/api/v2/game/sessions/session-123/state"))
-               .andExpect(status().isOk())
-               .andExpect(jsonPath("$.gameStage").value("PREPARATION"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.gameStage").value("PREPARATION"));
     }
 
     @Test
@@ -178,9 +178,9 @@ class GameSessionCommonRestControllerTest {
                 "unknown session"));
 
         mockMvc.perform(get("/api/v2/game/sessions/unknown-session/state"))
-               .andExpect(status().isBadRequest())
-               .andExpect(jsonPath("$.errorCode").value("SESSION_NOT_FOUND"))
-               .andExpect(jsonPath("$.errorMessage").value("unknown session"));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("SESSION_NOT_FOUND"))
+                .andExpect(jsonPath("$.errorMessage").value("unknown session"));
     }
 
     // ---- GET /api/v2/game/sessions/{sessionId}/changesTime ----
@@ -190,8 +190,8 @@ class GameSessionCommonRestControllerTest {
         when(controllerV2Api.getLastSessionChangeTime("session-123")).thenReturn("2026-07-11T12:00:00");
 
         mockMvc.perform(get("/api/v2/game/sessions/session-123/changesTime"))
-               .andExpect(status().isOk())
-               .andExpect(jsonPath("$.lastId").value("2026-07-11T12:00:00"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lastId").value("2026-07-11T12:00:00"));
     }
 
     @Test
@@ -200,17 +200,17 @@ class GameSessionCommonRestControllerTest {
                 "unknown session"));
 
         mockMvc.perform(get("/api/v2/game/sessions/unknown-session/changesTime"))
-               .andExpect(status().isBadRequest())
-               .andExpect(jsonPath("$.errorCode").value("SESSION_NOT_FOUND"));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("SESSION_NOT_FOUND"));
     }
 
     private Player playerStub(String playerId, String playerName) {
         return Player.builder()
-                      .playerId(playerId)
-                      .playerName(playerName)
-                      .fieldManagement(mock(ua.kostenko.battleship.battleship.logic.engine.FieldManagement.class))
-                      .shipsNotOnTheField(java.util.Set.of())
-                      .allPlayerShips(java.util.Set.of())
-                      .build();
+                .playerId(playerId)
+                .playerName(playerName)
+                .fieldManagement(mock(ua.kostenko.battleship.battleship.logic.engine.FieldManagement.class))
+                .shipsNotOnTheField(java.util.Set.of())
+                .allPlayerShips(java.util.Set.of())
+                .build();
     }
 }

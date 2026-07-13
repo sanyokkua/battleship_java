@@ -1,4 +1,4 @@
-import {createContext, useContext, type ReactNode} from "react";
+import {createContext, type ReactNode, useContext} from "react";
 import type {GameAdapter} from "./GameAdapter";
 
 const GameAdapterContext = createContext<GameAdapter | null>(null);

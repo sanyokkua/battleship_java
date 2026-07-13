@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useSessionGuard } from '../hooks/useSessionGuard';
+import type {ReactNode} from 'react';
+import {Navigate} from 'react-router-dom';
+import {useSessionGuard} from '../hooks/useSessionGuard';
 
 /**
  * Maps a persisted (localStorage) GameStage to the route that represents it.
@@ -8,22 +8,22 @@ import { useSessionGuard } from '../hooks/useSessionGuard';
  * fall back to "/" — see stageToRoute below.
  */
 const STAGE_TO_ROUTE: Record<string, string> = {
-  WAITING_FOR_PLAYERS: '/game/wait',
-  PREPARATION: '/game/preparation',
-  IN_GAME: '/game/gameplay',
-  FINISHED: '/game/results',
+    WAITING_FOR_PLAYERS: '/game/wait',
+    PREPARATION: '/game/preparation',
+    IN_GAME: '/game/gameplay',
+    FINISHED: '/game/results',
 };
 
 function stageToRoute(stage: string | null): string {
-  if (stage && STAGE_TO_ROUTE[stage]) {
-    return STAGE_TO_ROUTE[stage];
-  }
-  return '/';
+    if (stage && STAGE_TO_ROUTE[stage]) {
+        return STAGE_TO_ROUTE[stage];
+    }
+    return '/';
 }
 
 export type StageGuardProps = {
-  requiredStage?: string;
-  children: ReactNode;
+    requiredStage?: string;
+    children: ReactNode;
 };
 
 /**
@@ -36,16 +36,16 @@ export type StageGuardProps = {
  *   to whichever route matches the persisted stage (or "/" if unrecognized).
  * - Otherwise render children.
  */
-export function StageGuard({ requiredStage, children }: StageGuardProps) {
-  const { sessionId, player, stage } = useSessionGuard();
+export function StageGuard({requiredStage, children}: StageGuardProps) {
+    const {sessionId, player, stage} = useSessionGuard();
 
-  if (!sessionId || !player) {
-    return <Navigate to="/" replace />;
-  }
+    if (!sessionId || !player) {
+        return <Navigate to="/" replace/>;
+    }
 
-  if (requiredStage && stage !== requiredStage) {
-    return <Navigate to={stageToRoute(stage)} replace />;
-  }
+    if (requiredStage && stage !== requiredStage) {
+        return <Navigate to={stageToRoute(stage)} replace/>;
+    }
 
-  return <>{children}</>;
+    return <>{children}</>;
 }

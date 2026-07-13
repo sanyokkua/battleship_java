@@ -466,7 +466,10 @@ export class MockGameAdapter implements GameAdapter {
         return session;
     }
 
-    private requirePlayer(sessionId: string, playerId: string, context: string): { session: SessionState; player: PlayerState } {
+    private requirePlayer(sessionId: string, playerId: string, context: string): {
+        session: SessionState;
+        player: PlayerState
+    } {
         const session = this.requireSession(sessionId, context);
         const player = session.players.find(p => p.playerId === playerId);
         if (!player) {

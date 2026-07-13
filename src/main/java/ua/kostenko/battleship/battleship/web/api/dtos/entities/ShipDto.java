@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.battleship.web.api.dtos.entities;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,11 +24,13 @@ public class ShipDto {
     /**
      * The unique identifier of the ship.
      */
+    @Schema(description = "Ship type identifier from the edition's ship catalog", example = "patrol_boat_1")
     private String shipId;
 
     /**
      * The size of the ship in grid spaces.
      */
+    @Schema(description = "Size of the ship in grid spaces")
     private int shipSize;
 
     /**

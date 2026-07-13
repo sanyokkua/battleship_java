@@ -1,11 +1,11 @@
-import type { ReactNode } from 'react';
-import { LoadingBar } from '../../design/components/LoadingBar/LoadingBar';
+import type {ReactNode} from 'react';
+import {LoadingBar} from '../../design/components/LoadingBar/LoadingBar';
 import './LoadingView.css';
 
 export type LoadingViewProps = {
-  title: string;
-  subtitle: string;
-  icon?: ReactNode; // defaults to a sensible icon (e.g. ⚓) if not provided
+    title: string;
+    subtitle: string;
+    icon?: ReactNode; // defaults to a sensible icon (e.g. ⚓) if not provided
 };
 
 /**
@@ -18,17 +18,17 @@ export type LoadingViewProps = {
  * All text is supplied by the caller (already localized) — this component
  * never calls useTranslation() itself.
  */
-export function LoadingView({ title, subtitle, icon }: LoadingViewProps) {
-  return (
-    <div className="loading-view">
-      <LoadingBar label={title} />
-      <div className="screen">
-        <div className="loading-view-body">
-          <div className="hero-illust loading-view-icon">{icon ?? '⚓'}</div>
-          <h2 className="title">{title}</h2>
-          <p className="sub">{subtitle}</p>
+export function LoadingView({title, subtitle, icon}: LoadingViewProps) {
+    return (
+        <div className="loading-view">
+            <LoadingBar label={title}/>
+            <div className="screen">
+                <div className="loading-view-body">
+                    <div className="hero-illust loading-view-icon">{icon ?? '⚓'}</div>
+                    <h2 className="title">{title}</h2>
+                    <p className="sub">{subtitle}</p>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 }

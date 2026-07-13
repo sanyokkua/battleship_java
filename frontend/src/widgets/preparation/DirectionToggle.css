@@ -1,27 +1,27 @@
 /* Ported from MOCKUP.html's `.dir-toggle` rules. */
 
 .dir-toggle {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
 }
 
 .dir-toggle button {
-  flex: 1;
-  padding: 10px;
-  border-radius: 10px;
-  border: 1.5px solid var(--line);
-  background: var(--surface);
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-  color: var(--ink-soft);
-  font-family: inherit;
-  min-height: 44px;
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1.5px solid var(--line);
+    background: var(--surface);
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--ink-soft);
+    font-family: inherit;
+    min-height: 44px;
 }
 
 .dir-toggle button.on {
-  background: var(--navy);
-  color: #fff;
-  border-color: var(--navy);
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
 }

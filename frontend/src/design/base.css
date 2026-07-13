@@ -34,9 +34,8 @@ body {
     color: var(--ink);
     font-size: 14.5px;
     line-height: 1.5;
-    background-image:
-        radial-gradient(circle at 20% 0%, #dfeaf8 0, transparent 45%),
-        radial-gradient(circle at 90% 10%, #e3f4f6 0, transparent 40%);
+    background-image: radial-gradient(circle at 20% 0%, #dfeaf8 0, transparent 45%),
+    radial-gradient(circle at 90% 10%, #e3f4f6 0, transparent 40%);
 }
 
 /* Screen scaffolding — a routed page's outer padding + entrance animation. */

@@ -8,14 +8,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import ua.kostenko.battleship.battleship.logic.api.IdGenerator;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameCellAlreadyShotException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameOpponentNotFoundException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GamePlayerNotFoundException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameSessionFullException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipAlreadyPlacedException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipIdIsNotCorrectException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipsNotAllPlacedException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameStageIsNotCorrectException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.*;
 import ua.kostenko.battleship.battleship.logic.engine.FieldManagement;
 import ua.kostenko.battleship.battleship.logic.engine.FieldManagementImpl;
 import ua.kostenko.battleship.battleship.logic.engine.Game;
@@ -122,9 +115,9 @@ class GameControllerApiImplTest {
         var mockGame = Mockito.mock(Game.class);
         when(persistence.load(anyString())).thenReturn(Optional.of(mockGame));
         when(mockGame.getShipsNotOnTheField(anyString())).thenReturn(Set.of(new Ship("shipId",
-                                                                                     ShipType.PATROL_BOAT,
-                                                                                     ShipDirection.HORIZONTAL,
-                                                                                     0)));
+                ShipType.PATROL_BOAT,
+                ShipDirection.HORIZONTAL,
+                0)));
         when(mockGame.getGameState()).thenReturn(gameState);
 
         List<Ship> result = gameControllerApiImpl.getShipsNotOnTheBoard("sessionId", "playerId");
@@ -137,11 +130,11 @@ class GameControllerApiImplTest {
         var gameState = GameState.create(GameEdition.UKRAINIAN, "sessionId", GameStage.INITIALIZED);
         var mockGame = Mockito.mock(Game.class);
         var ship = Ship.builder()
-                       .shipId("shipId")
-                       .shipDirection(ShipDirection.HORIZONTAL)
-                       .shipSize(4)
-                       .shipType(ShipType.SUBMARINE)
-                       .build();
+                .shipId("shipId")
+                .shipDirection(ShipDirection.HORIZONTAL)
+                .shipSize(4)
+                .shipType(ShipType.SUBMARINE)
+                .build();
 
         when(persistence.load(anyString())).thenReturn(Optional.of(mockGame));
         when(persistence.save(any())).thenReturn(null);
@@ -149,10 +142,10 @@ class GameControllerApiImplTest {
         when(mockGame.getGameState()).thenReturn(gameState);
 
         Ship result = gameControllerApiImpl.addShipToField("sessionId",
-                                                           "playerId",
-                                                           "shipId",
-                                                           new Coordinate(0, 0),
-                                                           ShipDirection.HORIZONTAL.name());
+                "playerId",
+                "shipId",
+                new Coordinate(0, 0),
+                ShipDirection.HORIZONTAL.name());
 
         verify(mockGame, atLeastOnce()).addShipToField(anyString(), any(Coordinate.class), any(Ship.class));
     }
@@ -180,12 +173,12 @@ class GameControllerApiImplTest {
         when(persistence.save(any())).thenReturn(null);
 
         Player player = Player.builder()
-                              .playerId("id")
-                              .playerName("name")
-                              .fieldManagement(new FieldManagementImpl())
-                              .shipsNotOnTheField(new HashSet<>())
-                              .allPlayerShips(new HashSet<>())
-                              .build();
+                .playerId("id")
+                .playerName("name")
+                .fieldManagement(new FieldManagementImpl())
+                .shipsNotOnTheField(new HashSet<>())
+                .allPlayerShips(new HashSet<>())
+                .build();
         when(mockGame.getOpponent(anyString())).thenReturn(player);
 
         OpponentInfo result = gameControllerApiImpl.getOpponentInformation("sessionId", "playerId");
@@ -274,7 +267,7 @@ class GameControllerApiImplTest {
                 "Cell has already been shot."));
 
         assertThrows(GameCellAlreadyShotException.class,
-                     () -> gameControllerApiImpl.makeShotByField("sessionId", "playerId", new Coordinate(0, 0)));
+                () -> gameControllerApiImpl.makeShotByField("sessionId", "playerId", new Coordinate(0, 0)));
 
         verify(mockGame, atMostOnce()).makeShot(anyString(), any(Coordinate.class));
         verify(persistence, never()).save(any());
@@ -292,7 +285,7 @@ class GameControllerApiImplTest {
                 "Player with provided filter is not found"));
 
         assertThrows(GameOpponentNotFoundException.class,
-                     () -> gameControllerApiImpl.getOpponentInformation("sessionId", "playerId"));
+                () -> gameControllerApiImpl.getOpponentInformation("sessionId", "playerId"));
     }
 
     @Test
@@ -305,7 +298,7 @@ class GameControllerApiImplTest {
                 "Player with id playerId not found"));
 
         assertThrows(GamePlayerNotFoundException.class,
-                     () -> gameControllerApiImpl.getGameState("sessionId", "playerId"));
+                () -> gameControllerApiImpl.getGameState("sessionId", "playerId"));
     }
 
     @Test
@@ -320,7 +313,7 @@ class GameControllerApiImplTest {
                 "Player with provided filter is not found"));
 
         assertThrows(GameOpponentNotFoundException.class,
-                     () -> gameControllerApiImpl.getGameState("sessionId", "playerId"));
+                () -> gameControllerApiImpl.getGameState("sessionId", "playerId"));
     }
 
     // ---- Ticket B: remaining gap-fill + correctness-bug regression tests ----
@@ -336,7 +329,7 @@ class GameControllerApiImplTest {
                 "Game can't have more than 2 players"));
 
         assertThrows(GameSessionFullException.class,
-                     () -> gameControllerApiImpl.createPlayerInSession("sessionId", "playerName"));
+                () -> gameControllerApiImpl.createPlayerInSession("sessionId", "playerName"));
 
         verify(persistence, never()).save(any());
     }
@@ -352,7 +345,7 @@ class GameControllerApiImplTest {
                 "PREPARATION doesn't allow operation. There is no possibility to create player now"));
 
         assertThrows(GameStageIsNotCorrectException.class,
-                     () -> gameControllerApiImpl.createPlayerInSession("sessionId", "playerName"));
+                () -> gameControllerApiImpl.createPlayerInSession("sessionId", "playerName"));
     }
 
     @Test
@@ -363,11 +356,11 @@ class GameControllerApiImplTest {
         when(persistence.load(anyString())).thenReturn(Optional.of(mockGame));
         doThrow(new ShipsNotAllPlacedException(
                 "Player can't be made ready. Player has ships not added to the field")).when(mockGame)
-                                                                                        .changePlayerStatusToReady(
-                                                                                                anyString());
+                .changePlayerStatusToReady(
+                        anyString());
 
         assertThrows(GameShipsNotAllPlacedException.class,
-                     () -> gameControllerApiImpl.startGame("sessionId", "playerId"));
+                () -> gameControllerApiImpl.startGame("sessionId", "playerId"));
 
         verify(persistence, never()).save(any());
     }
@@ -383,7 +376,7 @@ class GameControllerApiImplTest {
                 mockGame).changePlayerStatusToReady(anyString());
 
         assertThrows(GameStageIsNotCorrectException.class,
-                     () -> gameControllerApiImpl.startGame("sessionId", "playerId"));
+                () -> gameControllerApiImpl.startGame("sessionId", "playerId"));
     }
 
     @Test
@@ -391,26 +384,26 @@ class GameControllerApiImplTest {
         var gameState = GameState.create(GameEdition.UKRAINIAN, "sessionId", GameStage.PREPARATION);
         var mockGame = Mockito.mock(Game.class);
         var ship = Ship.builder()
-                       .shipId("shipId")
-                       .shipDirection(ShipDirection.HORIZONTAL)
-                       .shipSize(4)
-                       .shipType(ShipType.SUBMARINE)
-                       .build();
+                .shipId("shipId")
+                .shipDirection(ShipDirection.HORIZONTAL)
+                .shipSize(4)
+                .shipType(ShipType.SUBMARINE)
+                .build();
         when(mockGame.getGameState()).thenReturn(gameState);
         when(persistence.load(anyString())).thenReturn(Optional.of(mockGame));
         when(mockGame.getAllShips(anyString())).thenReturn(Set.of(ship));
         doThrow(new ShipNotAvailableForAddException(
                 "Ship %s is not available for add operation".formatted(ship))).when(mockGame)
-                                                                                .addShipToField(anyString(),
-                                                                                                 any(Coordinate.class),
-                                                                                                 any(Ship.class));
+                .addShipToField(anyString(),
+                        any(Coordinate.class),
+                        any(Ship.class));
 
         assertThrows(GameShipAlreadyPlacedException.class,
-                     () -> gameControllerApiImpl.addShipToField("sessionId",
-                                                                 "playerId",
-                                                                 "shipId",
-                                                                 new Coordinate(0, 0),
-                                                                 ShipDirection.HORIZONTAL.name()));
+                () -> gameControllerApiImpl.addShipToField("sessionId",
+                        "playerId",
+                        "shipId",
+                        new Coordinate(0, 0),
+                        ShipDirection.HORIZONTAL.name()));
     }
 
     @Test
@@ -418,26 +411,26 @@ class GameControllerApiImplTest {
         var gameState = GameState.create(GameEdition.UKRAINIAN, "sessionId", GameStage.INITIALIZED);
         var mockGame = Mockito.mock(Game.class);
         var ship = Ship.builder()
-                       .shipId("shipId")
-                       .shipDirection(ShipDirection.HORIZONTAL)
-                       .shipSize(4)
-                       .shipType(ShipType.SUBMARINE)
-                       .build();
+                .shipId("shipId")
+                .shipDirection(ShipDirection.HORIZONTAL)
+                .shipSize(4)
+                .shipType(ShipType.SUBMARINE)
+                .build();
         when(mockGame.getGameState()).thenReturn(gameState);
         when(persistence.load(anyString())).thenReturn(Optional.of(mockGame));
         when(mockGame.getAllShips(anyString())).thenReturn(Set.of(ship));
         doThrow(new IllegalStateException("INITIALIZED doesn't allow operation. Ship can be added only in "
-                                                   + "Preparation stage")).when(mockGame)
-                                                                           .addShipToField(anyString(),
-                                                                                            any(Coordinate.class),
-                                                                                            any(Ship.class));
+                + "Preparation stage")).when(mockGame)
+                .addShipToField(anyString(),
+                        any(Coordinate.class),
+                        any(Ship.class));
 
         assertThrows(GameStageIsNotCorrectException.class,
-                     () -> gameControllerApiImpl.addShipToField("sessionId",
-                                                                 "playerId",
-                                                                 "shipId",
-                                                                 new Coordinate(0, 0),
-                                                                 ShipDirection.HORIZONTAL.name()));
+                () -> gameControllerApiImpl.addShipToField("sessionId",
+                        "playerId",
+                        "shipId",
+                        new Coordinate(0, 0),
+                        ShipDirection.HORIZONTAL.name()));
     }
 
     /**
@@ -455,11 +448,11 @@ class GameControllerApiImplTest {
         when(mockGame.getAllShips(anyString())).thenReturn(Set.of());
 
         assertThrows(GameShipIdIsNotCorrectException.class,
-                     () -> gameControllerApiImpl.addShipToField("sessionId",
-                                                                 "playerId",
-                                                                 "unknown-ship",
-                                                                 new Coordinate(0, 0),
-                                                                 ShipDirection.HORIZONTAL.name()));
+                () -> gameControllerApiImpl.addShipToField("sessionId",
+                        "playerId",
+                        "unknown-ship",
+                        new Coordinate(0, 0),
+                        ShipDirection.HORIZONTAL.name()));
 
         verify(persistence, never()).save(any());
     }
@@ -474,7 +467,7 @@ class GameControllerApiImplTest {
                 "INITIALIZED doesn't allow operation. Ship can be removed only in Preparation stage"));
 
         assertThrows(GameStageIsNotCorrectException.class,
-                     () -> gameControllerApiImpl.removeShipFromField("sessionId", "playerId", new Coordinate(0, 0)));
+                () -> gameControllerApiImpl.removeShipFromField("sessionId", "playerId", new Coordinate(0, 0)));
     }
 
     @Test
@@ -487,7 +480,7 @@ class GameControllerApiImplTest {
                 "PREPARATION doesn't allow operation. Shot can be made only in IN_GAME stage"));
 
         assertThrows(GameStageIsNotCorrectException.class,
-                     () -> gameControllerApiImpl.makeShotByField("sessionId", "playerId", new Coordinate(0, 0)));
+                () -> gameControllerApiImpl.makeShotByField("sessionId", "playerId", new Coordinate(0, 0)));
 
         verify(persistence, never()).save(any());
     }
@@ -502,7 +495,7 @@ class GameControllerApiImplTest {
                 "Player with id playerId not found"));
 
         assertThrows(GamePlayerNotFoundException.class,
-                     () -> gameControllerApiImpl.getShipsNotOnTheBoard("sessionId", "playerId"));
+                () -> gameControllerApiImpl.getShipsNotOnTheBoard("sessionId", "playerId"));
     }
 
     @Test
@@ -515,6 +508,6 @@ class GameControllerApiImplTest {
                 "Player with id playerId not found"));
 
         assertThrows(GamePlayerNotFoundException.class,
-                     () -> gameControllerApiImpl.getPreparationField("sessionId", "playerId"));
+                () -> gameControllerApiImpl.getPreparationField("sessionId", "playerId"));
     }
 }

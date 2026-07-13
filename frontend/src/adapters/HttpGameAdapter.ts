@@ -35,6 +35,20 @@ import {GameAdapterError} from "./AdapterErrors";
  * translates any rejection into a GameAdapterError.
  */
 export class HttpGameAdapter implements GameAdapter {
+    private static toAdapterError(error: unknown, context: string): GameAdapterError {
+        const axiosError = error as AxiosError<ExceptionDto>;
+        const httpStatus = axiosError?.response?.status;
+        const errorCode = axiosError?.response?.data?.errorCode;
+        const message = axiosError?.response?.data?.errorMessage ?? axiosError?.message ?? "Unknown error";
+
+        return new GameAdapterError(message, {
+            httpStatus,
+            errorCode,
+            context,
+            cause: error
+        });
+    }
+
     async getEditions(): Promise<string[]> {
         return this.wrap("getEditions()", async () => {
             const dto = await getAvailableGameEditions();
@@ -109,19 +123,5 @@ export class HttpGameAdapter implements GameAdapter {
         } catch (error) {
             throw HttpGameAdapter.toAdapterError(error, context);
         }
-    }
-
-    private static toAdapterError(error: unknown, context: string): GameAdapterError {
-        const axiosError = error as AxiosError<ExceptionDto>;
-        const httpStatus = axiosError?.response?.status;
-        const errorCode = axiosError?.response?.data?.errorCode;
-        const message = axiosError?.response?.data?.errorMessage ?? axiosError?.message ?? "Unknown error";
-
-        return new GameAdapterError(message, {
-            httpStatus,
-            errorCode,
-            context,
-            cause: error
-        });
     }
 }

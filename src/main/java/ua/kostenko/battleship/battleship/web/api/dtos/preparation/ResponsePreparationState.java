@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.battleship.web.api.dtos.preparation;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -28,10 +29,12 @@ public class ResponsePreparationState {
     /**
      * The list of ships in the preparation state.
      */
+    @Schema(description = "Ships still available to place")
     private List<ShipDto> ships;
 
     /**
      * The field status in the preparation state.
      */
+    @Schema(description = "Player's current board, as a 2D array of cells")
     private CellDto[][] field;
 }

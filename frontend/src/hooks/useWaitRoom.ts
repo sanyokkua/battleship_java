@@ -44,7 +44,10 @@ export function useWaitRoom(sessionId: string, playerId: string): WaitRoomState 
                 setEnabled(false);
             }
         } catch (e) {
-            setError(isGameAdapterError(e) ? e : new GameAdapterError("Failed to poll wait room", {cause: e, context: "useWaitRoom"}));
+            setError(isGameAdapterError(e) ? e : new GameAdapterError("Failed to poll wait room", {
+                cause: e,
+                context: "useWaitRoom"
+            }));
         } finally {
             setLoading(false);
         }

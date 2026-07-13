@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.battleship.web.api.dtos.preparation;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +22,7 @@ public class ResponseShipRemovedDto {
     /**
      * Indicates whether the ship has been deleted.
      */
+    @Schema(description = "Whether a ship was found and removed at the given coordinate")
     private boolean deleted;
 
     /**

@@ -8,16 +8,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ua.kostenko.battleship.battleship.logic.api.GameControllerApi;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameCoordinateIsNotCorrectIncorrectException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameEditionIsNotCorrectException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameInternalProblemException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GamePlayerIdIsNotCorrectException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GamePlayerNameIsNotCorrectException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GamePlayerNotActiveException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameSessionIdIsNotCorrectException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipDirectionIsNotCorrectException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipIdIsNotCorrectException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameStageIsNotCorrectException;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.*;
 import ua.kostenko.battleship.battleship.web.controllers.rest.GameSessionCommonRestController;
 
 import java.util.stream.Stream;
@@ -49,20 +40,24 @@ class ExceptionHandlersTest {
 
     static Stream<Arguments> typedExceptions() {
         return Stream.of(Arguments.of(new GameCoordinateIsNotCorrectIncorrectException("bad coordinate"),
-                                       "COORDINATE_INVALID"),
-                          Arguments.of(new GameEditionIsNotCorrectException("bad edition"), "EDITION_INVALID"),
-                          Arguments.of(new GamePlayerIdIsNotCorrectException("bad player id"),
-                                       "PLAYER_ID_INVALID"),
-                          Arguments.of(new GamePlayerNameIsNotCorrectException("bad player name"),
-                                       "PLAYER_NAME_INVALID"),
-                          Arguments.of(new GamePlayerNotActiveException("player not active"),
-                                       "PLAYER_NOT_ACTIVE"),
-                          Arguments.of(new GameSessionIdIsNotCorrectException("unknown session"),
-                                       "SESSION_NOT_FOUND"),
-                          Arguments.of(new GameShipDirectionIsNotCorrectException("bad direction"),
-                                       "SHIP_DIRECTION_INVALID"),
-                          Arguments.of(new GameShipIdIsNotCorrectException("bad ship id"), "SHIP_ID_INVALID"),
-                          Arguments.of(new GameStageIsNotCorrectException("bad stage"), "STAGE_INVALID"));
+                        "COORDINATE_INVALID"),
+                Arguments.of(new GameEditionIsNotCorrectException("bad edition"), "EDITION_INVALID"),
+                Arguments.of(new GamePlayerIdIsNotCorrectException("bad player id"),
+                        "PLAYER_ID_INVALID"),
+                Arguments.of(new GamePlayerNameIsNotCorrectException("bad player name"),
+                        "PLAYER_NAME_INVALID"),
+                Arguments.of(new GamePlayerNotActiveException("player not active"),
+                        "PLAYER_NOT_ACTIVE"),
+                Arguments.of(new GameSessionIdIsNotCorrectException("unknown session"),
+                        "SESSION_NOT_FOUND"),
+                Arguments.of(new GameShipDirectionIsNotCorrectException("bad direction"),
+                        "SHIP_DIRECTION_INVALID"),
+                Arguments.of(new GameShipIdIsNotCorrectException("bad ship id"), "SHIP_ID_INVALID"),
+                Arguments.of(new GameStageIsNotCorrectException("bad stage"), "STAGE_INVALID"));
+    }
+
+    static Stream<Arguments> internalException() {
+        return Stream.of(Arguments.of(new GameInternalProblemException("unexpected failure")));
     }
 
     @ParameterizedTest(name = "{0} -> 400 / errorCode={1}")
@@ -72,10 +67,10 @@ class ExceptionHandlersTest {
         when(controllerV2Api.getAvailableGameEditions()).thenThrow(ex);
 
         mockMvc.perform(get("/api/v2/game/editions"))
-               .andExpect(status().isBadRequest())
-               .andExpect(jsonPath("$.status").value(400))
-               .andExpect(jsonPath("$.errorMessage").value(ex.getMessage()))
-               .andExpect(jsonPath("$.errorCode").value(expectedErrorCode));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.errorMessage").value(ex.getMessage()))
+                .andExpect(jsonPath("$.errorCode").value(expectedErrorCode));
     }
 
     @ParameterizedTest(name = "GameInternalProblemException -> 500 / errorCode=INTERNAL")
@@ -84,13 +79,9 @@ class ExceptionHandlersTest {
         when(controllerV2Api.getAvailableGameEditions()).thenThrow(ex);
 
         mockMvc.perform(get("/api/v2/game/editions"))
-               .andExpect(status().isInternalServerError())
-               .andExpect(jsonPath("$.status").value(500))
-               .andExpect(jsonPath("$.errorMessage").value(ex.getMessage()))
-               .andExpect(jsonPath("$.errorCode").value("INTERNAL"));
-    }
-
-    static Stream<Arguments> internalException() {
-        return Stream.of(Arguments.of(new GameInternalProblemException("unexpected failure")));
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.errorMessage").value(ex.getMessage()))
+                .andExpect(jsonPath("$.errorCode").value("INTERNAL"));
     }
 }

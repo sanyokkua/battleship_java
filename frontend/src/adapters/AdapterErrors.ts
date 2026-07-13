@@ -11,7 +11,12 @@ export class GameAdapterError extends Error {
     errorCode?: string;
     context?: string;
 
-    constructor(message: string, opts?: { httpStatus?: number; errorCode?: string; context?: string; cause?: unknown }) {
+    constructor(message: string, opts?: {
+        httpStatus?: number;
+        errorCode?: string;
+        context?: string;
+        cause?: unknown
+    }) {
         super(message);
         this.name = "GameAdapterError";
         this.httpStatus = opts?.httpStatus;

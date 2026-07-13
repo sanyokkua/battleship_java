@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.battleship.web.api.dtos.preparation;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,16 +24,19 @@ public class ParamShipDto {
     /**
      * The row coordinate for placing the ship.
      */
+    @Schema(description = "Zero-based top-left board row")
     private int row;
 
     /**
      * The column coordinate for placing the ship.
      */
+    @Schema(description = "Zero-based top-left board column")
     private int col;
 
     /**
      * The direction in which to place the ship (e.g., HORIZONTAL, VERTICAL).
      */
+    @Schema(description = "Ship orientation", allowableValues = {"HORIZONTAL", "VERTICAL"})
     private String direction;
 
     /**
