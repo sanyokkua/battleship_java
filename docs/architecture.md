@@ -2,12 +2,11 @@
 
 This expands on [`docs/index.md` §2](index.md#2-architecture-overview) with the `GameStage` state
 machine and two call-by-call sequence flows. It documents the **current, shipped** system on
-branch `feature/redesign-v2` — the result of the v2 modernization plan in
-[`docs/redesign/README.md`](redesign/README.md), which is not summarized again here. The backend
-layering and the game engine's state machine were frozen invariants throughout that modernization,
-so §"Layered backend" and Diagram 1 below are unchanged from the pre-redesign system; the frontend
-structure and the two sequence diagrams have been updated to match the shipped Vite/React 19
-frontend (verified against `frontend/src/hooks/` and `frontend/src/screens/`).
+branch `feature/redesign-v2`. The backend layering and the game engine's state machine are
+unchanged from the pre-redesign system, so §"Layered backend" and Diagram 1 below reflect that
+continuity; the frontend structure and the two sequence diagrams match the shipped Vite/React 19
+frontend (verified against `frontend/src/hooks/` and `frontend/src/screens/`). See
+[`docs/openapi.json`](openapi.json) for the authoritative REST API contract.
 
 ## Layered backend
 

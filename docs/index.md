@@ -15,11 +15,8 @@ last_updated: "2026-07-13"
 
 This document describes the **current, as-built system** on branch `feature/redesign-v2` — the
 shipped result of the v2 modernization (Java 25 + Spring Boot 4.1.0 backend, Vite + React 19
-frontend, Docker/Podman packaging). This branch is not yet merged to `master`. The plan that was
-executed to get here lives in [`docs/redesign/README.md`](redesign/README.md); see
-[`docs/redesign/IMPLEMENTATION_PLAN.md`'s changelog](redesign/IMPLEMENTATION_PLAN.md#changelog--decisions-append-during-execution)
-for what shipped in each of the 11 phases. See [§13 Additional Notes](#13-additional-notes) for
-remaining known gaps.
+frontend, Docker/Podman packaging). This branch is not yet merged to `master`. See
+[§13 Additional Notes](#13-additional-notes) for remaining known gaps.
 
 ## 1. Service Identity Card
 
@@ -296,9 +293,8 @@ and `InternalExceptionHandler` (the 500 case).
 ## 7. External Services & Dependencies
 
 **None.** The application is fully self-contained: no external APIs, no database, no message
-broker, no cache. This is a deliberate design constraint (see the project's frozen-persistence
-scope note in the root `CLAUDE.md`) rather than a gap — `docs/redesign/` does not change this
-either.
+broker, no cache. This is a deliberate design constraint (see the persistence scope note in the
+root `CLAUDE.md`) rather than a gap.
 
 ---
 
@@ -407,8 +403,7 @@ battleship_java/
 ├── docs/
 │   ├── index.md                    # this file
 │   ├── architecture.md             # deeper diagrams
-│   ├── img/                        # README screenshots
-│   └── redesign/                   # v2 modernization plan this branch executed — see docs/redesign/README.md
+│   └── img/                        # README screenshots
 ├── src/
 │   ├── main/java/ua/kostenko/battleship/battleship/
 │   │   ├── logic/
@@ -468,7 +463,7 @@ Known gaps and tech debt, verified directly against the code (not invented):
   no synchronization, `ConcurrentHashMap`, or locking. Concurrent requests touching the same
   session (e.g., both players readying up at once, or simultaneous shots) can race. `TODO: confirm`
   whether this has caused observed bugs — no incident is documented, but the risk is real under
-  concurrent load. This is unchanged by the v2 redesign — persistence was explicitly out of scope.
+  concurrent load. Persistence is explicitly out of scope for this project.
 - **No CORS configuration exists** — no `WebMvcConfigurer`/`addCorsMappings` bean was found. This
   is only safe because the frontend is served same-origin from the same JAR; it would need to be
   added if the frontend were ever split out.
@@ -484,7 +479,6 @@ Known gaps and tech debt, verified directly against the code (not invented):
 REST-controller integration tests (`GameSessionCommonRestControllerTest`,
 `GameplayRestControllerTest`, `PreparationRestControllerTest`) and frontend automated tests
 (~44 test files across Vitest unit/component tests and Playwright e2e) were previously listed here
-as missing — both gaps are now closed as of the v2 redesign and are not repeated above. See
-[`docs/redesign/IMPLEMENTATION_PLAN.md`'s changelog](redesign/IMPLEMENTATION_PLAN.md#changelog--decisions-append-during-execution)
-for the phase-by-phase detail of what shipped, and [`docs/redesign/README.md`](redesign/README.md)
-for the full spec this branch implemented.
+as missing — both gaps are now closed and are not repeated above. See
+[`docs/openapi.json`](openapi.json) for the full endpoint contract, and
+[`docs/architecture.md`](architecture.md) for deeper diagrams.
