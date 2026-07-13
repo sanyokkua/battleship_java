@@ -167,10 +167,12 @@ function nextId(prefix: string): string {
 export class MockGameAdapter implements GameAdapter {
     private sessions = new Map<string, SessionState>();
 
+    /** See {@link GameAdapter.getEditions}. Returns the fixed list of editions this mock simulates. */
     async getEditions(): Promise<string[]> {
         return ["UKRAINIAN", "MILTON_BRADLEY"];
     }
 
+    /** See {@link GameAdapter.createSession}. Throws `EDITION_INVALID` if `edition` isn't in {@link EDITION_SHIP_SIZES}. */
     async createSession(edition: string): Promise<string> {
         const sizes = EDITION_SHIP_SIZES[edition];
         if (!sizes) {
@@ -195,6 +197,12 @@ export class MockGameAdapter implements GameAdapter {
         return sessionId;
     }
 
+    /**
+     * See {@link GameAdapter.createPlayer}. Throws `STAGE_INVALID` once a
+     * session already has two players; stocks the new player's ship catalog
+     * from {@link EDITION_SHIP_SIZES} and advances the session to
+     * WAITING_FOR_PLAYERS or PREPARATION depending on player count.
+     */
     async createPlayer(sessionId: string, name: string): Promise<ResponseCreatedPlayerDto> {
         const session = this.requireSession(sessionId, "createPlayer");
 
@@ -228,20 +236,30 @@ export class MockGameAdapter implements GameAdapter {
         return {playerId, playerName: name};
     }
 
+    /** See {@link GameAdapter.getStage}. Throws `SESSION_NOT_FOUND` if the session doesn't exist. */
     async getStage(sessionId: string): Promise<string> {
         return this.requireSession(sessionId, "getStage").stage;
     }
 
+    /** See {@link GameAdapter.getChangeTime}. Returns the session's internal `changeCounter`, bumped by every mutating call. */
     async getChangeTime(sessionId: string): Promise<string> {
         return String(this.requireSession(sessionId, "getChangeTime").changeCounter);
     }
 
+    /** See {@link GameAdapter.getPreparationState}. Ship list excludes already-placed ships; field is a defensive clone. */
     async getPreparationState(sessionId: string, playerId: string): Promise<ResponsePreparationState> {
         const {player} = this.requirePlayer(sessionId, playerId, "getPreparationState");
         const remainingShips = player.ships.filter(s => !player.placedShips.has(s.shipId));
         return {ships: remainingShips, field: cloneField(player.field)};
     }
 
+    /**
+     * See {@link GameAdapter.addShip}. Validates the shipId belongs to the
+     * player's catalog and isn't already placed (`SHIP_ID_INVALID`), and that
+     * every resulting cell is in bounds and outside the moat of existing
+     * ships (`COORDINATE_INVALID`), before recomputing the field via
+     * {@link rebuildFieldFromShips}.
+     */
     async addShip(sessionId: string, playerId: string, shipId: string, at: Coordinate, dir: ShipDirection): Promise<ResponseShipAddedDto> {
         const {session, player} = this.requirePlayer(sessionId, playerId, "addShip");
 
@@ -286,6 +304,11 @@ export class MockGameAdapter implements GameAdapter {
         return {shipId};
     }
 
+    /**
+     * See {@link GameAdapter.removeShip}. Returns `{deleted: false}` (no
+     * throw) if no ship occupies `at`; on success, un-readies the player,
+     * mirroring the real engine's ready-reset behavior.
+     */
     async removeShip(sessionId: string, playerId: string, at: Coordinate): Promise<ResponseShipRemovedDto> {
         const {session, player} = this.requirePlayer(sessionId, playerId, "removeShip");
 
@@ -309,6 +332,7 @@ export class MockGameAdapter implements GameAdapter {
         return {deleted: true};
     }
 
+    /** See {@link GameAdapter.getOpponent}. Returns an empty/not-ready placeholder if no second player has joined yet. */
     async getOpponent(sessionId: string, playerId: string): Promise<ResponseOpponentInformationDto> {
         const {opponent} = this.requirePlayerAndOpponent(sessionId, playerId, "getOpponent");
         if (!opponent) {
@@ -317,6 +341,11 @@ export class MockGameAdapter implements GameAdapter {
         return {playerName: opponent.playerName, ready: opponent.ready};
     }
 
+    /**
+     * See {@link GameAdapter.setReady}. Throws `STAGE_INVALID` unless every
+     * catalog ship has been placed; transitions the session to IN_GAME (with
+     * player 0 going first) once both players are ready.
+     */
     async setReady(sessionId: string, playerId: string): Promise<ResponsePlayerReady> {
         const {session, player} = this.requirePlayer(sessionId, playerId, "setReady");
 
@@ -340,6 +369,12 @@ export class MockGameAdapter implements GameAdapter {
         return {ready: player.ready};
     }
 
+    /**
+     * See {@link GameAdapter.getGameState}. Throws `STAGE_INVALID` if no
+     * opponent has joined; the opponent's field is filtered through
+     * {@link opponentVisibleField} so unshot ship positions stay hidden
+     * unless the game has finished.
+     */
     async getGameState(sessionId: string, playerId: string): Promise<ResponseGameplayStateDto> {
         const {session, player, opponent} = this.requirePlayerAndOpponent(sessionId, playerId, "getGameState");
         if (!opponent) {
@@ -370,6 +405,13 @@ export class MockGameAdapter implements GameAdapter {
         };
     }
 
+    /**
+     * See {@link GameAdapter.shoot}. Validates opponent presence, IN_GAME
+     * stage, turn ownership (`PLAYER_NOT_ACTIVE`), bounds, and that the cell
+     * hasn't already been shot (`CELL_ALREADY_SHOT`). Turn passes to the
+     * opponent only on a miss (a hit grants another shot); sets `hasWinner`
+     * and stage FINISHED once the opponent's last ship is sunk.
+     */
     async shoot(sessionId: string, playerId: string, at: Coordinate): Promise<ResponseShotResultDto> {
         const {session, player, opponent} = this.requirePlayerAndOpponent(sessionId, playerId, "shoot");
         if (!opponent) {
