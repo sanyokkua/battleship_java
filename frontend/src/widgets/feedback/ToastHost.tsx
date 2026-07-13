@@ -16,6 +16,10 @@ export function toastAriaRole(variant: ToastData['variant']): 'status' | 'alert'
     return variant === 'err' ? 'alert' : 'status';
 }
 
+/**
+ * Wraps a single toast's content in the live-region `role` computed by
+ * {@link toastAriaRole}, so screen readers announce it with the right urgency.
+ */
 export function ToastHost({toast, children}: { toast: ToastData; children: ReactNode }) {
     return (
         <div role={toastAriaRole(toast.variant)}>

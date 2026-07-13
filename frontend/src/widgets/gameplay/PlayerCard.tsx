@@ -15,9 +15,6 @@ export type PlayerCardProps = {
 };
 
 /**
- * Ported from MOCKUP.html's `.player-card.you`/`.foe` (teal/red left border): a
- * `who` row (name + badge/turn-pill) and a stat row with cells + ships mini-bars.
- *
  * Mini-bar color: a simple three-tier health color (green ≥60%, gold ≥30%, red
  * below) rather than a single flat color — a reasonable UX addition beyond the
  * mockup's hard-coded per-instance colors, cheap to compute from `cellsPercent`
@@ -29,6 +26,10 @@ function healthColor(percent: number): string {
     return 'var(--hit)';
 }
 
+/**
+ * Ported from MOCKUP.html's `.player-card.you`/`.foe` (teal/red left border): a
+ * `who` row (name + badge/turn-pill) and a stat row with cells + ships mini-bars.
+ */
 export function PlayerCard({
                                variant,
                                name,

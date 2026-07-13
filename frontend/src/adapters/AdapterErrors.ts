@@ -31,6 +31,12 @@ export class GameAdapterError extends Error {
     }
 }
 
+/**
+ * Type guard narrowing an unknown caught value to `GameAdapterError`.
+ *
+ * @param e - the caught value to test, typically from a `catch` block.
+ * @returns true if `e` is a `GameAdapterError` instance, false otherwise.
+ */
 export function isGameAdapterError(e: unknown): e is GameAdapterError {
     return e instanceof GameAdapterError;
 }
