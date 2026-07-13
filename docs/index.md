@@ -3,9 +3,9 @@ service_name: "battleship_java"
 service_id: "battleship-java"
 domain: "Game Engine / Turn-Based Multiplayer"
 owner: "Oleksandr Kostenko"
-stack: "Java 17, Spring Boot 3.3.5 (backend); Create React App + TypeScript (frontend)"
+stack: "Java 25, Spring Boot 4.1.0 (backend); Vite + React 19 + TypeScript (frontend)"
 project_type: "Web service (REST backend + bundled SPA frontend)"
-last_updated: "2026-07-11"
+last_updated: "2026-07-13"
 ---
 
 # battleship_java
@@ -13,11 +13,13 @@ last_updated: "2026-07-11"
 > An educational two-player Battleship game: a Java/Spring Boot REST API driving a game engine,
 > served together with a React/TypeScript single-page frontend in one runnable JAR.
 
-This document describes the **current, as-built system** on branch `feature/redesign-v2`. It does
-**not** describe the in-progress v2 rewrite — that plan lives in
-[`docs/redesign/README.md`](redesign/README.md) as a separate, frozen specification (new frontend
-stack, Java/Spring Boot version bump). See [§13 Additional Notes](#13-additional-notes) for how the
-two relate.
+This document describes the **current, as-built system** on branch `feature/redesign-v2` — the
+shipped result of the v2 modernization (Java 25 + Spring Boot 4.1.0 backend, Vite + React 19
+frontend, Docker/Podman packaging). This branch is not yet merged to `master`. The plan that was
+executed to get here lives in [`docs/redesign/README.md`](redesign/README.md); see
+[`docs/redesign/IMPLEMENTATION_PLAN.md`'s changelog](redesign/IMPLEMENTATION_PLAN.md#changelog--decisions-append-during-execution)
+for what shipped in each of the 11 phases. See [§13 Additional Notes](#13-additional-notes) for
+remaining known gaps.
 
 ## 1. Service Identity Card
 
@@ -29,7 +31,7 @@ two relate.
 | **Domain** | Game engine / turn-based multiplayer (educational project — not for production use) |
 | **Keywords & Synonyms** | Battleship, Sea Battle, Морський бій; "session" = one game instance; "edition" = ruleset |
 | **Owner / Team** | Oleksandr Kostenko (sole contributor per git history) |
-| **Technology Stack** | Java 17 + Spring Boot 3.3.5 (Web MVC, Lombok, springdoc-openapi) backend; Create React App (react-scripts 5.0.1) + TypeScript + Bootstrap/react-bootstrap frontend; Maven (`frontend-maven-plugin` + `maven-resources-plugin`) bundles the frontend build into the Spring Boot JAR |
+| **Technology Stack** | Java 25 + Spring Boot 4.1.0 (Web MVC, Lombok, springdoc-openapi) backend; Vite + React 19 + TypeScript + a custom CSS design system frontend; i18next (en/uk) for UI copy; Maven (`frontend-maven-plugin` + `maven-resources-plugin`) bundles the frontend build into the Spring Boot JAR; Docker/Podman packaging (`eclipse-temurin:25-jre` runtime image) |
 | **Repository** | `git@github.com:sanyokkua/battleship_java.git` (default branch `master`; this doc reflects branch `feature/redesign-v2`) |
 
 ---
@@ -37,17 +39,18 @@ two relate.
 ## 2. Architecture Overview
 
 The system is a single deployable JAR containing a React SPA served as static content and a
-layered Spring Boot backend. The frontend never talks to the backend except through
-`BackendRequestService` (axios); the backend is layered strictly REST Controller → API/Service →
-Engine → Persistence, with no Spring MVC types leaking below the controller layer
-(`GameControllerApiImpl` is verified free of `@RequestParam`/`ResponseEntity`/etc.). There is no
-database — game state lives entirely in an in-process `HashMap`, so the app is single-instance
-only by design.
+layered Spring Boot backend. Frontend widgets/screens never talk to the backend directly — every
+call goes through the `GameAdapter` port, implemented by `HttpGameAdapter` (axios under the hood)
+for real use and `MockGameAdapter` for tests/`dev:mock`; the backend is layered strictly REST
+Controller → API/Service → Engine → Persistence, with no Spring MVC types leaking below the
+controller layer (`GameControllerApiImpl` is verified free of `@RequestParam`/`ResponseEntity`/etc.).
+There is no database — game state lives entirely in an in-process `HashMap`, so the app is
+single-instance only by design.
 
 ```mermaid
 flowchart LR
     browser["Browser<br/>React SPA"]
-    brs["BackendRequestService<br/>#40;axios#41;"]
+    brs["HttpGameAdapter<br/>#40;GameAdapter port, axios#41;"]
     sessionCtrl["GameSessionCommonRestController"]
     prepCtrl["PreparationRestController"]
     playCtrl["GameplayRestController"]
@@ -144,24 +147,24 @@ project is deliberately self-contained (see [§7](#7-external-services--dependen
 A full game, from creation to a finished match, flows entirely through in-process calls — nothing
 ever leaves the JVM:
 
-1. **Create session** — `HomePage` → `NewGamePage` calls `POST /sessions` with a `GameEdition`;
+1. **Create session** — `HomeScreen` → `NewGameScreen` calls `POST /sessions` with a `GameEdition`;
    `GameControllerApiImpl` generates a `sessionId` (`IdGeneratorImpl#generateId`, UUID v4) and
    writes an `INITIALIZED` `GameState` via `InMemoryPersistence#save`.
-2. **Join** — the creator (and later the second player, via `JoinGamePage`) each call
+2. **Join** — the creator (and later the second player, via `JoinGameScreen`) each call
    `POST /sessions/{id}/players`; `GameImpl#createPlayer` adds a `Player`, and the session
    transitions `INITIALIZED → WAITING_FOR_PLAYERS` (after player 1) then
    `WAITING_FOR_PLAYERS → PREPARATION` (after player 2).
-3. **Prepare ships** — `PreparationPage` repeatedly calls `PUT .../ships/{shipId}` /
+3. **Prepare ships** — `PreparationScreen` repeatedly calls `PUT .../ships/{shipId}` /
    `DELETE .../ships`, driven by `FieldManagementImpl#addShip`/`#removeShip`, which enforce bounds
    and the 8-neighbor no-touching rule. Once a player has placed every ship, `POST .../start` marks
    them ready; the first player to do so also becomes the active player
    (`GameImpl#changePlayerStatusToReady`); once both are ready, the session transitions
    `PREPARATION → IN_GAME`.
-4. **Shoot** — `GameplayPage` calls `POST .../field/shot`; `FieldManagementImpl#makeShot` resolves
+4. **Shoot** — `GameplayScreen` calls `POST .../field/shot`; `FieldManagementImpl#makeShot` resolves
    MISS/HIT/DESTROYED, revealing neighbor cells on a sink. `GameImpl#updateGameState` checks both
    players' remaining ship counts after every shot and transitions `IN_GAME → FINISHED` the moment
    either side has zero ships left.
-5. **Finish** — `FinishPage` reads the terminal `GameplayState` (winner, both final boards) via
+5. **Finish** — `ResultsScreen` reads the terminal `GameplayState` (winner, both final boards) via
    `GET .../state`.
 
 Every step re-reads and re-writes the same `GameState` record through
@@ -396,13 +399,16 @@ apply in every environment.
 
 ```
 battleship_java/
-├── pom.xml                         # Java 17 / Spring Boot 3.3.5; binds frontend-maven-plugin
+├── pom.xml                         # Java 25 / Spring Boot 4.1.0; binds frontend-maven-plugin
+├── Dockerfile                      # multi-stage build → eclipse-temurin:25-jre runtime
+├── docker-compose.yml
+├── .dockerignore
 ├── README.md
 ├── docs/
 │   ├── index.md                    # this file
 │   ├── architecture.md             # deeper diagrams
 │   ├── img/                        # README screenshots
-│   └── redesign/                   # frozen v2 spec — see docs/redesign/README.md
+│   └── redesign/                   # v2 modernization plan this branch executed — see docs/redesign/README.md
 ├── src/
 │   ├── main/java/ua/kostenko/battleship/battleship/
 │   │   ├── logic/
@@ -416,13 +422,16 @@ battleship_java/
 │   │       └── config/             # BeansConfiguration
 │   ├── main/resources/
 │   │   └── application.properties
-│   └── test/java/...                # mirrors main package layout
-└── frontend/                        # CRA + TypeScript SPA (pre-redesign)
+│   └── test/java/...                # mirrors main package layout, incl. MockMvc REST-controller tests
+└── frontend/                        # Vite + React 19 + TypeScript SPA
     └── src/
-        ├── ui/pages/                 # 7 pages (Home, NewGame, JoinGame, WaitForPlayers, Preparation, Gameplay, Finish)
-        ├── ui/elements/              # forms, preparation grid, gameplay grid
-        ├── services/                 # BackendRequestService (axios), GameBrowserStorage (localStorage)
-        ├── utils/                    # GameUtils, StringUtils
+        ├── adapters/                 # GameAdapter port + HttpGameAdapter (axios) / MockGameAdapter
+        ├── screens/                  # 7 screens (Home, NewGame, JoinGame, Wait, Preparation, Gameplay, Results)
+        ├── widgets/                  # board/, preparation/, gameplay/, feedback/, layout/ feature UI
+        ├── hooks/                    # usePreparation, useGameplay, useWaitRoom, usePolling, useSessionGuard
+        ├── routing/                  # AppRoutes, StageGuard
+        ├── design/                   # custom CSS design system (tokens + components)
+        ├── i18n/, i18n-support/      # i18next locales (en, uk) and name lookups
         └── logic/                    # ApplicationTypes.ts (DTO/domain types)
 ```
 
@@ -431,10 +440,10 @@ battleship_java/
 | Aspect | Details |
 |---|---|
 | **Build Tool** | Maven (backend) + npm (frontend), orchestrated by `frontend-maven-plugin` |
-| **Build Command** | `mvn clean install` — installs Node v16.17.0, runs `npm run build` in `frontend/` during the `compile` phase, then copies `frontend/build` into `target/classes/static` |
-| **Test Command** | `mvn test` (backend); `mvn test -Dtest=ClassName#methodName` for a single test; frontend: `npm test` (from `frontend/`) |
-| **Run Command** | `mvn spring-boot:run` → serves at `http://localhost:8080`; Swagger UI at `/swagger-ui.html` |
-| **Container** | **None yet** — no `Dockerfile` exists in this branch. Docker packaging is v2-redesign scope; see `docs/redesign/README.md`. |
+| **Build Command** | `mvn clean install` — installs Node v24.18.0 (pinned in `pom.xml`'s plugin config; `frontend/package.json` has no `engines` field), runs `npm run build` (`tsc && vite build`) in `frontend/` during the `compile` phase, then copies `frontend/build` into `target/classes/static` |
+| **Test Command** | `mvn test` (backend); `mvn test -Dtest=ClassName#methodName` for a single test; frontend (from `frontend/`): `npm run test` (Vitest), `npm run test:coverage`, `npm run test:e2e` (Playwright), `npm run test:e2e:live` (Playwright against a live server), `npm run lint` |
+| **Run Command** | `mvn spring-boot:run` → serves at `http://localhost:8080`; Swagger UI at `/swagger-ui.html`. Frontend dev loop: `npm run dev` or `npm run dev:mock` (no backend needed) |
+| **Container** | `docker compose up`, or `docker build -t battleship . && docker run -p 8080:8080 battleship`; Podman needs `--format docker` on the build command. Runtime image is `eclipse-temurin:25-jre`, runs as non-root UID 10001, with a `HEALTHCHECK` against `GET /api/v2/game/editions`. |
 | **CI / Pipeline** | **None** — no `.github/workflows/`, no other CI config found in the repository. |
 | **Environments** | Single environment; no profile-based config differences (see [§10](#10-configuration)) |
 
@@ -447,7 +456,7 @@ battleship_java/
 | **Feature Flags** | None found in the codebase |
 | **Functional Areas** | `#game-engine`, `#rest-api`, `#preparation`, `#gameplay`, `#persistence`, `#frontend-spa` |
 | **User-Facing Features** | New Game, Join Game, Wait for Opponent, Ship Placement, Shooting/Gameplay, Game Results |
-| **Key Code Locations** | `logic/engine/GameImpl.java` (state machine + orchestration) · `logic/engine/FieldManagementImpl.java` (placement + shot resolution) · `logic/api/impl/GameControllerApiImpl.java` (API boundary) · `web/controllers/rest/GameSessionCommonRestController.java`, `PreparationRestController.java`, `GameplayRestController.java` (REST layer) · `logic/persistence/InMemoryPersistence.java` (storage) · `frontend/src/services/BackendRequestService.ts` (all frontend↔backend calls) |
+| **Key Code Locations** | `logic/engine/GameImpl.java` (state machine + orchestration) · `logic/engine/FieldManagementImpl.java` (placement + shot resolution) · `logic/api/impl/GameControllerApiImpl.java` (API boundary) · `web/controllers/rest/GameSessionCommonRestController.java`, `PreparationRestController.java`, `GameplayRestController.java` (REST layer) · `logic/persistence/InMemoryPersistence.java` (storage) · `frontend/src/adapters/GameAdapter.ts` + `HttpGameAdapter.ts` (all frontend↔backend calls) · `frontend/src/hooks/` (per-screen polling/state) · `frontend/src/widgets/` (reusable feature UI) |
 
 ---
 
@@ -459,25 +468,23 @@ Known gaps and tech debt, verified directly against the code (not invented):
   no synchronization, `ConcurrentHashMap`, or locking. Concurrent requests touching the same
   session (e.g., both players readying up at once, or simultaneous shots) can race. `TODO: confirm`
   whether this has caused observed bugs — no incident is documented, but the risk is real under
-  concurrent load.
-- **No REST-controller integration tests.** `src/test/java/.../web/controllers/` contains only
-  `IndexControllerTest` and a `ControllerUtilsTest` — none of the three REST controllers documented
-  in [§3](#3-entry-points-inputs) have MockMvc-level tests. This matches the root `CLAUDE.md`'s
-  note that controller-level integration tests are Phase 2 redesign scope.
-- **Frontend has zero test files** despite `react-scripts` (which bundles Jest + React Testing
-  Library) being present in `package.json`. No `@testing-library/*` package is explicitly declared,
-  and no `*.test.*`/`*.spec.*` file exists anywhere under `frontend/src`.
+  concurrent load. This is unchanged by the v2 redesign — persistence was explicitly out of scope.
 - **No CORS configuration exists** — no `WebMvcConfigurer`/`addCorsMappings` bean was found. This
   is only safe because the frontend is served same-origin from the same JAR; it would need to be
   added if the frontend were ever split out.
 - **Ship direction is validated server-side, not just client-side.** `ValidationUtils#validateShipDirection`
   rejects unknown direction strings, and `FieldManagementImpl#addShip` computes the full set of
   cells the ship would occupy from the given direction and validates bounds/adjacency for all of
-  them — so enforcement is not purely a client concern, though the client (`PreparationPage`) also
-  restricts the UI to the two valid directions.
-- **No CI pipeline and no Dockerfile exist on this branch.** Both are explicitly in scope for the
-  v2 redesign (`docs/redesign/README.md`) and are not duplicated here.
+  them — so enforcement is not purely a client concern, though the client
+  (`frontend/src/widgets/preparation/DirectionToggle.tsx`) also restricts the UI to the two valid
+  directions.
+- **No CI pipeline exists on this branch** — no `.github/workflows/` directory, no other CI config
+  found anywhere in the repository.
 
-For the in-progress v2 modernization (Vite + React 19, Java 25 + Spring Boot 4.1.0, Docker
-packaging, custom CSS design system) see [`docs/redesign/README.md`](redesign/README.md) — a
-sibling plan, not summarized or duplicated in this document.
+REST-controller integration tests (`GameSessionCommonRestControllerTest`,
+`GameplayRestControllerTest`, `PreparationRestControllerTest`) and frontend automated tests
+(~44 test files across Vitest unit/component tests and Playwright e2e) were previously listed here
+as missing — both gaps are now closed as of the v2 redesign and are not repeated above. See
+[`docs/redesign/IMPLEMENTATION_PLAN.md`'s changelog](redesign/IMPLEMENTATION_PLAN.md#changelog--decisions-append-during-execution)
+for the phase-by-phase detail of what shipped, and [`docs/redesign/README.md`](redesign/README.md)
+for the full spec this branch implemented.

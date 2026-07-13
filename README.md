@@ -49,57 +49,66 @@ Full documentation of the current system lives in [`docs/`](docs/):
 - **[docs/architecture.md](docs/architecture.md)** — the `GameStage` state diagram, two sequence
   diagrams (session setup, gameplay loop), and a game-edition comparison.
 
-For the in-progress v2 modernization (new frontend stack, Java/Spring Boot version bump), see
-[`docs/redesign/README.md`](docs/redesign/README.md) — a separate, frozen plan, not yet
-implemented on `master`.
+[`docs/redesign/README.md`](docs/redesign/README.md) is the plan this branch (`feature/redesign-v2`)
+executed — it is not a separate, not-yet-implemented plan. See
+[`docs/redesign/IMPLEMENTATION_PLAN.md`'s changelog](docs/redesign/IMPLEMENTATION_PLAN.md#changelog--decisions-append-during-execution)
+for what shipped in each of the 11 phases.
 
 ## How to build and start
 
-You need pre-install Java and Maven to build the Spring boot project and run it.
+You need Java and Maven pre-installed to build and run the Spring Boot backend (Java 25,
+Spring Boot 4.1.0). If you want to run the frontend separately, Node.js is also required — the
+exact version (`v24.18.0`) is pinned only via `pom.xml`'s `frontend-maven-plugin` configuration,
+not in `frontend/package.json` (which declares no `engines` field).
 
-If you want to start a separate frontend project - Node JS is also required.
+### Full build + run
 
-Configuration of the system where the application was developed and tested:
-
-- **OS**: Mac OS Monterey 12.6.1 (Intel)
-- **Java**:
-  openjdk version "17.0.4.1" 2022-08-12
-  OpenJDK Runtime Environment Temurin-17.0.4.1+1 (build 17.0.4.1+1)
-  OpenJDK 64-Bit Server VM Temurin-17.0.4.1+1 (build 17.0.4.1+1, mixed mode, sharing)
-- **Maven**:
-  Apache Maven 3.8.6
-  Java version: 17.0.4.1, vendor: Eclipse Adoptium, runtime:
-  /Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home
-  OS name: "mac os x", version: "12.6.1", arch: "x86_64", family: "mac"
-- **NodeJS**: v16.17.0
-- **Npm**: 8.19.2
-
-Successfully tested on a new system:
-
-- **OS**: Mac OS Sequoia 15.1 (Apple Silicon M1 Pro)
-- **Java**:
-  openjdk version "21.0.5" 2024-10-15 LTS
-  OpenJDK Runtime Environment Temurin-21.0.5+11 (build 21.0.5+11-LTS)
-  OpenJDK 64-Bit Server VM Temurin-21.0.5+11 (build 21.0.5+11-LTS, mixed mode, sharing)
-- **Maven**:
-  Apache Maven 3.9.9
-  Maven home: /Users/ok/Tools/apache-maven
-  Java version: 21.0.5, vendor: Eclipse Adoptium, runtime:
-  /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home
-  Default locale: en_US, platform encoding: UTF-8
-  OS name: "mac os x", version: "15.1", arch: "aarch64", family: "mac"
-- **NodeJS**: v22.11.0
-- **Npm**: 10.9.0
-
-To build and start just run the following command and you will have the up-and-running app
-on **[localhost:8080](localhost:8080)**
+Builds the frontend (Vite) and backend together into one JAR, then starts it:
 
 ```shell
 mvn clean install && mvn spring-boot:run
 ```
 
+The app serves at **[localhost:8080](http://localhost:8080)**.
+
+### Frontend dev loop
+
+From `frontend/`:
+
+```shell
+npm install
+npm run dev        # Vite dev server against a running backend
+npm run dev:mock   # Vite dev server against the in-browser MockGameAdapter, no backend needed
+npm run build       # production build (tsc && vite build)
+```
+
+### Frontend tests
+
+From `frontend/`:
+
+```shell
+npm run test           # Vitest unit/component tests
+npm run test:coverage  # Vitest with coverage report
+npm run test:e2e       # Playwright e2e tests
+npm run test:e2e:live  # Playwright e2e against a live running server
+npm run lint            # ESLint
+```
+
+### Docker / Podman
+
+```shell
+docker compose up
+# or
+docker build -t battleship . && docker run -p 8080:8080 battleship
+```
+
+Podman needs `--format docker` since the `Dockerfile` doesn't use Containerfile-specific syntax:
+
+```shell
+podman build --format docker -t battleship . && podman run -p 8080:8080 battleship
+```
+
 ## Known Gaps
 
 See [docs/index.md §13 Additional Notes](docs/index.md#13-additional-notes) for the full,
-verified list (missing REST-controller integration tests, no frontend tests, non-thread-safe
-in-memory persistence, no CORS config, etc.).
+verified list (no CI pipeline, non-thread-safe in-memory persistence, no CORS config, etc.).

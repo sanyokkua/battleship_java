@@ -1,9 +1,13 @@
 # Architecture — battleship_java
 
 This expands on [`docs/index.md` §2](index.md#2-architecture-overview) with the `GameStage` state
-machine and two call-by-call sequence flows. It documents the **current** (pre-redesign) system on
-branch `feature/redesign-v2`; the in-progress v2 plan lives separately in
-[`docs/redesign/README.md`](redesign/README.md) and is not summarized here.
+machine and two call-by-call sequence flows. It documents the **current, shipped** system on
+branch `feature/redesign-v2` — the result of the v2 modernization plan in
+[`docs/redesign/README.md`](redesign/README.md), which is not summarized again here. The backend
+layering and the game engine's state machine were frozen invariants throughout that modernization,
+so §"Layered backend" and Diagram 1 below are unchanged from the pre-redesign system; the frontend
+structure and the two sequence diagrams have been updated to match the shipped Vite/React 19
+frontend (verified against `frontend/src/hooks/` and `frontend/src/screens/`).
 
 ## Layered backend
 
@@ -28,20 +32,35 @@ The backend is a strict top-down layering with no back-references:
 
 ## Current frontend structure
 
-`frontend/src/` is a class-component CRA app (no hooks-based rewrite yet — that is v2 scope):
+`frontend/src/` is a Vite + React 19 + TypeScript app built entirely with function components and
+hooks, following an Adapter/Widget architecture (see the tree in
+[`docs/index.md` §11.1](index.md#111-repository-layout)):
 
-- **`ui/pages/`** — one component per route (7 pages, see the routing table in
-  [`docs/index.md` §11.1](index.md#111-repository-layout)). Pages own all `setInterval` polling and
-  navigation (`<Navigate>`).
-- **`ui/elements/`** — presentational grids/forms (`PrepareField`, `GameplayField`, `ShipsList`,
-  `NewGameForm`, `JoinGameForm`, etc.), receiving data and callbacks from their parent page.
-- **`services/BackendRequestService.ts`** — the *only* place axios is used; 12 methods, one per
-  backend endpoint, with `axios-retry` configured for 3 automatic retries.
-- **`services/GameBrowserStorage.ts`** — 3 `localStorage` keys (`player_obj`, `session_str`,
-  `gameStage_str`), read once on app mount to restore an in-progress game after a page reload; none
-  are ever explicitly cleared.
-- **`utils/GameUtils.ts`** / **`utils/StringUtils.ts`** — thin async wrappers and form validation
-  (`isValidString`: length > 2).
+- **`adapters/`** — the `GameAdapter` port (interface) plus two implementations:
+  `HttpGameAdapter` (wraps the real backend calls, one method per endpoint, delegating the actual
+  axios requests to `services/BackendRequestService.ts` with `axios-retry` configured for automatic
+  retries) and `MockGameAdapter` (in-memory fake used by `npm run dev:mock` and by tests). No widget
+  or screen calls the network directly — every backend interaction goes through this port.
+- **`screens/`** — one component per route (7 screens: `HomeScreen`, `NewGameScreen`,
+  `JoinGameScreen`, `WaitScreen`, `PreparationScreen`, `GameplayScreen`, `ResultsScreen`), composed
+  from `widgets/` and driven by the `hooks/` below. Routing and stage-based redirects live in
+  `routing/AppRoutes.tsx` and `routing/StageGuard.tsx`.
+- **`hooks/`** — one polling/state hook per screen that needs it: `usePreparation` (3s poll),
+  `useWaitRoom` (3s poll, stops once the session stage moves past `WAITING_FOR_PLAYERS`),
+  `useGameplay` (5s poll, stops once the gameplay state reports a winner), `useSessionGuard`
+  (reads/validates the locally stored session/player). All are built on the shared `usePolling`
+  interval hook.
+- **`widgets/`** — reusable feature UI grouped by area: `board/` (the 10×10 grid + legend),
+  `preparation/` (ship tray, direction toggle), `gameplay/` (player card, turn banner), `feedback/`
+  (toasts, confirm dialogs, backend-error-to-i18n-key mapping), `layout/` (app bar, loading view).
+- **`design/`** — the custom CSS design system that replaced Bootstrap: design tokens
+  (`tokens.css`, `base.css`) and a small component set (`Button`, `Card`, `Field`, `Input`,
+  `LoadingBar`, `ModeCard`, `Pill`, `StepTracker`).
+- **`i18n/`** / **`i18n-support/`** — i18next configuration and `en`/`uk` locale JSON (`common`,
+  `errors`, `notifications`, `screens` namespaces), plus lookup helpers for edition/ship-type
+  display names.
+- **`services/GameBrowserStorage.ts`** — `localStorage` persistence for the in-progress
+  session/player, read on app mount (via `useSessionGuard`) to restore state after a page reload.
 
 ---
 
@@ -65,8 +84,8 @@ stateDiagram-v2
 
 ## Diagram 2 — Session setup (creation through entering PREPARATION)
 
-Covers `HomePage` → `NewGamePage`/`JoinGamePage` → session/player creation →
-`WaitForPlayersPage` polling → both browsers landing in `PREPARATION`.
+Covers `HomeScreen` → `NewGameScreen`/`JoinGameScreen` → session/player creation →
+`WaitScreen` polling (`useWaitRoom`) → both browsers landing in `PreparationScreen`.
 
 ```mermaid
 sequenceDiagram
@@ -78,32 +97,43 @@ sequenceDiagram
     api-->>p1: sessionId #40;201#41;
     p1->>api: POST /sessions/#123;id#125;/players #40;name#41;
     api-->>p1: playerId1 #40;201#41;
-    p1->>p1: Navigate to WaitForPlayersPage
+    p1->>p1: Navigate to WaitScreen
 
-    loop every 3s until opponent joins
+    loop every 3s until stage leaves WAITING_FOR_PLAYERS
         p1->>api: GET .../players/#123;p1#125;/opponent
-        api-->>p1: opponent not yet joined
+        p1->>api: GET .../state #40;stage#41;
+        api-->>p1: opponent not yet joined, stage#58; WAITING_FOR_PLAYERS
     end
 
     p2->>api: POST /sessions/#123;id#125;/players #40;name#41;
     api-->>p2: playerId2 #40;201#41;
-    p2->>p2: Navigate directly to PreparationPage
+    p2->>p2: Navigate to WaitScreen
+    p2->>api: GET .../players/#123;p2#125;/opponent
+    p2->>api: GET .../state #40;stage#41;
+    api-->>p2: stage#58; PREPARATION #40;already past waiting#41;
+    p2->>p2: navigate to PreparationScreen
 
     p1->>api: GET .../players/#123;p1#125;/opponent
-    api-->>p1: opponent.playerName populated
-    p1->>p1: stop polling, wait 3s, then navigate to PreparationPage
+    p1->>api: GET .../state #40;stage#41;
+    api-->>p1: opponent.playerName populated, stage#58; PREPARATION
+    p1->>p1: stop polling, navigate to PreparationScreen
 ```
 
-Note the asymmetry: player 1 waits on `WaitForPlayersPage` and polls every 3 seconds; player 2
-(the joiner) skips straight to `PreparationPage` since by definition the session already has both
-players once they join.
+Both players route through `WaitScreen`/`useWaitRoom`, which polls the opponent-info and stage
+endpoints together every 3 seconds (immediately on mount, then every 3s) and stops as soon as the
+stage is `PREPARATION` or later. In practice this still produces the same asymmetry as before:
+player 1 (the creator) genuinely waits through one or more 3-second polls, while player 2 (the
+joiner) sees `PREPARATION` on its very first, immediate poll — since by definition the session
+already has both players once they join — and passes through `WaitScreen` almost instantly rather
+than rendering it for a full interval.
 
 ---
 
 ## Diagram 3 — Gameplay loop (ship placement/ready through a finished game)
 
-Covers `PreparationPage` ship placement/ready, the transition into `GameplayPage`, a shot and its
-result, the 5-second `changesTime` poll, and the transition to `FinishPage` on a winner.
+Covers `PreparationScreen` ship placement/ready (`usePreparation`), the transition into
+`GameplayScreen`, a shot and its result, the 5-second gameplay-state poll (`useGameplay`), and the
+transition to `ResultsScreen` on a winner.
 
 ```mermaid
 sequenceDiagram
@@ -117,32 +147,36 @@ sequenceDiagram
     opp->>api: POST .../players/#123;opp#125;/start
     api-->>opp: ready#61;true
     Note over api: PREPARATION to IN_GAME #40;both ready#41;
-    act->>act: Navigate to GameplayPage
+    act->>act: Navigate to GameplayScreen
 
     act->>api: POST .../field/shot #40;row, col#41;
     api-->>act: shotResult#58; MISS
+    act->>api: GET .../players/#123;act#125;/state #40;immediate refetch after the shot#41;
 
-    loop opponent polls every 5s while waiting for their turn
-        opp->>api: GET .../changesTime
-        api-->>opp: lastId unchanged
+    loop opponent polls every 5s #40;useGameplay#41; while waiting for their turn
+        opp->>api: GET .../players/#123;opp#125;/state
+        api-->>opp: isPlayerActive#58; false
     end
-    opp->>api: GET .../changesTime
-    api-->>opp: lastId changed
     opp->>api: GET .../players/#123;opp#125;/state
     api-->>opp: isPlayerActive#58; true
 
     opp->>api: POST .../field/shot #40;row, col#41;
     api-->>opp: shotResult#58; DESTROYED #40;opponent#39;s last ship#41;
+    opp->>api: GET .../players/#123;opp#125;/state #40;immediate refetch#41;
     api-->>opp: hasWinner#58; true
-    opp->>opp: Navigate to FinishPage
+    opp->>opp: Navigate to ResultsScreen
     act->>api: GET .../players/#123;act#125;/state
     api-->>act: hasWinner#58; true, winnerPlayerName
-    act->>act: Navigate to FinishPage
+    act->>act: Navigate to ResultsScreen
 ```
 
-`GameplayPage`'s poll is suspended whenever the local player scores a `HIT`/`DESTROYED` (they keep
-shooting immediately, no poll needed) and resumes on a `MISS` or once it becomes the opponent's
-turn — see `frontend/src/ui/pages/GameplayPage.tsx`.
+`useGameplay` polls the full `GET .../players/{playerId}/state` endpoint every 5 seconds
+unconditionally (there is no separate cheap `changesTime` pre-check in the current frontend — it
+polls the same state endpoint the whole time) and stops only once that state reports a winner. It
+does not specially suspend polling on a `HIT`/`DESTROYED`; instead, every `shoot()` call
+synchronously refetches state right after the shot resolves, which is what makes chained shots on a
+`HIT` feel instant regardless of the 5-second interval — see `frontend/src/hooks/useGameplay.ts`
+and `frontend/src/screens/GameplayScreen.tsx`.
 
 ---
 

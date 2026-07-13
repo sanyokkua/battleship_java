@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Battleship game (educational project) — Java 17 + Spring Boot 3.3.5 REST/MVC backend, React + TypeScript (CRA) frontend in `frontend/`, bundled together into one runnable JAR. A rewrite of a prior [Python version](https://github.com/sanyokkua/battleship_py).
+Battleship game (educational project) — Java 25 + Spring Boot 4.1.0 REST/MVC backend, Vite + React 19 + TypeScript frontend in `frontend/`, bundled together into one runnable JAR. A rewrite of a prior [Python version](https://github.com/sanyokkua/battleship_py).
 
-**This repo is mid-redesign.** `docs/redesign/` (start with `docs/redesign/README.md`) is the single source of truth for an in-progress v2 modernization tracked on this branch. Read it before making backend or frontend changes — see "Active redesign" below.
+**This repo is mid-redesign.** `docs/redesign/` (start with `docs/redesign/README.md`) is the plan this branch (`feature/redesign-v2`) has been executing — all 11 phases are implemented on this branch (not yet merged to `master`). Read it before making backend or frontend changes — see "Active redesign" below for the ground rules that still constrain work here.
 
 ## Build, Run, Test
 
@@ -15,9 +15,10 @@ Battleship game (educational project) — Java 17 + Spring Boot 3.3.5 REST/MVC b
 - Backend tests (all): `mvn test`
 - Single test class: `mvn test -Dtest=ClassName`
 - Single test method: `mvn test -Dtest=ClassName#methodName`
-- Frontend only, from `frontend/`: `npm start` (dev server), `npm run build`, `npm test`
+- Frontend, from `frontend/`: `npm run dev` (Vite dev server against a running backend), `npm run dev:mock` (Vite dev server against `MockGameAdapter`, no backend needed), `npm run build` (`tsc && vite build`), `npm run preview`, `npm run test` (Vitest), `npm run test:coverage`, `npm run test:e2e` (Playwright), `npm run test:e2e:live` (Playwright against a live server), `npm run lint`
+- Container: `docker compose up`, or `docker build -t battleship . && docker run -p 8080:8080 battleship` (Podman needs `--format docker` on the build command)
 
-`mvn clean install` runs `frontend-maven-plugin` (installs Node v16.17.0, runs `npm run build` in `frontend/`) during the `compile` phase, then `maven-resources-plugin` copies `frontend/build` into `target/classes/static` and `index.html` into `target/classes/templates`. A full Maven build always builds the frontend too — there's no way to build backend-only and skip the frontend step short of editing the POM.
+`mvn clean install` runs `frontend-maven-plugin` (installs Node v24.18.0 — pinned in `pom.xml`'s plugin config, not in `frontend/package.json`, which has no `engines` field — and runs `npm run build` in `frontend/`) during the `compile` phase, then `maven-resources-plugin` copies `frontend/build` into `target/classes/static` and `index.html` into `target/classes/templates`. A full Maven build always builds the frontend too — there's no way to build backend-only and skip the frontend step short of editing the POM.
 
 ## Backend architecture
 
@@ -31,25 +32,31 @@ Base package `ua.kostenko.battleship.battleship`, layered as REST Controller →
 
 Conventions used throughout: interface + `*Impl` pairs (`Game`/`GameImpl`, `FieldManagement`/`FieldManagementImpl`, `IdGenerator`/`IdGeneratorImpl`), constructor DI via Lombok `@RequiredArgsConstructor`, immutable records for value objects, DTOs built via static `from(...)` factory methods.
 
-Backend tests (JUnit 5 + Mockito + AssertJ + MockMvc via `spring-boot-starter-test`) mirror the main package layout under `src/test/java/...`. There are currently no REST-controller-level integration tests — see redesign Phase 2 below.
+Backend tests (JUnit 5 + Mockito + AssertJ + MockMvc via `spring-boot-starter-test`) mirror the main package layout under `src/test/java/...`, and now include REST-controller-level integration tests (`GameSessionCommonRestControllerTest`, `GameplayRestControllerTest`, `PreparationRestControllerTest`).
 
-## Frontend (current state, pre-redesign)
+## Frontend (current state, shipped v2)
 
-`frontend/` is a Create React App (`react-scripts` 5.0.1) TypeScript app: class components, `setInterval`-based polling (Preparation every 3s, Gameplay every 5s), direct axios calls from `services/BackendRequestService.ts`, `localStorage` via `services/GameBrowserStorage.ts`, Bootstrap/react-bootstrap for styling. Pages: `HomePage`, `NewGamePage`, `JoinGamePage`, `WaitForPlayersPage`, `PreparationPage`, `GameplayPage`, `FinishPage`. This entire layer is being replaced — see below.
+`frontend/` is a Vite + React 19 + TypeScript app: function components + hooks, `setInterval`-based polling (Preparation every 3s, Gameplay every 5s — unchanged from pre-redesign), a custom CSS design system under `design/` (Bootstrap dropped), and i18next (`i18n/`, `en`/`uk` locales) for all UI copy. Key structure:
+
+- `adapters/` — the `GameAdapter` port and its two implementations: `HttpGameAdapter` (real backend calls) and `MockGameAdapter` (used by `npm run dev:mock` and tests). Widgets and screens never call the network directly — everything goes through this port.
+- `screens/` — one component per route: `HomeScreen`, `NewGameScreen`, `JoinGameScreen`, `WaitScreen`, `PreparationScreen`, `GameplayScreen`, `ResultsScreen`.
+- `widgets/` — reusable feature UI grouped by area: `board/` (Board, BoardCell, BoardTabs, Legend), `preparation/` (ShipTray, ShipItem, DirectionToggle), `gameplay/` (PlayerCard, TurnBanner), `feedback/` (Toast, ConfirmDialog, error mapping), `layout/` (AppBar, LoadingView).
+- `hooks/` — `usePreparation`, `useGameplay`, `useWaitRoom`, `usePolling`, `useSessionGuard` encapsulate polling/state logic per screen.
+- `routing/` — `AppRoutes` + `StageGuard` (redirects based on the session's `GameStage`).
+- `design/` — the CSS design system: tokens (`tokens.css`, `base.css`) and components (`Button`, `Card`, `Field`, `Input`, `LoadingBar`, `ModeCard`, `Pill`, `StepTracker`).
+- `i18n-support/` — edition/ship-type name lookups feeding the i18next translations.
 
 ## Active redesign (branch `feature/redesign-v2`)
 
-`docs/redesign/` is the authoritative plan for an in-progress modernization; read `docs/redesign/README.md` first — it indexes `SPECIFICATION.md`, `MOCKUP.html`, `IMPLEMENTATION_PLAN.md`, `TESTING_PLAN.md`, `PHASE_BOOTSTRAP_PROMPT.md` and lists the 11 execution-order phases. Ground rules that apply to every phase:
+`docs/redesign/` is the plan this branch executed — all 11 phases are implemented here (this branch is not yet merged to `master`); read `docs/redesign/README.md` first — it indexes `SPECIFICATION.md`, `MOCKUP.html`, `IMPLEMENTATION_PLAN.md` (see its changelog for what shipped per phase), `TESTING_PLAN.md`, `PHASE_BOOTSTRAP_PROMPT.md`. The following ground rules were invariant throughout implementation and remain invariant for any further work on this branch:
 
-- **Backend REST API is frozen** — no changes to paths, verbs, request/response DTOs, or status codes.
+- **Backend REST API is frozen** — no changes to paths, verbs, request/response DTOs, or status codes, with one documented additive exception: `ExceptionDto` gained a stable `errorCode` field.
 - **Game engine logic is frozen** — the only allowed exception is a documented, regression-tested bug fix discovered during Phase 2 test-gap work.
-- **Frontend widgets never call the network directly** — all backend access goes through a `GameAdapter` port/interface (`HttpGameAdapter` for real use, `MockGameAdapter` for tests).
+- **Frontend widgets never call the network directly** — all backend access goes through the `GameAdapter` port (`HttpGameAdapter` for real use, `MockGameAdapter` for tests and `dev:mock`). Preserve this pattern for any future frontend work.
 - Visuals follow `MOCKUP.html`; data/behavior follow `SPECIFICATION.md` and the existing backend API.
-- The app must build at every phase boundary; each phase must pass its `TESTING_PLAN.md` gate before the next begins.
+- The app must build at every phase boundary; each phase passed its `TESTING_PLAN.md` gate before the next began.
 
-Target stack per the spec: Java 25 + Spring Boot 4.1.0, Vite + React 19 + TypeScript 5 (replacing CRA), a custom CSS design system (dropping Bootstrap), function components + hooks, Vitest + React Testing Library + Playwright for frontend tests, Docker/Podman packaging on `eclipse-temurin:25-jre`. Explicitly out of scope: no WebSockets/SSE, no new gameplay features, no database, no change to the existing polling model.
-
-`docs/redesign/PHASE_BOOTSTRAP_PROMPT.md` is a reusable plan-mode prompt for starting any one of the 11 phases — use it as the template when picking up redesign work.
+`docs/redesign/PHASE_BOOTSTRAP_PROMPT.md` is a reusable plan-mode prompt that was used to start each of the 11 phases — keep it as the template for any further phase-shaped work on this branch.
 
 ## Available Claude Code skills
 
