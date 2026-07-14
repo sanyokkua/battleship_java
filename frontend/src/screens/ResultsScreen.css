@@ -1,8 +1,7 @@
 /*
  * Results screen — win/lose hero, stat strip, side-by-side read-only boards.
- * Ported from MOCKUP.html's `.result-hero`/`.stat-strip`/`.boards-area`/
- * `.board-panel` rules (`.screen`, `.title`, `.sub` are shared globals from
- * design/base.css; `.board-head` is shared from widgets/board/Board.css).
+ * (`.screen`, `.title`, `.sub` are shared globals from design/base.css;
+ * `.board-head` is shared from widgets/board/Board.css).
  */
 
 .result-hero {

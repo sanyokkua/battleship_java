@@ -1,5 +1,3 @@
-/* Ported from MOCKUP.html's .mode-card and children (.mc-top/.mc-name/.mc-check/.mc-desc/.mc-ships) */
-
 .mode-card {
     display: block;
     text-align: left;

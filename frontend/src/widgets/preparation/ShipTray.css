@@ -1,5 +1,3 @@
-/* Ported from MOCKUP.html's `.fleet-panel` / `.ship-item` / `.ship-cells` / `.remove-btn` rules. */
-
 .fleet-panel h4 {
     margin: 0 0 4px;
     font-size: 14px;
@@ -100,9 +98,9 @@
     background: #fbcfd3;
 }
 
-/* SPEC §8.4 touch-target audit: the mockup's 26x26px icon button is too small
- * for a 44px mobile hit area. Desktop keeps the compact mockup sizing (mouse
- * pointer, no minimum needed); mobile grows the button itself to 44px. */
+/* Touch-target audit: the original 26x26px icon button is too small for a
+ * 44px mobile hit area. Desktop keeps the compact sizing (mouse pointer, no
+ * minimum needed); mobile grows the button itself to 44px. */
 @media (max-width: 640px) {
     .remove-btn {
         width: 44px;

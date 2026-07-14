@@ -1,7 +1,4 @@
-/* Ported from MOCKUP.html's `gameplay:()=>...` screen-render function and its
- * `.scoreboard`/`.boards-area`/`.board-panel` CSS.
- *
- * Both board panels always render in the DOM (matches this project's established
+/* Both board panels always render in the DOM (matches this project's established
  * CSS-driven-visibility convention, e.g. BoardTabs.css only `display:flex`-ing on
  * mobile) — a `.hide` class (added by the screen based on the active tab) collapses
  * the non-active panel only under the mobile breakpoint. On desktop both panels show

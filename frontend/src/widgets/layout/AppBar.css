@@ -1,8 +1,7 @@
 /*
- * AppBar — ported from MOCKUP.html's `.appbar`/`.l`/`.r`/`.lang`/`.burger`/`.navlink`
- * rules. The mockup demoes mobile/desktop via a `.mobile`/`.desktop` class toggle on a
- * device-preview wrapper; the real app instead uses a `@media (max-width: 640px)`
- * breakpoint (matching this project's convention, see widgets/board/BoardTabs.css).
+ * AppBar — `.appbar`/`.l`/`.r`/`.lang`/`.burger`/`.navlink` rules. Mobile/desktop
+ * switching uses a `@media (max-width: 640px)` breakpoint (matching this
+ * project's convention, see widgets/board/BoardTabs.css).
  */
 .appbar {
     background: var(--navy);
@@ -93,9 +92,9 @@
 }
 
 @media (max-width: 640px) {
-    /* SPEC §8.4 touch-target audit: 34px burger and 28px-tall lang buttons are
+    /* Touch-target audit: 34px burger and 28px-tall lang buttons are
      * under the 44px mobile minimum; grow them here (mobile/touch only — desktop
-     * keeps the mockup's compact inline nav sizing since it's mouse-driven). */
+     * keeps its compact inline nav sizing since it's mouse-driven). */
     .appbar .burger {
         display: grid;
         place-items: center;

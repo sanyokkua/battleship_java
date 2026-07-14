@@ -1,6 +1,5 @@
-/* Ported from MOCKUP.html's `loading:()=>...` screen-render function:
- * top .topbar-progress (LoadingBar) + centered .hero-illust with a bounce
- * animation, h2.title and .sub below it (see design/base.css for the
+/* Loading view: top .topbar-progress (LoadingBar) + centered .hero-illust with a
+ * bounce animation, h2.title and .sub below it (see design/base.css for the
  * shared h2.title / .sub typography conventions). */
 
 .loading-view-body {

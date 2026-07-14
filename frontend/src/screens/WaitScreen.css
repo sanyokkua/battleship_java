@@ -1,6 +1,5 @@
-/* Ported from MOCKUP.html's `wait:()=>...` screen-render function: StepTracker,
- * a centered hero icon, greeting, and a card with the share-box (Game ID + Copy)
- * and an animated "waiting for opponent" dots indicator. */
+/* Wait screen: StepTracker, a centered hero icon, greeting, and a card with the
+ * share-box (Game ID + Copy) and an animated "waiting for opponent" dots indicator. */
 
 .wait-screen {
     max-width: 460px;

@@ -15,10 +15,10 @@ export type ShipItemProps = {
 };
 
 /**
- * One row in the fleet tray — ported from MOCKUP.html's `.ship-item` (name + size,
- * a strip of cell-count "chips", and, when placed, a ✕ remove button). `active`/`placed`
- * toggle the mockup's `.ship-item.active`/`.placed` visual states. Unplaced ships are
- * clickable (select for placement); placed ships show a remove button instead and are
+ * One row in the fleet tray: name + size, a strip of cell-count "chips", and,
+ * when placed, a ✕ remove button. `active`/`placed` toggle the
+ * `.ship-item.active`/`.placed` visual states. Unplaced ships are clickable
+ * (select for placement); placed ships show a remove button instead and are
  * not clickable for selection.
  */
 export function ShipItem({ship, cellLabel, removeLabel, onSelect, onRemove}: ShipItemProps) {

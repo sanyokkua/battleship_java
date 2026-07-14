@@ -14,10 +14,9 @@ export type ShipTrayProps = {
 };
 
 /**
- * Fleet tray card — ported from MOCKUP.html's `.fleet-panel`: a label + hint line,
- * then one `ShipItem` per fleet entry, biggest ships first (matches the mockup's
- * fleet ordering), with placed ships sorted before unplaced ones within each same-size
- * group.
+ * Fleet tray card: a label + hint line, then one `ShipItem` per fleet entry,
+ * biggest ships first, with placed ships sorted before unplaced ones within
+ * each same-size group.
  */
 export function ShipTray({
                              ships,

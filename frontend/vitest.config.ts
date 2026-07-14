@@ -24,8 +24,8 @@ export default defineConfig({
                 "src/vite-env.d.ts",
                 "src/**/*.css",
             ],
-            // Percentage gates apply only to the areas TESTING_PLAN.md §3 calls out
-            // (adapters/hooks/utils). Screens/widgets/design are gated instead by
+            // Percentage gates apply only to adapters/hooks/utils. Screens/widgets/
+            // design are gated instead by
             // "every screen + every cell state has >=1 test" (a presence check), not
             // a coverage percentage — do not add thresholds for those here.
             thresholds: {

@@ -1,21 +1,18 @@
 /*
  * Base CSS — resets, background, typography conventions and generic layout
- * scaffolding shared across every screen. Ported from MOCKUP.html's global
- * rule-sets (body, .screen, h2.title, .sub, .card, .stack). Component-specific
- * styling lives in each component's own .css file, not here.
+ * scaffolding shared across every screen. Component-specific styling lives
+ * in each component's own .css file, not here.
  *
- * Typography convention used throughout this design system (per SPEC §8.1):
+ * Typography convention used throughout this design system:
  *   - `h2.title` — screen titles, 24px (mobile) / 30px (desktop, via a real
- *     `@media (min-width: 641px)` query — see below; the mockup's own
- *     `.desktop h2.title` is a demo-only device-preview toggle class that
- *     doesn't exist in the real app, per this project's established
+ *     `@media (min-width: 641px)` query — see below — rather than a
+ *     demo-only device-preview toggle class, per this project's established
  *     convention, e.g. widgets/board/BoardTabs.css)
  *   - `.sub`     — screen subtitles / helper copy, 14.5px, `--ink-soft`
  *   - `label.fld`/labels generally — 13.5px, semi-bold, `--ink-soft`
  *   - body text (`.card`, general prose) — 14.5–16px, `--ink`
  * These are base *element/utility* classes (not component CSS modules) because
- * they're shared scaffolding used by many screens/components alike, matching the
- * mockup's own approach of plain global classes.
+ * they're shared scaffolding used by many screens/components alike.
  */
 
 * {

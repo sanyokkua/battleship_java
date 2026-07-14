@@ -12,7 +12,7 @@ description: >
   documentation". Produces written files; it does not just navigate (defer pure overview to
   project-navigator). Boundaries: never invents endpoints/fields/behavior (marks gaps "TODO: confirm");
   never pastes secret values into docs; never commits or pushes without the user.
-tags: [documentation, architecture, service-docs, data-flow, business-logic, integrations, data-contracts, configuration, repository]
+tags: [ documentation, architecture, service-docs, data-flow, business-logic, integrations, data-contracts, configuration, repository ]
 allowed-tools: Read, Grep, Glob, Write, Edit, Bash
 references:
   - references/documentation-requirements.md
@@ -44,9 +44,9 @@ configuration, and infrastructure — accurately and from source, never invented
 
 ## This repository
 
-Single-module Maven project: Java 17 + Spring Boot 3.3.5 backend under
-`ua.kostenko.battleship.battleship` (REST Controller → API/Service → Engine → Persistence), CRA/
-TypeScript frontend in `frontend/`, bundled into one JAR (see root `CLAUDE.md` for the full
+Single-module Maven project: Java 25 + Spring Boot 4.1.0 backend under
+`ua.kostenko.battleship.battleship` (REST Controller → API/Service → Engine → Persistence), Vite +
+React 19 + TypeScript frontend in `frontend/`, bundled into one JAR (see root `CLAUDE.md` for the full
 architecture map — read that first).
 
 ## When to use
@@ -77,13 +77,13 @@ target (folder structure, `.gitignore` handling, overwrite confirmation).
    ```
 
 2. **Extract** (into `.agent-docs/` working notes regardless of final target):
-   - **Identity** (name, purpose, owners),
-   - **Entry points** (REST/RPC routes, message listeners, scheduled jobs, CLIs, webhooks — with
-     request/message shapes),
-   - **Exit points** (outbound calls, publishers, database writes, external systems),
-   - **Business logic** (each flow: entry → processing → exit, with branches/validations/errors),
-   - **External services & integrations**, **Data contracts**, **Configuration** (environment/config/
-     secret chain per environment — keys, never values).
+    - **Identity** (name, purpose, owners),
+    - **Entry points** (REST/RPC routes, message listeners, scheduled jobs, CLIs, webhooks — with
+      request/message shapes),
+    - **Exit points** (outbound calls, publishers, database writes, external systems),
+    - **Business logic** (each flow: entry → processing → exit, with branches/validations/errors),
+    - **External services & integrations**, **Data contracts**, **Configuration** (environment/config/
+      secret chain per environment — keys, never values).
 
    Read `references/documentation-requirements.md` for the per-section requirements and quality bar;
    read `references/project-structure-guide.md` for where things live per project type.
@@ -95,8 +95,8 @@ target (folder structure, `.gitignore` handling, overwrite confirmation).
    contracts → Configuration → How to run/operate. Reference specific files (`path#symbol`).
 
 4. **Finalize per target.**
-   - **`temporary`:** ensure `/.agent-docs/` is in `.gitignore` (add it if missing).
-   - **`committed`:** confirm before overwriting existing `docs/`/`README.md`; do **not** commit or push.
+    - **`temporary`:** ensure `/.agent-docs/` is in `.gitignore` (add it if missing).
+    - **`committed`:** confirm before overwriting existing `docs/`/`README.md`; do **not** commit or push.
 
 ## Mandatory validation (before finishing)
 
@@ -107,7 +107,7 @@ target (folder structure, `.gitignore` handling, overwrite confirmation).
 - [ ] No invented endpoints/fields/behavior; gaps marked "TODO: confirm".
 - [ ] No section is silently omitted (write "None"/"N/A" with a note instead).
 - [ ] Target honored: `temporary` → `.agent-docs/` is git-ignored; `committed` → `docs/`+`README.md`
-      written, nothing committed/pushed.
+  written, nothing committed/pushed.
 
 ## Output format & location
 

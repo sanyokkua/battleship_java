@@ -1,6 +1,5 @@
 /*
  * Join Game screen — name + Game ID form with inline positive validity feedback.
- * Ported from MOCKUP.html's `join:()=>...` screen-render function
  * (`.screen`, `.title`, `.sub`, `.card.stack` are shared globals defined in
  * design/base.css; `.fld` / `.field-error` from Field.css).
  */

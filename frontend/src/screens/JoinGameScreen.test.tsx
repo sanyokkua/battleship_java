@@ -73,7 +73,7 @@ describe('JoinGameScreen', () => {
 
     it('joins an existing session and navigates to /game/wait on success', async () => {
         // MockGameAdapter.createSession() returns ids like "session-1" (not UUID-shaped),
-        // but the screen's own Game ID field only accepts 36-char UUID format (per spec).
+        // but the screen's own Game ID field only accepts 36-char UUID format.
         // Seed a real session/player via the mock, then redirect createPlayer/getStage
         // calls made with the UUID typed into the field to that real, seeded session id
         // — this still exercises the full seeded MockGameAdapter session underneath.

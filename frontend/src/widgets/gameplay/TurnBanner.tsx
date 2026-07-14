@@ -6,9 +6,8 @@ export type TurnBannerProps = {
 };
 
 /**
- * Ported from MOCKUP.html's `.turn-banner`/`.turn-banner.yours` (pink vs green
- * theme). `text` is supplied by the caller — this component never calls
- * useTranslation() itself.
+ * Banner with a pink vs green theme depending on whose turn it is. `text` is
+ * supplied by the caller — this component never calls useTranslation() itself.
  */
 export function TurnBanner({isYourTurn, text}: TurnBannerProps) {
     return (

@@ -1,6 +1,5 @@
 /*
- * Design tokens — ported verbatim from the v2 mockup's `:root { ... }` block.
- * Treat these values as the canonical visual reference for the design system;
+ * Design tokens — the canonical visual reference for the design system;
  * avoid hand-editing them casually since other components depend on them.
  */
 :root {

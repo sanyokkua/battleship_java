@@ -1,5 +1,3 @@
-/* Ported from MOCKUP.html's .topbar-progress / i / @keyframes slide */
-
 .topbar-progress {
     height: 5px;
     background: var(--water-line);

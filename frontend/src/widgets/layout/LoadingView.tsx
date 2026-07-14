@@ -13,10 +13,9 @@ export type LoadingViewProps = {
  * conditionally while their initial data fetch is pending, e.g.
  * `if (loading) return <LoadingView title={...} subtitle={...} />;`.
  *
- * Ported from MOCKUP.html's `loading:()=>...` screen-render function: a
- * top LoadingBar, then a centered bouncing anchor icon, title and subtitle.
- * All text is supplied by the caller (already localized) — this component
- * never calls useTranslation() itself.
+ * Renders a top LoadingBar, then a centered bouncing anchor icon, title and
+ * subtitle. All text is supplied by the caller (already localized) — this
+ * component never calls useTranslation() itself.
  */
 export function LoadingView({title, subtitle, icon}: LoadingViewProps) {
     return (

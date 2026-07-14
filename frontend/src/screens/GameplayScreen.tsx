@@ -16,9 +16,9 @@ import {resolveErrorMessageKey} from '../widgets/feedback/errorMapping';
 import {GameAdapterError} from '../adapters/AdapterErrors';
 import './GameplayScreen.css';
 
-// Every game edition has exactly 10 ships — see MOCKUP/spec §8.3 ("edition total": 10 ships
-// either way, Ukrainian sizes 1-4 / Milton Bradley sizes 2-5). No need to derive this from
-// the API (which doesn't expose it once a session exists anyway).
+// Every game edition has exactly 10 ships (Ukrainian sizes 1-4 / Milton Bradley
+// sizes 2-5). No need to derive this from the API (which doesn't expose it once
+// a session exists anyway).
 const TOTAL_SHIPS = 10;
 
 type MaxCells = { player: number | null; opponent: number | null };

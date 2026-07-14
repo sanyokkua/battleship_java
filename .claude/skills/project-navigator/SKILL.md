@@ -11,7 +11,7 @@ description: >
   explains, it does not modify files. Boundaries: defers deep written documentation to
   project-documentation, diagram creation to mermaid, and stack-specific depth to the
   Amazon Web Services (AWS) / Oracle / Cassandra experts.
-tags: [navigation, repository, overview, tech-stack, onboarding, structure, codebase, monorepo, multi-repo]
+tags: [ navigation, repository, overview, tech-stack, onboarding, structure, codebase, monorepo, multi-repo ]
 allowed-tools: Read, Grep, Glob, Bash
 references:
   - references/project-structures.md
@@ -38,9 +38,9 @@ repository (or a folder containing several repositories) **without modifying any
 
 ## This repository
 
-Single-module Maven project: Java 17 + Spring Boot 3.3.5 backend under
-`ua.kostenko.battleship.battleship` (REST Controller → API/Service → Engine → Persistence), CRA/
-TypeScript frontend in `frontend/`, bundled into one JAR (see root `CLAUDE.md` for the full
+Single-module Maven project: Java 25 + Spring Boot 4.1.0 backend under
+`ua.kostenko.battleship.battleship` (REST Controller → API/Service → Engine → Persistence), Vite +
+React 19 + TypeScript frontend in `frontend/`, bundled into one JAR (see root `CLAUDE.md` for the full
 architecture map — read that first). Current, authoritative architecture and API documentation live
 in `docs/architecture.md` and `docs/index.md` — read those first for anything beyond this quick
 orientation.

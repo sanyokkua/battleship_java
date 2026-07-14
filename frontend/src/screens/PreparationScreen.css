@@ -1,7 +1,5 @@
-/* Ported from MOCKUP.html's `prep:()=>...` screen-render function and its
- * `.prep-grid`/`.fleet-panel`/`.board-panel` CSS rules. Two-column desktop
- * (fleet panel + direction toggle on the left, board on the right), single
- * column / stacked on mobile (tray above board) — per SPECIFICATION.md §8.4. */
+/* Two-column desktop layout (fleet panel + direction toggle on the left, board
+ * on the right), single column / stacked on mobile (tray above board). */
 
 .prep-screen-head {
     display: flex;

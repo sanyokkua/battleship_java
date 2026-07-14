@@ -4,7 +4,7 @@ import {Pill} from '../../design/components/Pill/Pill';
 export type PlayerCardProps = {
     variant: 'you' | 'foe';
     name: string;
-    isActiveTurn?: boolean; // shows a small turn-indicator pill on the foe card per mockup's ▶ badge
+    isActiveTurn?: boolean; // shows a small turn-indicator pill on the foe card
     cellsLabel: string;
     cellsValue: number;
     cellsPercent: number; // 0-100
@@ -16,9 +16,9 @@ export type PlayerCardProps = {
 
 /**
  * Mini-bar color: a simple three-tier health color (green ≥60%, gold ≥30%, red
- * below) rather than a single flat color — a reasonable UX addition beyond the
- * mockup's hard-coded per-instance colors, cheap to compute from `cellsPercent`
- * and consistent between the two cards.
+ * below) rather than a single flat color — a reasonable UX addition beyond
+ * hard-coded per-instance colors, cheap to compute from `cellsPercent` and
+ * consistent between the two cards.
  */
 function healthColor(percent: number): string {
     if (percent >= 60) return 'var(--ok)';
@@ -27,8 +27,8 @@ function healthColor(percent: number): string {
 }
 
 /**
- * Ported from MOCKUP.html's `.player-card.you`/`.foe` (teal/red left border): a
- * `who` row (name + badge/turn-pill) and a stat row with cells + ships mini-bars.
+ * Player card with a teal/red left border (you/foe): a `who` row (name +
+ * badge/turn-pill) and a stat row with cells + ships mini-bars.
  */
 export function PlayerCard({
                                variant,

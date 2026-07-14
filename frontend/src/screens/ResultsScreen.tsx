@@ -23,17 +23,15 @@ const TOTAL_SHIPS_PER_EDITION = 10;
  * Fetches the final game state once (no polling) via
  * `GameAdapter.getGameState()` through `useGameAdapter()`, renders both
  * boards read-only, and lets the player return to `HomeScreen` (clearing
- * persisted session data first). Ported from MOCKUP.html's `results:()=>...`
- * screen-render function (`.result-hero`, `.stat-strip`,
- * `.boards-area`/`.board-panel`).
+ * persisted session data first).
  *
- * SPEC §8.3 screen 8: win/lose hero from isPlayerWinner/winnerPlayerName, both
- * boards read-only, "Return to main menu". SPEC §8.5 explicitly excludes the
- * mockup's "Hits" and "Time" stats (not API-backed) — only "Ships sunk" is shown.
+ * Win/lose hero from isPlayerWinner/winnerPlayerName, both boards read-only,
+ * "Return to main menu". Excludes "Hits" and "Time" stats (not API-backed) —
+ * only "Ships sunk" is shown.
  *
  * Content gap: screens.json's `results` group has a `winSubtitle` key
  * ("{{name}} sank the entire enemy fleet.") but no distinct lose-subtitle key —
- * the mockup itself only demos the win variant. Rather than invent a new i18n
+ * only the win variant was ever built out. Rather than invent a new i18n
  * key (out of scope for this ticket, which may only create ResultsScreen.tsx),
  * we reuse `winSubtitle` with the actual winner's name for both outcomes: the
  * sentence is winner-framed and reads correctly whether you're the winner

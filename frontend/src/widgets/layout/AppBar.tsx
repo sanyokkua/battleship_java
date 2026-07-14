@@ -27,9 +27,9 @@ const IN_GAME_LINKS: NavItem[] = [
 const LEAVE_CONFIRM_STAGES = new Set(['PREPARATION', 'IN_GAME']);
 
 /**
- * Top navigation bar — ported from MOCKUP.html's `.appbar` (anchor + app name on
- * the left, a burger-collapsible nav on the right with an EN/УКР language switch).
- * Rendered once at the app shell level, above the routed screen.
+ * Top navigation bar — anchor + app name on the left, a burger-collapsible nav
+ * on the right with an EN/УКР language switch. Rendered once at the app shell
+ * level, above the routed screen.
  *
  * Session-awareness: reads the persisted session/player/stage via useSessionGuard
  * (not a live network call) to decide whether to show the in-game links

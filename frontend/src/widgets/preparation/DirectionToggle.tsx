@@ -9,10 +9,10 @@ export type DirectionToggleProps = {
 };
 
 /**
- * Inline Horizontal/Vertical placement-direction toggle — ported from MOCKUP.html's
- * `.dir-toggle` (two buttons, the active one gets the `.on` class). Labels are supplied
- * by the caller (already localized) — this widget never calls useTranslation() itself,
- * per this project's widget convention.
+ * Inline Horizontal/Vertical placement-direction toggle: two buttons, the
+ * active one gets the `.on` class. Labels are supplied by the caller (already
+ * localized) — this widget never calls useTranslation() itself, per this
+ * project's widget convention.
  */
 export function DirectionToggle({direction, onChange, horizontalLabel, verticalLabel}: DirectionToggleProps) {
     return (

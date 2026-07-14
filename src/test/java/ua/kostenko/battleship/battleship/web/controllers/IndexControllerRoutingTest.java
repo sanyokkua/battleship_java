@@ -79,6 +79,6 @@ class IndexControllerRoutingTest {
     // Note: /swagger-ui/index.html and /v3/api-docs are SpringDoc-managed and registered via SpringDoc's own
     // auto-configuration/controllers, which are not part of this @WebMvcTest slice (only IndexController and
     // GameSessionCommonRestController are loaded here). Exercising those would require a full @SpringBootTest
-    // context, which is out of scope for this controller-level test; per the ground rules in the task, this
-    // check is skipped rather than over-invested in.
+    // context, which is out of scope for this controller-level test, so this check is skipped rather than
+    // over-invested in.
 }

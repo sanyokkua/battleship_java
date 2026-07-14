@@ -220,8 +220,8 @@ class GameplayRestControllerTest {
     }
 
     /**
-     * Regression test for the Task 4 fix: shooting out of turn must surface as HTTP 400 with
-     * {@code errorCode == "PLAYER_NOT_ACTIVE"}, not as a 500 or a silently-accepted shot.
+     * Shooting out of turn must surface as HTTP 400 with {@code errorCode == "PLAYER_NOT_ACTIVE"},
+     * not as a 500 or a silently-accepted shot.
      */
     @Test
     void makeShotByField_outOfTurnShot_returns400WithPlayerNotActiveErrorCode() throws Exception {

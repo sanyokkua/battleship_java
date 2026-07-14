@@ -1,6 +1,5 @@
 /*
  * New Game screen — mode-card selection + name form.
- * Ported from MOCKUP.html's `new:()=>...` screen-render function
  * (`.screen`, `.title`, `.sub`, `.card.stack`, `.note` are shared globals
  * defined in design/base.css; `.fld` from Field.css).
  */
@@ -17,9 +16,8 @@
     margin-top: 8px;
 }
 
-/* Ported from MOCKUP.html's `.desktop .mode-cards{grid-template-columns:1fr 1fr}` —
- * the mockup keeps the screen's 460px column fixed at desktop width too, so the
- * cards go side-by-side within that column rather than the column widening. */
+/* The screen's 460px column stays fixed at desktop width too, so the cards go
+ * side-by-side within that column rather than the column widening. */
 @media (min-width: 641px) {
     .mode-cards {
         display: grid;
