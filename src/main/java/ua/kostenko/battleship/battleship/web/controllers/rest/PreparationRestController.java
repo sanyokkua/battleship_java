@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
@@ -57,31 +56,29 @@ public class PreparationRestController implements PreparationControllerApi {
     @Operation(
             summary = "Get preparation state",
             description = "Returns the ships still available to place and the player's current field. Fails if the player id is malformed, the session is unknown, or the player can't be resolved in this session.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200",
-                    description = "Current preparation state",
-                    content = @Content(schema = @Schema(implementation = ResponsePreparationState.class))),
-            @ApiResponse(responseCode = "400",
-                    description = "Invalid player id, unknown session, or player not found",
-                    content = @Content(schema = @Schema(implementation = ExceptionDto.class),
-                            examples = {
-                                    @ExampleObject(name = "playerIdInvalid", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "PLAYER_ID_INVALID" }
-                                            """),
-                                    @ExampleObject(name = "sessionNotFound", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "SESSION_NOT_FOUND" }
-                                            """),
-                                    @ExampleObject(name = "playerNotFound", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "PLAYER_NOT_FOUND" }
-                                            """)
-                            })),
-            @ApiResponse(responseCode = "500",
-                    description = "Unexpected internal error",
-                    content = @Content(schema = @Schema(implementation = ExceptionDto.class),
-                            examples = @ExampleObject(name = "internal", value = """
-                                    { "status": 500, "errorMessage": "...", "errorCode": "INTERNAL" }
-                                    """)))
-    })
+    @ApiResponse(responseCode = "200",
+            description = "Current preparation state",
+            content = @Content(schema = @Schema(implementation = ResponsePreparationState.class)))
+    @ApiResponse(responseCode = "400",
+            description = "Invalid player id, unknown session, or player not found",
+            content = @Content(schema = @Schema(implementation = ExceptionDto.class),
+                    examples = {
+                            @ExampleObject(name = "playerIdInvalid", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "PLAYER_ID_INVALID" }
+                                    """),
+                            @ExampleObject(name = "sessionNotFound", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "SESSION_NOT_FOUND" }
+                                    """),
+                            @ExampleObject(name = "playerNotFound", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "PLAYER_NOT_FOUND" }
+                                    """)
+                    }))
+    @ApiResponse(responseCode = "500",
+            description = "Unexpected internal error",
+            content = @Content(schema = @Schema(implementation = ExceptionDto.class),
+                    examples = @ExampleObject(name = "internal", value = """
+                            { "status": 500, "errorMessage": "...", "errorCode": "INTERNAL" }
+                            """)))
     @GetMapping(value = "players/{playerId}/preparationState")
     @Override
     public ResponseEntity<ResponsePreparationState> getPreparationState(
@@ -118,46 +115,44 @@ public class PreparationRestController implements PreparationControllerApi {
     @Operation(
             summary = "Place a ship on the board",
             description = "Registers a ship's coordinates and orientation for the given player during PREPARATION. Fails if the stage isn't PREPARATION, the ship id/direction/coordinate is invalid, the ship is already placed, or the placement overlaps another ship or leaves the board.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200",
-                    description = "Ship placed",
-                    content = @Content(schema = @Schema(implementation = ResponseShipAddedDto.class),
-                            examples = @ExampleObject(name = "success", value = """
-                                    { "shipId": "patrol_boat_1" }
-                                    """))),
-            @ApiResponse(responseCode = "400",
-                    description = "Invalid ship id/direction/coordinate, wrong stage, or ship already placed / overlaps",
-                    content = @Content(schema = @Schema(implementation = ExceptionDto.class),
-                            examples = {
-                                    @ExampleObject(name = "playerIdInvalid", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "PLAYER_ID_INVALID" }
-                                            """),
-                                    @ExampleObject(name = "shipIdInvalid", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "SHIP_ID_INVALID" }
-                                            """),
-                                    @ExampleObject(name = "shipDirectionInvalid", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "SHIP_DIRECTION_INVALID" }
-                                            """),
-                                    @ExampleObject(name = "coordinateInvalid", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "COORDINATE_INVALID" }
-                                            """),
-                                    @ExampleObject(name = "sessionNotFound", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "SESSION_NOT_FOUND" }
-                                            """),
-                                    @ExampleObject(name = "stageInvalid", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "STAGE_INVALID" }
-                                            """),
-                                    @ExampleObject(name = "shipAlreadyPlaced", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "SHIP_ALREADY_PLACED" }
-                                            """)
-                            })),
-            @ApiResponse(responseCode = "500",
-                    description = "Unexpected internal error (e.g. intersection resolution failure)",
-                    content = @Content(schema = @Schema(implementation = ExceptionDto.class),
-                            examples = @ExampleObject(name = "internal", value = """
-                                    { "status": 500, "errorMessage": "...", "errorCode": "INTERNAL" }
-                                    """)))
-    })
+    @ApiResponse(responseCode = "200",
+            description = "Ship placed",
+            content = @Content(schema = @Schema(implementation = ResponseShipAddedDto.class),
+                    examples = @ExampleObject(name = "success", value = """
+                            { "shipId": "patrol_boat_1" }
+                            """)))
+    @ApiResponse(responseCode = "400",
+            description = "Invalid ship id/direction/coordinate, wrong stage, or ship already placed / overlaps",
+            content = @Content(schema = @Schema(implementation = ExceptionDto.class),
+                    examples = {
+                            @ExampleObject(name = "playerIdInvalid", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "PLAYER_ID_INVALID" }
+                                    """),
+                            @ExampleObject(name = "shipIdInvalid", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "SHIP_ID_INVALID" }
+                                    """),
+                            @ExampleObject(name = "shipDirectionInvalid", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "SHIP_DIRECTION_INVALID" }
+                                    """),
+                            @ExampleObject(name = "coordinateInvalid", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "COORDINATE_INVALID" }
+                                    """),
+                            @ExampleObject(name = "sessionNotFound", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "SESSION_NOT_FOUND" }
+                                    """),
+                            @ExampleObject(name = "stageInvalid", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "STAGE_INVALID" }
+                                    """),
+                            @ExampleObject(name = "shipAlreadyPlaced", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "SHIP_ALREADY_PLACED" }
+                                    """)
+                    }))
+    @ApiResponse(responseCode = "500",
+            description = "Unexpected internal error (e.g. intersection resolution failure)",
+            content = @Content(schema = @Schema(implementation = ExceptionDto.class),
+                    examples = @ExampleObject(name = "internal", value = """
+                            { "status": 500, "errorMessage": "...", "errorCode": "INTERNAL" }
+                            """)))
     @PutMapping(value = "players/{playerId}/ships/{shipId}")
     @Override
     public ResponseEntity<ResponseShipAddedDto> addShipToField(
@@ -189,37 +184,35 @@ public class PreparationRestController implements PreparationControllerApi {
     @Operation(
             summary = "Remove a placed ship",
             description = "Removes whatever ship occupies the given coordinate for this player during PREPARATION. Fails if the player id/coordinate is invalid, the session is unknown, or the stage isn't PREPARATION.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200",
-                    description = "Removal result",
-                    content = @Content(schema = @Schema(implementation = ResponseShipRemovedDto.class),
-                            examples = @ExampleObject(name = "success", value = """
-                                    { "deleted": true }
-                                    """))),
-            @ApiResponse(responseCode = "400",
-                    description = "Invalid input, unknown session, or wrong stage",
-                    content = @Content(schema = @Schema(implementation = ExceptionDto.class),
-                            examples = {
-                                    @ExampleObject(name = "playerIdInvalid", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "PLAYER_ID_INVALID" }
-                                            """),
-                                    @ExampleObject(name = "coordinateInvalid", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "COORDINATE_INVALID" }
-                                            """),
-                                    @ExampleObject(name = "sessionNotFound", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "SESSION_NOT_FOUND" }
-                                            """),
-                                    @ExampleObject(name = "stageInvalid", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "STAGE_INVALID" }
-                                            """)
-                            })),
-            @ApiResponse(responseCode = "500",
-                    description = "Unexpected internal error",
-                    content = @Content(schema = @Schema(implementation = ExceptionDto.class),
-                            examples = @ExampleObject(name = "internal", value = """
-                                    { "status": 500, "errorMessage": "...", "errorCode": "INTERNAL" }
-                                    """)))
-    })
+    @ApiResponse(responseCode = "200",
+            description = "Removal result",
+            content = @Content(schema = @Schema(implementation = ResponseShipRemovedDto.class),
+                    examples = @ExampleObject(name = "success", value = """
+                            { "deleted": true }
+                            """)))
+    @ApiResponse(responseCode = "400",
+            description = "Invalid input, unknown session, or wrong stage",
+            content = @Content(schema = @Schema(implementation = ExceptionDto.class),
+                    examples = {
+                            @ExampleObject(name = "playerIdInvalid", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "PLAYER_ID_INVALID" }
+                                    """),
+                            @ExampleObject(name = "coordinateInvalid", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "COORDINATE_INVALID" }
+                                    """),
+                            @ExampleObject(name = "sessionNotFound", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "SESSION_NOT_FOUND" }
+                                    """),
+                            @ExampleObject(name = "stageInvalid", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "STAGE_INVALID" }
+                                    """)
+                    }))
+    @ApiResponse(responseCode = "500",
+            description = "Unexpected internal error",
+            content = @Content(schema = @Schema(implementation = ExceptionDto.class),
+                    examples = @ExampleObject(name = "internal", value = """
+                            { "status": 500, "errorMessage": "...", "errorCode": "INTERNAL" }
+                            """)))
     @DeleteMapping(value = "players/{playerId}/ships")
     @Override
     public ResponseEntity<ResponseShipRemovedDto> removeShipFromField(
@@ -247,25 +240,23 @@ public class PreparationRestController implements PreparationControllerApi {
     @Operation(
             summary = "Get opponent information",
             description = "Returns the opponent's display name and whether they've readied up. Fails if the player id is invalid, the session is unknown, or no opponent has joined yet.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200",
-                    description = "Opponent info",
-                    content = @Content(schema = @Schema(implementation = ResponseOpponentInformationDto.class))),
-            @ApiResponse(responseCode = "400",
-                    description = "Invalid player id, unknown session, or no opponent yet",
-                    content = @Content(schema = @Schema(implementation = ExceptionDto.class),
-                            examples = {
-                                    @ExampleObject(name = "playerIdInvalid", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "PLAYER_ID_INVALID" }
-                                            """),
-                                    @ExampleObject(name = "sessionNotFound", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "SESSION_NOT_FOUND" }
-                                            """),
-                                    @ExampleObject(name = "opponentNotFound", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "OPPONENT_NOT_FOUND" }
-                                            """)
-                            }))
-    })
+    @ApiResponse(responseCode = "200",
+            description = "Opponent info",
+            content = @Content(schema = @Schema(implementation = ResponseOpponentInformationDto.class)))
+    @ApiResponse(responseCode = "400",
+            description = "Invalid player id, unknown session, or no opponent yet",
+            content = @Content(schema = @Schema(implementation = ExceptionDto.class),
+                    examples = {
+                            @ExampleObject(name = "playerIdInvalid", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "PLAYER_ID_INVALID" }
+                                    """),
+                            @ExampleObject(name = "sessionNotFound", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "SESSION_NOT_FOUND" }
+                                    """),
+                            @ExampleObject(name = "opponentNotFound", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "OPPONENT_NOT_FOUND" }
+                                    """)
+                    }))
     @GetMapping(value = "players/{playerId}/opponent")
     @Override
     public ResponseEntity<ResponseOpponentInformationDto> getOpponentInformation(
@@ -290,37 +281,35 @@ public class PreparationRestController implements PreparationControllerApi {
     @Operation(
             summary = "Mark player ready to start",
             description = "Transitions the player to ready once all ships are placed. Fails if the player id is invalid, the session is unknown, the stage isn't PREPARATION, or the player still has unplaced ships.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200",
-                    description = "Player marked ready",
-                    content = @Content(schema = @Schema(implementation = ResponsePlayerReady.class),
-                            examples = @ExampleObject(name = "success", value = """
-                                    { "ready": true }
-                                    """))),
-            @ApiResponse(responseCode = "400",
-                    description = "Invalid player id, unknown session, wrong stage, or ships not all placed",
-                    content = @Content(schema = @Schema(implementation = ExceptionDto.class),
-                            examples = {
-                                    @ExampleObject(name = "playerIdInvalid", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "PLAYER_ID_INVALID" }
-                                            """),
-                                    @ExampleObject(name = "sessionNotFound", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "SESSION_NOT_FOUND" }
-                                            """),
-                                    @ExampleObject(name = "stageInvalid", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "STAGE_INVALID" }
-                                            """),
-                                    @ExampleObject(name = "shipsNotAllPlaced", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "SHIPS_NOT_ALL_PLACED" }
-                                            """)
-                            })),
-            @ApiResponse(responseCode = "500",
-                    description = "Unexpected internal error",
-                    content = @Content(schema = @Schema(implementation = ExceptionDto.class),
-                            examples = @ExampleObject(name = "internal", value = """
-                                    { "status": 500, "errorMessage": "...", "errorCode": "INTERNAL" }
-                                    """)))
-    })
+    @ApiResponse(responseCode = "200",
+            description = "Player marked ready",
+            content = @Content(schema = @Schema(implementation = ResponsePlayerReady.class),
+                    examples = @ExampleObject(name = "success", value = """
+                            { "ready": true }
+                            """)))
+    @ApiResponse(responseCode = "400",
+            description = "Invalid player id, unknown session, wrong stage, or ships not all placed",
+            content = @Content(schema = @Schema(implementation = ExceptionDto.class),
+                    examples = {
+                            @ExampleObject(name = "playerIdInvalid", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "PLAYER_ID_INVALID" }
+                                    """),
+                            @ExampleObject(name = "sessionNotFound", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "SESSION_NOT_FOUND" }
+                                    """),
+                            @ExampleObject(name = "stageInvalid", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "STAGE_INVALID" }
+                                    """),
+                            @ExampleObject(name = "shipsNotAllPlaced", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "SHIPS_NOT_ALL_PLACED" }
+                                    """)
+                    }))
+    @ApiResponse(responseCode = "500",
+            description = "Unexpected internal error",
+            content = @Content(schema = @Schema(implementation = ExceptionDto.class),
+                    examples = @ExampleObject(name = "internal", value = """
+                            { "status": 500, "errorMessage": "...", "errorCode": "INTERNAL" }
+                            """)))
     @PostMapping(value = "players/{playerId}/start")
     @Override
     public ResponseEntity<ResponsePlayerReady> startGame(

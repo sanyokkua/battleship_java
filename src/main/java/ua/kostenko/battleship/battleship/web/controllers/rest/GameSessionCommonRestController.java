@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
@@ -55,14 +54,12 @@ public class GameSessionCommonRestController implements GameSessionCommonApi {
     @Operation(
             summary = "List available game editions",
             description = "Returns the fixed set of game editions the server supports (rule sets for ship counts/board size).")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200",
-                    description = "Available editions",
-                    content = @Content(schema = @Schema(implementation = ResponseAvailableGameEditionsDto.class),
-                            examples = @ExampleObject(name = "success", value = """
-                                    { "gameEditions": ["UKRAINIAN", "MILTON_BRADLEY"] }
-                                    """)))
-    })
+    @ApiResponse(responseCode = "200",
+            description = "Available editions",
+            content = @Content(schema = @Schema(implementation = ResponseAvailableGameEditionsDto.class),
+                    examples = @ExampleObject(name = "success", value = """
+                            { "gameEditions": ["UKRAINIAN", "MILTON_BRADLEY"] }
+                            """)))
     @GetMapping("/editions")
     @Override
     public ResponseEntity<ResponseAvailableGameEditionsDto> getAvailableGameEditions() {
@@ -87,20 +84,18 @@ public class GameSessionCommonRestController implements GameSessionCommonApi {
     @Operation(
             summary = "Create a game session",
             description = "Creates a new session for the given game edition. Fails if the edition name is blank or not a recognized GameEdition.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "201",
-                    description = "Session created",
-                    content = @Content(schema = @Schema(implementation = ResponseCreatedSessionIdDto.class),
-                            examples = @ExampleObject(name = "success", value = """
-                                    { "sessionId": "abc123" }
-                                    """))),
-            @ApiResponse(responseCode = "400",
-                    description = "Invalid or unrecognized game edition",
-                    content = @Content(schema = @Schema(implementation = ExceptionDto.class),
-                            examples = @ExampleObject(name = "editionInvalid", value = """
-                                    { "status": 400, "errorMessage": "...", "errorCode": "EDITION_INVALID" }
-                                    """)))
-    })
+    @ApiResponse(responseCode = "201",
+            description = "Session created",
+            content = @Content(schema = @Schema(implementation = ResponseCreatedSessionIdDto.class),
+                    examples = @ExampleObject(name = "success", value = """
+                            { "sessionId": "abc123" }
+                            """)))
+    @ApiResponse(responseCode = "400",
+            description = "Invalid or unrecognized game edition",
+            content = @Content(schema = @Schema(implementation = ExceptionDto.class),
+                    examples = @ExampleObject(name = "editionInvalid", value = """
+                            { "status": 400, "errorMessage": "...", "errorCode": "EDITION_INVALID" }
+                            """)))
     @PostMapping("/sessions")
     @Override
     public ResponseEntity<ResponseCreatedSessionIdDto> createGameSession(
@@ -125,37 +120,35 @@ public class GameSessionCommonRestController implements GameSessionCommonApi {
     @Operation(
             summary = "Create a player in a session",
             description = "Registers a new player under the given session. Fails if the player name is blank, the session id is unknown, the session already has 2 players, or the session is not in a stage that allows joining.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "201",
-                    description = "Player created",
-                    content = @Content(schema = @Schema(implementation = ResponseCreatedPlayerDto.class),
-                            examples = @ExampleObject(name = "success", value = """
-                                    { "playerId": "p1", "playerName": "Alice" }
-                                    """))),
-            @ApiResponse(responseCode = "400",
-                    description = "Invalid player name, unknown session, session full, or wrong stage",
-                    content = @Content(schema = @Schema(implementation = ExceptionDto.class),
-                            examples = {
-                                    @ExampleObject(name = "playerNameInvalid", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "PLAYER_NAME_INVALID" }
-                                            """),
-                                    @ExampleObject(name = "sessionNotFound", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "SESSION_NOT_FOUND" }
-                                            """),
-                                    @ExampleObject(name = "sessionFull", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "SESSION_FULL" }
-                                            """),
-                                    @ExampleObject(name = "stageInvalid", value = """
-                                            { "status": 400, "errorMessage": "...", "errorCode": "STAGE_INVALID" }
-                                            """)
-                            })),
-            @ApiResponse(responseCode = "500",
-                    description = "Unexpected internal error",
-                    content = @Content(schema = @Schema(implementation = ExceptionDto.class),
-                            examples = @ExampleObject(name = "internal", value = """
-                                    { "status": 500, "errorMessage": "...", "errorCode": "INTERNAL" }
-                                    """)))
-    })
+    @ApiResponse(responseCode = "201",
+            description = "Player created",
+            content = @Content(schema = @Schema(implementation = ResponseCreatedPlayerDto.class),
+                    examples = @ExampleObject(name = "success", value = """
+                            { "playerId": "p1", "playerName": "Alice" }
+                            """)))
+    @ApiResponse(responseCode = "400",
+            description = "Invalid player name, unknown session, session full, or wrong stage",
+            content = @Content(schema = @Schema(implementation = ExceptionDto.class),
+                    examples = {
+                            @ExampleObject(name = "playerNameInvalid", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "PLAYER_NAME_INVALID" }
+                                    """),
+                            @ExampleObject(name = "sessionNotFound", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "SESSION_NOT_FOUND" }
+                                    """),
+                            @ExampleObject(name = "sessionFull", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "SESSION_FULL" }
+                                    """),
+                            @ExampleObject(name = "stageInvalid", value = """
+                                    { "status": 400, "errorMessage": "...", "errorCode": "STAGE_INVALID" }
+                                    """)
+                    }))
+    @ApiResponse(responseCode = "500",
+            description = "Unexpected internal error",
+            content = @Content(schema = @Schema(implementation = ExceptionDto.class),
+                    examples = @ExampleObject(name = "internal", value = """
+                            { "status": 500, "errorMessage": "...", "errorCode": "INTERNAL" }
+                            """)))
     @PostMapping(value = "sessions/{sessionId}/players")
     @Override
     public ResponseEntity<ResponseCreatedPlayerDto> createPlayerInSession(
@@ -182,20 +175,18 @@ public class GameSessionCommonRestController implements GameSessionCommonApi {
     @Operation(
             summary = "Get current game stage",
             description = "Returns the session's current GameStage. Fails if the session id is unknown.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200",
-                    description = "Current stage",
-                    content = @Content(schema = @Schema(implementation = ResponseCurrentGameStageDto.class),
-                            examples = @ExampleObject(name = "success", value = """
-                                    { "gameStage": "PREPARATION" }
-                                    """))),
-            @ApiResponse(responseCode = "400",
-                    description = "Unknown session id",
-                    content = @Content(schema = @Schema(implementation = ExceptionDto.class),
-                            examples = @ExampleObject(name = "sessionNotFound", value = """
-                                    { "status": 400, "errorMessage": "...", "errorCode": "SESSION_NOT_FOUND" }
-                                    """)))
-    })
+    @ApiResponse(responseCode = "200",
+            description = "Current stage",
+            content = @Content(schema = @Schema(implementation = ResponseCurrentGameStageDto.class),
+                    examples = @ExampleObject(name = "success", value = """
+                            { "gameStage": "PREPARATION" }
+                            """)))
+    @ApiResponse(responseCode = "400",
+            description = "Unknown session id",
+            content = @Content(schema = @Schema(implementation = ExceptionDto.class),
+                    examples = @ExampleObject(name = "sessionNotFound", value = """
+                            { "status": 400, "errorMessage": "...", "errorCode": "SESSION_NOT_FOUND" }
+                            """)))
     @GetMapping(value = "sessions/{sessionId}/state")
     @Override
     public ResponseEntity<ResponseCurrentGameStageDto> getCurrentGameStage(
@@ -219,20 +210,18 @@ public class GameSessionCommonRestController implements GameSessionCommonApi {
     @Operation(
             summary = "Get last session change timestamp",
             description = "Returns the timestamp of the session's last state change, used by clients for change-detection polling. Fails if the session id is unknown.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200",
-                    description = "Last change timestamp",
-                    content = @Content(schema = @Schema(implementation = ResponseLastSessionChangeTimeDto.class),
-                            examples = @ExampleObject(name = "success", value = """
-                                    { "lastId": "2026-07-13T10:15:30" }
-                                    """))),
-            @ApiResponse(responseCode = "400",
-                    description = "Unknown session id",
-                    content = @Content(schema = @Schema(implementation = ExceptionDto.class),
-                            examples = @ExampleObject(name = "sessionNotFound", value = """
-                                    { "status": 400, "errorMessage": "...", "errorCode": "SESSION_NOT_FOUND" }
-                                    """)))
-    })
+    @ApiResponse(responseCode = "200",
+            description = "Last change timestamp",
+            content = @Content(schema = @Schema(implementation = ResponseLastSessionChangeTimeDto.class),
+                    examples = @ExampleObject(name = "success", value = """
+                            { "lastId": "2026-07-13T10:15:30" }
+                            """)))
+    @ApiResponse(responseCode = "400",
+            description = "Unknown session id",
+            content = @Content(schema = @Schema(implementation = ExceptionDto.class),
+                    examples = @ExampleObject(name = "sessionNotFound", value = """
+                            { "status": 400, "errorMessage": "...", "errorCode": "SESSION_NOT_FOUND" }
+                            """)))
     @GetMapping(value = "sessions/{sessionId}/changesTime")
     @Override
     public ResponseEntity<ResponseLastSessionChangeTimeDto> getLastSessionChangeTime(

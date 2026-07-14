@@ -57,7 +57,7 @@ public final class CoordinateUtils {
      * @throws IllegalArgumentException if the coordinate is not valid
      */
     public static void validateCoordinate(Coordinate coordinate) {
-        log.trace("In method: validateCoordinateAndThrowException");
+        log.trace("In method: validateCoordinate");
         if (!isCorrectCoordinate(coordinate)) {
             throw new IllegalArgumentException("Coordinate is not valid. %s".formatted(coordinate));
         }
@@ -70,7 +70,7 @@ public final class CoordinateUtils {
      * @throws IllegalArgumentException if any coordinate in the set is not valid
      */
     public static void validateCoordinates(Set<Coordinate> coordinates) {
-        log.trace("In method: validateCoordinateAndThrowException");
+        log.trace("In method: validateCoordinates");
         for (Coordinate coordinate : coordinates) {
             validateCoordinate(coordinate);
         }
@@ -83,7 +83,7 @@ public final class CoordinateUtils {
      * @return a set of neighboring coordinates
      */
     public static Set<Coordinate> buildNeighbourCoordinates(final Coordinate currentCoordinate) {
-        log.trace("In method: buildNeighbourCoordinates");
+        log.trace("In method: buildNeighbourCoordinates(Coordinate)");
         val row = currentCoordinate.row();
         val col = currentCoordinate.column();
         return NEIGHBOUR_OFFSETS.stream().map(modifier -> {
@@ -124,7 +124,7 @@ public final class CoordinateUtils {
      * @return a set of neighboring coordinates
      */
     public static Set<Coordinate> buildNeighbourCoordinates(Set<Coordinate> shipCoordinates) {
-        log.trace("In method: buildNeighbourCoordinates");
+        log.trace("In method: buildNeighbourCoordinates(Set<Coordinate>)");
         return shipCoordinates.stream().map(CoordinateUtils::buildNeighbourCoordinates).flatMap(Collection::stream).filter(c -> !shipCoordinates.contains(c)).collect(Collectors.toSet());
     }
 }

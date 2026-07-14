@@ -101,14 +101,14 @@ public class GameImpl implements Game {
 
     @Override
     public Set<Ship> getShipsNotOnTheField(final String playerId) {
-        log.trace("In method: getAvailableShipsForPlayer");
+        log.trace("In method: getShipsNotOnTheField");
         val player = getPlayer(playerId);
         return player.getShipsNotOnTheField();
     }
 
     @Override
     public Set<Ship> getAllShips(final String playerId) {
-        log.trace("In method: getAllShipsForPlayer");
+        log.trace("In method: getAllShips");
         val player = getPlayer(playerId);
         return player.getAllPlayerShips();
     }
@@ -174,7 +174,7 @@ public class GameImpl implements Game {
 
     @Override
     public void changePlayerStatusToReady(final String playerId) {
-        log.trace("In method: makePlayerReady");
+        log.trace("In method: changePlayerStatusToReady");
         GameUtils.validateGameStage(this.gameState.gameStage(),
                 "State can be changed to ready only in Preparation stage",
                 GameStage.PREPARATION);
@@ -272,12 +272,12 @@ public class GameImpl implements Game {
 
     @Override
     public GameState getGameState() {
-        log.trace("In method: getGameStateRepresentation");
+        log.trace("In method: getGameState");
         return this.gameState;
     }
 
     private Player getPlayer(final String playerId, final Predicate<Player> filterPlayerPredicate) {
-        log.trace("In method: getPlayer");
+        log.trace("In method: getPlayer(playerId, predicate)");
         GameUtils.validatePlayerId(playerId);
 
         val players = this.gameState.players();

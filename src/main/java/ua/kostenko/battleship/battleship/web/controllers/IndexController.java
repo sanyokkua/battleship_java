@@ -1,7 +1,7 @@
 package ua.kostenko.battleship.battleship.web.controllers;
 
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 
 /**
  * Controller for handling the index page in the Battleship game application.
@@ -15,14 +15,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Controller
 public class IndexController {
 
+    private static final String INDEX_VIEW = "index";
+
     /**
      * Handles requests to the root URL ("/") and returns the name of the index view.
      *
      * @return the name of the index view
      */
-    @RequestMapping(value = "/")
+    @GetMapping(value = "/")
     public String index() {
-        return "index";
+        return INDEX_VIEW;
     }
 
     /**
@@ -33,9 +35,9 @@ public class IndexController {
      *
      * @return the name of the index view
      */
-    @RequestMapping(value = "/{path:[^\\.]*}")
+    @GetMapping(value = "/{path:[^\\.]*}")
     public String forward() {
-        return "index";
+        return INDEX_VIEW;
     }
 
     /**
@@ -46,8 +48,8 @@ public class IndexController {
      *
      * @return the name of the index view
      */
-    @RequestMapping(value = "/**/{path:[^\\.]*}")
+    @GetMapping(value = "/**/{path:[^\\.]*}")
     public String forwardNested() {
-        return "index";
+        return INDEX_VIEW;
     }
 }

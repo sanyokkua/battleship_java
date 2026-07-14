@@ -59,21 +59,21 @@ public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {
      */
     private String resolveErrorCode(RuntimeException ex) {
         return switch (ex) {
-            case GameCellAlreadyShotException ignored -> "CELL_ALREADY_SHOT";
-            case GameCoordinateIsNotCorrectIncorrectException ignored -> "COORDINATE_INVALID";
-            case GameEditionIsNotCorrectException ignored -> "EDITION_INVALID";
-            case GameOpponentNotFoundException ignored -> "OPPONENT_NOT_FOUND";
-            case GamePlayerIdIsNotCorrectException ignored -> "PLAYER_ID_INVALID";
-            case GamePlayerNameIsNotCorrectException ignored -> "PLAYER_NAME_INVALID";
-            case GamePlayerNotActiveException ignored -> "PLAYER_NOT_ACTIVE";
-            case GamePlayerNotFoundException ignored -> "PLAYER_NOT_FOUND";
-            case GameSessionFullException ignored -> "SESSION_FULL";
-            case GameSessionIdIsNotCorrectException ignored -> "SESSION_NOT_FOUND";
-            case GameShipAlreadyPlacedException ignored -> "SHIP_ALREADY_PLACED";
-            case GameShipDirectionIsNotCorrectException ignored -> "SHIP_DIRECTION_INVALID";
-            case GameShipIdIsNotCorrectException ignored -> "SHIP_ID_INVALID";
-            case GameShipsNotAllPlacedException ignored -> "SHIPS_NOT_ALL_PLACED";
-            case GameStageIsNotCorrectException ignored -> "STAGE_INVALID";
+            case GameCellAlreadyShotException _ -> "CELL_ALREADY_SHOT";
+            case GameCoordinateIsNotCorrectIncorrectException _ -> "COORDINATE_INVALID";
+            case GameEditionIsNotCorrectException _ -> "EDITION_INVALID";
+            case GameOpponentNotFoundException _ -> "OPPONENT_NOT_FOUND";
+            case GamePlayerIdIsNotCorrectException _ -> "PLAYER_ID_INVALID";
+            case GamePlayerNameIsNotCorrectException _ -> "PLAYER_NAME_INVALID";
+            case GamePlayerNotActiveException _ -> "PLAYER_NOT_ACTIVE";
+            case GamePlayerNotFoundException _ -> "PLAYER_NOT_FOUND";
+            case GameSessionFullException _ -> "SESSION_FULL";
+            case GameSessionIdIsNotCorrectException _ -> "SESSION_NOT_FOUND";
+            case GameShipAlreadyPlacedException _ -> "SHIP_ALREADY_PLACED";
+            case GameShipDirectionIsNotCorrectException _ -> "SHIP_DIRECTION_INVALID";
+            case GameShipIdIsNotCorrectException _ -> "SHIP_ID_INVALID";
+            case GameShipsNotAllPlacedException _ -> "SHIPS_NOT_ALL_PLACED";
+            case GameStageIsNotCorrectException _ -> "STAGE_INVALID";
             default -> throw new IllegalStateException(
                     "Unmapped exception type for error code resolution: %s".formatted(ex.getClass()
                             .getName()));
