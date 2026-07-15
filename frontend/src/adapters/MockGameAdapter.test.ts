@@ -1,4 +1,4 @@
-import {beforeEach, describe, expect, it} from "vitest";
+import {beforeEach, describe, expect, it, vi} from "vitest";
 import {MockGameAdapter} from "./MockGameAdapter";
 import type {CellDto} from "../logic/ApplicationTypes";
 
@@ -187,6 +187,50 @@ describe("MockGameAdapter", () => {
         expect(afterState.isPlayerActive).toBe(true);
     });
 
+    it("shoot marks a destroyed ship's moat cells hasShot too, mirroring the backend's kill-reveal side effect", async () => {
+        const {sessionId, p1, p2} = await setUpTwoPlayerSession(adapter);
+        await placeAllShips(adapter, sessionId, p1);
+        await placeAllShips(adapter, sessionId, p2);
+        await adapter.setReady(sessionId, p1);
+        await adapter.setReady(sessionId, p2);
+
+        const p2Prep = await adapter.getPreparationState(sessionId, p2);
+        const oneCellShipCoord = findShipCellOfSize(p2Prep.field, 1);
+
+        const shotResult = await adapter.shoot(sessionId, p1, {
+            row: oneCellShipCoord.row,
+            column: oneCellShipCoord.col
+        });
+        expect(shotResult.shotResult).toBe("DESTROYED");
+
+        const afterState = await adapter.getGameState(sessionId, p1);
+        const field = afterState.opponentField;
+
+        const moatCoords: { row: number; col: number }[] = [];
+        for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+                if (dr === 0 && dc === 0) continue;
+                const row = oneCellShipCoord.row + dr;
+                const col = oneCellShipCoord.col + dc;
+                if (row >= 0 && row < 10 && col >= 0 && col < 10) {
+                    moatCoords.push({row, col});
+                }
+            }
+        }
+        // placeAllShips leaves every ship with at least one on-board moat neighbour (rows
+        // stepped by 2, ships never touching the far column edge for a 1-cell ship at column 0/5).
+        expect(moatCoords.length).toBeGreaterThan(0);
+
+        for (const {row, col} of moatCoords) {
+            expect(field[row][col].hasShot).toBe(true);
+            expect(field[row][col].ship).toBeNull();
+        }
+
+        // A cell two rows away (outside the moat) must be untouched by the kill's side effect.
+        const farRow = oneCellShipCoord.row + 2 <= 9 ? oneCellShipCoord.row + 2 : oneCellShipCoord.row - 2;
+        expect(field[farRow][oneCellShipCoord.col].hasShot).toBe(false);
+    });
+
     it("shoot rejects a second shot at the same already-shot coordinate with CELL_ALREADY_SHOT", async () => {
         const {sessionId, p1, p2} = await setUpTwoPlayerSession(adapter);
         await placeAllShips(adapter, sessionId, p1);
@@ -226,6 +270,84 @@ describe("MockGameAdapter", () => {
                 }
             }
         }
+    });
+
+    describe("subscribeToSessionEvents", () => {
+        it("invokes onEvent immediately with a snapshot on subscribe", async () => {
+            const {sessionId, p1} = await setUpTwoPlayerSession(adapter);
+            const onEvent = vi.fn();
+
+            adapter.subscribeToSessionEvents(sessionId, p1, onEvent);
+
+            expect(onEvent).toHaveBeenCalledTimes(1);
+            expect(onEvent).toHaveBeenCalledWith(expect.objectContaining({
+                gameStage: "PREPARATION",
+                opponent: {playerName: "Bob", ready: false},
+                gameplayState: null
+            }));
+        });
+
+        it("notifies both players' subscribers on a mutation, each from their own point of view", async () => {
+            const {sessionId, p1, p2} = await setUpTwoPlayerSession(adapter);
+            const onEventP1 = vi.fn();
+            const onEventP2 = vi.fn();
+            adapter.subscribeToSessionEvents(sessionId, p1, onEventP1);
+            adapter.subscribeToSessionEvents(sessionId, p2, onEventP2);
+            onEventP1.mockClear();
+            onEventP2.mockClear();
+
+            // Not all ships are placed yet, so this throws and must not notify anyone.
+            await adapter.setReady(sessionId, p1).catch(() => undefined);
+
+            const prep = await adapter.getPreparationState(sessionId, p1);
+            await adapter.addShip(sessionId, p1, prep.ships[0].shipId, {row: 0, column: 0}, "HORIZONTAL");
+
+            expect(onEventP1).toHaveBeenCalledTimes(1);
+            expect(onEventP1.mock.calls[0][0].opponent).toEqual({playerName: "Bob", ready: false});
+            expect(onEventP2).toHaveBeenCalledTimes(1);
+            expect(onEventP2.mock.calls[0][0].opponent).toEqual({playerName: "Alice", ready: false});
+        });
+
+        it("includes gameplayState only once an opponent exists and the session is IN_GAME/FINISHED", async () => {
+            const {sessionId, p1, p2} = await setUpTwoPlayerSession(adapter);
+            await placeAllShips(adapter, sessionId, p1);
+            await placeAllShips(adapter, sessionId, p2);
+
+            const onEvent = vi.fn();
+            adapter.subscribeToSessionEvents(sessionId, p1, onEvent);
+            expect(onEvent.mock.calls[0][0].gameplayState).toBeNull(); // still PREPARATION
+
+            onEvent.mockClear();
+            await adapter.setReady(sessionId, p1);
+            await adapter.setReady(sessionId, p2);
+
+            expect(onEvent).toHaveBeenCalled();
+            const lastPayload = onEvent.mock.calls[onEvent.mock.calls.length - 1][0];
+            expect(lastPayload.gameStage).toBe("IN_GAME");
+            expect(lastPayload.gameplayState).not.toBeNull();
+        });
+
+        it("stops delivering events after the returned unsubscribe is called", async () => {
+            const {sessionId, p1} = await setUpTwoPlayerSession(adapter);
+            const onEvent = vi.fn();
+            const unsubscribe = adapter.subscribeToSessionEvents(sessionId, p1, onEvent);
+            onEvent.mockClear();
+
+            unsubscribe();
+
+            const prep = await adapter.getPreparationState(sessionId, p1);
+            await adapter.addShip(sessionId, p1, prep.ships[0].shipId, {row: 0, column: 0}, "HORIZONTAL");
+
+            expect(onEvent).not.toHaveBeenCalled();
+        });
+
+        it("is a no-op (does not throw, returns a no-op unsubscribe) for an unknown session/player", () => {
+            const onEvent = vi.fn();
+            const unsubscribe = adapter.subscribeToSessionEvents("no-such-session", "no-such-player", onEvent);
+
+            expect(onEvent).not.toHaveBeenCalled();
+            expect(() => unsubscribe()).not.toThrow();
+        });
     });
 });
 

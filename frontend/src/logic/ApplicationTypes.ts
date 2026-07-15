@@ -231,6 +231,23 @@ export type ResponseLastSessionChangeTimeDto = {
 }
 
 /**
+ * Client-side view of a Server-Sent Events push notification, sent immediately on
+ * subscribe and again whenever the session's state changes.
+ *
+ * @property gameStage - The session's current GameStage, represented as a string.
+ * @property lastUpdate - The time of the last session change.
+ * @property opponent - The subscribing player's opponent info, or null until an opponent has joined.
+ * @property gameplayState - Full gameplay state for the subscribing player, or null until the
+ * session is IN_GAME or FINISHED.
+ */
+export type ResponseSessionPushDto = {
+    gameStage: string,
+    lastUpdate: string,
+    opponent: ResponseOpponentInformationDto | null,
+    gameplayState: ResponseGameplayStateDto | null,
+}
+
+/**
  * Bootstrap data loaded when the application starts, combining any previously
  * persisted session ID, player, and game stage.
  *

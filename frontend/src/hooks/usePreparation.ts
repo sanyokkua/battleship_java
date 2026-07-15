@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useState} from "react";
 import {useGameAdapter} from "../adapters/GameAdapterContext";
 import {GameAdapterError, isGameAdapterError} from "../adapters/AdapterErrors";
-import {usePolling} from "./usePolling";
+import {useSessionEvents} from "./useSessionEvents";
 import type {CellDto, Coordinate, ShipDirection, ShipDto} from "../logic/ApplicationTypes";
 
 /**
@@ -33,8 +33,14 @@ export type PreparationHookState = {
     removeShipAt: (at: Coordinate) => Promise<void>;
     /** Marks the current player as ready to start the game. */
     markReady: () => Promise<void>;
-    /** Whether the opponent has marked themselves ready, per the latest poll. */
+    /** Whether the opponent has marked themselves ready, per the latest push. */
     opponentReady: boolean;
+    /**
+     * The session's current `GameStage`, per the latest push, or `null` before the first
+     * push arrives. Exposed so callers (e.g. `PreparationScreen`) can detect their own
+     * stage transition to `IN_GAME` without opening a second subscription.
+     */
+    stage: string | null;
     /** `true` once every ship in `ships` appears somewhere in `field`. */
     allPlaced: boolean;
     /** `true` until the initial fetch (on mount) has completed. */
@@ -67,13 +73,15 @@ function computeAllPlaced(ships: ShipDto[], field: CellDto[][]): boolean {
 
 /**
  * Drives the ship-placement (preparation) screen: fetches the current player's ships/field
- * on mount, polls the opponent's ready state every 3s, and exposes place/remove/ready actions.
+ * on mount, and derives the opponent's ready state from {@link useSessionEvents}'s pushed
+ * snapshots instead of polling for it, and exposes place/remove/ready actions.
  *
- * The initial fetch and the opponent poll are independent: the initial fetch runs once (in a
- * mount effect, guarded against a stale response via a `cancelled` flag), while `pollOpponent`
- * runs continuously via {@link usePolling} for the lifetime of the hook — preparation has no
- * "done" state that would turn polling off the way {@link useGameplay}/`useWaitRoom` do,
- * since the screen itself unmounts (on navigation) once both players are ready.
+ * The initial fetch and the opponent's ready state are independent: the initial fetch runs
+ * once (in a mount effect, guarded against a stale response via a `cancelled` flag), while
+ * `opponentReady` updates every time a new push payload arrives, for the lifetime of the hook —
+ * preparation has no "done" state that would turn the subscription off the way
+ * {@link useGameplay}/`useWaitRoom` do, since the screen itself unmounts (on navigation) once
+ * both players are ready.
  *
  * @param sessionId - ID of the game session.
  * @param playerId - ID of the current player within that session.
@@ -87,6 +95,7 @@ export function usePreparation(sessionId: string, playerId: string): Preparation
     const [direction, setDirection] = useState<ShipDirection>("HORIZONTAL");
     const [activeShipId, setActiveShipId] = useState<string | null>(null);
     const [opponentReady, setOpponentReady] = useState<boolean>(false);
+    const [stage, setStage] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<GameAdapterError | null>(null);
     const [actionTick, setActionTick] = useState<number>(0);
@@ -127,16 +136,12 @@ export function usePreparation(sessionId: string, playerId: string): Preparation
         };
     }, [refetch]);
 
-    const pollOpponent = useCallback(async () => {
-        try {
-            const opponent = await adapter.getOpponent(sessionId, playerId);
-            setOpponentReady(opponent.ready);
-        } catch (e) {
-            setError(toAdapterError(e, "usePreparation:pollOpponent"));
+    useSessionEvents(sessionId, playerId, payload => {
+        if (payload.opponent) {
+            setOpponentReady(payload.opponent.ready);
         }
-    }, [adapter, sessionId, playerId]);
-
-    usePolling(pollOpponent, 3000, true);
+        setStage(payload.gameStage);
+    });
 
     const placeShip = useCallback(async (shipId: string, at: Coordinate, dir?: ShipDirection) => {
         try {
@@ -184,6 +189,7 @@ export function usePreparation(sessionId: string, playerId: string): Preparation
         removeShipAt,
         markReady,
         opponentReady,
+        stage,
         allPlaced: computeAllPlaced(ships, field),
         loading,
         error,

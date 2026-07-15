@@ -1,4 +1,4 @@
-import {beforeEach, describe, expect, it, vi} from "vitest";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import type {AxiosError} from "axios";
 import {HttpGameAdapter} from "./HttpGameAdapter";
 import {isGameAdapterError} from "./AdapterErrors";
@@ -9,6 +9,7 @@ import type {
     ResponseOpponentInformationDto,
     ResponsePlayerReady,
     ResponsePreparationState,
+    ResponseSessionPushDto,
     ResponseShipAddedDto,
     ResponseShipRemovedDto,
     ResponseShotResultDto
@@ -17,6 +18,37 @@ import type {
 vi.mock("../services/BackendRequestService");
 
 const mockedService = vi.mocked(BackendRequestService);
+
+/**
+ * jsdom doesn't implement `EventSource` natively, so `subscribeToSessionEvents`'s tests stub a
+ * minimal fake: records the constructed URL, lets tests fire a "state-changed" message, and
+ * tracks whether `close()` was called (the adapter's unsubscribe path).
+ */
+class FakeEventSource {
+    static instances: FakeEventSource[] = [];
+    readonly url: string;
+    closed = false;
+    private readonly listeners: Record<string, ((event: MessageEvent) => void)[]> = {};
+
+    constructor(url: string) {
+        this.url = url;
+        FakeEventSource.instances.push(this);
+    }
+
+    addEventListener(type: string, listener: (event: MessageEvent) => void): void {
+        (this.listeners[type] ??= []).push(listener);
+    }
+
+    close(): void {
+        this.closed = true;
+    }
+
+    emit(type: string, data: unknown): void {
+        for (const listener of this.listeners[type] ?? []) {
+            listener({data: JSON.stringify(data)} as MessageEvent);
+        }
+    }
+}
 
 function axiosErrorWith(status: number, data: unknown): AxiosError {
     const error = new Error("Request failed") as AxiosError;
@@ -37,6 +69,12 @@ describe("HttpGameAdapter", () => {
     beforeEach(() => {
         vi.resetAllMocks();
         adapter = new HttpGameAdapter();
+        FakeEventSource.instances = [];
+        vi.stubGlobal("EventSource", FakeEventSource);
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
     });
 
     it("getEditions delegates to getAvailableGameEditions and unwraps gameEditions", async () => {
@@ -199,5 +237,39 @@ describe("HttpGameAdapter", () => {
             expect(err.message).toBe("Network Error");
             return true;
         });
+    });
+
+    it("subscribeToSessionEvents opens an EventSource at the session/player events path", () => {
+        const onEvent = vi.fn();
+
+        adapter.subscribeToSessionEvents("session-1", "p1", onEvent);
+
+        expect(FakeEventSource.instances).toHaveLength(1);
+        expect(FakeEventSource.instances[0].url).toBe("/api/v2/game/sessions/session-1/players/p1/events");
+        expect(onEvent).not.toHaveBeenCalled();
+    });
+
+    it("subscribeToSessionEvents forwards parsed state-changed events to onEvent", () => {
+        const onEvent = vi.fn();
+        adapter.subscribeToSessionEvents("session-1", "p1", onEvent);
+
+        const payload: ResponseSessionPushDto = {
+            gameStage: "IN_GAME",
+            lastUpdate: "t1",
+            opponent: null,
+            gameplayState: null
+        };
+        FakeEventSource.instances[0].emit("state-changed", payload);
+
+        expect(onEvent).toHaveBeenCalledTimes(1);
+        expect(onEvent).toHaveBeenCalledWith(payload);
+    });
+
+    it("subscribeToSessionEvents's returned unsubscribe closes the EventSource", () => {
+        const unsubscribe = adapter.subscribeToSessionEvents("session-1", "p1", vi.fn());
+
+        expect(FakeEventSource.instances[0].closed).toBe(false);
+        unsubscribe();
+        expect(FakeEventSource.instances[0].closed).toBe(true);
     });
 });

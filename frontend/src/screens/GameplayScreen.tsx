@@ -7,7 +7,7 @@ import {saveStage} from '../services/GameBrowserStorage';
 import type {CellDto} from '../logic/ApplicationTypes';
 import {formatCoordinateLabel} from '../logic/boardCoordinates';
 import {LoadingView} from '../widgets/layout/LoadingView';
-import {Board, computeSunkShipIds} from '../widgets/board/Board';
+import {Board, computeMoatCellKeys, computeSunkShipIds} from '../widgets/board/Board';
 import {BoardTabs} from '../widgets/board/BoardTabs';
 import {Legend} from '../widgets/board/Legend';
 import {PlayerCard} from '../widgets/gameplay/PlayerCard';
@@ -114,12 +114,30 @@ export function GameplayScreen() {
             return;
         }
 
+        // Destroying a ship auto-reveals its moat cells (they flip hasShot too, since no ship
+        // can ever be adjacent to another) — those are a side effect of the kill, not additional
+        // real shots, so they must not each fire their own "miss" toast. Only ships that just
+        // became sunk THIS diff matter here — an already-sunk ship's (already-revealed) moat
+        // isn't part of this update at all, since none of those cells are newly hasShot below.
+        const prevSunkShipIds = computeSunkShipIds(prevField);
         const sunkShipIds = computeSunkShipIds(field);
+        const newlySunkShipIds = new Set(
+            [...sunkShipIds].filter(shipId => !prevSunkShipIds.has(shipId))
+        );
+        const moatCellKeys = computeMoatCellKeys(field, newlySunkShipIds);
+
         for (let row = 0; row < field.length; row++) {
             for (let col = 0; col < field[row].length; col++) {
                 const cell = field[row][col];
                 if (prevField[row][col].hasShot || !cell.hasShot) {
                     continue; // not a newly-revealed shot this poll
+                }
+                if (cell.ship == null && moatCellKeys.has(`${row},${col}`)) {
+                    // Auto-revealed moat cell from a kill elsewhere in this same update, not a
+                    // real shot. Edge case accepted: a genuinely separate real miss landing on
+                    // exactly this cell in the same batched update would also be swallowed —
+                    // the client has no per-shot server data to disambiguate that rare coincidence.
+                    continue;
                 }
                 const coordinate = formatCoordinateLabel(row, col);
                 if (cell.ship == null) {

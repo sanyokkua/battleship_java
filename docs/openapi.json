@@ -1,1 +1,1626 @@
-{"openapi":"3.1.0","info":{"title":"Battleship API","description":"REST API for the Battleship game backend (session, preparation, gameplay)","version":"2.0.0"},"servers":[{"url":"http://localhost:8080","description":"Generated server url"}],"tags":[{"name":"Game Session","description":"Game session lifecycle: creating sessions and players, and retrieving session stage and change time"},{"name":"Preparation","description":"Ship placement/removal, opponent info, and readiness during the PREPARATION stage"},{"name":"Gameplay","description":"In-game state retrieval and shot resolution during the IN_GAME stage"}],"paths":{"/api/v2/game/sessions/{sessionId}/players/{playerId}/ships/{shipId}":{"put":{"tags":["Preparation"],"summary":"Place a ship on the board","description":"Registers a ship's coordinates and orientation for the given player during PREPARATION. Fails if the stage isn't PREPARATION, the ship id/direction/coordinate is invalid, the ship is already placed, or the placement overlaps another ship or leaves the board.","operationId":"addShipToField","parameters":[{"name":"sessionId","in":"path","description":"Session identifier","required":true,"schema":{"type":"string"},"example":"abc123"},{"name":"playerId","in":"path","description":"Player identifier","required":true,"schema":{"type":"string"},"example":"p1"},{"name":"shipId","in":"path","description":"Ship type identifier from the edition's ship catalog","required":true,"schema":{"type":"string"},"example":"patrol_boat_1"}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ParamShipDto"}}},"required":true},"responses":{"200":{"description":"Ship placed","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResponseShipAddedDto"},"examples":{"success":{"description":"success","value":{"shipId":"patrol_boat_1"}}}}}},"400":{"description":"Invalid ship id/direction/coordinate, wrong stage, or ship already placed / overlaps","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ExceptionDto"},"examples":{"playerIdInvalid":{"description":"playerIdInvalid","value":{"status":400,"errorMessage":"...","errorCode":"PLAYER_ID_INVALID"}},"shipIdInvalid":{"description":"shipIdInvalid","value":{"status":400,"errorMessage":"...","errorCode":"SHIP_ID_INVALID"}},"shipDirectionInvalid":{"description":"shipDirectionInvalid","value":{"status":400,"errorMessage":"...","errorCode":"SHIP_DIRECTION_INVALID"}},"coordinateInvalid":{"description":"coordinateInvalid","value":{"status":400,"errorMessage":"...","errorCode":"COORDINATE_INVALID"}},"sessionNotFound":{"description":"sessionNotFound","value":{"status":400,"errorMessage":"...","errorCode":"SESSION_NOT_FOUND"}},"stageInvalid":{"description":"stageInvalid","value":{"status":400,"errorMessage":"...","errorCode":"STAGE_INVALID"}},"shipAlreadyPlaced":{"description":"shipAlreadyPlaced","value":{"status":400,"errorMessage":"...","errorCode":"SHIP_ALREADY_PLACED"}}}}}},"500":{"description":"Unexpected internal error (e.g. intersection resolution failure)","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ExceptionDto"},"examples":{"internal":{"description":"internal","value":{"status":500,"errorMessage":"...","errorCode":"INTERNAL"}}}}}}}}},"/api/v2/game/sessions":{"post":{"tags":["Game Session"],"summary":"Create a game session","description":"Creates a new session for the given game edition. Fails if the edition name is blank or not a recognized GameEdition.","operationId":"createGameSession","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ParamGameEditionDto"}}},"required":true},"responses":{"201":{"description":"Session created","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResponseCreatedSessionIdDto"},"examples":{"success":{"description":"success","value":{"sessionId":"abc123"}}}}}},"400":{"description":"Invalid or unrecognized game edition","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ExceptionDto"},"examples":{"editionInvalid":{"description":"editionInvalid","value":{"status":400,"errorMessage":"...","errorCode":"EDITION_INVALID"}}}}}}}}},"/api/v2/game/sessions/{sessionId}/players":{"post":{"tags":["Game Session"],"summary":"Create a player in a session","description":"Registers a new player under the given session. Fails if the player name is blank, the session id is unknown, the session already has 2 players, or the session is not in a stage that allows joining.","operationId":"createPlayerInSession","parameters":[{"name":"sessionId","in":"path","description":"Session identifier returned by session creation","required":true,"schema":{"type":"string"},"example":"abc123"}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ParamPlayerNameDto"}}},"required":true},"responses":{"201":{"description":"Player created","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResponseCreatedPlayerDto"},"examples":{"success":{"description":"success","value":{"playerId":"p1","playerName":"Alice"}}}}}},"400":{"description":"Invalid player name, unknown session, session full, or wrong stage","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ExceptionDto"},"examples":{"playerNameInvalid":{"description":"playerNameInvalid","value":{"status":400,"errorMessage":"...","errorCode":"PLAYER_NAME_INVALID"}},"sessionNotFound":{"description":"sessionNotFound","value":{"status":400,"errorMessage":"...","errorCode":"SESSION_NOT_FOUND"}},"sessionFull":{"description":"sessionFull","value":{"status":400,"errorMessage":"...","errorCode":"SESSION_FULL"}},"stageInvalid":{"description":"stageInvalid","value":{"status":400,"errorMessage":"...","errorCode":"STAGE_INVALID"}}}}}},"500":{"description":"Unexpected internal error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ExceptionDto"},"examples":{"internal":{"description":"internal","value":{"status":500,"errorMessage":"...","errorCode":"INTERNAL"}}}}}}}}},"/api/v2/game/sessions/{sessionId}/players/{playerId}/start":{"post":{"tags":["Preparation"],"summary":"Mark player ready to start","description":"Transitions the player to ready once all ships are placed. Fails if the player id is invalid, the session is unknown, the stage isn't PREPARATION, or the player still has unplaced ships.","operationId":"startGame","parameters":[{"name":"sessionId","in":"path","description":"Session identifier","required":true,"schema":{"type":"string"},"example":"abc123"},{"name":"playerId","in":"path","description":"Player identifier","required":true,"schema":{"type":"string"},"example":"p1"}],"responses":{"200":{"description":"Player marked ready","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResponsePlayerReady"},"examples":{"success":{"description":"success","value":{"ready":true}}}}}},"400":{"description":"Invalid player id, unknown session, wrong stage, or ships not all placed","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ExceptionDto"},"examples":{"playerIdInvalid":{"description":"playerIdInvalid","value":{"status":400,"errorMessage":"...","errorCode":"PLAYER_ID_INVALID"}},"sessionNotFound":{"description":"sessionNotFound","value":{"status":400,"errorMessage":"...","errorCode":"SESSION_NOT_FOUND"}},"stageInvalid":{"description":"stageInvalid","value":{"status":400,"errorMessage":"...","errorCode":"STAGE_INVALID"}},"shipsNotAllPlaced":{"description":"shipsNotAllPlaced","value":{"status":400,"errorMessage":"...","errorCode":"SHIPS_NOT_ALL_PLACED"}}}}}},"500":{"description":"Unexpected internal error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ExceptionDto"},"examples":{"internal":{"description":"internal","value":{"status":500,"errorMessage":"...","errorCode":"INTERNAL"}}}}}}}}},"/api/v2/game/sessions/{sessionId}/players/{playerId}/field/shot":{"post":{"tags":["Gameplay"],"summary":"Make a shot","description":"Resolves a shot at the given coordinate on the acting player's opponent field. Fails if the player id or coordinate is malformed, the session is unknown, it isn't this player's turn, the cell was already shot, or the session isn't in the IN_GAME stage.","operationId":"makeShotByField","parameters":[{"name":"sessionId","in":"path","description":"Session identifier","required":true,"schema":{"type":"string"},"example":"abc123"},{"name":"playerId","in":"path","description":"Shooting player's identifier","required":true,"schema":{"type":"string"},"example":"p1"}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ParamCoordinateDto"}}},"required":true},"responses":{"200":{"description":"Shot resolved","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResponseShotResultDto"},"examples":{"success":{"description":"success","value":{"shotResult":"HIT"}}}}}},"400":{"description":"Invalid input, unknown session, not this player's turn, cell already shot, or wrong stage","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ExceptionDto"},"examples":{"playerIdInvalid":{"description":"playerIdInvalid","value":{"status":400,"errorMessage":"...","errorCode":"PLAYER_ID_INVALID"}},"coordinateInvalid":{"description":"coordinateInvalid","value":{"status":400,"errorMessage":"...","errorCode":"COORDINATE_INVALID"}},"sessionNotFound":{"description":"sessionNotFound","value":{"status":400,"errorMessage":"...","errorCode":"SESSION_NOT_FOUND"}},"playerNotActive":{"description":"playerNotActive","value":{"status":400,"errorMessage":"...","errorCode":"PLAYER_NOT_ACTIVE"}},"cellAlreadyShot":{"description":"cellAlreadyShot","value":{"status":400,"errorMessage":"...","errorCode":"CELL_ALREADY_SHOT"}},"stageInvalid":{"description":"stageInvalid","value":{"status":400,"errorMessage":"...","errorCode":"STAGE_INVALID"}}}}}},"500":{"description":"Unexpected internal error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ExceptionDto"},"examples":{"internal":{"description":"internal","value":{"status":500,"errorMessage":"...","errorCode":"INTERNAL"}}}}}}}}},"/api/v2/game/sessions/{sessionId}/state":{"get":{"tags":["Game Session"],"summary":"Get current game stage","description":"Returns the session's current GameStage. Fails if the session id is unknown.","operationId":"getCurrentGameStage","parameters":[{"name":"sessionId","in":"path","description":"Session identifier","required":true,"schema":{"type":"string"},"example":"abc123"}],"responses":{"200":{"description":"Current stage","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResponseCurrentGameStageDto"},"examples":{"success":{"description":"success","value":{"gameStage":"PREPARATION"}}}}}},"400":{"description":"Unknown session id","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ExceptionDto"},"examples":{"sessionNotFound":{"description":"sessionNotFound","value":{"status":400,"errorMessage":"...","errorCode":"SESSION_NOT_FOUND"}}}}}}}}},"/api/v2/game/sessions/{sessionId}/players/{playerId}/state":{"get":{"tags":["Gameplay"],"summary":"Get gameplay state for a player","description":"Returns the requesting player's and opponent's boards, alive-cell/ship counts, and win state. Fails if the player id is malformed, the session is unknown, or the player/opponent can't be resolved in this session.","operationId":"getGameStateForPlayer","parameters":[{"name":"sessionId","in":"path","description":"Session identifier","required":true,"schema":{"type":"string"},"example":"abc123"},{"name":"playerId","in":"path","description":"Requesting player's identifier","required":true,"schema":{"type":"string"},"example":"p1"}],"responses":{"200":{"description":"Gameplay state for the requesting player","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResponseGameplayStateDto"}}}},"400":{"description":"Invalid player id, unknown session, or player/opponent not found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ExceptionDto"},"examples":{"playerIdInvalid":{"description":"playerIdInvalid","value":{"status":400,"errorMessage":"...","errorCode":"PLAYER_ID_INVALID"}},"sessionNotFound":{"description":"sessionNotFound","value":{"status":400,"errorMessage":"...","errorCode":"SESSION_NOT_FOUND"}},"playerNotFound":{"description":"playerNotFound","value":{"status":400,"errorMessage":"...","errorCode":"PLAYER_NOT_FOUND"}},"opponentNotFound":{"description":"opponentNotFound","value":{"status":400,"errorMessage":"...","errorCode":"OPPONENT_NOT_FOUND"}}}}}}}}},"/api/v2/game/sessions/{sessionId}/players/{playerId}/preparationState":{"get":{"tags":["Preparation"],"summary":"Get preparation state","description":"Returns the ships still available to place and the player's current field. Fails if the player id is malformed, the session is unknown, or the player can't be resolved in this session.","operationId":"getPreparationState","parameters":[{"name":"sessionId","in":"path","description":"Session identifier","required":true,"schema":{"type":"string"},"example":"abc123"},{"name":"playerId","in":"path","description":"Player identifier","required":true,"schema":{"type":"string"},"example":"p1"}],"responses":{"200":{"description":"Current preparation state","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResponsePreparationState"}}}},"400":{"description":"Invalid player id, unknown session, or player not found","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ExceptionDto"},"examples":{"playerIdInvalid":{"description":"playerIdInvalid","value":{"status":400,"errorMessage":"...","errorCode":"PLAYER_ID_INVALID"}},"sessionNotFound":{"description":"sessionNotFound","value":{"status":400,"errorMessage":"...","errorCode":"SESSION_NOT_FOUND"}},"playerNotFound":{"description":"playerNotFound","value":{"status":400,"errorMessage":"...","errorCode":"PLAYER_NOT_FOUND"}}}}}},"500":{"description":"Unexpected internal error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ExceptionDto"},"examples":{"internal":{"description":"internal","value":{"status":500,"errorMessage":"...","errorCode":"INTERNAL"}}}}}}}}},"/api/v2/game/sessions/{sessionId}/players/{playerId}/opponent":{"get":{"tags":["Preparation"],"summary":"Get opponent information","description":"Returns the opponent's display name and whether they've readied up. Fails if the player id is invalid, the session is unknown, or no opponent has joined yet.","operationId":"getOpponentInformation","parameters":[{"name":"sessionId","in":"path","description":"Session identifier","required":true,"schema":{"type":"string"},"example":"abc123"},{"name":"playerId","in":"path","description":"Requesting player's identifier","required":true,"schema":{"type":"string"},"example":"p1"}],"responses":{"200":{"description":"Opponent info","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResponseOpponentInformationDto"}}}},"400":{"description":"Invalid player id, unknown session, or no opponent yet","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ExceptionDto"},"examples":{"playerIdInvalid":{"description":"playerIdInvalid","value":{"status":400,"errorMessage":"...","errorCode":"PLAYER_ID_INVALID"}},"sessionNotFound":{"description":"sessionNotFound","value":{"status":400,"errorMessage":"...","errorCode":"SESSION_NOT_FOUND"}},"opponentNotFound":{"description":"opponentNotFound","value":{"status":400,"errorMessage":"...","errorCode":"OPPONENT_NOT_FOUND"}}}}}}}}},"/api/v2/game/sessions/{sessionId}/changesTime":{"get":{"tags":["Game Session"],"summary":"Get last session change timestamp","description":"Returns the timestamp of the session's last state change, used by clients for change-detection polling. Fails if the session id is unknown.","operationId":"getLastSessionChangeTime","parameters":[{"name":"sessionId","in":"path","description":"Session identifier","required":true,"schema":{"type":"string"},"example":"abc123"}],"responses":{"200":{"description":"Last change timestamp","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResponseLastSessionChangeTimeDto"},"examples":{"success":{"description":"success","value":{"lastId":"2026-07-13T10:15:30"}}}}}},"400":{"description":"Unknown session id","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ExceptionDto"},"examples":{"sessionNotFound":{"description":"sessionNotFound","value":{"status":400,"errorMessage":"...","errorCode":"SESSION_NOT_FOUND"}}}}}}}}},"/api/v2/game/editions":{"get":{"tags":["Game Session"],"summary":"List available game editions","description":"Returns the fixed set of game editions the server supports (rule sets for ship counts/board size).","operationId":"getAvailableGameEditions","responses":{"200":{"description":"Available editions","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResponseAvailableGameEditionsDto"},"examples":{"success":{"description":"success","value":{"gameEditions":["UKRAINIAN","MILTON_BRADLEY"]}}}}}}}}},"/api/v2/game/sessions/{sessionId}/players/{playerId}/ships":{"delete":{"tags":["Preparation"],"summary":"Remove a placed ship","description":"Removes whatever ship occupies the given coordinate for this player during PREPARATION. Fails if the player id/coordinate is invalid, the session is unknown, or the stage isn't PREPARATION.","operationId":"removeShipFromField","parameters":[{"name":"sessionId","in":"path","description":"Session identifier","required":true,"schema":{"type":"string"},"example":"abc123"},{"name":"playerId","in":"path","description":"Player identifier","required":true,"schema":{"type":"string"},"example":"p1"}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ParamCoordinateDto"}}},"required":true},"responses":{"200":{"description":"Removal result","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ResponseShipRemovedDto"},"examples":{"success":{"description":"success","value":{"deleted":true}}}}}},"400":{"description":"Invalid input, unknown session, or wrong stage","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ExceptionDto"},"examples":{"playerIdInvalid":{"description":"playerIdInvalid","value":{"status":400,"errorMessage":"...","errorCode":"PLAYER_ID_INVALID"}},"coordinateInvalid":{"description":"coordinateInvalid","value":{"status":400,"errorMessage":"...","errorCode":"COORDINATE_INVALID"}},"sessionNotFound":{"description":"sessionNotFound","value":{"status":400,"errorMessage":"...","errorCode":"SESSION_NOT_FOUND"}},"stageInvalid":{"description":"stageInvalid","value":{"status":400,"errorMessage":"...","errorCode":"STAGE_INVALID"}}}}}},"500":{"description":"Unexpected internal error","content":{"*/*":{"schema":{"$ref":"#/components/schemas/ExceptionDto"},"examples":{"internal":{"description":"internal","value":{"status":500,"errorMessage":"...","errorCode":"INTERNAL"}}}}}}}}}},"components":{"schemas":{"ParamShipDto":{"type":"object","properties":{"row":{"type":"integer","format":"int32","description":"Zero-based top-left board row"},"col":{"type":"integer","format":"int32","description":"Zero-based top-left board column"},"direction":{"type":"string","description":"Ship orientation","enum":["HORIZONTAL","VERTICAL"]}}},"ResponseShipAddedDto":{"type":"object","properties":{"shipId":{"type":"string","description":"Identifier of the ship that was placed"}}},"ExceptionDto":{"type":"object","properties":{"status":{"type":"integer","format":"int32","description":"HTTP status code","example":400},"errorMessage":{"type":"string","description":"Human-readable error message"},"errorCode":{"type":"string","description":"Stable, machine-readable error code identifying the exception type","example":"SESSION_NOT_FOUND"}}},"ParamGameEditionDto":{"type":"object","properties":{"gameEdition":{"type":"string","description":"Game edition name","enum":["UKRAINIAN","MILTON_BRADLEY"]}}},"ResponseCreatedSessionIdDto":{"type":"object","properties":{"sessionId":{"type":"string","description":"Newly created session's identifier"}}},"ParamPlayerNameDto":{"type":"object","properties":{"playerName":{"type":"string","description":"Display name for the new player"}}},"ResponseCreatedPlayerDto":{"type":"object","properties":{"playerId":{"type":"string","description":"Newly created player's identifier"},"playerName":{"type":"string","description":"Player's display name"}}},"ResponsePlayerReady":{"type":"object","properties":{"ready":{"type":"boolean","description":"Whether the player is now marked ready"}}},"ParamCoordinateDto":{"type":"object","properties":{"row":{"type":"integer","format":"int32","description":"Zero-based board row"},"col":{"type":"integer","format":"int32","description":"Zero-based board column"}}},"ResponseShotResultDto":{"type":"object","properties":{"shotResult":{"type":"string","description":"Outcome of the shot","enum":["MISS","HIT","DESTROYED"]}}},"ResponseCurrentGameStageDto":{"type":"object","properties":{"gameStage":{"type":"string","description":"Current GameStage name","enum":["INITIALIZED","WAITING_FOR_PLAYERS","PREPARATION","IN_GAME","FINISHED"]}}},"CellDto":{"type":"object","properties":{"row":{"type":"integer","format":"int32","description":"Zero-based board row"},"col":{"type":"integer","format":"int32","description":"Zero-based board column"},"ship":{"$ref":"#/components/schemas/Ship","description":"Ship occupying this cell, if any (engine record: shipId, shipType, shipDirection, shipSize)"},"hasShot":{"type":"boolean","description":"Whether this cell has already been shot at"},"isAvailable":{"type":"boolean","description":"Whether this cell is available for placing a ship"}}},"ResponseGameplayStateDto":{"type":"object","properties":{"playerName":{"type":"string","description":"Requesting player's display name"},"playerNumberOfAliveCells":{"type":"integer","format":"int32","description":"Number of the player's board cells still occupied by unsunk ships"},"playerNumberOfAliveShips":{"type":"integer","format":"int32","description":"Number of the player's ships not yet fully sunk"},"playerField":{"type":"array","description":"Player's own board, as a 2D array of cells","items":{"type":"array","items":{"$ref":"#/components/schemas/CellDto"}}},"opponentName":{"type":"string","description":"Opponent's display name"},"opponentNumberOfAliveCells":{"type":"integer","format":"int32","description":"Number of the opponent's board cells still occupied by unsunk ships"},"opponentNumberOfAliveShips":{"type":"integer","format":"int32","description":"Number of the opponent's ships not yet fully sunk"},"opponentField":{"type":"array","description":"Opponent's board as visible to the requesting player, as a 2D array of cells","items":{"type":"array","items":{"$ref":"#/components/schemas/CellDto"}}},"hasWinner":{"type":"boolean","description":"Whether the game has a winner"},"winnerPlayerName":{"type":"string","description":"Winning player's display name, if any"},"isPlayerActive":{"type":"boolean","description":"Whether it is currently this player's turn"},"isPlayerWinner":{"type":"boolean","description":"Whether this player has won the game"},"isOpponentReady":{"type":"boolean","description":"Whether the opponent has readied up"}}},"Ship":{"type":"object","properties":{"shipId":{"type":"string"},"shipType":{"type":"string","enum":["PATROL_BOAT","SUBMARINE","DESTROYER","BATTLESHIP","CARRIER"]},"shipDirection":{"type":"string","enum":["HORIZONTAL","VERTICAL"]},"shipSize":{"type":"integer","format":"int32"}}},"ResponsePreparationState":{"type":"object","properties":{"ships":{"type":"array","description":"Ships still available to place","items":{"$ref":"#/components/schemas/ShipDto"}},"field":{"type":"array","description":"Player's current board, as a 2D array of cells","items":{"type":"array","items":{"$ref":"#/components/schemas/CellDto"}}}}},"ShipDto":{"type":"object","properties":{"shipId":{"type":"string","description":"Ship type identifier from the edition's ship catalog","example":"patrol_boat_1"},"shipSize":{"type":"integer","format":"int32","description":"Size of the ship in grid spaces"}}},"ResponseOpponentInformationDto":{"type":"object","properties":{"playerName":{"type":"string","description":"Opponent's display name"},"ready":{"type":"boolean","description":"Whether the opponent has readied up"}}},"ResponseLastSessionChangeTimeDto":{"type":"object","properties":{"lastId":{"type":"string","description":"Last-update timestamp as a string, used for client polling comparisons"}}},"ResponseAvailableGameEditionsDto":{"type":"object","properties":{"gameEditions":{"type":"array","description":"Supported game edition names","example":"UKRAINIAN","items":{"type":"string"}}}},"ResponseShipRemovedDto":{"type":"object","properties":{"deleted":{"type":"boolean","description":"Whether a ship was found and removed at the given coordinate"}}}}}}
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Battleship API",
+    "description": "REST API for the Battleship game backend (session, preparation, gameplay)",
+    "version": "2.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Generated server url"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Session Events",
+      "description": "Server-Sent Events subscription replacing client-side polling for session state changes"
+    },
+    {
+      "name": "Game Session",
+      "description": "Game session lifecycle: creating sessions and players, and retrieving session stage and change time"
+    },
+    {
+      "name": "Preparation",
+      "description": "Ship placement/removal, opponent info, and readiness during the PREPARATION stage"
+    },
+    {
+      "name": "Gameplay",
+      "description": "In-game state retrieval and shot resolution during the IN_GAME stage"
+    }
+  ],
+  "paths": {
+    "/api/v2/game/sessions/{sessionId}/players/{playerId}/ships/{shipId}": {
+      "put": {
+        "tags": [
+          "Preparation"
+        ],
+        "summary": "Place a ship on the board",
+        "description": "Registers a ship's coordinates and orientation for the given player during PREPARATION. Fails if the stage isn't PREPARATION, the ship id/direction/coordinate is invalid, the ship is already placed, or the placement overlaps another ship or leaves the board.",
+        "operationId": "addShipToField",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "description": "Session identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "abc123"
+          },
+          {
+            "name": "playerId",
+            "in": "path",
+            "description": "Player identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "p1"
+          },
+          {
+            "name": "shipId",
+            "in": "path",
+            "description": "Ship type identifier from the edition's ship catalog",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "patrol_boat_1"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParamShipDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Ship placed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseShipAddedDto"
+                },
+                "examples": {
+                  "success": {
+                    "description": "success",
+                    "value": {
+                      "shipId": "patrol_boat_1"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ship id/direction/coordinate, wrong stage, or ship already placed / overlaps",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                },
+                "examples": {
+                  "playerIdInvalid": {
+                    "description": "playerIdInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "PLAYER_ID_INVALID"
+                    }
+                  },
+                  "shipIdInvalid": {
+                    "description": "shipIdInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "SHIP_ID_INVALID"
+                    }
+                  },
+                  "shipDirectionInvalid": {
+                    "description": "shipDirectionInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "SHIP_DIRECTION_INVALID"
+                    }
+                  },
+                  "coordinateInvalid": {
+                    "description": "coordinateInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "COORDINATE_INVALID"
+                    }
+                  },
+                  "sessionNotFound": {
+                    "description": "sessionNotFound",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "SESSION_NOT_FOUND"
+                    }
+                  },
+                  "stageInvalid": {
+                    "description": "stageInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "STAGE_INVALID"
+                    }
+                  },
+                  "shipAlreadyPlaced": {
+                    "description": "shipAlreadyPlaced",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "SHIP_ALREADY_PLACED"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected internal error (e.g. intersection resolution failure)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                },
+                "examples": {
+                  "internal": {
+                    "description": "internal",
+                    "value": {
+                      "status": 500,
+                      "errorMessage": "...",
+                      "errorCode": "INTERNAL"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/game/sessions": {
+      "post": {
+        "tags": [
+          "Game Session"
+        ],
+        "summary": "Create a game session",
+        "description": "Creates a new session for the given game edition. Fails if the edition name is blank or not a recognized GameEdition.",
+        "operationId": "createGameSession",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParamGameEditionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Session created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseCreatedSessionIdDto"
+                },
+                "examples": {
+                  "success": {
+                    "description": "success",
+                    "value": {
+                      "sessionId": "abc123"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or unrecognized game edition",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                },
+                "examples": {
+                  "editionInvalid": {
+                    "description": "editionInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "EDITION_INVALID"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/game/sessions/{sessionId}/players": {
+      "post": {
+        "tags": [
+          "Game Session"
+        ],
+        "summary": "Create a player in a session",
+        "description": "Registers a new player under the given session. Fails if the player name is blank, the session id is unknown, the session already has 2 players, or the session is not in a stage that allows joining.",
+        "operationId": "createPlayerInSession",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "description": "Session identifier returned by session creation",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "abc123"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParamPlayerNameDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Player created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseCreatedPlayerDto"
+                },
+                "examples": {
+                  "success": {
+                    "description": "success",
+                    "value": {
+                      "playerId": "p1",
+                      "playerName": "Alice"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid player name, unknown session, session full, or wrong stage",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                },
+                "examples": {
+                  "playerNameInvalid": {
+                    "description": "playerNameInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "PLAYER_NAME_INVALID"
+                    }
+                  },
+                  "sessionNotFound": {
+                    "description": "sessionNotFound",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "SESSION_NOT_FOUND"
+                    }
+                  },
+                  "sessionFull": {
+                    "description": "sessionFull",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "SESSION_FULL"
+                    }
+                  },
+                  "stageInvalid": {
+                    "description": "stageInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "STAGE_INVALID"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected internal error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                },
+                "examples": {
+                  "internal": {
+                    "description": "internal",
+                    "value": {
+                      "status": 500,
+                      "errorMessage": "...",
+                      "errorCode": "INTERNAL"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/game/sessions/{sessionId}/players/{playerId}/start": {
+      "post": {
+        "tags": [
+          "Preparation"
+        ],
+        "summary": "Mark player ready to start",
+        "description": "Transitions the player to ready once all ships are placed. Fails if the player id is invalid, the session is unknown, the stage isn't PREPARATION, or the player still has unplaced ships.",
+        "operationId": "startGame",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "description": "Session identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "abc123"
+          },
+          {
+            "name": "playerId",
+            "in": "path",
+            "description": "Player identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "p1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Player marked ready",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponsePlayerReady"
+                },
+                "examples": {
+                  "success": {
+                    "description": "success",
+                    "value": {
+                      "ready": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid player id, unknown session, wrong stage, or ships not all placed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                },
+                "examples": {
+                  "playerIdInvalid": {
+                    "description": "playerIdInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "PLAYER_ID_INVALID"
+                    }
+                  },
+                  "sessionNotFound": {
+                    "description": "sessionNotFound",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "SESSION_NOT_FOUND"
+                    }
+                  },
+                  "stageInvalid": {
+                    "description": "stageInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "STAGE_INVALID"
+                    }
+                  },
+                  "shipsNotAllPlaced": {
+                    "description": "shipsNotAllPlaced",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "SHIPS_NOT_ALL_PLACED"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected internal error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                },
+                "examples": {
+                  "internal": {
+                    "description": "internal",
+                    "value": {
+                      "status": 500,
+                      "errorMessage": "...",
+                      "errorCode": "INTERNAL"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/game/sessions/{sessionId}/players/{playerId}/field/shot": {
+      "post": {
+        "tags": [
+          "Gameplay"
+        ],
+        "summary": "Make a shot",
+        "description": "Resolves a shot at the given coordinate on the acting player's opponent field. Fails if the player id or coordinate is malformed, the session is unknown, it isn't this player's turn, the cell was already shot, or the session isn't in the IN_GAME stage.",
+        "operationId": "makeShotByField",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "description": "Session identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "abc123"
+          },
+          {
+            "name": "playerId",
+            "in": "path",
+            "description": "Shooting player's identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "p1"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParamCoordinateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Shot resolved",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseShotResultDto"
+                },
+                "examples": {
+                  "success": {
+                    "description": "success",
+                    "value": {
+                      "shotResult": "HIT"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, unknown session, not this player's turn, cell already shot, or wrong stage",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                },
+                "examples": {
+                  "playerIdInvalid": {
+                    "description": "playerIdInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "PLAYER_ID_INVALID"
+                    }
+                  },
+                  "coordinateInvalid": {
+                    "description": "coordinateInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "COORDINATE_INVALID"
+                    }
+                  },
+                  "sessionNotFound": {
+                    "description": "sessionNotFound",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "SESSION_NOT_FOUND"
+                    }
+                  },
+                  "playerNotActive": {
+                    "description": "playerNotActive",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "PLAYER_NOT_ACTIVE"
+                    }
+                  },
+                  "cellAlreadyShot": {
+                    "description": "cellAlreadyShot",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "CELL_ALREADY_SHOT"
+                    }
+                  },
+                  "stageInvalid": {
+                    "description": "stageInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "STAGE_INVALID"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected internal error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                },
+                "examples": {
+                  "internal": {
+                    "description": "internal",
+                    "value": {
+                      "status": 500,
+                      "errorMessage": "...",
+                      "errorCode": "INTERNAL"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/game/sessions/{sessionId}/state": {
+      "get": {
+        "tags": [
+          "Game Session"
+        ],
+        "summary": "Get current game stage",
+        "description": "Returns the session's current GameStage. Fails if the session id is unknown.",
+        "operationId": "getCurrentGameStage",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "description": "Session identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "abc123"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current stage",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseCurrentGameStageDto"
+                },
+                "examples": {
+                  "success": {
+                    "description": "success",
+                    "value": {
+                      "gameStage": "PREPARATION"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown session id",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                },
+                "examples": {
+                  "sessionNotFound": {
+                    "description": "sessionNotFound",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "SESSION_NOT_FOUND"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/game/sessions/{sessionId}/players/{playerId}/state": {
+      "get": {
+        "tags": [
+          "Gameplay"
+        ],
+        "summary": "Get gameplay state for a player",
+        "description": "Returns the requesting player's and opponent's boards, alive-cell/ship counts, and win state. Fails if the player id is malformed, the session is unknown, or the player/opponent can't be resolved in this session.",
+        "operationId": "getGameStateForPlayer",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "description": "Session identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "abc123"
+          },
+          {
+            "name": "playerId",
+            "in": "path",
+            "description": "Requesting player's identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "p1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Gameplay state for the requesting player",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseGameplayStateDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid player id, unknown session, or player/opponent not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                },
+                "examples": {
+                  "playerIdInvalid": {
+                    "description": "playerIdInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "PLAYER_ID_INVALID"
+                    }
+                  },
+                  "sessionNotFound": {
+                    "description": "sessionNotFound",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "SESSION_NOT_FOUND"
+                    }
+                  },
+                  "playerNotFound": {
+                    "description": "playerNotFound",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "PLAYER_NOT_FOUND"
+                    }
+                  },
+                  "opponentNotFound": {
+                    "description": "opponentNotFound",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "OPPONENT_NOT_FOUND"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/game/sessions/{sessionId}/players/{playerId}/preparationState": {
+      "get": {
+        "tags": [
+          "Preparation"
+        ],
+        "summary": "Get preparation state",
+        "description": "Returns the ships still available to place and the player's current field. Fails if the player id is malformed, the session is unknown, or the player can't be resolved in this session.",
+        "operationId": "getPreparationState",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "description": "Session identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "abc123"
+          },
+          {
+            "name": "playerId",
+            "in": "path",
+            "description": "Player identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "p1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current preparation state",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponsePreparationState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid player id, unknown session, or player not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                },
+                "examples": {
+                  "playerIdInvalid": {
+                    "description": "playerIdInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "PLAYER_ID_INVALID"
+                    }
+                  },
+                  "sessionNotFound": {
+                    "description": "sessionNotFound",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "SESSION_NOT_FOUND"
+                    }
+                  },
+                  "playerNotFound": {
+                    "description": "playerNotFound",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "PLAYER_NOT_FOUND"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected internal error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                },
+                "examples": {
+                  "internal": {
+                    "description": "internal",
+                    "value": {
+                      "status": 500,
+                      "errorMessage": "...",
+                      "errorCode": "INTERNAL"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/game/sessions/{sessionId}/players/{playerId}/opponent": {
+      "get": {
+        "tags": [
+          "Preparation"
+        ],
+        "summary": "Get opponent information",
+        "description": "Returns the opponent's display name and whether they've readied up. Fails if the player id is invalid, the session is unknown, or no opponent has joined yet.",
+        "operationId": "getOpponentInformation",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "description": "Session identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "abc123"
+          },
+          {
+            "name": "playerId",
+            "in": "path",
+            "description": "Requesting player's identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "p1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Opponent info",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseOpponentInformationDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid player id, unknown session, or no opponent yet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                },
+                "examples": {
+                  "playerIdInvalid": {
+                    "description": "playerIdInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "PLAYER_ID_INVALID"
+                    }
+                  },
+                  "sessionNotFound": {
+                    "description": "sessionNotFound",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "SESSION_NOT_FOUND"
+                    }
+                  },
+                  "opponentNotFound": {
+                    "description": "opponentNotFound",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "OPPONENT_NOT_FOUND"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/game/sessions/{sessionId}/players/{playerId}/events": {
+      "get": {
+        "tags": [
+          "Session Events"
+        ],
+        "summary": "Subscribe to session state-change push notifications",
+        "description": "Opens a Server-Sent Events stream for the given player: an immediate state snapshot is sent on connect, and a fresh snapshot is pushed whenever the session's state changes. Fails if the session id is unknown.",
+        "operationId": "subscribeToSessionEvents",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "description": "Session identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "abc123"
+          },
+          {
+            "name": "playerId",
+            "in": "path",
+            "description": "Subscribing player's identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "p1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE stream of ResponseSessionPushDto events named \"state-changed\"",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseSessionPushDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown session id",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/game/sessions/{sessionId}/changesTime": {
+      "get": {
+        "tags": [
+          "Game Session"
+        ],
+        "summary": "Get last session change timestamp",
+        "description": "Returns the timestamp of the session's last state change, used by clients for change-detection polling. Fails if the session id is unknown.",
+        "operationId": "getLastSessionChangeTime",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "description": "Session identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "abc123"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Last change timestamp",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseLastSessionChangeTimeDto"
+                },
+                "examples": {
+                  "success": {
+                    "description": "success",
+                    "value": {
+                      "lastId": "2026-07-13T10:15:30"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown session id",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                },
+                "examples": {
+                  "sessionNotFound": {
+                    "description": "sessionNotFound",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "SESSION_NOT_FOUND"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/game/editions": {
+      "get": {
+        "tags": [
+          "Game Session"
+        ],
+        "summary": "List available game editions",
+        "description": "Returns the fixed set of game editions the server supports (rule sets for ship counts/board size).",
+        "operationId": "getAvailableGameEditions",
+        "responses": {
+          "200": {
+            "description": "Available editions",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseAvailableGameEditionsDto"
+                },
+                "examples": {
+                  "success": {
+                    "description": "success",
+                    "value": {
+                      "gameEditions": [
+                        "UKRAINIAN",
+                        "MILTON_BRADLEY"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/game/sessions/{sessionId}/players/{playerId}/ships": {
+      "delete": {
+        "tags": [
+          "Preparation"
+        ],
+        "summary": "Remove a placed ship",
+        "description": "Removes whatever ship occupies the given coordinate for this player during PREPARATION. Fails if the player id/coordinate is invalid, the session is unknown, or the stage isn't PREPARATION.",
+        "operationId": "removeShipFromField",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "description": "Session identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "abc123"
+          },
+          {
+            "name": "playerId",
+            "in": "path",
+            "description": "Player identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "p1"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParamCoordinateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Removal result",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseShipRemovedDto"
+                },
+                "examples": {
+                  "success": {
+                    "description": "success",
+                    "value": {
+                      "deleted": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, unknown session, or wrong stage",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                },
+                "examples": {
+                  "playerIdInvalid": {
+                    "description": "playerIdInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "PLAYER_ID_INVALID"
+                    }
+                  },
+                  "coordinateInvalid": {
+                    "description": "coordinateInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "COORDINATE_INVALID"
+                    }
+                  },
+                  "sessionNotFound": {
+                    "description": "sessionNotFound",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "SESSION_NOT_FOUND"
+                    }
+                  },
+                  "stageInvalid": {
+                    "description": "stageInvalid",
+                    "value": {
+                      "status": 400,
+                      "errorMessage": "...",
+                      "errorCode": "STAGE_INVALID"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected internal error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExceptionDto"
+                },
+                "examples": {
+                  "internal": {
+                    "description": "internal",
+                    "value": {
+                      "status": 500,
+                      "errorMessage": "...",
+                      "errorCode": "INTERNAL"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ParamShipDto": {
+        "type": "object",
+        "properties": {
+          "row": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Zero-based top-left board row"
+          },
+          "col": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Zero-based top-left board column"
+          },
+          "direction": {
+            "type": "string",
+            "description": "Ship orientation",
+            "enum": [
+              "HORIZONTAL",
+              "VERTICAL"
+            ]
+          }
+        }
+      },
+      "ResponseShipAddedDto": {
+        "type": "object",
+        "properties": {
+          "shipId": {
+            "type": "string",
+            "description": "Identifier of the ship that was placed"
+          }
+        }
+      },
+      "ExceptionDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code",
+            "example": 400
+          },
+          "errorMessage": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "errorCode": {
+            "type": "string",
+            "description": "Stable, machine-readable error code identifying the exception type",
+            "example": "SESSION_NOT_FOUND"
+          }
+        }
+      },
+      "ParamGameEditionDto": {
+        "type": "object",
+        "properties": {
+          "gameEdition": {
+            "type": "string",
+            "description": "Game edition name",
+            "enum": [
+              "UKRAINIAN",
+              "MILTON_BRADLEY"
+            ]
+          }
+        }
+      },
+      "ResponseCreatedSessionIdDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "Newly created session's identifier"
+          }
+        }
+      },
+      "ParamPlayerNameDto": {
+        "type": "object",
+        "properties": {
+          "playerName": {
+            "type": "string",
+            "description": "Display name for the new player"
+          }
+        }
+      },
+      "ResponseCreatedPlayerDto": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "type": "string",
+            "description": "Newly created player's identifier"
+          },
+          "playerName": {
+            "type": "string",
+            "description": "Player's display name"
+          }
+        }
+      },
+      "ResponsePlayerReady": {
+        "type": "object",
+        "properties": {
+          "ready": {
+            "type": "boolean",
+            "description": "Whether the player is now marked ready"
+          }
+        }
+      },
+      "ParamCoordinateDto": {
+        "type": "object",
+        "properties": {
+          "row": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Zero-based board row"
+          },
+          "col": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Zero-based board column"
+          }
+        }
+      },
+      "ResponseShotResultDto": {
+        "type": "object",
+        "properties": {
+          "shotResult": {
+            "type": "string",
+            "description": "Outcome of the shot",
+            "enum": [
+              "MISS",
+              "HIT",
+              "DESTROYED"
+            ]
+          }
+        }
+      },
+      "ResponseCurrentGameStageDto": {
+        "type": "object",
+        "properties": {
+          "gameStage": {
+            "type": "string",
+            "description": "Current GameStage name",
+            "enum": [
+              "INITIALIZED",
+              "WAITING_FOR_PLAYERS",
+              "PREPARATION",
+              "IN_GAME",
+              "FINISHED"
+            ]
+          }
+        }
+      },
+      "CellDto": {
+        "type": "object",
+        "properties": {
+          "row": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Zero-based board row"
+          },
+          "col": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Zero-based board column"
+          },
+          "ship": {
+            "$ref": "#/components/schemas/Ship",
+            "description": "Ship occupying this cell, if any (engine record: shipId, shipType, shipDirection, shipSize)"
+          },
+          "hasShot": {
+            "type": "boolean",
+            "description": "Whether this cell has already been shot at"
+          },
+          "isAvailable": {
+            "type": "boolean",
+            "description": "Whether this cell is available for placing a ship"
+          }
+        }
+      },
+      "ResponseGameplayStateDto": {
+        "type": "object",
+        "properties": {
+          "playerName": {
+            "type": "string",
+            "description": "Requesting player's display name"
+          },
+          "playerNumberOfAliveCells": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of the player's board cells still occupied by unsunk ships"
+          },
+          "playerNumberOfAliveShips": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of the player's ships not yet fully sunk"
+          },
+          "playerField": {
+            "type": "array",
+            "description": "Player's own board, as a 2D array of cells",
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/CellDto"
+              }
+            }
+          },
+          "opponentName": {
+            "type": "string",
+            "description": "Opponent's display name"
+          },
+          "opponentNumberOfAliveCells": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of the opponent's board cells still occupied by unsunk ships"
+          },
+          "opponentNumberOfAliveShips": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of the opponent's ships not yet fully sunk"
+          },
+          "opponentField": {
+            "type": "array",
+            "description": "Opponent's board as visible to the requesting player, as a 2D array of cells",
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/CellDto"
+              }
+            }
+          },
+          "hasWinner": {
+            "type": "boolean",
+            "description": "Whether the game has a winner"
+          },
+          "winnerPlayerName": {
+            "type": "string",
+            "description": "Winning player's display name, if any"
+          },
+          "isPlayerActive": {
+            "type": "boolean",
+            "description": "Whether it is currently this player's turn"
+          },
+          "isPlayerWinner": {
+            "type": "boolean",
+            "description": "Whether this player has won the game"
+          },
+          "isOpponentReady": {
+            "type": "boolean",
+            "description": "Whether the opponent has readied up"
+          }
+        }
+      },
+      "Ship": {
+        "type": "object",
+        "properties": {
+          "shipId": {
+            "type": "string"
+          },
+          "shipType": {
+            "type": "string",
+            "enum": [
+              "PATROL_BOAT",
+              "SUBMARINE",
+              "DESTROYER",
+              "BATTLESHIP",
+              "CARRIER"
+            ]
+          },
+          "shipDirection": {
+            "type": "string",
+            "enum": [
+              "HORIZONTAL",
+              "VERTICAL"
+            ]
+          },
+          "shipSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ResponsePreparationState": {
+        "type": "object",
+        "properties": {
+          "ships": {
+            "type": "array",
+            "description": "Ships still available to place",
+            "items": {
+              "$ref": "#/components/schemas/ShipDto"
+            }
+          },
+          "field": {
+            "type": "array",
+            "description": "Player's current board, as a 2D array of cells",
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/CellDto"
+              }
+            }
+          }
+        }
+      },
+      "ShipDto": {
+        "type": "object",
+        "properties": {
+          "shipId": {
+            "type": "string",
+            "description": "Ship type identifier from the edition's ship catalog",
+            "example": "patrol_boat_1"
+          },
+          "shipSize": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Size of the ship in grid spaces"
+          }
+        }
+      },
+      "ResponseOpponentInformationDto": {
+        "type": "object",
+        "properties": {
+          "playerName": {
+            "type": "string",
+            "description": "Opponent's display name"
+          },
+          "ready": {
+            "type": "boolean",
+            "description": "Whether the opponent has readied up"
+          }
+        }
+      },
+      "ResponseSessionPushDto": {
+        "type": "object",
+        "properties": {
+          "gameStage": {
+            "type": "string",
+            "description": "Current GameStage name",
+            "enum": [
+              "INITIALIZED",
+              "WAITING_FOR_PLAYERS",
+              "PREPARATION",
+              "IN_GAME",
+              "FINISHED"
+            ]
+          },
+          "lastUpdate": {
+            "type": "string",
+            "description": "Last-update timestamp as a string"
+          },
+          "opponent": {
+            "$ref": "#/components/schemas/ResponseOpponentInformationDto",
+            "description": "Opponent information for the subscribing player, null until an opponent has joined"
+          },
+          "gameplayState": {
+            "$ref": "#/components/schemas/ResponseGameplayStateDto",
+            "description": "Gameplay state for the subscribing player, null until the session is IN_GAME or FINISHED"
+          }
+        }
+      },
+      "ResponseLastSessionChangeTimeDto": {
+        "type": "object",
+        "properties": {
+          "lastId": {
+            "type": "string",
+            "description": "Last-update timestamp as a string, used for client polling comparisons"
+          }
+        }
+      },
+      "ResponseAvailableGameEditionsDto": {
+        "type": "object",
+        "properties": {
+          "gameEditions": {
+            "type": "array",
+            "description": "Supported game edition names",
+            "example": "UKRAINIAN",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ResponseShipRemovedDto": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "description": "Whether a ship was found and removed at the given coordinate"
+          }
+        }
+      }
+    }
+  }
+}

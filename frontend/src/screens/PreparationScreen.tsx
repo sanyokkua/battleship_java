@@ -3,8 +3,6 @@ import {useTranslation} from 'react-i18next';
 import {useNavigate} from 'react-router-dom';
 import {useSessionGuard} from '../hooks/useSessionGuard';
 import {usePreparation} from '../hooks/usePreparation';
-import {usePolling} from '../hooks/usePolling';
-import {useGameAdapter} from '../adapters/GameAdapterContext';
 import type {GameAdapterError} from '../adapters/AdapterErrors';
 import {saveStage} from '../services/GameBrowserStorage';
 import {getShipTypeLabel} from '../i18n-support/shipTypeNames';
@@ -76,10 +74,10 @@ function findCellForShip(field: CellDto[][], shipId: string): CellDto | null {
 /**
  * Ship-placement screen ("/game/preparation") — shown during the `PREPARATION`
  * stage. Delegates fleet/board/placement state to `usePreparation` (which
- * wraps `GameAdapter` calls for placing/removing ships and marking ready) and
- * runs its own 3s poll via `usePolling`/`useGameAdapter().getStage` once the
- * player has readied up, to detect the server advancing to `IN_GAME` and
- * navigate to `GameplayScreen` ("/game/gameplay"). Click-to-place/click-to-remove
+ * wraps `GameAdapter` calls for placing/removing ships and marking ready, and
+ * also exposes the session's pushed `stage`) and, once the player has readied
+ * up, watches that pushed `stage` to detect the server advancing to `IN_GAME`
+ * and navigate to `GameplayScreen` ("/game/gameplay"). Click-to-place/click-to-remove
  * placements are pre-validated client-side via {@link validatePlacement}
  * before the adapter call is made.
  */
@@ -88,7 +86,6 @@ export function PreparationScreen() {
     const navigate = useNavigate();
     const notify = useNotify();
     const {push} = useToastContext();
-    const adapter = useGameAdapter();
 
     const {sessionId, player} = useSessionGuard();
     const {
@@ -102,6 +99,7 @@ export function PreparationScreen() {
         removeShipAt,
         markReady,
         opponentReady,
+        stage,
         allPlaced,
         loading,
         error,
@@ -166,23 +164,17 @@ export function PreparationScreen() {
     const [actionPopup, setActionPopup] = useState<{ shipId: string; shipSize: number } | null>(null);
     const [actionPending, setActionPending] = useState(false);
 
-    const watchStage = async () => {
-        if (!sessionId) return;
-        try {
-            const stage = await adapter.getStage(sessionId);
-            if (!STILL_PREPARING_STAGES.has(stage) && stage !== '') {
-                saveStage(stage);
-                if (stage === 'IN_GAME') {
-                    navigate('/game/gameplay', {replace: true});
-                }
-            }
-        } catch {
-            // Transient poll failures are non-fatal here — usePreparation's own error
-            // state already surfaces adapter problems; just retry on the next tick.
+    useEffect(() => {
+        if (!watchingStage || !stage) {
+            return;
         }
-    };
-
-    usePolling(watchStage, 3000, watchingStage);
+        if (!STILL_PREPARING_STAGES.has(stage) && stage !== '') {
+            saveStage(stage);
+            if (stage === 'IN_GAME') {
+                navigate('/game/gameplay', {replace: true});
+            }
+        }
+    }, [watchingStage, stage, navigate]);
 
     const placedShips = useMemo(() => derivePlacedShips(field), [field]);
 

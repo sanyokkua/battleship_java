@@ -1,7 +1,6 @@
-import {useCallback, useRef, useState} from "react";
-import {useGameAdapter} from "../adapters/GameAdapterContext";
-import {GameAdapterError, isGameAdapterError} from "../adapters/AdapterErrors";
-import {usePolling} from "./usePolling";
+import {useRef, useState} from "react";
+import {GameAdapterError} from "../adapters/AdapterErrors";
+import {useSessionEvents} from "./useSessionEvents";
 import type {ResponseOpponentInformationDto} from "../logic/ApplicationTypes";
 
 /**
@@ -22,58 +21,38 @@ export type WaitRoomState = {
 const WAIT_OVER_STAGES = new Set(["PREPARATION", "IN_GAME", "FINISHED"]);
 
 /**
- * Polls opponent presence and session stage while waiting for a second player to join.
+ * Tracks opponent presence and session stage while waiting for a second player to join.
  *
- * Polls every 3s via {@link usePolling}, fetching opponent info and stage concurrently.
- * Once the stage reaches `WAIT_OVER_STAGES` (`PREPARATION`, `IN_GAME`, or `FINISHED`),
- * polling is switched off (via `enabled`) and further ticks are also short-circuited
- * through a ref flag (`doneRef`) so an in-flight tick scheduled just before the switch
- * takes effect is still a no-op.
+ * Driven by {@link useSessionEvents}'s pushed snapshots rather than polling: each received
+ * payload's `opponent`/`gameStage` are applied directly. Once the stage reaches
+ * `WAIT_OVER_STAGES` (`PREPARATION`, `IN_GAME`, or `FINISHED`), further pushes are ignored via
+ * a ref flag (`doneRef`) so a stray late event can't revive a stale "still waiting" state.
  *
  * @param sessionId - ID of the game session.
  * @param playerId - ID of the current player within that session.
  * @returns Opponent/stage snapshot and loading/error flags — see {@link WaitRoomState}.
  */
 export function useWaitRoom(sessionId: string, playerId: string): WaitRoomState {
-    const adapter = useGameAdapter();
     const [opponent, setOpponent] = useState<ResponseOpponentInformationDto | null>(null);
     const [stage, setStage] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<GameAdapterError | null>(null);
+    const [error] = useState<GameAdapterError | null>(null);
 
-    // Tracks whether the wait is over so `usePolling`'s `enabled` flag can flip
-    // off without waiting for a re-render round-trip inside the poll tick itself.
+    // Tracks whether the wait is over so a stray late push can't revive "still waiting" state.
     const doneRef = useRef(false);
-    const [enabled, setEnabled] = useState(true);
 
-    const tick = useCallback(async () => {
+    useSessionEvents(sessionId, playerId, payload => {
         if (doneRef.current) {
             return;
         }
-        try {
-            const [opponentInfo, stageValue] = await Promise.all([
-                adapter.getOpponent(sessionId, playerId),
-                adapter.getStage(sessionId)
-            ]);
-            setOpponent(opponentInfo);
-            setStage(stageValue);
-            setError(null);
+        setStage(payload.gameStage);
+        setOpponent(payload.opponent ?? {playerName: "", ready: false});
+        setLoading(false);
 
-            if (WAIT_OVER_STAGES.has(stageValue)) {
-                doneRef.current = true;
-                setEnabled(false);
-            }
-        } catch (e) {
-            setError(isGameAdapterError(e) ? e : new GameAdapterError("Failed to poll wait room", {
-                cause: e,
-                context: "useWaitRoom"
-            }));
-        } finally {
-            setLoading(false);
+        if (WAIT_OVER_STAGES.has(payload.gameStage)) {
+            doneRef.current = true;
         }
-    }, [adapter, sessionId, playerId]);
-
-    usePolling(tick, 3000, enabled);
+    });
 
     return {opponent, stage, loading, error};
 }

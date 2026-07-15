@@ -63,14 +63,13 @@ describe("useWaitRoom", () => {
         expect(result.current.opponent).toEqual({playerName: "", ready: false});
     });
 
-    it("stops polling once stage reaches PREPARATION", async () => {
+    it("ignores a stray later push once stage reaches PREPARATION", async () => {
         const adapter = new MockGameAdapter();
         const sessionId = await adapter.createSession("UKRAINIAN");
         const p1 = await adapter.createPlayer(sessionId, "Alice");
         await adapter.createPlayer(sessionId, "Bob");
 
-        const getOpponentSpy = vi.spyOn(adapter, "getOpponent");
-        const getStageSpy = vi.spyOn(adapter, "getStage");
+        const subscribeSpy = vi.spyOn(adapter, "subscribeToSessionEvents");
 
         const {result} = renderHook(() => useWaitRoom(sessionId, p1.playerId), {
             wrapper: makeWrapper(adapter)
@@ -78,14 +77,13 @@ describe("useWaitRoom", () => {
 
         await waitFor(() => expect(result.current.stage).toBe("PREPARATION"));
 
-        const callsAfterSettled = getOpponentSpy.mock.calls.length;
-        expect(getStageSpy).toHaveBeenCalled();
-
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(10000);
+        // Simulate a stray/out-of-order push claiming the wait isn't over — once the hook has
+        // latched onto the wait being over (doneRef), further pushes must be ignored.
+        const onEvent = subscribeSpy.mock.calls[0][2];
+        act(() => {
+            onEvent({gameStage: "WAITING_FOR_PLAYERS", lastUpdate: "stray", opponent: null, gameplayState: null});
         });
 
-        // No further polling after the wait is over.
-        expect(getOpponentSpy.mock.calls.length).toBe(callsAfterSettled);
+        expect(result.current.stage).toBe("PREPARATION");
     });
 });

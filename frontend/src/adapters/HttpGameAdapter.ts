@@ -21,6 +21,7 @@ import type {
     ResponseOpponentInformationDto,
     ResponsePlayerReady,
     ResponsePreparationState,
+    ResponseSessionPushDto,
     ResponseShipAddedDto,
     ResponseShipRemovedDto,
     ResponseShotResultDto,
@@ -128,6 +129,25 @@ export class HttpGameAdapter implements GameAdapter {
     async shoot(sessionId: string, playerId: string, at: Coordinate): Promise<ResponseShotResultDto> {
         return this.wrap(`shoot(sessionId=${sessionId}, playerId=${playerId}, at=${JSON.stringify(at)})`, () =>
             makeShotByField(sessionId, playerId, at));
+    }
+
+    /**
+     * See {@link GameAdapter.subscribeToSessionEvents}. Opens a native `EventSource` against
+     * the backend's SSE endpoint — same-origin, so no auth headers are needed (session/player
+     * id already travel via the URL path, matching every other call in this adapter). Relies
+     * on `EventSource`'s built-in auto-reconnect rather than custom backoff logic.
+     */
+    subscribeToSessionEvents(sessionId: string, playerId: string, onEvent: (payload: ResponseSessionPushDto) => void): () => void {
+        const path = `/api/v2/game/sessions/${sessionId}/players/${playerId}/events`;
+        const eventSource = new EventSource(path);
+
+        eventSource.addEventListener("state-changed", (event: MessageEvent<string>) => {
+            onEvent(JSON.parse(event.data) as ResponseSessionPushDto);
+        });
+
+        return () => {
+            eventSource.close();
+        };
     }
 
     /** Runs `fn`, converting any thrown/rejected error into a {@link GameAdapterError} tagged with `context` for diagnostics. */

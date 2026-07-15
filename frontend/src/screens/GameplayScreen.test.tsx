@@ -335,13 +335,9 @@ describe('GameplayScreen', () => {
         // player back to p1.
         const p1Prep = await adapterInstance.getPreparationState(sessionId, p1);
         const opponentShot = findEmptyCell(p1Prep.field);
+        // Pushed to the mounted screen as soon as it happens — no poll wait needed.
         await act(async () => {
             await adapterInstance.shoot(sessionId, p2, {row: opponentShot.row, column: opponentShot.col});
-        });
-
-        // Advance past the 5s poll boundary so useGameplay's next refetch observes the flip.
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(5100);
         });
 
         await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
@@ -349,8 +345,8 @@ describe('GameplayScreen', () => {
         expect(fleetPanel).toHaveClass('hide');
     });
 
-    it('does not force the tab away from a manual mid-turn switch on an unrelated poll tick', async () => {
-        const {sessionId, p1, p1Name} = await setUpInGameSession(adapterInstance);
+    it('does not force the tab away from a manual mid-turn switch on an unrelated state push', async () => {
+        const {sessionId, p1, p2, p1Name} = await setUpInGameSession(adapterInstance);
         saveSession(sessionId);
         savePlayer({playerId: p1, playerName: p1Name});
         saveStage('IN_GAME');
@@ -368,10 +364,12 @@ describe('GameplayScreen', () => {
         expect(fleetPanel).not.toHaveClass('hide');
         expect(targetPanel).toHaveClass('hide');
 
-        // Advance past a poll tick with nothing flipping isPlayerActive (same player still active)
-        // — a same-value poll refetch must not reset the tab back to Target.
+        // A push where p1 remains active — a HIT keeps the shooter's turn, per classic
+        // Battleship rules (see MockGameAdapter.shoot) — must not reset the tab back to Target.
+        const p2Prep = await adapterInstance.getPreparationState(sessionId, p2);
+        const hitAt = findShipCellOfSize(p2Prep.field, 1);
         await act(async () => {
-            await vi.advanceTimersByTimeAsync(5100);
+            await adapterInstance.shoot(sessionId, p1, {row: hitAt.row, column: hitAt.col});
         });
 
         expect(fleetPanel).not.toHaveClass('hide');
@@ -406,11 +404,8 @@ describe('GameplayScreen', () => {
 
         await expect(adapterInstance.getStage(sessionId)).resolves.toBe('FINISHED');
 
-        // Advance past a poll tick so useGameplay's next refetch observes hasWinner=true.
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(5100);
-        });
-
+        // Each shot above was pushed to the mounted screen as it happened — hasWinner=true is
+        // already reflected, no poll wait needed.
         await waitFor(() => expect(screen.getByText('Results route')).toBeInTheDocument());
         expect(localStorage.getItem('gameStage_str')).toBe('FINISHED');
     });
@@ -450,11 +445,9 @@ describe('GameplayScreen', () => {
 
             const p1Prep = await adapterInstance.getPreparationState(sessionId, p1);
             const at = findEmptyCell(p1Prep.field);
+            // Pushed to the mounted screen as soon as it happens — no poll wait needed.
             await act(async () => {
                 await adapterInstance.shoot(sessionId, p2, {row: at.row, column: at.col});
-            });
-            await act(async () => {
-                await vi.advanceTimersByTimeAsync(5100);
             });
 
             const label = formatCoordinateLabel(at.row, at.col);
@@ -479,11 +472,9 @@ describe('GameplayScreen', () => {
             // other cell(s) remain unshot.
             const p1Prep = await adapterInstance.getPreparationState(sessionId, p1);
             const at = findShipCellOfSize(p1Prep.field, 2);
+            // Pushed to the mounted screen as soon as it happens — no poll wait needed.
             await act(async () => {
                 await adapterInstance.shoot(sessionId, p2, {row: at.row, column: at.col});
-            });
-            await act(async () => {
-                await vi.advanceTimersByTimeAsync(5100);
             });
 
             const label = formatCoordinateLabel(at.row, at.col);
@@ -507,16 +498,40 @@ describe('GameplayScreen', () => {
             // A size-1 Patrol Boat sinks in exactly one shot.
             const p1Prep = await adapterInstance.getPreparationState(sessionId, p1);
             const at = findShipCellOfSize(p1Prep.field, 1);
+            // Pushed to the mounted screen as soon as it happens — no poll wait needed.
             await act(async () => {
                 await adapterInstance.shoot(sessionId, p2, {row: at.row, column: at.col});
-            });
-            await act(async () => {
-                await vi.advanceTimersByTimeAsync(5100);
             });
 
             const label = formatCoordinateLabel(at.row, at.col);
             expect(await screen.findByText('Your ship was sunk!')).toBeInTheDocument();
             expect(screen.getByText(`The opponent sank your ship at ${label}.`)).toBeInTheDocument();
+            expect(screen.queryByText('Your ship was hit!')).not.toBeInTheDocument();
+        });
+
+        it('does not spam "missed" toasts for the moat cells auto-revealed when a ship is sunk', async () => {
+            const {sessionId, p1, p2, p1Name} = await setUpInGameSession(adapterInstance);
+            saveSession(sessionId);
+            savePlayer({playerId: p1, playerName: p1Name});
+            saveStage('IN_GAME');
+
+            const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
+            renderGameplayScreen();
+            await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+
+            await flipTurnToP2(sessionId, p2, user);
+
+            // A size-1 Patrol Boat sinks in exactly one shot, auto-revealing up to 8 moat cells
+            // around it (MockGameAdapter now mirrors the real backend's kill-reveal side effect —
+            // see MockGameAdapter.test.ts). Only the kill itself should ever produce a toast.
+            const p1Prep = await adapterInstance.getPreparationState(sessionId, p1);
+            const at = findShipCellOfSize(p1Prep.field, 1);
+            await act(async () => {
+                await adapterInstance.shoot(sessionId, p2, {row: at.row, column: at.col});
+            });
+
+            expect(await screen.findByText('Your ship was sunk!')).toBeInTheDocument();
+            expect(screen.queryByText('Opponent missed')).not.toBeInTheDocument();
             expect(screen.queryByText('Your ship was hit!')).not.toBeInTheDocument();
         });
 
@@ -540,17 +555,12 @@ describe('GameplayScreen', () => {
             renderGameplayScreen();
             await waitFor(() => expect(screen.getByText(p1Name)).toBeInTheDocument());
 
-            // Let a subsequent poll run too — still nothing NEW happened, so still no toast.
-            await act(async () => {
-                await vi.advanceTimersByTimeAsync(5100);
-            });
-
             expect(screen.queryByText('Your ship was hit!')).not.toBeInTheDocument();
             expect(screen.queryByText('Your ship was sunk!')).not.toBeInTheDocument();
             expect(screen.queryByText('Opponent missed')).not.toBeInTheDocument();
         });
 
-        it('shows one toast per newly-revealed cell when multiple opponent shots land between two polls', async () => {
+        it('shows one toast per newly-revealed cell when multiple opponent shots land in the same batch', async () => {
             const {sessionId, p1, p2, p1Name} = await setUpInGameSession(adapterInstance);
             saveSession(sessionId);
             savePlayer({playerId: p1, playerName: p1Name});
@@ -561,10 +571,11 @@ describe('GameplayScreen', () => {
             await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
 
             // Flip the turn via a real UI click (also seeds the diff's "previous field" baseline
-            // via the refetch this triggers), then land BOTH opponent shots purely through direct
-            // adapter calls — bypassing the mounted hook's own shoot()/refetch() entirely — so
-            // neither one triggers an intermediate render. Only the vi.advanceTimersByTimeAsync
-            // poll below ever asks the component to observe new state, so it must reveal both at once.
+            // via the push this triggers), then land BOTH opponent shots purely through direct
+            // adapter calls — bypassing the mounted hook's own shoot() entirely, matching how a
+            // real opponent's moves arrive via push rather than this player's own action. Wrapping
+            // all three in one act() lets React coalesce the resulting pushes into a single diff
+            // pass, which must still reveal both newly-hit cells at once.
             await flipTurnToP2(sessionId, p2, user);
 
             const p1Prep = await adapterInstance.getPreparationState(sessionId, p1);
@@ -575,12 +586,10 @@ describe('GameplayScreen', () => {
             const p2Prep = await adapterInstance.getPreparationState(sessionId, p2);
             const p2MissAt = p2Prep.field.flat().find((c) => !c.ship && !c.hasShot)!;
 
-            await adapterInstance.shoot(sessionId, p2, {row: first.row, column: first.col}); // miss -> flips to p1
-            await adapterInstance.shoot(sessionId, p1, {row: p2MissAt.row, column: p2MissAt.col}); // miss -> flips back to p2
-            await adapterInstance.shoot(sessionId, p2, {row: second.row, column: second.col}); // miss -> flips to p1
-
             await act(async () => {
-                await vi.advanceTimersByTimeAsync(5100);
+                await adapterInstance.shoot(sessionId, p2, {row: first.row, column: first.col}); // miss -> flips to p1
+                await adapterInstance.shoot(sessionId, p1, {row: p2MissAt.row, column: p2MissAt.col}); // miss -> flips back to p2
+                await adapterInstance.shoot(sessionId, p2, {row: second.row, column: second.col}); // miss -> flips to p1
             });
 
             const firstLabel = formatCoordinateLabel(first.row, first.col);

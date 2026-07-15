@@ -6,6 +6,7 @@ import type {
     ResponseOpponentInformationDto,
     ResponsePlayerReady,
     ResponsePreparationState,
+    ResponseSessionPushDto,
     ResponseShipAddedDto,
     ResponseShipRemovedDto,
     ResponseShotResultDto,
@@ -166,6 +167,8 @@ function nextId(prefix: string): string {
  */
 export class MockGameAdapter implements GameAdapter {
     private sessions = new Map<string, SessionState>();
+    // sessionId -> playerId -> subscribed callbacks, simulating the backend's SSE fan-out.
+    private listeners = new Map<string, Map<string, Set<(payload: ResponseSessionPushDto) => void>>>();
 
     /** See {@link GameAdapter.getEditions}. Returns the fixed list of editions this mock simulates. */
     async getEditions(): Promise<string[]> {
@@ -458,6 +461,17 @@ export class MockGameAdapter implements GameAdapter {
             const placed = opponent.placedShips.get(targetCell.ship.shipId);
             const destroyed = placed !== undefined && placed.cells.every(c => opponent.field[c.row][c.column].hasShot);
             shotResult = destroyed ? "DESTROYED" : "HIT";
+
+            // Mirrors the real engine's FieldManagementImpl.processDestroyedShip: once a ship is
+            // fully sunk, its moat cells are auto-marked hasShot too (no ship can ever be adjacent
+            // to another, so those cells are provably safe) — not additional real shots.
+            if (destroyed && placed) {
+                for (const cell of placed.cells) {
+                    for (const n of neighbours(cell)) {
+                        opponent.field[n.row][n.column].hasShot = true;
+                    }
+                }
+            }
         }
 
         // Turn switches to the opponent only on a miss (classic Battleship: hits grant another turn).
@@ -477,6 +491,39 @@ export class MockGameAdapter implements GameAdapter {
         return {shotResult};
     }
 
+    /**
+     * See {@link GameAdapter.subscribeToSessionEvents}. Registers `onEvent` and invokes it
+     * once immediately with the current snapshot (matching the real backend's
+     * snapshot-on-subscribe behavior), then again every time any of this session's mutating
+     * methods runs (via {@link bump}). A no-op subscribe (returning a no-op unsubscribe) if
+     * the session/player don't exist yet, mirroring how a real `EventSource` wouldn't throw
+     * synchronously for a bad URL either.
+     */
+    subscribeToSessionEvents(sessionId: string, playerId: string, onEvent: (payload: ResponseSessionPushDto) => void): () => void {
+        const session = this.sessions.get(sessionId);
+        const player = session?.players.find(p => p.playerId === playerId);
+        if (!session || !player) {
+            return () => {
+            };
+        }
+
+        if (!this.listeners.has(sessionId)) {
+            this.listeners.set(sessionId, new Map());
+        }
+        const sessionListeners = this.listeners.get(sessionId)!;
+        if (!sessionListeners.has(playerId)) {
+            sessionListeners.set(playerId, new Set());
+        }
+        const playerListeners = sessionListeners.get(playerId)!;
+        playerListeners.add(onEvent);
+
+        onEvent(this.buildPushPayload(session, player));
+
+        return () => {
+            playerListeners.delete(onEvent);
+        };
+    }
+
     // --- internal helpers ---
 
     private opponentVisibleField(opponentField: CellDto[][], revealAll: boolean): CellDto[][] {
@@ -494,6 +541,68 @@ export class MockGameAdapter implements GameAdapter {
 
     private bump(session: SessionState): void {
         session.changeCounter += 1;
+        this.notifySubscribers(session);
+    }
+
+    /** Computes and delivers a fresh push payload to every player currently subscribed to `session`. */
+    private notifySubscribers(session: SessionState): void {
+        const sessionListeners = this.listeners.get(session.sessionId);
+        if (!sessionListeners) {
+            return;
+        }
+        for (const player of session.players) {
+            const playerListeners = sessionListeners.get(player.playerId);
+            if (!playerListeners || playerListeners.size === 0) {
+                continue;
+            }
+            const payload = this.buildPushPayload(session, player);
+            for (const listener of playerListeners) {
+                listener(payload);
+            }
+        }
+    }
+
+    /**
+     * Builds the full-state push payload for `player`'s point of view: `opponent` once a second
+     * player has joined, and `gameplayState` once that opponent exists and the session is
+     * IN_GAME or FINISHED — mirroring the real backend's `SessionEventBroadcaster`.
+     */
+    private buildPushPayload(session: SessionState, player: PlayerState): ResponseSessionPushDto {
+        const opponent = session.players.find(p => p.playerId !== player.playerId) ?? null;
+
+        let opponentDto: ResponseOpponentInformationDto | null = null;
+        let gameplayState: ResponseGameplayStateDto | null = null;
+
+        if (opponent) {
+            opponentDto = {playerName: opponent.playerName, ready: opponent.ready};
+
+            if (session.stage === "IN_GAME" || session.stage === "FINISHED") {
+                const playerCounts = countAlive(player.field);
+                const opponentCounts = countAlive(opponent.field);
+                gameplayState = {
+                    playerName: player.playerName,
+                    isPlayerActive: session.activePlayerId === player.playerId,
+                    isPlayerWinner: session.hasWinner && session.winnerPlayerName === player.playerName,
+                    playerNumberOfAliveCells: playerCounts.aliveCells,
+                    playerNumberOfAliveShips: playerCounts.aliveShips,
+                    playerField: cloneField(player.field),
+                    opponentName: opponent.playerName,
+                    isOpponentReady: opponent.ready,
+                    opponentNumberOfAliveCells: opponentCounts.aliveCells,
+                    opponentNumberOfAliveShips: opponentCounts.aliveShips,
+                    opponentField: this.opponentVisibleField(opponent.field, session.stage === "FINISHED"),
+                    hasWinner: session.hasWinner,
+                    winnerPlayerName: session.winnerPlayerName ?? ""
+                };
+            }
+        }
+
+        return {
+            gameStage: session.stage,
+            lastUpdate: String(session.changeCounter),
+            opponent: opponentDto,
+            gameplayState
+        };
     }
 
     private requireSession(sessionId: string, context: string): SessionState {

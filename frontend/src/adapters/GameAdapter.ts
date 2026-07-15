@@ -5,6 +5,7 @@ import type {
     ResponseOpponentInformationDto,
     ResponsePlayerReady,
     ResponsePreparationState,
+    ResponseSessionPushDto,
     ResponseShipAddedDto,
     ResponseShipRemovedDto,
     ResponseShotResultDto,
@@ -138,4 +139,21 @@ export interface GameAdapter {
      * @returns The shot outcome.
      */
     shoot(sessionId: string, playerId: string, at: Coordinate): Promise<ResponseShotResultDto>; // shotResult is "HIT"|"MISS"|"DESTROYED"
+
+    /**
+     * Subscribes to push notifications for a session/player, replacing manual polling.
+     * `onEvent` is called once immediately with the current snapshot, then again whenever
+     * the session's state changes (an opponent readying up, a shot being resolved, a stage
+     * transition, etc.) — a full-state push, not a "something changed, go refetch" signal, so
+     * callers can apply `onEvent`'s payload directly without an extra round trip.
+     *
+     * Subscription semantics, not request/response, so this deliberately returns synchronously
+     * rather than a Promise.
+     *
+     * @param sessionId - The session to subscribe to.
+     * @param playerId - The subscribing player; payloads are computed from their point of view.
+     * @param onEvent - Called with each received snapshot.
+     * @returns An unsubscribe function — call it on cleanup (e.g. a `useEffect` teardown).
+     */
+    subscribeToSessionEvents(sessionId: string, playerId: string, onEvent: (payload: ResponseSessionPushDto) => void): () => void;
 }

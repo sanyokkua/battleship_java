@@ -11,6 +11,25 @@
         "frontend"
       ],
       "port": 5173
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "mvn",
+      "runtimeArgs": [
+        "spring-boot:run"
+      ],
+      "port": 8080
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "frontend"
+      ],
+      "port": 5173
     }
   ]
 }

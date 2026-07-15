@@ -3,9 +3,11 @@ package ua.kostenko.battleship.battleship.logic.api.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import lombok.val;
+import org.springframework.context.ApplicationEventPublisher;
 import ua.kostenko.battleship.battleship.logic.api.GameControllerApi;
 import ua.kostenko.battleship.battleship.logic.api.IdGenerator;
 import ua.kostenko.battleship.battleship.logic.api.ValidationUtils;
+import ua.kostenko.battleship.battleship.logic.api.events.GameStateChangedEvent;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.*;
 import ua.kostenko.battleship.battleship.logic.engine.Game;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEdition;
@@ -53,18 +55,27 @@ import java.util.concurrent.locks.ReentrantLock;
  * never block each other. Read-only methods are intentionally left unlocked: a stale read is
  * self-correcting on the client's next poll and isn't part of the race this locking addresses.
  * </p>
+ * <p>
+ * Every mutating method also publishes a {@link GameStateChangedEvent} once it succeeds, so
+ * interested listeners (e.g. the SSE broadcaster) can react. The publish always happens after the
+ * session's lock has been released, never inside the locked critical section, since a listener may
+ * perform I/O (such as pushing to subscribed clients) that must not stall other requests against
+ * the same session.
+ * </p>
  *
  * @see GameControllerApi
  * @see Game
  * @see Persistence
  * @see IdGenerator
  * @see ValidationUtils
+ * @see GameStateChangedEvent
  */
 @Log4j2
 @RequiredArgsConstructor
 public class GameControllerApiImpl implements GameControllerApi {
     private final Persistence persistence;
     private final IdGenerator idGenerator;
+    private final ApplicationEventPublisher eventPublisher;
     private final Map<String, ReentrantLock> sessionLocks = new ConcurrentHashMap<>();
 
     /**
@@ -119,7 +130,7 @@ public class GameControllerApiImpl implements GameControllerApi {
      * {@inheritDoc}
      *
      * @return a list of the available game editions ({@link GameEdition#UKRAINIAN} and
-     *         {@link GameEdition#MILTON_BRADLEY})
+     * {@link GameEdition#MILTON_BRADLEY})
      */
     @Override
     public List<GameEdition> getAvailableGameEditions() {
@@ -147,6 +158,7 @@ public class GameControllerApiImpl implements GameControllerApi {
             lock.unlock();
         }
 
+        eventPublisher.publishEvent(new GameStateChangedEvent(gameId));
         return gameId;
     }
 
@@ -167,15 +179,15 @@ public class GameControllerApiImpl implements GameControllerApi {
         ValidationUtils.validatePlayerName(playerName);
 
         val lock = lockFor(sessionId);
+        Player player;
         lock.lock();
         try {
             val game = loadGame(sessionId);
             val playerId = idGenerator.generateId();
 
             try {
-                val player = game.createPlayer(playerId, playerName);
+                player = game.createPlayer(playerId, playerName);
                 saveGame(game);
-                return player;
             } catch (SessionFullException ex) {
                 throw new GameSessionFullException(ex.getMessage());
             } catch (IllegalStateException ex) {
@@ -186,6 +198,9 @@ public class GameControllerApiImpl implements GameControllerApi {
         } finally {
             lock.unlock();
         }
+
+        eventPublisher.publishEvent(new GameStateChangedEvent(sessionId));
+        return player;
     }
 
     /**
@@ -255,15 +270,15 @@ public class GameControllerApiImpl implements GameControllerApi {
      * @return the added ship
      * @throws GamePlayerIdIsNotCorrectException            if the player ID is blank
      * @throws GameShipIdIsNotCorrectException              if the ship ID is blank, or does not match any of the
-     *                                                       player's ships
+     *                                                      player's ships
      * @throws GameShipDirectionIsNotCorrectException       if the direction is blank or not a known
-     *                                                       {@link ShipDirection}
+     *                                                      {@link ShipDirection}
      * @throws GameCoordinateIsNotCorrectIncorrectException if the coordinate is invalid
      * @throws GameSessionIdIsNotCorrectException           if the session ID is blank or no session exists for it
      * @throws GameShipAlreadyPlacedException               if the ship has already been placed on the field
      * @throws GameStageIsNotCorrectException               if the session is not in the Preparation stage
      * @throws GameInternalProblemException                 if the ship cannot otherwise be placed at the given
-     *                                                       coordinate (e.g. overlapping another ship)
+     *                                                      coordinate (e.g. overlapping another ship)
      */
     @Override
     public Ship addShipToField(
@@ -275,12 +290,13 @@ public class GameControllerApiImpl implements GameControllerApi {
         ValidationUtils.validateCoordinate(coordinate);
 
         val lock = lockFor(sessionId);
+        Ship ship;
         lock.lock();
         try {
             val game = loadGame(sessionId);
 
             try {
-                val ship = game.getAllShips(playerId)
+                ship = game.getAllShips(playerId)
                         .stream()
                         .filter(s -> shipId.equals(s.shipId()))
                         .findAny()
@@ -296,8 +312,6 @@ public class GameControllerApiImpl implements GameControllerApi {
                                 .shipType(ship.shipType())
                                 .build());
                 saveGame(game);
-
-                return ship;
             } catch (GameShipIdIsNotCorrectException ex) {
                 throw ex;
             } catch (ShipNotAvailableForAddException ex) {
@@ -310,6 +324,9 @@ public class GameControllerApiImpl implements GameControllerApi {
         } finally {
             lock.unlock();
         }
+
+        eventPublisher.publishEvent(new GameStateChangedEvent(sessionId));
+        return ship;
     }
 
     /**
@@ -331,17 +348,16 @@ public class GameControllerApiImpl implements GameControllerApi {
         ValidationUtils.validateCoordinate(coordinate);
 
         val lock = lockFor(sessionId);
+        String ship;
         lock.lock();
         try {
             val game = loadGame(sessionId);
 
             try {
                 val shipId = game.removeShipFromField(playerId, coordinate);
-                val ship = shipId.orElse("");
+                ship = shipId.orElse("");
 
                 saveGame(game);
-
-                return ship;
             } catch (IllegalStateException ex) {
                 throw new GameStageIsNotCorrectException(ex.getMessage());
             } catch (IllegalArgumentException ex) {
@@ -350,6 +366,9 @@ public class GameControllerApiImpl implements GameControllerApi {
         } finally {
             lock.unlock();
         }
+
+        eventPublisher.publishEvent(new GameStateChangedEvent(sessionId));
+        return ship;
     }
 
     /**
@@ -418,17 +437,16 @@ public class GameControllerApiImpl implements GameControllerApi {
         ValidationUtils.validatePlayerId(playerId);
 
         val lock = lockFor(sessionId);
+        Player player;
         lock.lock();
         try {
             val game = loadGame(sessionId);
 
             try {
                 game.changePlayerStatusToReady(playerId);
-                val player = game.getPlayer(playerId);
+                player = game.getPlayer(playerId);
 
                 saveGame(game);
-
-                return player;
             } catch (ShipsNotAllPlacedException ex) {
                 throw new GameShipsNotAllPlacedException(ex.getMessage());
             } catch (IllegalStateException ex) {
@@ -439,6 +457,9 @@ public class GameControllerApiImpl implements GameControllerApi {
         } finally {
             lock.unlock();
         }
+
+        eventPublisher.publishEvent(new GameStateChangedEvent(sessionId));
+        return player;
     }
 
     /**
@@ -447,7 +468,7 @@ public class GameControllerApiImpl implements GameControllerApi {
      * @param sessionId the ID of the game session
      * @param playerId  the ID of the player
      * @return the gameplay state, including both players' fields (the opponent's ships are hidden unless the
-     *         game is {@link GameStage#FINISHED}), alive cell/ship counts, and winner information
+     * game is {@link GameStage#FINISHED}), alive cell/ship counts, and winner information
      * @throws GamePlayerIdIsNotCorrectException  if the player ID is blank
      * @throws GameSessionIdIsNotCorrectException if the session ID is blank or no session exists for it
      * @throws GamePlayerNotFoundException        if no player with the given ID exists in the session
@@ -519,7 +540,7 @@ public class GameControllerApiImpl implements GameControllerApi {
      * @throws GamePlayerNotActiveException                 if it is not the given player's turn
      * @throws GameCellAlreadyShotException                 if the target cell has already been shot
      * @throws GameStageIsNotCorrectException               if the session is not in the {@link GameStage#IN_GAME}
-     *                                                       stage
+     *                                                      stage
      * @throws GameInternalProblemException                 if the shot cannot otherwise be made
      */
     @Override
@@ -528,14 +549,14 @@ public class GameControllerApiImpl implements GameControllerApi {
         ValidationUtils.validateCoordinate(coordinate);
 
         val lock = lockFor(sessionId);
+        ShotResult shotResult;
         lock.lock();
         try {
             val game = loadGame(sessionId);
 
             try {
-                val shotResult = game.makeShot(playerId, coordinate);
+                shotResult = game.makeShot(playerId, coordinate);
                 saveGame(game);
-                return shotResult;
             } catch (PlayerNotActiveException ex) {
                 throw new GamePlayerNotActiveException(ex.getMessage());
             } catch (CellAlreadyShotException ex) {
@@ -548,5 +569,8 @@ public class GameControllerApiImpl implements GameControllerApi {
         } finally {
             lock.unlock();
         }
+
+        eventPublisher.publishEvent(new GameStateChangedEvent(sessionId));
+        return shotResult;
     }
 }

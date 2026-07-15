@@ -13,7 +13,6 @@ import ua.kostenko.battleship.battleship.logic.persistence.InMemoryPersistence;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -28,7 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GameControllerApiImplConcurrencyTest {
 
     private GameControllerApiImpl newApi() {
-        return new GameControllerApiImpl(new InMemoryPersistence(), new IdGeneratorImpl());
+        return new GameControllerApiImpl(new InMemoryPersistence(), new IdGeneratorImpl(), event -> {
+        });
     }
 
     private void placeAllShips(final GameControllerApiImpl api, final String sessionId, final String playerId) {

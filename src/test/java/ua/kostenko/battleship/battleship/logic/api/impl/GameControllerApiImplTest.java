@@ -7,7 +7,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.springframework.context.ApplicationEventPublisher;
 import ua.kostenko.battleship.battleship.logic.api.IdGenerator;
+import ua.kostenko.battleship.battleship.logic.api.events.GameStateChangedEvent;
 import ua.kostenko.battleship.battleship.logic.api.exceptions.*;
 import ua.kostenko.battleship.battleship.logic.engine.FieldManagement;
 import ua.kostenko.battleship.battleship.logic.engine.FieldManagementImpl;
@@ -44,6 +46,8 @@ class GameControllerApiImplTest {
     @Mock
     IdGenerator idGenerator;
     @Mock
+    ApplicationEventPublisher eventPublisher;
+    @Mock
     Logger log;
     @InjectMocks
     GameControllerApiImpl gameControllerApiImpl;
@@ -66,6 +70,7 @@ class GameControllerApiImplTest {
 
         String result = gameControllerApiImpl.createGameSession(GameEdition.UKRAINIAN.name());
         assertEquals("generatedId", result);
+        verify(eventPublisher, times(1)).publishEvent(any(GameStateChangedEvent.class));
     }
 
     @Test
@@ -85,6 +90,7 @@ class GameControllerApiImplTest {
 
         assertEquals("playerId", result.getPlayerId());
         assertEquals("playerName", result.getPlayerName());
+        verify(eventPublisher, times(1)).publishEvent(any(GameStateChangedEvent.class));
     }
 
     @Test
@@ -148,6 +154,7 @@ class GameControllerApiImplTest {
                 ShipDirection.HORIZONTAL.name());
 
         verify(mockGame, atLeastOnce()).addShipToField(anyString(), any(Coordinate.class), any(Ship.class));
+        verify(eventPublisher, times(1)).publishEvent(any(GameStateChangedEvent.class));
     }
 
     @Test
@@ -162,6 +169,7 @@ class GameControllerApiImplTest {
 
         String result = gameControllerApiImpl.removeShipFromField("sessionId", "playerId", new Coordinate(0, 0));
         assertEquals("testSuccess", result);
+        verify(eventPublisher, times(1)).publishEvent(any(GameStateChangedEvent.class));
     }
 
     @Test
@@ -210,6 +218,26 @@ class GameControllerApiImplTest {
 
         verify(mockGame, atLeastOnce()).changePlayerStatusToReady(anyString());
         verify(mockGame, atLeastOnce()).getPlayer(anyString());
+        verify(eventPublisher, times(1)).publishEvent(any(GameStateChangedEvent.class));
+    }
+
+    /**
+     * Regression test for the "never publish while the session lock is held" ordering rule: the
+     * event must fire strictly after the state has been saved (and, by construction of
+     * {@link GameControllerApiImpl#startGame}, after the lock guarding that save has been released).
+     */
+    @Test
+    void testStartGame_publishesEventOnlyAfterSave() {
+        var gameState = GameState.create(GameEdition.UKRAINIAN, "sessionId", GameStage.INITIALIZED);
+        var mockGame = Mockito.mock(Game.class);
+        when(mockGame.getGameState()).thenReturn(gameState);
+        when(persistence.load(anyString())).thenReturn(Optional.of(mockGame));
+
+        gameControllerApiImpl.startGame("sessionId", "playerId");
+
+        var inOrder = Mockito.inOrder(persistence, eventPublisher);
+        inOrder.verify(persistence).save(any());
+        inOrder.verify(eventPublisher).publishEvent(any(GameStateChangedEvent.class));
     }
 
     @Test
@@ -255,6 +283,7 @@ class GameControllerApiImplTest {
 
         verify(mockGame, atMostOnce()).makeShot(anyString(), any(Coordinate.class));
         assertEquals(ShotResult.MISS, result);
+        verify(eventPublisher, times(1)).publishEvent(any(GameStateChangedEvent.class));
     }
 
     @Test
@@ -271,6 +300,7 @@ class GameControllerApiImplTest {
 
         verify(mockGame, atMostOnce()).makeShot(anyString(), any(Coordinate.class));
         verify(persistence, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     // ---- Ticket A: confirmed production-bug regression tests ----
@@ -332,6 +362,7 @@ class GameControllerApiImplTest {
                 () -> gameControllerApiImpl.createPlayerInSession("sessionId", "playerName"));
 
         verify(persistence, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -346,6 +377,7 @@ class GameControllerApiImplTest {
 
         assertThrows(GameStageIsNotCorrectException.class,
                 () -> gameControllerApiImpl.createPlayerInSession("sessionId", "playerName"));
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -363,6 +395,7 @@ class GameControllerApiImplTest {
                 () -> gameControllerApiImpl.startGame("sessionId", "playerId"));
 
         verify(persistence, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -377,6 +410,7 @@ class GameControllerApiImplTest {
 
         assertThrows(GameStageIsNotCorrectException.class,
                 () -> gameControllerApiImpl.startGame("sessionId", "playerId"));
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -404,6 +438,7 @@ class GameControllerApiImplTest {
                         "shipId",
                         new Coordinate(0, 0),
                         ShipDirection.HORIZONTAL.name()));
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -431,6 +466,7 @@ class GameControllerApiImplTest {
                         "shipId",
                         new Coordinate(0, 0),
                         ShipDirection.HORIZONTAL.name()));
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     /**
@@ -455,6 +491,7 @@ class GameControllerApiImplTest {
                         ShipDirection.HORIZONTAL.name()));
 
         verify(persistence, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -468,6 +505,7 @@ class GameControllerApiImplTest {
 
         assertThrows(GameStageIsNotCorrectException.class,
                 () -> gameControllerApiImpl.removeShipFromField("sessionId", "playerId", new Coordinate(0, 0)));
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -483,6 +521,7 @@ class GameControllerApiImplTest {
                 () -> gameControllerApiImpl.makeShotByField("sessionId", "playerId", new Coordinate(0, 0)));
 
         verify(persistence, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test

@@ -1,7 +1,7 @@
 import {useCallback, useRef, useState} from "react";
 import {useGameAdapter} from "../adapters/GameAdapterContext";
 import {GameAdapterError, isGameAdapterError} from "../adapters/AdapterErrors";
-import {usePolling} from "./usePolling";
+import {useSessionEvents} from "./useSessionEvents";
 import type {Coordinate, ResponseGameplayStateDto} from "../logic/ApplicationTypes";
 
 /**
@@ -27,14 +27,16 @@ function toAdapterError(e: unknown, context: string): GameAdapterError {
 }
 
 /**
- * Polls gameplay state for an in-progress game and exposes a `shoot` action.
+ * Drives gameplay state for an in-progress game and exposes a `shoot` action.
  *
- * Polls every 5s via {@link usePolling} while the game has no winner yet; once
- * `state.hasWinner` becomes true, polling is switched off (via `enabled`) and further
- * ticks are also short-circuited through a ref flag (`doneRef`) so an in-flight tick
- * scheduled just before the switch takes effect is still a no-op. `shoot` bypasses the
- * poll cadence entirely — it calls the adapter immediately and refetches state right
- * after, so the UI reflects the shot's outcome without waiting for the next tick.
+ * Gameplay state is pushed via {@link useSessionEvents} rather than polled: every received
+ * snapshot's `gameplayState` (once the opponent exists and the session is IN_GAME/FINISHED)
+ * is applied directly, with no extra round trip. Once `state.hasWinner` becomes true, further
+ * pushes are ignored via a ref flag (`doneRef`), so a stray late/duplicate event can't
+ * resurrect a stale non-winning state. `shoot` bypasses the push entirely for the *acting*
+ * player's own view — it calls the adapter immediately and refetches state right after, so the
+ * UI reflects the shot's outcome without waiting for a round trip through the push channel;
+ * the push exists to observe the *opponent's* moves.
  *
  * @param sessionId - ID of the game session.
  * @param playerId - ID of the current player within that session.
@@ -47,45 +49,36 @@ export function useGameplay(sessionId: string, playerId: string): GameplayHookSt
     const [error, setError] = useState<GameAdapterError | null>(null);
 
     const doneRef = useRef(false);
-    const [enabled, setEnabled] = useState(true);
 
-    const refetch = useCallback(async () => {
-        const gameState = await adapter.getGameState(sessionId, playerId);
+    const applyGameplayState = useCallback((gameState: ResponseGameplayStateDto) => {
         setState(gameState);
         if (gameState.hasWinner) {
             doneRef.current = true;
-            setEnabled(false);
         }
-        return gameState;
-    }, [adapter, sessionId, playerId]);
+    }, []);
 
-    const tick = useCallback(async () => {
+    useSessionEvents(sessionId, playerId, payload => {
         if (doneRef.current) {
             return;
         }
-        try {
-            await refetch();
-            setError(null);
-        } catch (e) {
-            setError(toAdapterError(e, "useGameplay:poll"));
-        } finally {
-            setLoading(false);
+        setLoading(false);
+        if (payload.gameplayState) {
+            applyGameplayState(payload.gameplayState);
         }
-    }, [refetch]);
-
-    usePolling(tick, 5000, enabled);
+    });
 
     const shoot = useCallback(async (at: Coordinate): Promise<"HIT" | "MISS" | "DESTROYED" | null> => {
         try {
             const result = await adapter.shoot(sessionId, playerId, at);
-            await refetch();
+            const gameState = await adapter.getGameState(sessionId, playerId);
+            applyGameplayState(gameState);
             setError(null);
             return result.shotResult as "HIT" | "MISS" | "DESTROYED";
         } catch (e) {
             setError(toAdapterError(e, "useGameplay:shoot"));
             return null;
         }
-    }, [adapter, sessionId, playerId, refetch]);
+    }, [adapter, sessionId, playerId, applyGameplayState]);
 
     return {state, shoot, loading, error};
 }

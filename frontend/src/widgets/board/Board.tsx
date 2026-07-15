@@ -51,6 +51,46 @@ export function computeSunkShipIds(field: CellDto[][]): Set<string> {
     return sunk;
 }
 
+const MOAT_NEIGHBOR_OFFSETS: ReadonlyArray<{ dr: number; dc: number }> = [
+    {dr: -1, dc: -1}, {dr: -1, dc: 0}, {dr: -1, dc: 1},
+    {dr: 0, dc: -1}, {dr: 0, dc: 1},
+    {dr: 1, dc: -1}, {dr: 1, dc: 0}, {dr: 1, dc: 1},
+];
+
+/**
+ * Returns `"row,col"` keys for every cell 8-directionally adjacent to a cell belonging to one
+ * of `shipIds`, excluding cells that themselves hold a ship (a moat cell can never hold a ship,
+ * by the game's own placement rule). Mirrors the backend's `FieldManagementImpl.processDestroyedShip`,
+ * which auto-marks these cells `hasShot` once a ship is sunk — used by `GameplayScreen` to tell
+ * that auto-reveal apart from a genuine incoming shot when diffing consecutive board snapshots.
+ */
+export function computeMoatCellKeys(field: CellDto[][], shipIds: Set<string>): Set<string> {
+    const moat = new Set<string>();
+    if (shipIds.size === 0) {
+        return moat;
+    }
+    for (let row = 0; row < field.length; row++) {
+        for (let col = 0; col < field[row].length; col++) {
+            const ship = field[row][col].ship;
+            if (ship == null || !shipIds.has(ship.shipId)) {
+                continue;
+            }
+            for (const {dr, dc} of MOAT_NEIGHBOR_OFFSETS) {
+                const r = row + dr;
+                const c = col + dc;
+                if (r < 0 || r >= field.length || c < 0 || c >= field[row].length) {
+                    continue;
+                }
+                if (field[r][c].ship != null) {
+                    continue;
+                }
+                moat.add(`${r},${c}`);
+            }
+        }
+    }
+    return moat;
+}
+
 /**
  * Renders a 10x10 game board with column (A-J) and row (1-10) coordinate labels,
  * delegating each cell's visual state to `BoardCell`. Sunk-ship detection and
