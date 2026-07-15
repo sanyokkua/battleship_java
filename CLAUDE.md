@@ -28,7 +28,7 @@ Base package `ua.kostenko.battleship.battleship`, layered as REST Controller →
 
 - `logic.engine` — pure, framework-agnostic game engine: `Game`/`GameImpl` (state machine driven by the `GameStage` enum: INITIALIZED → WAITING_FOR_PLAYERS → PREPARATION → IN_GAME → FINISHED), `FieldManagement`/`FieldManagementImpl` (per-player board, ship placement, shot resolution), immutable records (`Ship`, `Cell`, `Coordinate`, `GameState`), and pluggable `GameEditionConfiguration` rule sets (Ukrainian, Milton Bradley) under `logic.engine.config`.
 - `logic.api` — `GameControllerApi`/`GameControllerApiImpl`, `ValidationUtils`, `IdGenerator`, typed exceptions. This is the boundary between web and engine; no Spring MVC types leak below it.
-- `logic.persistence` — `Persistence`/`InMemoryPersistence`. In-memory, single-instance only — no database, by design.
+- `logic.persistence` — `Persistence`/`InMemoryPersistence`. In-memory, single-instance only — no database, by design. Mutating writes are serialized per-session by a lock in `GameControllerApiImpl` (not a global lock), so concurrent requests against the same session can't race; unrelated sessions never block each other.
 - `web.controllers.rest` — three REST controllers (`GameSessionCommonRestController`, `GameplayRestController`, `PreparationRestController`) under `/api/v2/game`; `web.api.dtos` grouped by feature (`session`, `preparation`, `gameplay`, `entities`).
 - `web.exceptions`, `web.config` — exception handlers and Spring bean configuration.
 

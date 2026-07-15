@@ -5,7 +5,7 @@ domain: "Game Engine / Turn-Based Multiplayer"
 owner: "Oleksandr Kostenko"
 stack: "Java 25, Spring Boot 4.1.0 (backend); Vite + React 19 + TypeScript (frontend)"
 project_type: "Web service (REST backend + bundled SPA frontend)"
-last_updated: "2026-07-13"
+last_updated: "2026-07-15"
 ---
 
 # battleship_java
@@ -41,8 +41,11 @@ call goes through the `GameAdapter` port, implemented by `HttpGameAdapter` (axio
 for real use and `MockGameAdapter` for tests/`dev:mock`; the backend is layered strictly REST
 Controller → API/Service → Engine → Persistence, with no Spring MVC types leaking below the
 controller layer (`GameControllerApiImpl` is verified free of `@RequestParam`/`ResponseEntity`/etc.).
-There is no database — game state lives entirely in an in-process `HashMap`, so the app is
-single-instance only by design.
+There is no database — game state lives entirely in an in-process `ConcurrentHashMap`, so the app
+is single-instance only by design. `GameControllerApiImpl` serializes each mutating request's
+load → mutate → save sequence with a lock scoped to that `sessionId`, so concurrent requests
+against the same session can't race each other; unrelated sessions never contend for the same
+lock.
 
 ```mermaid
 flowchart LR
@@ -51,10 +54,10 @@ flowchart LR
     sessionCtrl["GameSessionCommonRestController"]
     prepCtrl["PreparationRestController"]
     playCtrl["GameplayRestController"]
-    api["GameControllerApi /<br/>GameControllerApiImpl"]
+    api["GameControllerApi /<br/>GameControllerApiImpl<br/>#40;per-session lock#41;"]
     engine["Game / GameImpl<br/>FieldManagement / Impl"]
     config["GameEditionConfiguration<br/>#40;Ukrainian, Milton Bradley#41;"]
-    persistence[("InMemoryPersistence<br/>HashMap#60;sessionId, GameState#62;")]
+    persistence[("InMemoryPersistence<br/>ConcurrentHashMap#60;sessionId, GameState#62;")]
 
     browser --> brs
     brs --> sessionCtrl
@@ -128,7 +131,7 @@ Base: `@RequestMapping("/api/v2/game/sessions/{sessionId}")`, file:
 | Field | Value |
 |---|---|
 | **Type** | In-process map write |
-| **Target** | `InMemoryPersistence`'s `HashMap<String sessionId, GameState>` (`logic/persistence/InMemoryPersistence.java`) |
+| **Target** | `InMemoryPersistence`'s `ConcurrentHashMap<String sessionId, GameState>` (`logic/persistence/InMemoryPersistence.java`), written under a per-session lock held by `GameControllerApiImpl` |
 | **Schema** | `GameState` record — see [§8.1](#81-key-entities) |
 | **Semantics** | Durable-for-the-JVM-lifetime snapshot of a session, replaced wholesale on every mutating call |
 | **Conditions** | Always, on every successful mutating engine call (`createPlayerInSession`, `addShipToField`, `removeShipFromField`, `startGame`, `makeShotByField`) |
@@ -266,9 +269,11 @@ player's readiness, but it can delay the `PREPARATION → IN_GAME` transition in
 (`GameImpl#changePlayerStatusToReady`, lines 170-176): when a player calls `start`, their `ready`
 flag is set, and if the opponent is not already `active`, the calling player is set `active`. This
 is **not** an implicit/race-condition-shaped behavior — it is a deterministic, explicitly coded
-rule: whichever player's ready-call is processed first becomes the first shooter. (Under concurrent
-requests for both players' ready calls, ordering is whatever the servlet container happens to
-interleave, since `InMemoryPersistence` is not synchronized — see [§13](#13-additional-notes).)
+rule: whichever player's ready-call is processed first becomes the first shooter. Concurrent
+requests for both players' ready calls are serialized by `GameControllerApiImpl`'s per-session
+lock (see [§13](#13-additional-notes)), so exactly one call's load → mutate → save sequence runs
+at a time; ordering between the two calls is still whatever the servlet container happens to
+schedule first, but the resulting state is never a torn or lost update.
 
 ### 6.3 Error Handling & Edge Cases
 
@@ -365,7 +370,8 @@ Downstream (who this service calls):
   - None
 
 Shared Infrastructure:
-  - None (in-process HashMap only, via InMemoryPersistence)
+  - None (in-process ConcurrentHashMap only, via InMemoryPersistence; concurrent mutations against
+    the same session are serialized by a per-session lock in GameControllerApiImpl)
 
 Events Consumed:  N/A — no event/message infrastructure; state changes are pulled via polling
 Events Published: N/A
@@ -460,11 +466,23 @@ battleship_java/
 
 Known gaps and tech debt, verified directly against the code (not invented):
 
-- **`InMemoryPersistence` is not thread-safe.** It wraps a plain `HashMap<String, GameState>` with
-  no synchronization, `ConcurrentHashMap`, or locking. Concurrent requests touching the same
-  session (e.g., both players readying up at once, or simultaneous shots) can race. `TODO: confirm`
-  whether this has caused observed bugs — no incident is documented, but the risk is real under
-  concurrent load. Persistence is explicitly out of scope for this project.
+- **Mutating requests against the same session are serialized by a per-session lock.**
+  `InMemoryPersistence` wraps a `ConcurrentHashMap<String, GameState>` (safe for individual
+  get/put/remove), but `Persistence#load` hands back a `Game` wrapping the same mutable
+  `GameState`/`Player`/field objects held in the store rather than a copy, so a load → mutate →
+  save sequence isn't atomic on its own. `GameControllerApiImpl` closes that gap by acquiring a
+  `ReentrantLock` keyed by `sessionId` (`GameControllerApiImpl#lockFor`) around the full
+  load → mutate → save critical section of every mutating method (`createGameSession`,
+  `createPlayerInSession`, `addShipToField`, `removeShipFromField`, `startGame`,
+  `makeShotByField`), so two concurrent requests against the same session (e.g. both players
+  readying up at once, or simultaneous shots) can no longer produce a lost update. Locks are
+  per-session, not global — unrelated sessions never block each other. The six read-only methods
+  (`getCurrentGameStage`, `getLastSessionChangeTime`, `getShipsNotOnTheBoard`,
+  `getOpponentInformation`, `getPreparationField`, `getGameState`) are deliberately left unlocked:
+  a stale read is self-correcting on the client's next poll (3-5s) and isn't part of the
+  lost-update race this locking addresses. Covered by
+  `GameControllerApiImplConcurrencyTest`. Persistence itself remains in-memory and
+  single-instance only — no database, no cross-instance sharing.
 - **No CORS configuration exists** — no `WebMvcConfigurer`/`addCorsMappings` bean was found. This
   is only safe because the frontend is served same-origin from the same JAR; it would need to be
   added if the frontend were ever split out.

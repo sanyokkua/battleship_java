@@ -23,6 +23,9 @@ import ua.kostenko.battleship.battleship.logic.engine.models.records.Ship;
 import ua.kostenko.battleship.battleship.logic.persistence.Persistence;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Implementation of the {@link GameControllerApi} interface.
@@ -39,6 +42,17 @@ import java.util.List;
  * {@link ua.kostenko.battleship.battleship.logic.engine.exceptions.CellAlreadyShotException}) into this
  * package's own typed exceptions, so no engine or Spring MVC types leak across the boundary.
  * </p>
+ * <p>
+ * {@link Persistence#load(String)} hands back a {@link Game} wrapping the same mutable
+ * {@link GameState}/{@code Player}/field objects held in the store, not a copy. Every mutating
+ * operation here therefore follows a load → mutate → save sequence against shared state, which is
+ * not atomic on its own. To prevent lost updates when two requests target the same session
+ * concurrently (e.g. both players readying up, or simultaneous shots), each mutating method
+ * acquires a lock scoped to that {@code sessionId} (see {@link #lockFor(String)}) for the full
+ * load → mutate → save critical section. Locks are per-session, not global, so unrelated sessions
+ * never block each other. Read-only methods are intentionally left unlocked: a stale read is
+ * self-correcting on the client's next poll and isn't part of the race this locking addresses.
+ * </p>
  *
  * @see GameControllerApi
  * @see Game
@@ -51,6 +65,18 @@ import java.util.List;
 public class GameControllerApiImpl implements GameControllerApi {
     private final Persistence persistence;
     private final IdGenerator idGenerator;
+    private final Map<String, ReentrantLock> sessionLocks = new ConcurrentHashMap<>();
+
+    /**
+     * Returns the lock guarding the given session's load → mutate → save critical section,
+     * creating one on first use.
+     *
+     * @param sessionId the ID of the game session
+     * @return the {@link ReentrantLock} scoped to that session
+     */
+    private ReentrantLock lockFor(final String sessionId) {
+        return sessionLocks.computeIfAbsent(sessionId, id -> new ReentrantLock());
+    }
 
     /**
      * Loads the {@link Game} for the specified session ID after validating it.
@@ -113,7 +139,13 @@ public class GameControllerApiImpl implements GameControllerApi {
         ValidationUtils.validateGameEdition(gameEdition);
         val gameId = idGenerator.generateId();
 
-        persistence.save(GameState.create(GameEdition.valueOf(gameEdition), gameId, GameStage.INITIALIZED));
+        val lock = lockFor(gameId);
+        lock.lock();
+        try {
+            persistence.save(GameState.create(GameEdition.valueOf(gameEdition), gameId, GameStage.INITIALIZED));
+        } finally {
+            lock.unlock();
+        }
 
         return gameId;
     }
@@ -134,19 +166,25 @@ public class GameControllerApiImpl implements GameControllerApi {
     public Player createPlayerInSession(final String sessionId, final String playerName) {
         ValidationUtils.validatePlayerName(playerName);
 
-        val game = loadGame(sessionId);
-        val playerId = idGenerator.generateId();
-
+        val lock = lockFor(sessionId);
+        lock.lock();
         try {
-            val player = game.createPlayer(playerId, playerName);
-            saveGame(game);
-            return player;
-        } catch (SessionFullException ex) {
-            throw new GameSessionFullException(ex.getMessage());
-        } catch (IllegalStateException ex) {
-            throw new GameStageIsNotCorrectException(ex.getMessage());
-        } catch (IllegalArgumentException ex) {
-            throw new GameInternalProblemException(ex.getMessage());
+            val game = loadGame(sessionId);
+            val playerId = idGenerator.generateId();
+
+            try {
+                val player = game.createPlayer(playerId, playerName);
+                saveGame(game);
+                return player;
+            } catch (SessionFullException ex) {
+                throw new GameSessionFullException(ex.getMessage());
+            } catch (IllegalStateException ex) {
+                throw new GameStageIsNotCorrectException(ex.getMessage());
+            } catch (IllegalArgumentException ex) {
+                throw new GameInternalProblemException(ex.getMessage());
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -236,35 +274,41 @@ public class GameControllerApiImpl implements GameControllerApi {
         ValidationUtils.validateShipDirection(direction);
         ValidationUtils.validateCoordinate(coordinate);
 
-        val game = loadGame(sessionId);
-
+        val lock = lockFor(sessionId);
+        lock.lock();
         try {
-            val ship = game.getAllShips(playerId)
-                    .stream()
-                    .filter(s -> shipId.equals(s.shipId()))
-                    .findAny()
-                    .orElseThrow(() -> new GameShipIdIsNotCorrectException(
-                            "Ship (%s) is not found in player ships".formatted(shipId)));
-            val shipDirection = ShipDirection.valueOf(direction);
-            game.addShipToField(playerId,
-                    coordinate,
-                    Ship.builder()
-                            .shipId(ship.shipId())
-                            .shipDirection(shipDirection)
-                            .shipSize(ship.shipSize())
-                            .shipType(ship.shipType())
-                            .build());
-            saveGame(game);
+            val game = loadGame(sessionId);
 
-            return ship;
-        } catch (GameShipIdIsNotCorrectException ex) {
-            throw ex;
-        } catch (ShipNotAvailableForAddException ex) {
-            throw new GameShipAlreadyPlacedException(ex.getMessage());
-        } catch (IllegalStateException ex) {
-            throw new GameStageIsNotCorrectException(ex.getMessage());
-        } catch (IllegalArgumentException ex) {
-            throw new GameInternalProblemException(ex.getMessage());
+            try {
+                val ship = game.getAllShips(playerId)
+                        .stream()
+                        .filter(s -> shipId.equals(s.shipId()))
+                        .findAny()
+                        .orElseThrow(() -> new GameShipIdIsNotCorrectException(
+                                "Ship (%s) is not found in player ships".formatted(shipId)));
+                val shipDirection = ShipDirection.valueOf(direction);
+                game.addShipToField(playerId,
+                        coordinate,
+                        Ship.builder()
+                                .shipId(ship.shipId())
+                                .shipDirection(shipDirection)
+                                .shipSize(ship.shipSize())
+                                .shipType(ship.shipType())
+                                .build());
+                saveGame(game);
+
+                return ship;
+            } catch (GameShipIdIsNotCorrectException ex) {
+                throw ex;
+            } catch (ShipNotAvailableForAddException ex) {
+                throw new GameShipAlreadyPlacedException(ex.getMessage());
+            } catch (IllegalStateException ex) {
+                throw new GameStageIsNotCorrectException(ex.getMessage());
+            } catch (IllegalArgumentException ex) {
+                throw new GameInternalProblemException(ex.getMessage());
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -286,19 +330,25 @@ public class GameControllerApiImpl implements GameControllerApi {
         ValidationUtils.validatePlayerId(playerId);
         ValidationUtils.validateCoordinate(coordinate);
 
-        val game = loadGame(sessionId);
-
+        val lock = lockFor(sessionId);
+        lock.lock();
         try {
-            val shipId = game.removeShipFromField(playerId, coordinate);
-            val ship = shipId.orElse("");
+            val game = loadGame(sessionId);
 
-            saveGame(game);
+            try {
+                val shipId = game.removeShipFromField(playerId, coordinate);
+                val ship = shipId.orElse("");
 
-            return ship;
-        } catch (IllegalStateException ex) {
-            throw new GameStageIsNotCorrectException(ex.getMessage());
-        } catch (IllegalArgumentException ex) {
-            throw new GameInternalProblemException(ex.getMessage());
+                saveGame(game);
+
+                return ship;
+            } catch (IllegalStateException ex) {
+                throw new GameStageIsNotCorrectException(ex.getMessage());
+            } catch (IllegalArgumentException ex) {
+                throw new GameInternalProblemException(ex.getMessage());
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -367,21 +417,27 @@ public class GameControllerApiImpl implements GameControllerApi {
     public Player startGame(final String sessionId, final String playerId) {
         ValidationUtils.validatePlayerId(playerId);
 
-        val game = loadGame(sessionId);
-
+        val lock = lockFor(sessionId);
+        lock.lock();
         try {
-            game.changePlayerStatusToReady(playerId);
-            val player = game.getPlayer(playerId);
+            val game = loadGame(sessionId);
 
-            saveGame(game);
+            try {
+                game.changePlayerStatusToReady(playerId);
+                val player = game.getPlayer(playerId);
 
-            return player;
-        } catch (ShipsNotAllPlacedException ex) {
-            throw new GameShipsNotAllPlacedException(ex.getMessage());
-        } catch (IllegalStateException ex) {
-            throw new GameStageIsNotCorrectException(ex.getMessage());
-        } catch (IllegalArgumentException ex) {
-            throw new GameInternalProblemException(ex.getMessage());
+                saveGame(game);
+
+                return player;
+            } catch (ShipsNotAllPlacedException ex) {
+                throw new GameShipsNotAllPlacedException(ex.getMessage());
+            } catch (IllegalStateException ex) {
+                throw new GameStageIsNotCorrectException(ex.getMessage());
+            } catch (IllegalArgumentException ex) {
+                throw new GameInternalProblemException(ex.getMessage());
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -471,20 +527,26 @@ public class GameControllerApiImpl implements GameControllerApi {
         ValidationUtils.validatePlayerId(playerId);
         ValidationUtils.validateCoordinate(coordinate);
 
-        val game = loadGame(sessionId);
-
+        val lock = lockFor(sessionId);
+        lock.lock();
         try {
-            val shotResult = game.makeShot(playerId, coordinate);
-            saveGame(game);
-            return shotResult;
-        } catch (PlayerNotActiveException ex) {
-            throw new GamePlayerNotActiveException(ex.getMessage());
-        } catch (CellAlreadyShotException ex) {
-            throw new GameCellAlreadyShotException(ex.getMessage());
-        } catch (IllegalStateException ex) {
-            throw new GameStageIsNotCorrectException(ex.getMessage());
-        } catch (IllegalArgumentException ex) {
-            throw new GameInternalProblemException(ex.getMessage());
+            val game = loadGame(sessionId);
+
+            try {
+                val shotResult = game.makeShot(playerId, coordinate);
+                saveGame(game);
+                return shotResult;
+            } catch (PlayerNotActiveException ex) {
+                throw new GamePlayerNotActiveException(ex.getMessage());
+            } catch (CellAlreadyShotException ex) {
+                throw new GameCellAlreadyShotException(ex.getMessage());
+            } catch (IllegalStateException ex) {
+                throw new GameStageIsNotCorrectException(ex.getMessage());
+            } catch (IllegalArgumentException ex) {
+                throw new GameInternalProblemException(ex.getMessage());
+            }
+        } finally {
+            lock.unlock();
         }
     }
 }

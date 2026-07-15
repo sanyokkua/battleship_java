@@ -218,18 +218,13 @@ test('live full game: create -> wait -> prepare -> play -> results', async ({ br
 
       // Click A's "Ready" first, then wait for B's own (real, 3s-polled) opponent
       // status to observe A as ready before clicking B's "Ready" - rather than
-      // firing both clicks back-to-back. A UI click only waits for the DOM click
-      // event to dispatch, not for the resulting async setReady() call to reach the
-      // server, so two near-simultaneous clicks can race two concurrent POST
-      // .../start requests. The engine's changePlayerStatusToReady (GameImpl.java)
-      // reads-then-writes both players' `active`/`ready` flags non-atomically across
-      // that pair of requests (frozen game-engine code - out of scope to change here
-      // per this repo's redesign ground rules), so a genuine concurrent race there
-      // can leave both players marked active at once, which then desyncs the
-      // turn-order-aware shot loop below (a shot fired while not *actually* active
-      // gets rejected server-side and never turns "water" into "hit"/"sunk").
-      // Waiting for this natural poll-driven confirmation first serializes the two
-      // ready calls and avoids that race entirely - no force-navigation involved.
+      // firing both clicks back-to-back. The server now serializes concurrent POST
+      // .../start requests for the same session behind a per-session lock in
+      // GameControllerApiImpl, so a genuine race between two near-simultaneous
+      // clicks can no longer corrupt state (no lost/torn update of the `active`/
+      // `ready` flags). This click-sequencing is kept anyway as a deliberate,
+      // independent choice for test determinism/readability - it removes timing
+      // nondeterminism from the test itself, not a workaround for a server bug.
       await readyA.click();
       await expect(pageB.getByText(/Opponent:\s*Ready/)).toBeVisible({ timeout: 10000 });
       await readyB.click();

@@ -26,8 +26,11 @@ The backend is a strict top-down layering with no back-references:
   differences are injected via `GameEditionConfiguration` (`UkrainianGameEditionConfiguration` /
   `MiltonBradleyGameEditionConfiguration`).
 - **`logic.persistence`** — `Persistence`/`InMemoryPersistence` is the sole storage: a
-  `HashMap<String sessionId, GameState>` with no database, no synchronization, and no eviction.
-  Every mutating engine call is followed by a full `save()` of the resulting `GameState`.
+  `ConcurrentHashMap<String sessionId, GameState>` with no database and no eviction. Every
+  mutating engine call is followed by a full `save()` of the resulting `GameState`; `GameControllerApiImpl`
+  wraps each such load → mutate → save sequence in a lock scoped to that `sessionId`, so
+  concurrent requests against the same session are serialized without unrelated sessions blocking
+  each other.
 
 ## Current frontend structure
 

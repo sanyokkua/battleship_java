@@ -6,16 +6,21 @@ import org.apache.commons.lang3.StringUtils;
 import ua.kostenko.battleship.battleship.logic.engine.Game;
 import ua.kostenko.battleship.battleship.logic.engine.models.records.GameState;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Class implementing in-memory persistence for the Battleship game.
  * <p>
  * The InMemoryPersistence class provides methods to load, save, and remove game states,
- * storing them in an in-memory database represented by a {@link Map}.
+ * storing them in an in-memory database represented by a {@link Map}. The backing map is a
+ * {@link ConcurrentHashMap}, so individual {@code get}/{@code put}/{@code remove} operations are
+ * thread-safe. That safety does not extend to multi-step sequences: a caller performing
+ * load → mutate → save is responsible for its own atomicity across those steps, since this class
+ * has no notion of a transaction spanning multiple calls. {@code GameControllerApiImpl} owns that
+ * guarantee today via a per-session lock around each such sequence.
  * </p>
  *
  * @see Game
@@ -34,7 +39,7 @@ public class InMemoryPersistence implements Persistence {
      * Constructs a new InMemoryPersistence instance.
      */
     public InMemoryPersistence() {
-        db = new HashMap<>();
+        db = new ConcurrentHashMap<>();
     }
 
     /**
