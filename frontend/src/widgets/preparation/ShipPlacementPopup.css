@@ -1,0 +1,61 @@
+.ship-placement-ships,
+.ship-placement-directions,
+.ship-placement-empty {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ship-placement-option {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    border: 2px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    padding: 12px 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: 0.15s;
+}
+
+.ship-placement-option:hover:not(:disabled) {
+    border-color: var(--steel);
+}
+
+.ship-placement-option:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.ship-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.ship-placement-option .nm {
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.ship-placement-option small {
+    color: var(--ink-soft);
+}
+
+.count-badge {
+    flex-shrink: 0;
+    font-weight: 700;
+    color: var(--sea);
+    white-space: nowrap;
+}
+
+.ship-placement-empty p {
+    margin: 0;
+    color: var(--ink-soft);
+    text-align: center;
+}

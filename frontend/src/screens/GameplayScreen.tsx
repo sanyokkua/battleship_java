@@ -4,8 +4,10 @@ import {useNavigate} from 'react-router-dom';
 import {useSessionGuard} from '../hooks/useSessionGuard';
 import {useGameplay} from '../hooks/useGameplay';
 import {saveStage} from '../services/GameBrowserStorage';
+import type {CellDto} from '../logic/ApplicationTypes';
+import {formatCoordinateLabel} from '../logic/boardCoordinates';
 import {LoadingView} from '../widgets/layout/LoadingView';
-import {Board} from '../widgets/board/Board';
+import {Board, computeSunkShipIds} from '../widgets/board/Board';
 import {BoardTabs} from '../widgets/board/BoardTabs';
 import {Legend} from '../widgets/board/Legend';
 import {PlayerCard} from '../widgets/gameplay/PlayerCard';
@@ -92,6 +94,51 @@ export function GameplayScreen() {
         // the "only fire on an actual flip" guard this effect exists to provide.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [state?.isPlayerActive]);
+
+    // Detects opponent shots by diffing `state.playerField` against the previous poll's
+    // snapshot — there's no server-pushed "last shot" event, only full-board snapshots, so
+    // this is the only way to notice one. Mirrors `prevIsPlayerActiveRef` above (a
+    // previous-value ref compared inside an effect) but at cell granularity instead of a
+    // scalar. `null` specifically (not e.g. an empty array) marks "no snapshot yet", so the
+    // very first arrival of `state` — including a page refresh mid-game with shots already
+    // on the board — only seeds the baseline and never replays pre-existing hits as new.
+    const prevPlayerFieldRef = useRef<CellDto[][] | null>(null);
+
+    useEffect(() => {
+        if (!state) return;
+        const field = state.playerField;
+        const prevField = prevPlayerFieldRef.current;
+
+        if (prevField === null) {
+            prevPlayerFieldRef.current = field;
+            return;
+        }
+
+        const sunkShipIds = computeSunkShipIds(field);
+        for (let row = 0; row < field.length; row++) {
+            for (let col = 0; col < field[row].length; col++) {
+                const cell = field[row][col];
+                if (prevField[row][col].hasShot || !cell.hasShot) {
+                    continue; // not a newly-revealed shot this poll
+                }
+                const coordinate = formatCoordinateLabel(row, col);
+                if (cell.ship == null) {
+                    notify.info('incomingShot.miss', {coordinate});
+                } else if (sunkShipIds.has(cell.ship.shipId)) {
+                    notify.warn('incomingShot.sunk', {coordinate});
+                } else {
+                    notify.warn('incomingShot.hit', {coordinate});
+                }
+            }
+        }
+
+        prevPlayerFieldRef.current = field;
+        // Deliberately excludes `notify` — useNotify() returns a fresh object every render,
+        // and keying on it would re-run this diff on every render instead of only when
+        // `state` changes; the diff itself is a no-op once `prevPlayerFieldRef` catches up
+        // to the current `state`, so this stays correct either way, just noisier.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [state]);
 
     if (!sessionId || !player) {
         // Defensive only — StageGuard at the routing layer is responsible for redirecting

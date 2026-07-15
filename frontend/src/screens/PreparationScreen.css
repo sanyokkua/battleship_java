@@ -37,6 +37,18 @@
     flex-direction: column;
 }
 
+/* On mobile, show the fleet list before the H/V toggle (the toggle matters most once a
+ * ship is selected, so it reads better just above the board rather than at the very top). */
+@media (max-width: 640px) {
+    .prep-dir-toggle-wrap {
+        order: 2;
+    }
+
+    .fleet-panel-wrap > .fleet-panel {
+        order: 1;
+    }
+}
+
 .prep-ready-btn {
     margin-top: 16px;
     width: 100%;

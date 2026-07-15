@@ -20,8 +20,15 @@ export type PreparationHookState = {
     activeShipId: string | null;
     /** Updates `activeShipId`. */
     setActiveShipId: (id: string | null) => void;
-    /** Places ship `shipId` at `at` (using the current `direction`), then refetches `ships`/`field`. */
-    placeShip: (shipId: string, at: Coordinate) => Promise<void>;
+    /**
+     * Places ship `shipId` at `at`, then refetches `ships`/`field`. Uses the current
+     * `direction` unless `dir` is passed explicitly — needed by callers (e.g. the tap-cell
+     * placement popup) that pick a per-placement orientation via `setDirection` and call
+     * `placeShip` in the same handler: `setDirection` only takes effect on the *next*
+     * render, so `placeShip`'s own closure would otherwise still see the previous
+     * `direction` value when called synchronously right after.
+     */
+    placeShip: (shipId: string, at: Coordinate, dir?: ShipDirection) => Promise<void>;
     /** Removes whichever ship occupies cell `at`, then refetches `ships`/`field`. */
     removeShipAt: (at: Coordinate) => Promise<void>;
     /** Marks the current player as ready to start the game. */
@@ -131,9 +138,9 @@ export function usePreparation(sessionId: string, playerId: string): Preparation
 
     usePolling(pollOpponent, 3000, true);
 
-    const placeShip = useCallback(async (shipId: string, at: Coordinate) => {
+    const placeShip = useCallback(async (shipId: string, at: Coordinate, dir?: ShipDirection) => {
         try {
-            await adapter.addShip(sessionId, playerId, shipId, at, direction);
+            await adapter.addShip(sessionId, playerId, shipId, at, dir ?? direction);
             await refetch();
             setError(null);
         } catch (e) {

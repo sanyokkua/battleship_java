@@ -1,4 +1,5 @@
 import type {CellDto} from '../../logic/ApplicationTypes';
+import {formatCoordinateLabel} from '../../logic/boardCoordinates';
 import type {BoardMode} from './Board';
 import './Board.css';
 
@@ -71,9 +72,7 @@ function resolveState(cell: CellDto, mode: BoardMode, sunk: boolean, isGhost: bo
  */
 export function BoardCell({cell, mode, sunk, isGhost, readonly, onClick}: BoardCellProps) {
     const state = resolveState(cell, mode, sunk, isGhost);
-    const columnLetter = String.fromCharCode(65 + cell.col);
-    const rowNumber = cell.row + 1;
-    const ariaLabel = `${columnLetter}${rowNumber}, ${STATE_LABEL[state]}`;
+    const ariaLabel = `${formatCoordinateLabel(cell.row, cell.col)}, ${STATE_LABEL[state]}`;
 
     const isBlocked = state === 'block' || (mode === 'target' && cell.hasShot);
     const isClickable = Boolean(onClick) && !readonly && !isBlocked;

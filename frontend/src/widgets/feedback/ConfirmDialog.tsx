@@ -1,5 +1,6 @@
 import type {ReactNode} from 'react';
-import {useEffect, useRef} from 'react';
+import {useRef} from 'react';
+import {useFocusTrap} from '../../design/hooks/useFocusTrap';
 import './ConfirmDialog.css';
 
 /** Props for {@link ConfirmDialog}. Rendering is entirely controlled via `open`. */
@@ -14,21 +15,16 @@ export type ConfirmDialogProps = {
     onConfirm: () => void;
 };
 
-const FOCUSABLE_SELECTOR =
-    'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
 const TITLE_ID = 'confirm-dialog-title';
 const BODY_ID = 'confirm-dialog-body';
 
 /**
  * Modal confirm/cancel dialog with focus-trapping and Escape-to-cancel.
  *
- * Renders `null` when `open` is false (no exit animation to wait for). While open,
- * it snapshots `document.activeElement`, moves focus to the first focusable element
- * inside the dialog, traps Tab/Shift+Tab within it, and restores the previously
- * focused element on close/unmount — standard modal-dialog accessibility behavior
- * (see `role="dialog"` + `aria-modal` below). Clicking the backdrop itself (not its
- * children) triggers `onCancel`, matching the Escape-key behavior.
+ * Renders `null` when `open` is false (no exit animation to wait for). Focus-trap/Escape/
+ * restore-focus behavior is shared with other overlays via {@link useFocusTrap} — see
+ * `role="dialog"` + `aria-modal` below for the rest of the a11y wiring. Clicking the backdrop
+ * itself (not its children) triggers `onCancel`, matching the Escape-key behavior.
  */
 export function ConfirmDialog({
                                   open,
@@ -41,65 +37,7 @@ export function ConfirmDialog({
                                   onConfirm,
                               }: ConfirmDialogProps) {
     const dialogRef = useRef<HTMLDivElement>(null);
-    const previouslyFocused = useRef<HTMLElement | null>(null);
-
-    useEffect(() => {
-        if (!open) {
-            return;
-        }
-
-        previouslyFocused.current = document.activeElement as HTMLElement | null;
-
-        const dialogEl = dialogRef.current;
-        const focusables = dialogEl
-            ? Array.from(dialogEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
-            : [];
-        (focusables[0] ?? dialogEl)?.focus();
-
-        function handleKeyDown(event: KeyboardEvent) {
-            if (event.key === 'Escape') {
-                event.preventDefault();
-                onCancel();
-                return;
-            }
-
-            if (event.key !== 'Tab' || !dialogEl) {
-                return;
-            }
-
-            const currentFocusables = Array.from(
-                dialogEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-            );
-            if (currentFocusables.length === 0) {
-                event.preventDefault();
-                return;
-            }
-
-            const first = currentFocusables[0];
-            const last = currentFocusables[currentFocusables.length - 1];
-            const active = document.activeElement;
-
-            if (event.shiftKey) {
-                if (active === first || !dialogEl.contains(active)) {
-                    event.preventDefault();
-                    last.focus();
-                }
-            } else {
-                if (active === last || !dialogEl.contains(active)) {
-                    event.preventDefault();
-                    first.focus();
-                }
-            }
-        }
-
-        document.addEventListener('keydown', handleKeyDown, true);
-
-        return () => {
-            document.removeEventListener('keydown', handleKeyDown, true);
-            previouslyFocused.current?.focus();
-            previouslyFocused.current = null;
-        };
-    }, [open, onCancel]);
+    useFocusTrap(dialogRef, open, onCancel);
 
     if (!open) {
         return null;

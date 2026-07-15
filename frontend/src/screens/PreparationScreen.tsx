@@ -20,6 +20,15 @@ import {Pill} from '../design/components/Pill/Pill';
 import {DirectionToggle} from '../widgets/preparation/DirectionToggle';
 import {ShipTray} from '../widgets/preparation/ShipTray';
 import type {ShipItemData} from '../widgets/preparation/ShipItem';
+import {type ShipPlacementOption, ShipPlacementPopup} from '../widgets/preparation/ShipPlacementPopup';
+import {ShipActionPopup} from '../widgets/preparation/ShipActionPopup';
+import {
+    computeGroupedEligibleShips,
+    computeValidRotation,
+    derivePlacedShipPlacement,
+    type PlacementRejection,
+    validatePlacement,
+} from './preparationPlacement';
 import './PreparationScreen.css';
 
 // Ship type from size is globally unambiguous (verified against both editions — see
@@ -61,67 +70,6 @@ function findCellForShip(field: CellDto[][], shipId: string): CellDto | null {
             }
         }
     }
-    return null;
-}
-
-/**
- * Computes the target cells for placing a ship of `size` starting at `at` in
- * direction `dir`. Mirrors the backend/MockGameAdapter's own placement math
- * (row grows for VERTICAL, column grows for HORIZONTAL).
- */
-function computeShipCells(at: Coordinate, size: number, dir: ShipDirection): Coordinate[] {
-    const cells: Coordinate[] = [];
-    for (let i = 0; i < size; i++) {
-        cells.push(dir === 'HORIZONTAL' ? {row: at.row, column: at.column + i} : {row: at.row + i, column: at.column});
-    }
-    return cells;
-}
-
-function inBounds(c: Coordinate): boolean {
-    return c.row >= 0 && c.row < 10 && c.column >= 0 && c.column < 10;
-}
-
-/** Reason a client-side ship placement was rejected before calling the adapter; see {@link validatePlacement}. */
-export type PlacementRejection = 'outOfBounds' | 'occupied' | 'tooClose' | null;
-
-/**
- * Client-side pre-validation for a prospective ship placement — mirrors the backend's
- * rules closely enough to give the player a *specific* rejection reason before making a
- * round trip (the backend only ever reports a single generic COORDINATE_INVALID for all
- * three cases). Checked in order:
- *   1. any target cell outside the 10x10 grid -> 'outOfBounds'
- *   2. any target cell already has a ship -> 'occupied'
- *   3. any target cell has isAvailable === false (no-go moat) and isn't itself one of
- *      this prospective placement's own target cells -> 'tooClose'
- * Returns null when the placement looks valid client-side (the adapter call is still
- * made and can still fail server-side as a fallback-safety edge case).
- */
-export function validatePlacement(field: CellDto[][], at: Coordinate, size: number, dir: ShipDirection): PlacementRejection {
-    const cells = computeShipCells(at, size, dir);
-
-    if (cells.some((c) => !inBounds(c))) {
-        return 'outOfBounds';
-    }
-
-    if (cells.some((c) => field[c.row][c.column].ship != null)) {
-        return 'occupied';
-    }
-
-    const cellKeys = new Set(cells.map((c) => `${c.row}-${c.column}`));
-    const tooClose = cells.some((c) => {
-        const fieldCell = field[c.row][c.column];
-        if (fieldCell.isAvailable) {
-            return false;
-        }
-        // A cell that is unavailable only because it's one of this same placement's own
-        // target cells isn't "too close" — this can't actually happen for an unoccupied
-        // cell today (moats only clear on removal), but is kept for correctness/documentation.
-        return !cellKeys.has(`${c.row}-${c.column}`) || fieldCell.ship == null;
-    });
-    if (tooClose) {
-        return 'tooClose';
-    }
-
     return null;
 }
 
@@ -208,6 +156,16 @@ export function PreparationScreen() {
     // once the player has marked ready, to detect the server advancing to IN_GAME.
     const [watchingStage, setWatchingStage] = useState(false);
 
+    // Tap-empty-cell guided placement popup: set when the player taps an empty cell with
+    // no ship selected in the tray (the tray-first flow above is unaffected by this).
+    const [placementCell, setPlacementCell] = useState<Coordinate | null>(null);
+    const [placementPending, setPlacementPending] = useState(false);
+
+    // Tap-placed-ship rotate/remove popup: set whenever the player taps any cell of an
+    // already-placed ship, replacing the previous instant-remove-on-tap behavior.
+    const [actionPopup, setActionPopup] = useState<{ shipId: string; shipSize: number } | null>(null);
+    const [actionPending, setActionPending] = useState(false);
+
     const watchStage = async () => {
         if (!sessionId) return;
         try {
@@ -246,6 +204,36 @@ export function PreparationScreen() {
         return [...unplacedEntries, ...placedEntries];
     }, [ships, placedShips, activeShipId, t]);
 
+    const placementOptions: ShipPlacementOption[] = useMemo(() => {
+        if (!placementCell) {
+            return [];
+        }
+        return computeGroupedEligibleShips(field, placementCell, ships).map((group) => ({
+            shipId: group.representativeShipId,
+            shipSize: group.shipSize,
+            typeName: getShipTypeLabel(SIZE_TO_TYPE[group.shipSize], t),
+            count: group.count,
+            directions: group.directions,
+        }));
+    }, [field, placementCell, ships, t]);
+
+    const actionPopupDetails = useMemo(() => {
+        if (!actionPopup) {
+            return null;
+        }
+        const placement = derivePlacedShipPlacement(field, actionPopup.shipId);
+        if (!placement) {
+            return null;
+        }
+        const canRotate = actionPopup.shipSize > 1
+            && computeValidRotation(field, actionPopup.shipId, placement.at, actionPopup.shipSize, placement.direction) != null;
+        return {
+            typeName: getShipTypeLabel(SIZE_TO_TYPE[actionPopup.shipSize], t),
+            placement,
+            canRotate,
+        };
+    }, [field, actionPopup, t]);
+
     if (!sessionId || !player) {
         // Defensive only — the routing layer's StageGuard is responsible for redirecting
         // away from this screen when session/player data isn't present.
@@ -271,9 +259,13 @@ export function PreparationScreen() {
 
     /**
      * Runs a usePreparation action (placeShip/removeShipAt/markReady) and reports whether
-     * it succeeded, bridging the one-tick gap described above via `waiterRef`.
+     * it succeeded, bridging the one-tick gap described above via `waiterRef`. Pass
+     * `suppressErrorToast` when the caller wants to show its own, more specific message
+     * instead of the generic one (e.g. rotate's re-add failure — see `handleRotate`).
      */
-    async function runAction(action: () => Promise<void>): Promise<boolean> {
+    async function runAction(action: () => Promise<void>, options?: {
+        suppressErrorToast?: boolean
+    }): Promise<boolean> {
         const resultPromise = new Promise<GameAdapterError | null>((resolve) => {
             waiterRef.current = resolve;
         });
@@ -282,7 +274,9 @@ export function PreparationScreen() {
         const resultError = await resultPromise;
 
         if (resultError) {
-            reportBackendFailure(resultError);
+            if (!options?.suppressErrorToast) {
+                reportBackendFailure(resultError);
+            }
             return false;
         }
         return true;
@@ -310,22 +304,20 @@ export function PreparationScreen() {
     async function handleCellClick(row: number, col: number) {
         const cell = field[row][col];
 
-        // Two-way removal takes precedence: tapping an already-placed ship on the board
-        // removes it, regardless of whether a ship is currently selected for placement.
+        // Tapping any cell of an already-placed ship opens the rotate/remove popup, taking
+        // precedence regardless of whether a ship is currently selected for placement.
         if (cell.ship != null) {
-            const shipId = cell.ship.shipId;
-            pendingAutoAdvanceRef.current = false;
-            const ok = await runAction(() => removeShipAt({row, column: col}));
-            if (ok) {
-                notify.success('ship.removed');
-                if (activeShipId === shipId) {
-                    setActiveShipId(null);
-                }
-            }
+            setActionPopup({shipId: cell.ship.shipId, shipSize: cell.ship.shipSize});
             return;
         }
 
         if (!activeShipId) {
+            // No tray selection: open the guided placement popup instead of a no-op, as
+            // long as there's at least one unplaced ship to offer (matches the tray flow's
+            // own behavior of having nothing to do once every ship is placed).
+            if (ships.length > 0) {
+                setPlacementCell({row, column: col});
+            }
             return;
         }
 
@@ -344,6 +336,80 @@ export function PreparationScreen() {
         const ok = await runAction(() => placeShip(activeShipId, {row, column: col}));
         if (ok) {
             notify.success('ship.placed');
+        }
+    }
+
+    async function handlePlacementConfirm(shipId: string, dir: ShipDirection) {
+        if (!placementCell) {
+            return;
+        }
+        // Keep the top-level toggle in sync with the popup's choice for any subsequent
+        // tray-first placements, but pass `dir` explicitly to `placeShip` too — `setDirection`
+        // only takes effect on the next render, so relying on it alone here would place using
+        // whatever direction the toggle showed *before* this call.
+        setDirection(dir);
+        pendingAutoAdvanceRef.current = false;
+        setPlacementPending(true);
+        const ok = await runAction(() => placeShip(shipId, placementCell, dir));
+        setPlacementPending(false);
+        setPlacementCell(null);
+        if (ok) {
+            notify.success('ship.placed');
+        }
+    }
+
+    async function handleRemoveFromPopup() {
+        if (!actionPopup || !actionPopupDetails) {
+            return;
+        }
+        const {shipId} = actionPopup;
+        const {at} = actionPopupDetails.placement;
+        pendingAutoAdvanceRef.current = false;
+        setActionPending(true);
+        const ok = await runAction(() => removeShipAt(at));
+        setActionPending(false);
+        setActionPopup(null);
+        if (ok) {
+            notify.success('ship.removed');
+            if (activeShipId === shipId) {
+                setActiveShipId(null);
+            }
+        }
+    }
+
+    async function handleRotateFromPopup() {
+        if (!actionPopup || !actionPopupDetails || !actionPopupDetails.canRotate) {
+            return;
+        }
+        const {shipId, shipSize} = actionPopup;
+        const {at, direction: currentDirection} = actionPopupDetails.placement;
+        const rotatedDirection = computeValidRotation(field, shipId, at, shipSize, currentDirection);
+        if (!rotatedDirection) {
+            return;
+        }
+
+        pendingAutoAdvanceRef.current = false;
+        setActionPending(true);
+
+        const removed = await runAction(() => removeShipAt(at));
+        if (!removed) {
+            // Nothing changed server-side — the generic failure toast from runAction already
+            // explains it; nothing further to do.
+            setActionPending(false);
+            setActionPopup(null);
+            return;
+        }
+
+        const added = await runAction(() => placeShip(shipId, at, rotatedDirection), {suppressErrorToast: true});
+        setActionPending(false);
+        setActionPopup(null);
+        if (added) {
+            notify.success('ship.rotated');
+        } else {
+            // Remove succeeded but the re-add didn't — the ship is now actually gone
+            // server-side (usePreparation's refetch already reflects this). A generic
+            // "something went wrong" toast would wrongly suggest nothing happened.
+            notify.error('ship.rotateFailed');
         }
     }
 
@@ -428,6 +494,39 @@ export function PreparationScreen() {
                     />
                 </div>
             </div>
+
+            <ShipPlacementPopup
+                open={placementCell != null}
+                options={placementOptions}
+                disabled={placementPending}
+                onClose={() => setPlacementCell(null)}
+                onConfirm={handlePlacementConfirm}
+                pickShipTitle={t('screens:preparation.popup.pickShipTitle')}
+                pickDirectionTitle={t('screens:preparation.popup.pickDirectionTitle')}
+                emptyStateMessage={t('screens:preparation.popup.emptyState')}
+                closeLabel={t('screens:preparation.popup.close')}
+                backLabel={t('screens:preparation.popup.back')}
+                horizontalLabel={t('screens:preparation.directionHorizontal')}
+                verticalLabel={t('screens:preparation.directionVertical')}
+                cellSingularLabel={t('screens:preparation.cellSingular')}
+                cellPluralLabel={t('screens:preparation.cellPlural')}
+                availableLabel={t('screens:preparation.popup.available')}
+            />
+
+            <ShipActionPopup
+                open={actionPopup != null}
+                shipTypeName={actionPopupDetails?.typeName ?? ''}
+                shipSize={actionPopup?.shipSize ?? 0}
+                canRotate={actionPopupDetails?.canRotate ?? false}
+                disabled={actionPending}
+                onClose={() => setActionPopup(null)}
+                onRotate={handleRotateFromPopup}
+                onRemove={handleRemoveFromPopup}
+                rotateLabel={t('screens:preparation.popup.rotate')}
+                removeLabel={t('screens:preparation.popup.remove')}
+                cellSingularLabel={t('screens:preparation.cellSingular')}
+                cellPluralLabel={t('screens:preparation.cellPlural')}
+            />
         </div>
     );
 }

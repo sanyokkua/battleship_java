@@ -1,5 +1,5 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {render, screen, waitFor} from '@testing-library/react';
+import {render, screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import '../i18n';
@@ -9,7 +9,7 @@ import {GameAdapterError} from '../adapters/AdapterErrors';
 import {ToastProvider} from '../widgets/feedback/ToastContext';
 import {ToastStack} from '../widgets/feedback/ToastStack';
 import {clearGameData, savePlayer, saveSession} from '../services/GameBrowserStorage';
-import {PreparationScreen, validatePlacement} from './PreparationScreen';
+import {PreparationScreen} from './PreparationScreen';
 
 function renderPrepScreen(adapter: MockGameAdapter) {
     return render(
@@ -89,7 +89,7 @@ describe('PreparationScreen', () => {
         expect(await screen.findByText('1 of 10 ships placed')).toBeInTheDocument();
     });
 
-    it('removes a placed ship via the board-tap path', async () => {
+    it('tapping a placed ship opens the rotate/remove action popup instead of removing instantly', async () => {
         const user = userEvent.setup();
         const {adapter} = await setUpSeededSession();
         const removeShipSpy = vi.spyOn(adapter, 'removeShip');
@@ -99,16 +99,117 @@ describe('PreparationScreen', () => {
 
         await user.click(firstPatrolBoatButton());
         await user.click(screen.getByRole('button', {name: /^A1,/}));
-
         await waitFor(() => expect(screen.getByText('1 of 10 ships placed')).toBeInTheDocument());
 
-        // Tap the now-occupied A1 cell again — should remove instead of place.
+        // Tap the now-occupied A1 cell again — should open the popup, not remove instantly.
         await user.click(screen.getByRole('button', {name: /^A1,/}));
+
+        expect(await screen.findByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByRole('heading', {name: 'Patrol Boat'})).toBeInTheDocument();
+        expect(removeShipSpy).not.toHaveBeenCalled();
+    });
+
+    it('removes a placed ship via the action popup\'s Remove button', async () => {
+        const user = userEvent.setup();
+        const {adapter} = await setUpSeededSession();
+        const removeShipSpy = vi.spyOn(adapter, 'removeShip');
+
+        renderPrepScreen(adapter);
+        await waitForBoardToLoad();
+
+        await user.click(firstPatrolBoatButton());
+        await user.click(screen.getByRole('button', {name: /^A1,/}));
+        await waitFor(() => expect(screen.getByText('1 of 10 ships placed')).toBeInTheDocument());
+
+        await user.click(screen.getByRole('button', {name: /^A1,/}));
+        const popup = await screen.findByRole('dialog');
+        await user.click(within(popup).getByRole('button', {name: 'Remove'}));
 
         await waitFor(() => expect(removeShipSpy).toHaveBeenCalledWith(expect.any(String), expect.any(String), {
             row: 0,
             column: 0
         }));
+        expect(await screen.findByText('0 of 10 ships placed')).toBeInTheDocument();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('rotates a placed ship via the action popup\'s Rotate button (remove then re-add in the new direction)', async () => {
+        const user = userEvent.setup();
+        const {adapter, sessionId, playerId} = await setUpSeededSession();
+        const removeShipSpy = vi.spyOn(adapter, 'removeShip');
+        const addShipSpy = vi.spyOn(adapter, 'addShip');
+
+        renderPrepScreen(adapter);
+        await waitForBoardToLoad();
+
+        // Place the Battleship (size 4) HORIZONTAL at A1 — far from the board edge in every
+        // direction, so rotating it VERTICAL in place is unambiguously valid.
+        await user.click(screen.getByRole('button', {name: /Battleship/}));
+        await user.click(screen.getByRole('button', {name: /^E5,/}));
+        await waitFor(() => expect(screen.getByText('1 of 10 ships placed')).toBeInTheDocument());
+        addShipSpy.mockClear();
+
+        await user.click(screen.getByRole('button', {name: /^E5,/}));
+        const popup = await screen.findByRole('dialog');
+        await user.click(within(popup).getByRole('button', {name: 'Rotate'}));
+
+        await waitFor(() => expect(removeShipSpy).toHaveBeenCalledWith(sessionId, playerId, {row: 4, column: 4}));
+        await waitFor(() => expect(addShipSpy).toHaveBeenCalledWith(sessionId, playerId, expect.any(String), {
+            row: 4,
+            column: 4
+        }, 'VERTICAL'));
+        // Order matters: the rotate must remove before re-adding.
+        expect(removeShipSpy.mock.invocationCallOrder[0]).toBeLessThan(addShipSpy.mock.invocationCallOrder[0]);
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    });
+
+    it('hides the Rotate button when the ship has no room to rotate in place', async () => {
+        const user = userEvent.setup();
+        const {adapter} = await setUpSeededSession();
+
+        renderPrepScreen(adapter);
+        await waitForBoardToLoad();
+
+        // Battleship (size 4) HORIZONTAL flush against the right edge (columns 6-9): rotating
+        // VERTICAL from bow (0,6) would need rows 0-3, which fits — instead place it so its
+        // bow is at column 7 (cells 7,8,9, only size... ) — simplest guaranteed-blocked case:
+        // place along the very bottom row so VERTICAL rotation goes off the board.
+        await user.click(screen.getByRole('button', {name: /Battleship/}));
+        await user.click(screen.getByRole('button', {name: /^A10,/}));
+        await waitFor(() => expect(screen.getByText('1 of 10 ships placed')).toBeInTheDocument());
+
+        await user.click(screen.getByRole('button', {name: /^A10,/}));
+        const popup = await screen.findByRole('dialog');
+
+        expect(within(popup).queryByRole('button', {name: 'Rotate'})).not.toBeInTheDocument();
+        expect(within(popup).getByRole('button', {name: 'Remove'})).toBeInTheDocument();
+    });
+
+    it('surfaces a specific "rotate failed" message when remove succeeds but re-add fails', async () => {
+        const user = userEvent.setup();
+        const {adapter, sessionId, playerId} = await setUpSeededSession();
+
+        // Seed the placement directly via the adapter (before spying), so the mocked
+        // rejection below only intercepts the rotate's re-add call, not this initial one.
+        const prep = await adapter.getPreparationState(sessionId, playerId);
+        const battleship = prep.ships.find((s) => s.shipSize === 4)!;
+        await adapter.addShip(sessionId, playerId, battleship.shipId, {row: 4, column: 4}, 'HORIZONTAL');
+
+        vi.spyOn(adapter, 'addShip').mockRejectedValueOnce(
+            new GameAdapterError('Unknown shipId', {httpStatus: 400, errorCode: 'SHIP_ID_INVALID', context: 'addShip'}),
+        );
+
+        renderPrepScreen(adapter);
+        await waitForBoardToLoad();
+        await waitFor(() => expect(screen.getByText('1 of 10 ships placed')).toBeInTheDocument());
+
+        await user.click(screen.getByRole('button', {name: /^E5,/}));
+        const popup = await screen.findByRole('dialog');
+        await user.click(within(popup).getByRole('button', {name: 'Rotate'}));
+
+        expect(await screen.findByText('Rotate failed')).toBeInTheDocument();
+        expect(screen.getByText('Ship removed — place it again.')).toBeInTheDocument();
+        // The mocked failure means the ship is now actually gone server-side (remove succeeded).
         expect(await screen.findByText('0 of 10 ships placed')).toBeInTheDocument();
     });
 
@@ -259,34 +360,6 @@ describe('PreparationScreen', () => {
         expect(addShipSpy).not.toHaveBeenCalled();
     });
 
-    it('validatePlacement flags an occupied cell (unit-level check of the client pre-check helper)', async () => {
-        const {adapter, sessionId, playerId} = await setUpSeededSession();
-        const prep = await adapter.getPreparationState(sessionId, playerId);
-        const ship = prep.ships[0];
-        // Place a size-1 ship server-side at (5,5).
-        await adapter.addShip(sessionId, playerId, ship.shipId, {row: 5, column: 5}, 'HORIZONTAL');
-        const updated = await adapter.getPreparationState(sessionId, playerId);
-
-        // A size-2 ship placed HORIZONTAL starting at (5,4) covers cells (5,4) [free, in the
-        // moat] and (5,5) [occupied by the placed ship] — occupied should win over tooClose.
-        const result = validatePlacement(updated.field, {row: 5, column: 4}, 2, 'HORIZONTAL');
-        expect(result).toBe('occupied');
-    });
-
-    it('validatePlacement flags a moat (no-go) cell as tooClose (unit-level check of the client pre-check helper)', async () => {
-        const {adapter, sessionId, playerId} = await setUpSeededSession();
-        const prep = await adapter.getPreparationState(sessionId, playerId);
-        const ship = prep.ships[0];
-        // Place a size-1 ship at (5,5), which makes its 8 neighbours unavailable (moat).
-        await adapter.addShip(sessionId, playerId, ship.shipId, {row: 5, column: 5}, 'HORIZONTAL');
-        const updated = await adapter.getPreparationState(sessionId, playerId);
-
-        // (5,6) is a moat cell (immediate neighbour of the placed ship) but not itself occupied —
-        // a size-1 ship placed there should be flagged 'tooClose', not 'occupied'.
-        const result = validatePlacement(updated.field, {row: 5, column: 6}, 1, 'HORIZONTAL');
-        expect(result).toBe('tooClose');
-    });
-
     it('the board renders moat cells as non-clickable, so a UI tap on one never reaches placeShip', async () => {
         const user = userEvent.setup();
         const {adapter} = await setUpSeededSession();
@@ -331,5 +404,113 @@ describe('PreparationScreen', () => {
         await waitForBoardToLoad();
 
         expect(screen.queryByText(/auto.?place/i)).not.toBeInTheDocument();
+    });
+
+    it('tapping an empty cell with no ship selected opens the guided ship-placement popup instead of doing nothing', async () => {
+        const user = userEvent.setup();
+        const {adapter} = await setUpSeededSession();
+
+        renderPrepScreen(adapter);
+        await waitForBoardToLoad();
+
+        // No tray selection made — today this would be a no-op; now it should open the popup.
+        await user.click(screen.getByRole('button', {name: /^A1,/}));
+
+        expect(await screen.findByText('Choose a ship')).toBeInTheDocument();
+    });
+
+    it('guided popup flow: pick a ship then a direction places it, and uses the popup\'s chosen direction even when it differs from the top-level toggle', async () => {
+        const user = userEvent.setup();
+        const {adapter, sessionId, playerId} = await setUpSeededSession();
+        const addShipSpy = vi.spyOn(adapter, 'addShip');
+
+        renderPrepScreen(adapter);
+        await waitForBoardToLoad();
+
+        // Top-level toggle defaults to HORIZONTAL; leave it as-is, but pick VERTICAL inside
+        // the popup — the placement must use VERTICAL (the popup's own choice), not the
+        // toggle's HORIZONTAL, proving the popup doesn't rely on stale hook-closure state.
+        // Uses the Destroyer (size 3): a 1-cell ship confirms immediately with no direction
+        // step at all (see ShipPlacementPopup.test.tsx), so it can't exercise this path.
+        await user.click(screen.getByRole('button', {name: /^A1,/}));
+        await screen.findByText('Choose a ship');
+        const popup = screen.getByRole('dialog');
+
+        // UKRAINIAN edition's 4 Patrol Boats are all size 1 — they collapse into a single
+        // grouped row showing the count, not 4 separate rows.
+        expect(within(popup).getAllByRole('button', {name: /Patrol Boat/})).toHaveLength(1);
+        expect(within(popup).getByRole('button', {name: /Patrol Boat.*4 available/})).toBeInTheDocument();
+
+        await user.click(within(popup).getByRole('button', {name: /Destroyer/}));
+        await screen.findByText('Choose a direction');
+        await user.click(within(popup).getByRole('button', {name: 'Vertical'}));
+
+        await waitFor(() => {
+            expect(addShipSpy).toHaveBeenCalledWith(sessionId, playerId, expect.any(String), {
+                row: 0,
+                column: 0,
+            }, 'VERTICAL');
+        });
+        expect(await screen.findByText('1 of 10 ships placed')).toBeInTheDocument();
+        // Popup closes itself once the placement completes.
+        expect(screen.queryByText('Choose a direction')).not.toBeInTheDocument();
+    });
+
+    it('confirms a 1-cell ship immediately from the popup, with no direction step', async () => {
+        const user = userEvent.setup();
+        const {adapter, sessionId, playerId} = await setUpSeededSession();
+        const addShipSpy = vi.spyOn(adapter, 'addShip');
+
+        renderPrepScreen(adapter);
+        await waitForBoardToLoad();
+
+        await user.click(screen.getByRole('button', {name: /^A1,/}));
+        const popup = await screen.findByRole('dialog');
+        await user.click(within(popup).getByRole('button', {name: /Patrol Boat/}));
+
+        await waitFor(() => {
+            expect(addShipSpy).toHaveBeenCalledWith(sessionId, playerId, expect.any(String), {
+                row: 0,
+                column: 0,
+            }, 'HORIZONTAL');
+        });
+        expect(await screen.findByText('1 of 10 ships placed')).toBeInTheDocument();
+        expect(screen.queryByText('Choose a direction')).not.toBeInTheDocument();
+    });
+
+    it('the grouped popup count decreases after a placement', async () => {
+        const user = userEvent.setup();
+        const {adapter} = await setUpSeededSession();
+
+        renderPrepScreen(adapter);
+        await waitForBoardToLoad();
+
+        // Place one Patrol Boat at A1 via the guided popup — a 1-cell ship confirms
+        // immediately, with no direction step to click through.
+        await user.click(screen.getByRole('button', {name: /^A1,/}));
+        await screen.findByText('Choose a ship');
+        await user.click(within(screen.getByRole('dialog')).getByRole('button', {name: /Patrol Boat/}));
+        await waitFor(() => expect(screen.getByText('1 of 10 ships placed')).toBeInTheDocument());
+
+        // Tap a different empty cell, far from A1's moat, and confirm the remaining count.
+        await user.click(screen.getByRole('button', {name: /^F1,/}));
+        await screen.findByText('Choose a ship');
+        expect(
+            within(screen.getByRole('dialog')).getByRole('button', {name: /Patrol Boat.*3 available/}),
+        ).toBeInTheDocument();
+    });
+
+    it('tapping an empty cell while a ship IS selected in the tray still places directly, without opening the guided popup', async () => {
+        const user = userEvent.setup();
+        const {adapter} = await setUpSeededSession();
+
+        renderPrepScreen(adapter);
+        await waitForBoardToLoad();
+
+        await user.click(firstPatrolBoatButton());
+        await user.click(screen.getByRole('button', {name: /^A1,/}));
+
+        await waitFor(() => expect(screen.getByText('1 of 10 ships placed')).toBeInTheDocument());
+        expect(screen.queryByText('Choose a ship')).not.toBeInTheDocument();
     });
 });

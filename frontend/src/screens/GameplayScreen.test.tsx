@@ -9,6 +9,7 @@ import {ToastProvider} from '../widgets/feedback/ToastContext';
 import {ToastStack} from '../widgets/feedback/ToastStack';
 import {savePlayer, saveSession, saveStage} from '../services/GameBrowserStorage';
 import type {CellDto} from '../logic/ApplicationTypes';
+import {formatCoordinateLabel} from '../logic/boardCoordinates';
 import {GameplayScreen} from './GameplayScreen';
 
 /**
@@ -419,5 +420,173 @@ describe('GameplayScreen', () => {
         const state = await adapterInstance.getPreparationState(sessionId, p1);
         expect(findEmptyCell(state.field)).toBeDefined();
         expect(findShipCellOfSize(state.field, 1)).toBeDefined();
+    });
+
+    describe('opponent-shot toast', () => {
+        // Flips the active turn from p1 to p2 via a real UI click on a guaranteed-empty
+        // cell (a MISS), so the subsequent backdoor shot as p2 is legal — MockGameAdapter
+        // enforces turn order even for direct adapter calls (see shoot()'s
+        // activePlayerId check), matching the pattern already used at line ~332 above.
+        async function flipTurnToP2(sessionId: string, p2: string, user: ReturnType<typeof userEvent.setup>) {
+            const p2Prep = await adapterInstance.getPreparationState(sessionId, p2);
+            const {row, col} = findEmptyCell(p2Prep.field);
+            const targetPanel = document.querySelector('.bp-target')!;
+            const targetCell = within(targetPanel as HTMLElement).getAllByRole('button')[row * 10 + col];
+            await user.click(targetCell);
+            await waitFor(() => expect(screen.getByText(/is taking a shot/)).toBeInTheDocument());
+        }
+
+        it('shows a toast with the coordinate and "miss" when the opponent fires at an empty cell', async () => {
+            const {sessionId, p1, p2, p1Name} = await setUpInGameSession(adapterInstance);
+            saveSession(sessionId);
+            savePlayer({playerId: p1, playerName: p1Name});
+            saveStage('IN_GAME');
+
+            const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
+            renderGameplayScreen();
+            await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+
+            await flipTurnToP2(sessionId, p2, user);
+
+            const p1Prep = await adapterInstance.getPreparationState(sessionId, p1);
+            const at = findEmptyCell(p1Prep.field);
+            await act(async () => {
+                await adapterInstance.shoot(sessionId, p2, {row: at.row, column: at.col});
+            });
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(5100);
+            });
+
+            const label = formatCoordinateLabel(at.row, at.col);
+            expect(await screen.findByText('Opponent missed')).toBeInTheDocument();
+            expect(screen.getByText(`The opponent fired at ${label} and missed.`)).toBeInTheDocument();
+        });
+
+        it('shows a toast with the coordinate and "hit" when the opponent hits a ship without sinking it', async () => {
+            const {sessionId, p1, p2, p1Name} = await setUpInGameSession(adapterInstance);
+            saveSession(sessionId);
+            savePlayer({playerId: p1, playerName: p1Name});
+            saveStage('IN_GAME');
+
+            const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
+            renderGameplayScreen();
+            await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+
+            await flipTurnToP2(sessionId, p2, user);
+
+            // findShipCellOfSize returns the FIRST cell of a size-2+ ship (its bow) — hitting
+            // only that one cell hits without sinking, since HORIZONTAL placement means its
+            // other cell(s) remain unshot.
+            const p1Prep = await adapterInstance.getPreparationState(sessionId, p1);
+            const at = findShipCellOfSize(p1Prep.field, 2);
+            await act(async () => {
+                await adapterInstance.shoot(sessionId, p2, {row: at.row, column: at.col});
+            });
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(5100);
+            });
+
+            const label = formatCoordinateLabel(at.row, at.col);
+            expect(await screen.findByText('Your ship was hit!')).toBeInTheDocument();
+            expect(screen.getByText(`The opponent hit your ship at ${label}.`)).toBeInTheDocument();
+            expect(screen.queryByText('Your ship was sunk!')).not.toBeInTheDocument();
+        });
+
+        it('shows a "sunk" toast (not "hit") when the opponent\'s shot sinks a ship', async () => {
+            const {sessionId, p1, p2, p1Name} = await setUpInGameSession(adapterInstance);
+            saveSession(sessionId);
+            savePlayer({playerId: p1, playerName: p1Name});
+            saveStage('IN_GAME');
+
+            const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
+            renderGameplayScreen();
+            await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+
+            await flipTurnToP2(sessionId, p2, user);
+
+            // A size-1 Patrol Boat sinks in exactly one shot.
+            const p1Prep = await adapterInstance.getPreparationState(sessionId, p1);
+            const at = findShipCellOfSize(p1Prep.field, 1);
+            await act(async () => {
+                await adapterInstance.shoot(sessionId, p2, {row: at.row, column: at.col});
+            });
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(5100);
+            });
+
+            const label = formatCoordinateLabel(at.row, at.col);
+            expect(await screen.findByText('Your ship was sunk!')).toBeInTheDocument();
+            expect(screen.getByText(`The opponent sank your ship at ${label}.`)).toBeInTheDocument();
+            expect(screen.queryByText('Your ship was hit!')).not.toBeInTheDocument();
+        });
+
+        it('does not replay a pre-existing hit as a new toast on mount', async () => {
+            const {sessionId, p1, p2, p1Name} = await setUpInGameSession(adapterInstance);
+
+            // Seed a hit on p1's board entirely via the backdoor, before the screen ever mounts:
+            // flip the turn to p2 (a miss on p2's own board), then p2 hits p1.
+            const p2Prep = await adapterInstance.getPreparationState(sessionId, p2);
+            const missAt = findEmptyCell(p2Prep.field);
+            await adapterInstance.shoot(sessionId, p1, {row: missAt.row, column: missAt.col});
+
+            const p1Prep = await adapterInstance.getPreparationState(sessionId, p1);
+            const hitAt = findShipCellOfSize(p1Prep.field, 2);
+            await adapterInstance.shoot(sessionId, p2, {row: hitAt.row, column: hitAt.col});
+
+            saveSession(sessionId);
+            savePlayer({playerId: p1, playerName: p1Name});
+            saveStage('IN_GAME');
+
+            renderGameplayScreen();
+            await waitFor(() => expect(screen.getByText(p1Name)).toBeInTheDocument());
+
+            // Let a subsequent poll run too — still nothing NEW happened, so still no toast.
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(5100);
+            });
+
+            expect(screen.queryByText('Your ship was hit!')).not.toBeInTheDocument();
+            expect(screen.queryByText('Your ship was sunk!')).not.toBeInTheDocument();
+            expect(screen.queryByText('Opponent missed')).not.toBeInTheDocument();
+        });
+
+        it('shows one toast per newly-revealed cell when multiple opponent shots land between two polls', async () => {
+            const {sessionId, p1, p2, p1Name} = await setUpInGameSession(adapterInstance);
+            saveSession(sessionId);
+            savePlayer({playerId: p1, playerName: p1Name});
+            saveStage('IN_GAME');
+
+            const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
+            renderGameplayScreen();
+            await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+
+            // Flip the turn via a real UI click (also seeds the diff's "previous field" baseline
+            // via the refetch this triggers), then land BOTH opponent shots purely through direct
+            // adapter calls — bypassing the mounted hook's own shoot()/refetch() entirely — so
+            // neither one triggers an intermediate render. Only the vi.advanceTimersByTimeAsync
+            // poll below ever asks the component to observe new state, so it must reveal both at once.
+            await flipTurnToP2(sessionId, p2, user);
+
+            const p1Prep = await adapterInstance.getPreparationState(sessionId, p1);
+            const allEmpty = p1Prep.field.flat().filter((c) => !c.ship);
+            const [first, second] = allEmpty;
+            // findEmptyCell alone would risk re-finding the SAME cell flipTurnToP2 already shot
+            // (it only checks for `!ship`, not `hasShot`) — filter both out explicitly.
+            const p2Prep = await adapterInstance.getPreparationState(sessionId, p2);
+            const p2MissAt = p2Prep.field.flat().find((c) => !c.ship && !c.hasShot)!;
+
+            await adapterInstance.shoot(sessionId, p2, {row: first.row, column: first.col}); // miss -> flips to p1
+            await adapterInstance.shoot(sessionId, p1, {row: p2MissAt.row, column: p2MissAt.col}); // miss -> flips back to p2
+            await adapterInstance.shoot(sessionId, p2, {row: second.row, column: second.col}); // miss -> flips to p1
+
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(5100);
+            });
+
+            const firstLabel = formatCoordinateLabel(first.row, first.col);
+            const secondLabel = formatCoordinateLabel(second.row, second.col);
+            expect(await screen.findByText(`The opponent fired at ${firstLabel} and missed.`)).toBeInTheDocument();
+            expect(screen.getByText(`The opponent fired at ${secondLabel} and missed.`)).toBeInTheDocument();
+        });
     });
 });

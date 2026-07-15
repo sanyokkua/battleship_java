@@ -7,6 +7,14 @@
     "removed": {
       "title": "Ship removed",
       "message": "Ship removed from the board."
+    },
+    "rotated": {
+      "title": "Ship rotated",
+      "message": "Ship orientation changed."
+    },
+    "rotateFailed": {
+      "title": "Rotate failed",
+      "message": "Ship removed — place it again."
     }
   },
   "place": {
@@ -45,6 +53,20 @@
     "alreadyShot": {
       "title": "Already shot",
       "message": "You've already fired at this cell."
+    }
+  },
+  "incomingShot": {
+    "hit": {
+      "title": "Your ship was hit!",
+      "message": "The opponent hit your ship at {{coordinate}}."
+    },
+    "miss": {
+      "title": "Opponent missed",
+      "message": "The opponent fired at {{coordinate}} and missed."
+    },
+    "sunk": {
+      "title": "Your ship was sunk!",
+      "message": "The opponent sank your ship at {{coordinate}}."
     }
   },
   "turn": {

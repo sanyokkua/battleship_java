@@ -24,9 +24,10 @@ const ROW_NUMBERS = Array.from({length: 10}, (_, i) => i + 1);
 
 /**
  * Derives the set of ship IDs whose every cell has been shot, so `Board` can
- * render those ships as "sunk" rather than merely "hit".
+ * render those ships as "sunk" rather than merely "hit". Also reused by
+ * `GameplayScreen`'s opponent-shot toast to tell a plain hit from a sinking hit.
  */
-function computeSunkShipIds(field: CellDto[][]): Set<string> {
+export function computeSunkShipIds(field: CellDto[][]): Set<string> {
     const cellsByShip = new Map<string, CellDto[]>();
     for (const row of field) {
         for (const cell of row) {

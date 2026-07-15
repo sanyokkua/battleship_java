@@ -2,7 +2,7 @@ import {describe, expect, it, vi} from 'vitest';
 import {render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type {CellDto} from '../../logic/ApplicationTypes';
-import {Board} from './Board';
+import {Board, computeSunkShipIds} from './Board';
 
 function emptyField(): CellDto[][] {
     const field: CellDto[][] = [];
@@ -88,5 +88,33 @@ describe('Board', () => {
 
         await user.click(screen.getByLabelText('A1, water'));
         expect(onCellClick).not.toHaveBeenCalled();
+    });
+});
+
+describe('computeSunkShipIds', () => {
+    it('excludes a ship with at least one unshot cell', () => {
+        const field = emptyField();
+        const shipId = 'ship-a';
+        field[0][0] = {row: 0, col: 0, ship: {shipId, shipSize: 2}, hasShot: true, isAvailable: false};
+        field[0][1] = {row: 0, col: 1, ship: {shipId, shipSize: 2}, hasShot: false, isAvailable: false};
+
+        expect(computeSunkShipIds(field)).toEqual(new Set());
+    });
+
+    it('includes a ship whose every cell has been shot', () => {
+        const field = emptyField();
+        const shipId = 'ship-b';
+        field[5][5] = {row: 5, col: 5, ship: {shipId, shipSize: 1}, hasShot: true, isAvailable: false};
+
+        expect(computeSunkShipIds(field)).toEqual(new Set([shipId]));
+    });
+
+    it('handles multiple ships independently', () => {
+        const field = emptyField();
+        field[0][0] = {row: 0, col: 0, ship: {shipId: 'sunk-ship', shipSize: 1}, hasShot: true, isAvailable: false};
+        field[1][0] = {row: 1, col: 0, ship: {shipId: 'alive-ship', shipSize: 2}, hasShot: true, isAvailable: false};
+        field[1][1] = {row: 1, col: 1, ship: {shipId: 'alive-ship', shipSize: 2}, hasShot: false, isAvailable: false};
+
+        expect(computeSunkShipIds(field)).toEqual(new Set(['sunk-ship']));
     });
 });

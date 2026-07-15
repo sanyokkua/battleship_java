@@ -41,7 +41,7 @@
   "preparation": {
     "title": "Place your fleet",
     "progress": "{{placed}} of {{total}} ships placed",
-    "hint": "Pick a ship, choose a direction, then tap a cell. Tap a placed ship (or ✕) to remove it.",
+    "hint": "Pick a ship, choose a direction, then tap a cell — or tap an empty cell to choose a ship there. Tap a placed ship to rotate or remove it (or use ✕).",
     "directionHorizontal": "Horizontal",
     "directionVertical": "Vertical",
     "fleetLabel": "Your fleet",
@@ -53,7 +53,17 @@
     "opponentStatusInProgress": "In progress",
     "opponentStatusReady": "Ready",
     "cellSingular": "cell",
-    "cellPlural": "cells"
+    "cellPlural": "cells",
+    "popup": {
+      "pickShipTitle": "Choose a ship",
+      "pickDirectionTitle": "Choose a direction",
+      "emptyState": "No ship fits here",
+      "close": "Close",
+      "back": "Back",
+      "rotate": "Rotate",
+      "remove": "Remove",
+      "available": "available"
+    }
   },
   "gameplay": {
     "you": "You",
