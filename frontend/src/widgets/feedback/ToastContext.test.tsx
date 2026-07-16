@@ -79,4 +79,24 @@ describe('ToastContext', () => {
 
         expect(result.current.toasts).toHaveLength(1);
     });
+
+    it('push evicts the oldest toast once more than MAX_TOASTS are live', () => {
+        const {result} = renderHook(() => useToastContext(), {wrapper: ToastProvider});
+
+        act(() => {
+            result.current.push({variant: 'ok', title: 'First', message: 'A'});
+        });
+        act(() => {
+            result.current.push({variant: 'ok', title: 'Second', message: 'B'});
+        });
+        act(() => {
+            result.current.push({variant: 'ok', title: 'Third', message: 'C'});
+        });
+        act(() => {
+            result.current.push({variant: 'ok', title: 'Fourth', message: 'D'});
+        });
+
+        expect(result.current.toasts).toHaveLength(3);
+        expect(result.current.toasts.map((t) => t.title)).toEqual(['Second', 'Third', 'Fourth']);
+    });
 });

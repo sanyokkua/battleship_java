@@ -31,6 +31,12 @@
     box-shadow: 0 30px 60px rgba(11, 37, 69, 0.35);
 }
 
+@supports (height: 100dvh) {
+    .sheet {
+        max-height: calc(100dvh - 40px);
+    }
+}
+
 .sheet:focus {
     outline: none;
 }
@@ -59,6 +65,12 @@
         max-height: 80vh;
         border-radius: var(--radius) var(--radius) 0 0;
         animation: sheet-slide-up 0.2s;
+    }
+
+    @supports (height: 100dvh) {
+        .sheet {
+            max-height: 80dvh;
+        }
     }
 
     @keyframes sheet-slide-up {
