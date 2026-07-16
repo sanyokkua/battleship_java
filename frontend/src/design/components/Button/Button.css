@@ -1,0 +1,57 @@
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    width: 100%;
+    border: 0;
+    border-radius: var(--radius-sm);
+    padding: 15px 18px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: .15s;
+    font-family: inherit;
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+.btn:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--sea), var(--teal));
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(18, 80, 126, .28);
+}
+
+.btn-ghost {
+    background: var(--surface);
+    color: var(--sea);
+    border: 2px solid var(--steel);
+}
+
+.btn-ok {
+    background: linear-gradient(135deg, #34b39c, var(--ok));
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(42, 157, 143, .3);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ef5867, var(--hit));
+    color: #fff;
+}
+
+.btn.sm {
+    width: auto;
+    padding: 11px 16px;
+    font-size: 14px;
+    /* Touch-target audit: 11px padding + 14px text falls just under the
+     * 44px minimum hit area (e.g. the Copy button on WaitScreen). min-height tops
+     * it up without changing the visual padding/sizing otherwise. */
+    min-height: 44px;
+}

@@ -4,6 +4,7 @@ import lombok.NonNull;
 import lombok.extern.log4j.Log4j2;
 import lombok.val;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEditionConfiguration;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.CellAlreadyShotException;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.ShotResult;
 import ua.kostenko.battleship.battleship.logic.engine.models.records.Cell;
 import ua.kostenko.battleship.battleship.logic.engine.models.records.Coordinate;
@@ -17,6 +18,22 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+/**
+ * Implementation of the {@link FieldManagement} interface.
+ * <p>
+ * The FieldManagementImpl class manages a single player's board of {@link Cell}s: it validates and places ships
+ * (including their surrounding no-placement neighbour cells), removes ships, resolves shots into
+ * {@link ShotResult} outcomes (marking neighbouring cells as shot-at once a ship is fully destroyed, and
+ * rejecting shots at cells already shot), and returns both full and hidden-ship views of the field along with
+ * counts of undamaged cells and surviving ships.
+ * </p>
+ *
+ * @see FieldManagement
+ * @see Coordinate
+ * @see Ship
+ * @see Cell
+ * @see ShotResult
+ */
 @Log4j2
 public class FieldManagementImpl implements FieldManagement {
     private final Cell[][] field;
@@ -117,9 +134,14 @@ public class FieldManagementImpl implements FieldManagement {
         log.debug("Shot to coordinate: {}", coordinate);
         CoordinateUtils.validateCoordinate(coordinate);
 
+        val existingCell = getCell(coordinate);
+        if (existingCell.hasShot()) {
+            throw new CellAlreadyShotException("Cell has already been shot. %s".formatted(coordinate));
+        }
+
         val cell = updateCell(Cell.builder()
                 .coordinate(coordinate)
-                .ship(getCell(coordinate).ship())
+                .ship(existingCell.ship())
                 .hasShot(true)
                 .build());
 

@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.battleship.web.api.dtos.session;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,5 +23,6 @@ public class ResponseAvailableGameEditionsDto {
     /**
      * The list of available game editions.
      */
+    @Schema(description = "Supported game edition names", example = "UKRAINIAN")
     private List<String> gameEditions;
 }

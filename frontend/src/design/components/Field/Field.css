@@ -1,0 +1,22 @@
+.fld-wrap {
+    display: block;
+}
+
+label.fld,
+.fld-wrap .fld {
+    display: block;
+    font-weight: 600;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    margin: 0 0 7px;
+}
+
+.field-error {
+    color: var(--hit);
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 6px;
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}

@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.battleship.web.api.dtos.preparation;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +21,7 @@ public class ResponseShipAddedDto {
     /**
      * The unique identifier of the added ship.
      */
+    @Schema(description = "Identifier of the ship that was placed")
     private String shipId;
 
     /**

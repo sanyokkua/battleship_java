@@ -1,0 +1,14 @@
+{
+  "COORDINATE_INVALID": "That coordinate isn't valid.",
+  "EDITION_INVALID": "That game mode isn't valid.",
+  "PLAYER_ID_INVALID": "Player not found.",
+  "PLAYER_NAME_INVALID": "That name isn't valid — use at least 2 characters.",
+  "PLAYER_NOT_ACTIVE": "It's not your turn.",
+  "CELL_ALREADY_SHOT": "You've already fired at this cell.",
+  "SESSION_NOT_FOUND": "That game session wasn't found.",
+  "SHIP_DIRECTION_INVALID": "That ship direction isn't valid.",
+  "SHIP_ID_INVALID": "That ship isn't valid.",
+  "STAGE_INVALID": "That action isn't available right now.",
+  "INTERNAL": "Something went wrong on our end. Please try again.",
+  "generic": "Something went wrong. Please try again."
+}

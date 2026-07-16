@@ -1,16 +1,10 @@
 # battleship_java
 
-**Battleship** game implementation on Java and React (for education purposes).
+A Battleship game: a Java + Spring Boot REST/MVC backend and a React + TypeScript frontend,
+bundled together into a single runnable JAR. A rewrite of a prior
+[Python version](https://github.com/sanyokkua/battleship_py) with a redesigned UI approach.
 
-This project is developed on Java+Spring Boot (Rest/MVC) to provide REST API and in addition to REST API will
-be developed UI using ReactJS (Typescript).
-It is a rewriting of the [Python version](https://github.com/sanyokkua/battleship_py) with a complete redesign of the
-UI approach.
-
-PS: I am not expert in the building UI apps and this project should not be used as reference for any production
-projects.
-
-## How it looks like
+## Screenshots
 
 ![img-1](docs/img/1-app-index.jpg)
 ![img-2](docs/img/2-app-new.jpg)
@@ -23,91 +17,141 @@ projects.
 ![img-9](docs/img/8-app-gameplay.jpg)
 ![img-10](docs/img/9-app-results.jpg)
 
-## Technical Stack and information:
+## Stack
 
-The project consists of two components - UI and Backend projects. UI project is placed in the ***frontend*** folder and
-represents the Typescript React Js project.
-In the ***src*** folder can be found backend code written using Java + Spring Boot.
+**Backend** (`src/`): Java 25, Spring Boot 4.1.0 (Web/MVC), Maven, springdoc-openapi (Swagger UI
+and OpenAPI spec generation). Tests use JUnit 5, Mockito, AssertJ, and MockMvc.
 
-In order to build deployable JAR file were used maven plugins to copy UI resources from fronted project to the build of
-the java project.
+**Frontend** (`frontend/`): React 19, TypeScript, Vite, i18next (English/Ukrainian). Tests use
+Vitest and Playwright.
 
-API endpoints created for UI:
+The Maven build compiles the frontend into the backend's JAR — see
+[Build & run](#build--run) below.
 
-By [this link](http://localhost:8080/swagger-ui/index.html) on the running spring-boot app can be found Swagger-UI with
-the description of the API.
+## API
 
-Below - you can find a short description of the endpoints.
+The backend exposes 13 REST endpoints across 4 controllers (session/common, preparation,
+gameplay, and a server-sent-events stream for session/player push updates) under
+`/api/v2/game`. With the app running, the full interactive API description is at
+[localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html). For the complete
+endpoint table (verbs, paths, request/response DTOs, trigger semantics), see
+[docs/index.md §3 Entry Points](docs/index.md#3-entry-points-inputs). The generated OpenAPI 3
+spec is committed at [`docs/openapi.json`](docs/openapi.json).
 
-### game-session-common-rest-controller:
+## Build & run
 
-- **POST** - /api/v2/game/sessions
-- **POST** - /api/v2/game/sessions/{sessionId}/players
-- **GET** - /api/v2/game/sessions/{sessionId}/state
-- **GET** - /api/v2/game/sessions/{sessionId}/changesTime
-- **GET** - /api/v2/game/editions
+### Prerequisites
 
-### preparation-rest-controller:
+- JDK 25
+- Maven 3.9+
+- Node.js is **not** required to run a full Maven build — `frontend-maven-plugin` installs its
+  own pinned Node (`v24.18.0`, configured in `pom.xml`; `frontend/package.json` declares no
+  `engines` field) automatically during `mvn` builds. Install Node yourself only if you want to
+  run the frontend dev server or its test suites directly via `npm`.
 
-- **PUT** - /api/v2/game/sessions/{sessionId}/players/{playerId}/ships/{shipId}
-- **POST** - /api/v2/game/sessions/{sessionId}/players/{playerId}/start
-- **GET** - /api/v2/game/sessions/{sessionId}/players/{playerId}/preparationState
-- **GET** - /api/v2/game/sessions/{sessionId}/players/{playerId}/opponent
-- **DELETE** - /api/v2/game/sessions/{sessionId}/players/{playerId}/ships
+### Full build + run
 
-### game-session-common-rest-controller:
-
-- **POST** - /api/v2/game/sessions
-- **POST** - /api/v2/game/sessions/{sessionId}/players
-- **GET** - /api/v2/game/sessions/{sessionId}/state
-- **GET** - /api/v2/game/sessions/{sessionId}/changesTime
-- **GET** - /api/v2/game/editions
-
-## How to build and start
-
-You need pre-install Java and Maven to build the Spring boot project and run it.
-
-If you want to start a separate frontend project - Node JS is also required.
-
-Configuration of the system where the application was developed and tested:
-
-- **OS**: Mac OS Monterey 12.6.1 (Intel)
-- **Java**:
-  openjdk version "17.0.4.1" 2022-08-12
-  OpenJDK Runtime Environment Temurin-17.0.4.1+1 (build 17.0.4.1+1)
-  OpenJDK 64-Bit Server VM Temurin-17.0.4.1+1 (build 17.0.4.1+1, mixed mode, sharing)
-- **Maven**:
-  Apache Maven 3.8.6
-  Java version: 17.0.4.1, vendor: Eclipse Adoptium, runtime:
-  /Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home
-  OS name: "mac os x", version: "12.6.1", arch: "x86_64", family: "mac"
-- **NodeJS**: v16.17.0
-- **Npm**: 8.19.2
-
-Successfully tested on a new system:
-
-- **OS**: Mac OS Sequoia 15.1 (Apple Silicon M1 Pro)
-- **Java**:
-  openjdk version "21.0.5" 2024-10-15 LTS
-  OpenJDK Runtime Environment Temurin-21.0.5+11 (build 21.0.5+11-LTS)
-  OpenJDK 64-Bit Server VM Temurin-21.0.5+11 (build 21.0.5+11-LTS, mixed mode, sharing)
-- **Maven**:
-  Apache Maven 3.9.9
-  Maven home: /Users/ok/Tools/apache-maven
-  Java version: 21.0.5, vendor: Eclipse Adoptium, runtime:
-  /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home
-  Default locale: en_US, platform encoding: UTF-8
-  OS name: "mac os x", version: "15.1", arch: "aarch64", family: "mac"
-- **NodeJS**: v22.11.0
-- **Npm**: 10.9.0
-
-To build and start just run the following command and you will have the up-and-running app
-on **[localhost:8080](localhost:8080)**
+Builds the frontend (Vite) and backend together into one JAR, then starts it:
 
 ```shell
 mvn clean install && mvn spring-boot:run
 ```
 
-## TODO:
+The app serves at **[localhost:8080](http://localhost:8080)**.
 
-- Review test cases
+### Build only
+
+```shell
+mvn clean install
+```
+
+Also regenerates `docs/openapi.json` (bound to the `integration-test` phase via
+`springdoc-openapi-maven-plugin`, so it runs as part of `install`/`verify`/`deploy`, not plain
+`mvn package`).
+
+### Backend tests
+
+```shell
+mvn test                              # all tests
+mvn test -Dtest=ClassName             # a single test class
+mvn test -Dtest=ClassName#methodName  # a single test method
+```
+
+### Frontend dev loop
+
+From `frontend/`:
+
+```shell
+npm install
+npm run dev        # Vite dev server against a running backend
+npm run dev:mock   # Vite dev server against the in-browser MockGameAdapter, no backend needed
+npm run build       # production build (tsc && vite build)
+npm run preview      # preview the production build
+```
+
+### Frontend tests
+
+From `frontend/`:
+
+```shell
+npm run test           # Vitest unit/component tests
+npm run test:coverage  # Vitest with coverage report
+npm run test:e2e       # Playwright e2e tests
+npm run test:e2e:live  # Playwright e2e against a live running server
+npm run lint            # ESLint
+```
+
+### Docker
+
+```shell
+docker build -t battleship . && docker run -p 8080:8080 battleship
+```
+
+### Docker Compose
+
+```shell
+docker compose up
+```
+
+### Podman
+
+The `Dockerfile` isn't written in Containerfile-specific syntax, so Podman needs `--format
+docker`:
+
+```shell
+# Dont forget to
+podman machine init
+podman machine start
+```
+
+```shell
+podman build --format docker -t battleship . && podman run -p 8080:8080 battleship
+```
+
+### Podman Compose
+
+```shell
+podman compose up
+```
+
+### Running without a container
+
+Use the full build + run commands above (`mvn clean install && mvn spring-boot:run`) — no
+container runtime is required at all; Docker/Podman are alternative deployment paths, not a
+prerequisite.
+
+## Documentation
+
+- **[docs/index.md](docs/index.md)** — architecture, REST API, business logic (game engine rules,
+  state machine), data contracts, configuration, and how to run.
+- **[docs/architecture.md](docs/architecture.md)** — the `GameStage` state diagram, two sequence
+  diagrams (session setup, gameplay loop), and a game-edition comparison.
+- **[docs/openapi.json](docs/openapi.json)** — the generated OpenAPI 3 spec.
+- **[LICENSE](LICENSE)** — GNU GPLv3.
+
+## Known gaps
+
+No CI pipeline (by design — this project isn't meant to be deployed), no CORS configuration, and
+persistence is in-memory and single-instance only (state doesn't survive a restart, and isn't
+shared across instances). See [docs/index.md §13 Additional Notes](docs/index.md#13-additional-notes)
+for the full, verified list.

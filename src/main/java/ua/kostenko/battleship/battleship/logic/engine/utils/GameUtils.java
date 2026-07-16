@@ -3,6 +3,7 @@ package ua.kostenko.battleship.battleship.logic.engine.utils;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.SessionFullException;
 import ua.kostenko.battleship.battleship.logic.engine.models.Player;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.GameStage;
 
@@ -63,11 +64,11 @@ public class GameUtils {
      * Validates if the number of players in the game is not more than two.
      *
      * @param players the set of players to validate
-     * @throws IllegalStateException if there are more than two players
+     * @throws SessionFullException if there are more than two players
      */
     public static void validateNumberOfPlayers(Set<Player> players) {
         if (players.size() >= 2) {
-            throw new IllegalStateException("Game can't have more than 2 players");
+            throw new SessionFullException("Game can't have more than 2 players");
         }
     }
 }

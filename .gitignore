@@ -49,3 +49,11 @@ yarn-error.log*
 /frontend/node_modules
 /frontend/node
 /frontend/build
+/frontend/coverage
+
+# frontend test runner artifacts
+/frontend/playwright-report
+/frontend/test-results
+
+# superpowers subagent-driven-development scratch workspace
+/.superpowers/

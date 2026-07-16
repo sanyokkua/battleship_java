@@ -11,4 +11,16 @@ class IndexControllerTest {
         String result = indexController.index();
         Assertions.assertEquals("index", result);
     }
+
+    @Test
+    void testForward() {
+        String result = indexController.forward();
+        Assertions.assertEquals("index", result);
+    }
+
+    @Test
+    void testForwardNested() {
+        String result = indexController.forwardNested();
+        Assertions.assertEquals("index", result);
+    }
 }

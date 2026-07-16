@@ -1,0 +1,75 @@
+/* Wait screen: StepTracker, a centered hero icon, greeting, and a card with the
+ * share-box (Game ID + Copy) and an animated "waiting for opponent" dots indicator. */
+
+.wait-screen {
+    max-width: 460px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.wait-screen .hero-illust {
+    font-size: 56px;
+    margin-bottom: 10px;
+}
+
+.wait-screen .card {
+    text-align: left;
+}
+
+.share-box {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.share-box code {
+    flex: 1;
+    overflow-wrap: anywhere;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    font-size: 13px;
+    color: var(--ink);
+}
+
+.waiting-line {
+    font-weight: 700;
+    color: var(--navy);
+}
+
+.waiting-dots {
+    display: inline-flex;
+    gap: 5px;
+    vertical-align: middle;
+    margin-left: 6px;
+}
+
+.waiting-dots i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--teal);
+    animation: wait-screen-bounce 1s infinite;
+}
+
+.waiting-dots i:nth-child(2) {
+    animation-delay: .15s;
+}
+
+.waiting-dots i:nth-child(3) {
+    animation-delay: .3s;
+}
+
+@keyframes wait-screen-bounce {
+    0%, 100% {
+        transform: translateY(0);
+        opacity: .4;
+    }
+    50% {
+        transform: translateY(-6px);
+        opacity: 1;
+    }
+}

@@ -1,0 +1,24 @@
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 13px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.pill.warn {
+    background: #fff3dc;
+    color: var(--warn);
+}
+
+.pill.ok {
+    background: #dcf3ee;
+    color: #1c7d6c;
+}
+
+.pill.turn {
+    background: #fde4e6;
+    color: #b3242f;
+}

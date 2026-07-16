@@ -2,6 +2,9 @@ package ua.kostenko.battleship.battleship.logic.engine;
 
 import lombok.extern.log4j.Log4j2;
 import lombok.val;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.PlayerNotActiveException;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.ShipNotAvailableForAddException;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.ShipsNotAllPlacedException;
 import ua.kostenko.battleship.battleship.logic.engine.models.Player;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.GameStage;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.ShotResult;
@@ -18,6 +21,22 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
+/**
+ * Implementation of the {@link Game} interface.
+ * <p>
+ * The GameImpl class drives the Battleship game state machine: it creates and looks up players, manages ship
+ * placement on their fields, transitions the game between stages ({@link GameStage#INITIALIZED},
+ * {@link GameStage#WAITING_FOR_PLAYERS}, {@link GameStage#PREPARATION}, {@link GameStage#IN_GAME},
+ * {@link GameStage#FINISHED}) as players are added, become ready, and take shots, and exposes the resulting
+ * {@link GameState} for persistence.
+ * </p>
+ *
+ * @see Game
+ * @see GameState
+ * @see GameStage
+ * @see Player
+ * @see FieldManagement
+ */
 @Log4j2
 public class GameImpl implements Game {
     private GameState gameState;
@@ -82,14 +101,14 @@ public class GameImpl implements Game {
 
     @Override
     public Set<Ship> getShipsNotOnTheField(final String playerId) {
-        log.trace("In method: getAvailableShipsForPlayer");
+        log.trace("In method: getShipsNotOnTheField");
         val player = getPlayer(playerId);
         return player.getShipsNotOnTheField();
     }
 
     @Override
     public Set<Ship> getAllShips(final String playerId) {
-        log.trace("In method: getAllShipsForPlayer");
+        log.trace("In method: getAllShips");
         val player = getPlayer(playerId);
         return player.getAllPlayerShips();
     }
@@ -108,7 +127,7 @@ public class GameImpl implements Game {
         if (shipsNotOnTheField.stream()
                 .noneMatch(s -> ship.shipId()
                         .equals(s.shipId()))) {
-            throw new IllegalArgumentException("Ship %s is not available for add operation".formatted(ship));
+            throw new ShipNotAvailableForAddException("Ship %s is not available for add operation".formatted(ship));
         }
 
         playerField.addShip(coordinate, ship);
@@ -155,7 +174,7 @@ public class GameImpl implements Game {
 
     @Override
     public void changePlayerStatusToReady(final String playerId) {
-        log.trace("In method: makePlayerReady");
+        log.trace("In method: changePlayerStatusToReady");
         GameUtils.validateGameStage(this.gameState.gameStage(),
                 "State can be changed to ready only in Preparation stage",
                 GameStage.PREPARATION);
@@ -164,7 +183,7 @@ public class GameImpl implements Game {
         val shipsNotOnTheField = player.getShipsNotOnTheField();
 
         if (!shipsNotOnTheField.isEmpty()) {
-            throw new IllegalStateException("Player can't be made ready. Player has ships not added to the field");
+            throw new ShipsNotAllPlacedException("Player can't be made ready. Player has ships not added to the field");
         }
 
         player.setReady(true);
@@ -197,7 +216,7 @@ public class GameImpl implements Game {
         val player = getPlayer(currentPlayerId);
 
         if (!player.isActive()) {
-            throw new IllegalStateException("Player is not active to make a shot");
+            throw new PlayerNotActiveException("Player is not active to make a shot");
         }
 
         val opponent = getOpponent(currentPlayerId);
@@ -253,12 +272,12 @@ public class GameImpl implements Game {
 
     @Override
     public GameState getGameState() {
-        log.trace("In method: getGameStateRepresentation");
+        log.trace("In method: getGameState");
         return this.gameState;
     }
 
     private Player getPlayer(final String playerId, final Predicate<Player> filterPlayerPredicate) {
-        log.trace("In method: getPlayer");
+        log.trace("In method: getPlayer(playerId, predicate)");
         GameUtils.validatePlayerId(playerId);
 
         val players = this.gameState.players();

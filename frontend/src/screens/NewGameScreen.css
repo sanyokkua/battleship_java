@@ -1,0 +1,27 @@
+/*
+ * New Game screen — mode-card selection + name form.
+ * (`.screen`, `.title`, `.sub`, `.card.stack`, `.note` are shared globals
+ * defined in design/base.css; `.fld` from Field.css).
+ */
+
+.new-game-screen {
+    max-width: 460px;
+    margin: 0 auto;
+}
+
+.mode-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+/* The screen's 460px column stays fixed at desktop width too, so the cards go
+ * side-by-side within that column rather than the column widening. */
+@media (min-width: 641px) {
+    .mode-cards {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+}

@@ -5,6 +5,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEdition;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEditionConfiguration;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.CellAlreadyShotException;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.PlayerNotActiveException;
 import ua.kostenko.battleship.battleship.logic.engine.models.Player;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.GameStage;
 import ua.kostenko.battleship.battleship.logic.engine.models.enums.ShipDirection;
@@ -48,8 +50,8 @@ public class GameImplTest {
     @Test
     void testCreatePlayer() {
         assertEquals(GameStage.INITIALIZED,
-                     game.getGameState()
-                         .gameStage());
+                game.getGameState()
+                        .gameStage());
 
         assertThrows(IllegalArgumentException.class, () -> game.createPlayer(null, "test"));
         assertThrows(IllegalArgumentException.class, () -> game.createPlayer("test", null));
@@ -60,8 +62,8 @@ public class GameImplTest {
         assertEquals("player_1", player1.getPlayerId());
         assertEquals("player_name_1", player1.getPlayerName());
         assertEquals(GameStage.WAITING_FOR_PLAYERS,
-                     game.getGameState()
-                         .gameStage());
+                game.getGameState()
+                        .gameStage());
         assertFalse(player1.isActive());
         assertFalse(player1.isReady());
         assertFalse(player1.isWinner());
@@ -70,8 +72,8 @@ public class GameImplTest {
         assertEquals("player_2", player2.getPlayerId());
         assertEquals("player_name_2", player2.getPlayerName());
         assertEquals(GameStage.PREPARATION,
-                     game.getGameState()
-                         .gameStage());
+                game.getGameState()
+                        .gameStage());
         assertFalse(player2.isActive());
         assertFalse(player2.isReady());
         assertFalse(player2.isWinner());
@@ -89,12 +91,12 @@ public class GameImplTest {
         var player1 = game.createPlayer("player_1", "player_name_1");
         var player2 = game.createPlayer("player_2", "player_name_2");
         assertEquals("player_1",
-                     game.getPlayer("player_1")
-                         .getPlayerId());
+                game.getPlayer("player_1")
+                        .getPlayerId());
         assertEquals(player1, game.getPlayer("player_1"));
         assertEquals("player_2",
-                     game.getPlayer("player_2")
-                         .getPlayerId());
+                game.getPlayer("player_2")
+                        .getPlayerId());
         assertEquals(player2, game.getPlayer("player_2"));
 
         assertThrows(IllegalArgumentException.class, () -> game.getPlayer("test"));
@@ -114,12 +116,12 @@ public class GameImplTest {
         var player2 = game.createPlayer("player_2", "player_name_2");
 
         assertEquals("player_2",
-                     game.getOpponent("player_1")
-                         .getPlayerId());
+                game.getOpponent("player_1")
+                        .getPlayerId());
         assertEquals(player2, game.getOpponent("player_1"));
         assertEquals("player_1",
-                     game.getOpponent("player_2")
-                         .getPlayerId());
+                game.getOpponent("player_2")
+                        .getPlayerId());
         assertEquals(player1, game.getOpponent("player_2"));
 
         assertThrows(IllegalArgumentException.class, () -> game.getOpponent("test"));
@@ -134,18 +136,18 @@ public class GameImplTest {
         assertEquals(10, ships.size());
 
         assertThrows(IllegalStateException.class,
-                     () -> game.addShipToField("player_1",
-                                               Coordinate.of(0, 0),
-                                               ships.stream()
-                                                    .findAny()
-                                                    .get()));
+                () -> game.addShipToField("player_1",
+                        Coordinate.of(0, 0),
+                        ships.stream()
+                                .findAny()
+                                .get()));
 
         game.createPlayer("player_2", "player_name_2");
         game.addShipToField("player_1",
-                            Coordinate.of(0, 0),
-                            ships.stream()
-                                 .findAny()
-                                 .get());
+                Coordinate.of(0, 0),
+                ships.stream()
+                        .findAny()
+                        .get());
         val ships2 = game.getShipsNotOnTheField("player_1");
 
         assertEquals(9, ships2.size());
@@ -164,10 +166,10 @@ public class GameImplTest {
         assertTrue(allShips.containsAll(ships));
 
         game.addShipToField("player_1",
-                            Coordinate.of(0, 0),
-                            ships.stream()
-                                 .findAny()
-                                 .get());
+                Coordinate.of(0, 0),
+                ships.stream()
+                        .findAny()
+                        .get());
 
         ships = game.getShipsNotOnTheField("player_1");
         allShips = game.getAllShips("player_1");
@@ -183,12 +185,12 @@ public class GameImplTest {
 
         assertEquals(10, ships.size());
         assertTrue(FieldUtils.convertToFlatSet(game.getField("player_1"))
-                             .stream()
-                             .noneMatch(Cell::hasShip));
+                .stream()
+                .noneMatch(Cell::hasShip));
 
         final Ship ship = ships.stream()
-                               .findAny()
-                               .get();
+                .findAny()
+                .get();
 
         assertThrows(IllegalStateException.class, () -> game.addShipToField("player_1", Coordinate.of(0, 0), ship));
 
@@ -197,29 +199,29 @@ public class GameImplTest {
         game.addShipToField("player_1", Coordinate.of(0, 0), ship);
 
         assertThrows(IllegalArgumentException.class,
-                     () -> game.addShipToField("player_1",
-                                               Coordinate.of(0, 0),
-                                               Ship.builder()
-                                                   .shipId(ship.shipId())
-                                                   .shipType(ship.shipType())
-                                                   .shipSize(ship.shipSize())
-                                                   .shipDirection(ship.shipDirection() == ShipDirection.HORIZONTAL ?
-                                                                          ShipDirection.VERTICAL :
-                                                                          ShipDirection.HORIZONTAL)
-                                                   .build()));
+                () -> game.addShipToField("player_1",
+                        Coordinate.of(0, 0),
+                        Ship.builder()
+                                .shipId(ship.shipId())
+                                .shipType(ship.shipType())
+                                .shipSize(ship.shipSize())
+                                .shipDirection(ship.shipDirection() == ShipDirection.HORIZONTAL ?
+                                        ShipDirection.VERTICAL :
+                                        ShipDirection.HORIZONTAL)
+                                .build()));
 
         val ships2 = game.getShipsNotOnTheField("player_1");
 
         assertEquals(9, ships2.size());
         assertTrue(FieldUtils.convertToFlatSet(game.getField("player_1"))
-                             .stream()
-                             .anyMatch(Cell::hasShip));
+                .stream()
+                .anyMatch(Cell::hasShip));
 
         game.removeShipFromField("player_1", Coordinate.of(0, 0));
         addShipsToField(game.getPlayer("player_1"));
         val allShipsOfPlayer = game.getAllShips("player_2");
         val shipFromList = allShipsOfPlayer.stream()
-                                           .findAny();
+                .findAny();
         assert shipFromList.isPresent();
         assertThrows(IllegalArgumentException.class, () -> game.addShipToField("player_1", Coordinate.of(9, 9), shipFromList.get()));
 
@@ -242,9 +244,9 @@ public class GameImplTest {
         assertTrue(existingShipOptional.isPresent());
 
         var playerHasShipWithReturnedId = game.getAllShips("player_1")
-                                              .stream()
-                                              .anyMatch(s -> existingShipOptional.get()
-                                                                                 .equals(s.shipId()));
+                .stream()
+                .anyMatch(s -> existingShipOptional.get()
+                        .equals(s.shipId()));
         assertTrue(playerHasShipWithReturnedId);
     }
 
@@ -291,14 +293,14 @@ public class GameImplTest {
         assertFalse(onePlayerList.isEmpty());
         assertEquals(1, onePlayerList.size());
         assertTrue(onePlayerList.stream()
-                                .anyMatch(s -> "player_1".equals(s.getPlayerId())));
+                .anyMatch(s -> "player_1".equals(s.getPlayerId())));
 
         game.createPlayer("player_2", "player_name_2");
         var twoPlayerList = game.getPlayers();
         assertFalse(twoPlayerList.isEmpty());
         assertEquals(2, twoPlayerList.size());
         assertTrue(twoPlayerList.stream()
-                                .anyMatch(s -> "player_2".equals(s.getPlayerId())));
+                .anyMatch(s -> "player_2".equals(s.getPlayerId())));
     }
 
     @Test
@@ -324,8 +326,13 @@ public class GameImplTest {
 
         var shotResultHit = game.makeShot("player_1", Coordinate.of(0, 0));
         assertTrue(Set.of(ShotResult.HIT, ShotResult.DESTROYED)
-                      .contains(shotResultHit));
-        var shotResultMiss = game.makeShot("player_1", Coordinate.of(1, 0));
+                .contains(shotResultHit));
+        // (9, 9) is guaranteed to be untouched water: addShipsToField only places ships on
+        // even rows (0, 2, 4, ...), and the only ship destroyed above is the one at (0, 0),
+        // whose auto-revealed moat is confined to rows 0-1 — so this cell was never marked
+        // hasShot by either placement or the moat reveal, unlike (1, 0) which the destroyed
+        // ship's moat does cover.
+        var shotResultMiss = game.makeShot("player_1", Coordinate.of(9, 9));
         assertEquals(ShotResult.MISS, shotResultMiss);
 
     }
@@ -337,8 +344,8 @@ public class GameImplTest {
         var field = game.getField("player_1");
         assertNotNull(field);
         assertEquals(100,
-                     FieldUtils.convertToFlatSet(field)
-                               .size());
+                FieldUtils.convertToFlatSet(field)
+                        .size());
     }
 
     @Test
@@ -352,14 +359,14 @@ public class GameImplTest {
         var field = game.getOpponentField("player_1");
         assertNotNull(field);
         assertEquals(100,
-                     FieldUtils.convertToFlatSet(field)
-                               .size());
+                FieldUtils.convertToFlatSet(field)
+                        .size());
     }
 
     @Test
     void testGetWinner() {
         assertTrue(game.getWinner()
-                       .isEmpty());
+                .isEmpty());
 
         var player1 = game.createPlayer("player_1", "player_name_1");
         var player2 = game.createPlayer("player_2", "player_name_2");
@@ -369,24 +376,24 @@ public class GameImplTest {
         game.changePlayerStatusToReady(player2.getPlayerId());
 
         assertTrue(game.getWinner()
-                       .isEmpty());
+                .isEmpty());
 
         game.makeShot(player1.getPlayerId(), Coordinate.of(1, 0));
 
-        assertThrows(IllegalStateException.class, () -> game.makeShot(player1.getPlayerId(), Coordinate.of(1, 1)));
+        assertThrows(PlayerNotActiveException.class, () -> game.makeShot(player1.getPlayerId(), Coordinate.of(1, 1)));
 
         game.makeShot(player2.getPlayerId(), Coordinate.of(1, 0));
 
         assertTrue(game.getWinner()
-                       .isEmpty());
+                .isEmpty());
 
         FieldUtils.convertToFlatSet(player2.getFieldManagement()
-                                           .getField())
-                  .stream()
-                  .filter(Cell::hasShip)
-                  .filter(c -> !c.hasShot())
-                  .map(Cell::coordinate)
-                  .forEach(c -> game.makeShot(player1.getPlayerId(), c));
+                        .getField())
+                .stream()
+                .filter(Cell::hasShip)
+                .filter(c -> !c.hasShot())
+                .map(Cell::coordinate)
+                .forEach(c -> game.makeShot(player1.getPlayerId(), c));
 
         var winner = game.getWinner();
         assertTrue(winner.isPresent());
@@ -394,25 +401,49 @@ public class GameImplTest {
     }
 
     @Test
+    void testMakeShot_onAlreadyShotShipCell_throwsCellAlreadyShotException() {
+        var player1 = game.createPlayer("player_1", "player_name_1");
+        var player2 = game.createPlayer("player_2", "player_name_2");
+        addShipsToField(player1);
+        addShipsToField(player2);
+        game.changePlayerStatusToReady(player1.getPlayerId());
+        game.changePlayerStatusToReady(player2.getPlayerId());
+
+        var coordinate = Coordinate.of(0, 0);
+        assertTrue(player2.getFieldManagement()
+                .getField()[0][0].hasShip());
+
+        // Deliberately shoot a ship cell (not a miss) so the player stays active per the turn
+        // rule, isolating this from PlayerNotActiveException.
+        var firstShotResult = game.makeShot(player1.getPlayerId(), coordinate);
+        assertTrue(Set.of(ShotResult.HIT, ShotResult.DESTROYED)
+                .contains(firstShotResult));
+        assertTrue(player1.isActive());
+
+        assertThrows(CellAlreadyShotException.class,
+                () -> game.makeShot(player1.getPlayerId(), coordinate));
+    }
+
+    @Test
     void testGetGameStateRepresentation() {
         var state1 = game.getGameState();
         assertEquals(GameStage.INITIALIZED, state1.gameStage());
         assertTrue(state1.players()
-                         .isEmpty());
+                .isEmpty());
 
         game.createPlayer("player_1", "name_1");
         var state2 = game.getGameState();
         assertEquals(GameStage.WAITING_FOR_PLAYERS, state2.gameStage());
         assertEquals(1,
-                     state2.players()
-                           .size());
+                state2.players()
+                        .size());
 
         game.createPlayer("player_2", "name_2");
         var state3 = game.getGameState();
         assertEquals(GameStage.PREPARATION, state3.gameStage());
         assertEquals(2,
-                     state3.players()
-                           .size());
+                state3.players()
+                        .size());
 
         addShipsToField(game.getPlayer("player_1"));
         addShipsToField(game.getPlayer("player_2"));
@@ -422,21 +453,21 @@ public class GameImplTest {
         var state4 = game.getGameState();
         assertEquals(GameStage.IN_GAME, state4.gameStage());
         assertEquals(2,
-                     state4.players()
-                           .size());
+                state4.players()
+                        .size());
 
         FieldUtils.convertToFlatSet(game.getPlayer("player_2")
-                                        .getFieldManagement()
-                                        .getField())
-                  .stream()
-                  .filter(Cell::hasShip)
-                  .map(Cell::coordinate)
-                  .forEach(c -> game.makeShot("player_1", c));
+                        .getFieldManagement()
+                        .getField())
+                .stream()
+                .filter(Cell::hasShip)
+                .map(Cell::coordinate)
+                .forEach(c -> game.makeShot("player_1", c));
 
         var state5 = game.getGameState();
         assertEquals(GameStage.FINISHED, state5.gameStage());
         assertEquals(2,
-                     state5.players()
-                           .size());
+                state5.players()
+                        .size());
     }
 }

@@ -1,0 +1,117 @@
+{
+  "home": {
+    "tagline": "Sink the enemy fleet before they sink yours.",
+    "newGameButton": "New Game",
+    "joinGameButton": "Join Game",
+    "note": "Two players · 10×10 grid · classic rules"
+  },
+  "newGame": {
+    "title": "New Game",
+    "subtitle": "Choose a game mode and your captain name.",
+    "modeLabel": "Game mode",
+    "nameLabel": "Player name",
+    "startButton": "Start new game",
+    "hint": "You'll get a Game ID to share with your opponent."
+  },
+  "join": {
+    "title": "Join Game",
+    "subtitle": "Paste the Game ID your friend shared with you.",
+    "idLabel": "Game ID",
+    "idValid": "Valid game code",
+    "submitButton": "Join the battle"
+  },
+  "steps": {
+    "create": "Create",
+    "wait": "Waiting",
+    "prepare": "Prepare",
+    "battle": "Battle"
+  },
+  "wait": {
+    "hello": "Hello, {{name}}!",
+    "subtitle": "Share this code with your opponent to start.",
+    "copy": "Copy",
+    "copyLink": "Copy link",
+    "copied": "Copied to clipboard",
+    "waiting": "Waiting for your opponent"
+  },
+  "loading": {
+    "title": "Setting up the sea…",
+    "subtitle": "Loading your game session"
+  },
+  "preparation": {
+    "title": "Place your fleet",
+    "progress": "{{placed}} of {{total}} ships placed",
+    "hint": "Pick a ship, choose a direction, then tap a cell — or tap an empty cell to choose a ship there. Tap a placed ship to rotate or remove it (or use ✕).",
+    "directionHorizontal": "Horizontal",
+    "directionVertical": "Vertical",
+    "fleetLabel": "Your fleet",
+    "placedLabel": "placed",
+    "readyButton": "Ready to go!",
+    "opponentLabel": "Opponent",
+    "boardLabel": "Your waters",
+    "boardTag": "Hatched = can't place (too close to a ship)",
+    "opponentStatusInProgress": "In progress",
+    "opponentStatusReady": "Ready",
+    "cellSingular": "cell",
+    "cellPlural": "cells",
+    "popup": {
+      "pickShipTitle": "Choose a ship",
+      "pickDirectionTitle": "Choose a direction",
+      "emptyState": "No ship fits here",
+      "close": "Close",
+      "back": "Back",
+      "rotate": "Rotate",
+      "remove": "Remove",
+      "available": "available"
+    }
+  },
+  "gameplay": {
+    "you": "You",
+    "cells": "Cells",
+    "ships": "Ships",
+    "yourTurn": "Your turn — fire!",
+    "theirTurn": "{{name}} is taking a shot…",
+    "targetBoard": "Target — {{name}}'s waters",
+    "fireHint": "Tap to fire",
+    "fleetLabel": "Your fleet",
+    "defensiveView": "Defensive view",
+    "tabTarget": "Target grid",
+    "tabFleet": "Your fleet"
+  },
+  "results": {
+    "win": "Victory!",
+    "lose": "Defeat",
+    "winSubtitle": "{{name}} sank the entire enemy fleet.",
+    "menuButton": "Return to main menu",
+    "hits": "Hits",
+    "shipsSunk": "Ships sunk",
+    "time": "Time"
+  },
+  "legend": {
+    "water": "Water",
+    "ship": "Your ship",
+    "hit": "Hit",
+    "miss": "Miss",
+    "sunk": "Sunk",
+    "block": "No-go zone"
+  },
+  "feedback": {
+    "title": "Notifications & dialogs",
+    "subtitle": "Every state and action gives the player feedback. This catalog is the reference for all messages.",
+    "toastsLabel": "Toasts (auto-dismiss)",
+    "inlineLabel": "Inline validation",
+    "dialogLabel": "Confirmation dialog",
+    "previewDialogButton": "Preview dialog"
+  },
+  "validation": {
+    "nameTooShort": "Name must be at least 2 characters."
+  },
+  "dialog": {
+    "leaveGame": {
+      "title": "Leave this game?",
+      "body": "Your current game will be lost and can't be resumed.",
+      "cancel": "Cancel",
+      "confirm": "Leave game"
+    }
+  }
+}

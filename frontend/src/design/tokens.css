@@ -1,0 +1,32 @@
+/*
+ * Design tokens — the canonical visual reference for the design system;
+ * avoid hand-editing them casually since other components depend on them.
+ */
+:root {
+    --navy: #0b2545;
+    --navy2: #13315c;
+    --sea: #1b4b7a;
+    --steel: #3a6ea5;
+    --teal: #12a8b8;
+    --teal-dark: #0b8494;
+    --gold: #f4a534;
+    --bg: #eef3f9;
+    --surface: #ffffff;
+    --surface-2: #f5f8fc;
+    --ink: #0e2136;
+    --ink-soft: #5a6b80;
+    --line: #dbe4f0;
+    --water: #e7f0fb;
+    --water-line: #c8dcf3;
+    --hit: #e63946;
+    --miss: #9aa8b8;
+    --ship: #12507e;
+    --ship-soft: #d9e8f6;
+    --sunk: #b3242f;
+    --ok: #2a9d8f;
+    --warn: #a9741a;
+    --shadow: 0 8px 30px rgba(11, 37, 69, .10);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --font: 'Segoe UI', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+}

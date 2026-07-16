@@ -3,14 +3,15 @@ package ua.kostenko.battleship.battleship.logic.api.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import lombok.val;
+import org.springframework.context.ApplicationEventPublisher;
 import ua.kostenko.battleship.battleship.logic.api.GameControllerApi;
 import ua.kostenko.battleship.battleship.logic.api.IdGenerator;
 import ua.kostenko.battleship.battleship.logic.api.ValidationUtils;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameInternalProblemException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameSessionIdIsNotCorrectException;
-import ua.kostenko.battleship.battleship.logic.api.exceptions.GameShipIdIsNotCorrectException;
+import ua.kostenko.battleship.battleship.logic.api.events.GameStateChangedEvent;
+import ua.kostenko.battleship.battleship.logic.api.exceptions.*;
 import ua.kostenko.battleship.battleship.logic.engine.Game;
 import ua.kostenko.battleship.battleship.logic.engine.config.GameEdition;
+import ua.kostenko.battleship.battleship.logic.engine.exceptions.*;
 import ua.kostenko.battleship.battleship.logic.engine.models.GameplayState;
 import ua.kostenko.battleship.battleship.logic.engine.models.OpponentInfo;
 import ua.kostenko.battleship.battleship.logic.engine.models.Player;
@@ -24,13 +25,77 @@ import ua.kostenko.battleship.battleship.logic.engine.models.records.Ship;
 import ua.kostenko.battleship.battleship.logic.persistence.Persistence;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * Implementation of the {@link GameControllerApi} interface.
+ * <p>
+ * The GameControllerApiImpl class is the boundary between the web layer and the framework-agnostic
+ * {@link Game} engine: it validates incoming identifiers via {@link ValidationUtils}, loads and saves
+ * {@link GameState} through {@link Persistence}, generates session and player IDs via {@link IdGenerator},
+ * and translates the engine's unchecked failures (both the plain {@link IllegalArgumentException}/
+ * {@link IllegalStateException} thrown by validation helpers and the engine's typed exceptions such as
+ * {@link ua.kostenko.battleship.battleship.logic.engine.exceptions.SessionFullException},
+ * {@link ua.kostenko.battleship.battleship.logic.engine.exceptions.ShipNotAvailableForAddException},
+ * {@link ua.kostenko.battleship.battleship.logic.engine.exceptions.ShipsNotAllPlacedException},
+ * {@link ua.kostenko.battleship.battleship.logic.engine.exceptions.PlayerNotActiveException}, and
+ * {@link ua.kostenko.battleship.battleship.logic.engine.exceptions.CellAlreadyShotException}) into this
+ * package's own typed exceptions, so no engine or Spring MVC types leak across the boundary.
+ * </p>
+ * <p>
+ * {@link Persistence#load(String)} hands back a {@link Game} wrapping the same mutable
+ * {@link GameState}/{@code Player}/field objects held in the store, not a copy. Every mutating
+ * operation here therefore follows a load → mutate → save sequence against shared state, which is
+ * not atomic on its own. To prevent lost updates when two requests target the same session
+ * concurrently (e.g. both players readying up, or simultaneous shots), each mutating method
+ * acquires a lock scoped to that {@code sessionId} (see {@link #lockFor(String)}) for the full
+ * load → mutate → save critical section. Locks are per-session, not global, so unrelated sessions
+ * never block each other. Read-only methods are intentionally left unlocked: a stale read is
+ * self-correcting on the client's next poll and isn't part of the race this locking addresses.
+ * </p>
+ * <p>
+ * Every mutating method also publishes a {@link GameStateChangedEvent} once it succeeds, so
+ * interested listeners (e.g. the SSE broadcaster) can react. The publish always happens after the
+ * session's lock has been released, never inside the locked critical section, since a listener may
+ * perform I/O (such as pushing to subscribed clients) that must not stall other requests against
+ * the same session.
+ * </p>
+ *
+ * @see GameControllerApi
+ * @see Game
+ * @see Persistence
+ * @see IdGenerator
+ * @see ValidationUtils
+ * @see GameStateChangedEvent
+ */
 @Log4j2
 @RequiredArgsConstructor
 public class GameControllerApiImpl implements GameControllerApi {
     private final Persistence persistence;
     private final IdGenerator idGenerator;
+    private final ApplicationEventPublisher eventPublisher;
+    private final Map<String, ReentrantLock> sessionLocks = new ConcurrentHashMap<>();
 
+    /**
+     * Returns the lock guarding the given session's load → mutate → save critical section,
+     * creating one on first use.
+     *
+     * @param sessionId the ID of the game session
+     * @return the {@link ReentrantLock} scoped to that session
+     */
+    private ReentrantLock lockFor(final String sessionId) {
+        return sessionLocks.computeIfAbsent(sessionId, id -> new ReentrantLock());
+    }
+
+    /**
+     * Loads the {@link Game} for the specified session ID after validating it.
+     *
+     * @param sessionId the ID of the game session to load
+     * @return the loaded {@link Game} instance
+     * @throws GameSessionIdIsNotCorrectException if the session ID is blank or no session exists for it
+     */
     private Game loadGame(final String sessionId) {
         log.debug("sessionId to load: {}", sessionId);
         ValidationUtils.validateSessionId(sessionId);
@@ -47,6 +112,11 @@ public class GameControllerApiImpl implements GameControllerApi {
         return game;
     }
 
+    /**
+     * Persists the current state of the specified {@link Game}.
+     *
+     * @param game the game whose state should be saved
+     */
     private void saveGame(final Game game) {
         val gameState = game.getGameState();
         log.debug("sessionId for saving: {}", gameState.sessionId());
@@ -56,38 +126,90 @@ public class GameControllerApiImpl implements GameControllerApi {
         log.debug("sessionId: {} is saved", gameState.sessionId());
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @return a list of the available game editions ({@link GameEdition#UKRAINIAN} and
+     * {@link GameEdition#MILTON_BRADLEY})
+     */
     @Override
     public List<GameEdition> getAvailableGameEditions() {
         log.debug("Returning supporting GameEditions");
         return List.of(GameEdition.UKRAINIAN, GameEdition.MILTON_BRADLEY);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @param gameEdition the edition of the game to create a session for
+     * @return the generated session ID of the created game session
+     * @throws GameEditionIsNotCorrectException if the game edition is blank or not a known {@link GameEdition}
+     */
     @Override
     public String createGameSession(final String gameEdition) {
         ValidationUtils.validateGameEdition(gameEdition);
         val gameId = idGenerator.generateId();
 
-        persistence.save(GameState.create(GameEdition.valueOf(gameEdition), gameId, GameStage.INITIALIZED));
+        val lock = lockFor(gameId);
+        lock.lock();
+        try {
+            persistence.save(GameState.create(GameEdition.valueOf(gameEdition), gameId, GameStage.INITIALIZED));
+        } finally {
+            lock.unlock();
+        }
 
+        eventPublisher.publishEvent(new GameStateChangedEvent(gameId));
         return gameId;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @param sessionId  the ID of the game session
+     * @param playerName the name of the player
+     * @return the created player
+     * @throws GamePlayerNameIsNotCorrectException if the player name is blank
+     * @throws GameSessionIdIsNotCorrectException  if the session ID is blank or no session exists for it
+     * @throws GameSessionFullException            if the session already has two players
+     * @throws GameStageIsNotCorrectException      if the session is not in a stage that allows adding a player
+     * @throws GameInternalProblemException        if the player cannot otherwise be created
+     */
     @Override
     public Player createPlayerInSession(final String sessionId, final String playerName) {
         ValidationUtils.validatePlayerName(playerName);
 
-        val game = loadGame(sessionId);
-        val playerId = idGenerator.generateId();
-
+        val lock = lockFor(sessionId);
+        Player player;
+        lock.lock();
         try {
-            val player = game.createPlayer(playerId, playerName);
-            saveGame(game);
-            return player;
-        } catch (IllegalArgumentException | IllegalStateException ex) {
-            throw new GameInternalProblemException(ex.getMessage());
+            val game = loadGame(sessionId);
+            val playerId = idGenerator.generateId();
+
+            try {
+                player = game.createPlayer(playerId, playerName);
+                saveGame(game);
+            } catch (SessionFullException ex) {
+                throw new GameSessionFullException(ex.getMessage());
+            } catch (IllegalStateException ex) {
+                throw new GameStageIsNotCorrectException(ex.getMessage());
+            } catch (IllegalArgumentException ex) {
+                throw new GameInternalProblemException(ex.getMessage());
+            }
+        } finally {
+            lock.unlock();
         }
+
+        eventPublisher.publishEvent(new GameStateChangedEvent(sessionId));
+        return player;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @param sessionId the ID of the game session
+     * @return the current game stage
+     * @throws GameSessionIdIsNotCorrectException if the session ID is blank or no session exists for it
+     */
     @Override
     public GameStage getCurrentGameStage(final String sessionId) {
         val game = loadGame(sessionId);
@@ -95,6 +217,13 @@ public class GameControllerApiImpl implements GameControllerApi {
                 .gameStage();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @param sessionId the ID of the game session
+     * @return the time of the last session change
+     * @throws GameSessionIdIsNotCorrectException if the session ID is blank or no session exists for it
+     */
     @Override
     public String getLastSessionChangeTime(final String sessionId) {
         val game = loadGame(sessionId);
@@ -102,6 +231,17 @@ public class GameControllerApiImpl implements GameControllerApi {
                 .lastUpdate();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @param sessionId the ID of the game session
+     * @param playerId  the ID of the player
+     * @return a list of ships not on the board
+     * @throws GamePlayerIdIsNotCorrectException  if the player ID is blank
+     * @throws GameSessionIdIsNotCorrectException if the session ID is blank or no session exists for it
+     * @throws GamePlayerNotFoundException        if no player with the given ID exists in the session
+     * @throws GameInternalProblemException       if the ships cannot otherwise be retrieved
+     */
     @Override
     public List<Ship> getShipsNotOnTheBoard(final String sessionId, final String playerId) {
         ValidationUtils.validatePlayerId(playerId);
@@ -112,11 +252,34 @@ public class GameControllerApiImpl implements GameControllerApi {
             return game.getShipsNotOnTheField(playerId)
                     .stream()
                     .toList();
-        } catch (IllegalArgumentException | IllegalStateException ex) {
+        } catch (IllegalArgumentException ex) {
+            throw new GamePlayerNotFoundException(ex.getMessage());
+        } catch (IllegalStateException ex) {
             throw new GameInternalProblemException(ex.getMessage());
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @param sessionId  the ID of the game session
+     * @param playerId   the ID of the player
+     * @param shipId     the ID of the ship to add
+     * @param coordinate the coordinate at which to add the ship
+     * @param direction  the direction to place the ship (HORIZONTAL or VERTICAL)
+     * @return the added ship
+     * @throws GamePlayerIdIsNotCorrectException            if the player ID is blank
+     * @throws GameShipIdIsNotCorrectException              if the ship ID is blank, or does not match any of the
+     *                                                      player's ships
+     * @throws GameShipDirectionIsNotCorrectException       if the direction is blank or not a known
+     *                                                      {@link ShipDirection}
+     * @throws GameCoordinateIsNotCorrectIncorrectException if the coordinate is invalid
+     * @throws GameSessionIdIsNotCorrectException           if the session ID is blank or no session exists for it
+     * @throws GameShipAlreadyPlacedException               if the ship has already been placed on the field
+     * @throws GameStageIsNotCorrectException               if the session is not in the Preparation stage
+     * @throws GameInternalProblemException                 if the ship cannot otherwise be placed at the given
+     *                                                      coordinate (e.g. overlapping another ship)
+     */
     @Override
     public Ship addShipToField(
             final String sessionId, final String playerId, final String shipId, final Coordinate coordinate,
@@ -126,61 +289,123 @@ public class GameControllerApiImpl implements GameControllerApi {
         ValidationUtils.validateShipDirection(direction);
         ValidationUtils.validateCoordinate(coordinate);
 
-        val game = loadGame(sessionId);
-
+        val lock = lockFor(sessionId);
+        Ship ship;
+        lock.lock();
         try {
-            val ship = game.getAllShips(playerId)
-                    .stream()
-                    .filter(s -> shipId.equals(s.shipId()))
-                    .findAny()
-                    .orElseThrow(() -> new GameShipIdIsNotCorrectException(
-                            "Ship (%s) is not found in player ships".formatted(shipId)));
-            val shipDirection = ShipDirection.valueOf(direction);
-            game.addShipToField(playerId,
-                    coordinate,
-                    Ship.builder()
-                            .shipId(ship.shipId())
-                            .shipDirection(shipDirection)
-                            .shipSize(ship.shipSize())
-                            .shipType(ship.shipType())
-                            .build());
-            saveGame(game);
+            val game = loadGame(sessionId);
 
-            return ship;
-        } catch (IllegalArgumentException | IllegalStateException ex) {
-            throw new GameInternalProblemException(ex.getMessage());
+            try {
+                ship = game.getAllShips(playerId)
+                        .stream()
+                        .filter(s -> shipId.equals(s.shipId()))
+                        .findAny()
+                        .orElseThrow(() -> new GameShipIdIsNotCorrectException(
+                                "Ship (%s) is not found in player ships".formatted(shipId)));
+                val shipDirection = ShipDirection.valueOf(direction);
+                game.addShipToField(playerId,
+                        coordinate,
+                        Ship.builder()
+                                .shipId(ship.shipId())
+                                .shipDirection(shipDirection)
+                                .shipSize(ship.shipSize())
+                                .shipType(ship.shipType())
+                                .build());
+                saveGame(game);
+            } catch (GameShipIdIsNotCorrectException ex) {
+                throw ex;
+            } catch (ShipNotAvailableForAddException ex) {
+                throw new GameShipAlreadyPlacedException(ex.getMessage());
+            } catch (IllegalStateException ex) {
+                throw new GameStageIsNotCorrectException(ex.getMessage());
+            } catch (IllegalArgumentException ex) {
+                throw new GameInternalProblemException(ex.getMessage());
+            }
+        } finally {
+            lock.unlock();
         }
+
+        eventPublisher.publishEvent(new GameStateChangedEvent(sessionId));
+        return ship;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @param sessionId  the ID of the game session
+     * @param playerId   the ID of the player
+     * @param coordinate the coordinate from which to remove the ship
+     * @return the ID of the removed ship, or an empty string if no ship was found at the coordinate
+     * @throws GamePlayerIdIsNotCorrectException            if the player ID is blank
+     * @throws GameCoordinateIsNotCorrectIncorrectException if the coordinate is invalid
+     * @throws GameSessionIdIsNotCorrectException           if the session ID is blank or no session exists for it
+     * @throws GameStageIsNotCorrectException               if the session is not in the Preparation stage
+     * @throws GameInternalProblemException                 if the ship cannot otherwise be removed
+     */
     @Override
     public String removeShipFromField(final String sessionId, final String playerId, final Coordinate coordinate) {
         ValidationUtils.validatePlayerId(playerId);
         ValidationUtils.validateCoordinate(coordinate);
 
-        val game = loadGame(sessionId);
-
+        val lock = lockFor(sessionId);
+        String ship;
+        lock.lock();
         try {
-            val shipId = game.removeShipFromField(playerId, coordinate);
-            val ship = shipId.orElse("");
+            val game = loadGame(sessionId);
 
-            saveGame(game);
+            try {
+                val shipId = game.removeShipFromField(playerId, coordinate);
+                ship = shipId.orElse("");
 
-            return ship;
-        } catch (IllegalArgumentException | IllegalStateException ex) {
-            throw new GameInternalProblemException(ex.getMessage());
+                saveGame(game);
+            } catch (IllegalStateException ex) {
+                throw new GameStageIsNotCorrectException(ex.getMessage());
+            } catch (IllegalArgumentException ex) {
+                throw new GameInternalProblemException(ex.getMessage());
+            }
+        } finally {
+            lock.unlock();
         }
+
+        eventPublisher.publishEvent(new GameStateChangedEvent(sessionId));
+        return ship;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @param sessionId the ID of the game session
+     * @param playerId  the ID of the player
+     * @return the opponent information
+     * @throws GamePlayerIdIsNotCorrectException  if the player ID is blank
+     * @throws GameSessionIdIsNotCorrectException if the session ID is blank or no session exists for it
+     * @throws GameOpponentNotFoundException      if no opponent has joined the session yet
+     */
     @Override
     public OpponentInfo getOpponentInformation(final String sessionId, final String playerId) {
         ValidationUtils.validatePlayerId(playerId);
 
         val game = loadGame(sessionId);
 
-        val opponent = game.getOpponent(playerId);
-        return new OpponentInfo(opponent.getPlayerName(), opponent.isReady());
+        try {
+            val opponent = game.getOpponent(playerId);
+            return new OpponentInfo(opponent.getPlayerName(), opponent.isReady());
+        } catch (IllegalArgumentException ex) {
+            throw new GameOpponentNotFoundException(ex.getMessage());
+        }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @param sessionId the ID of the game session
+     * @param playerId  the ID of the player
+     * @return a 2D array representing the preparation field
+     * @throws GamePlayerIdIsNotCorrectException  if the player ID is blank
+     * @throws GameSessionIdIsNotCorrectException if the session ID is blank or no session exists for it
+     * @throws GamePlayerNotFoundException        if no player with the given ID exists in the session
+     * @throws GameInternalProblemException       if the field cannot otherwise be retrieved
+     */
     @Override
     public Cell[][] getPreparationField(final String sessionId, final String playerId) {
         ValidationUtils.validatePlayerId(playerId);
@@ -188,29 +413,67 @@ public class GameControllerApiImpl implements GameControllerApi {
         val game = loadGame(sessionId);
         try {
             return game.getField(playerId);
-        } catch (IllegalArgumentException | IllegalStateException ex) {
+        } catch (IllegalArgumentException ex) {
+            throw new GamePlayerNotFoundException(ex.getMessage());
+        } catch (IllegalStateException ex) {
             throw new GameInternalProblemException(ex.getMessage());
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @param sessionId the ID of the game session
+     * @param playerId  the ID of the player
+     * @return the player who started the game
+     * @throws GamePlayerIdIsNotCorrectException  if the player ID is blank
+     * @throws GameSessionIdIsNotCorrectException if the session ID is blank or no session exists for it
+     * @throws GameShipsNotAllPlacedException     if the player still has ships not placed on the field
+     * @throws GameStageIsNotCorrectException     if the session is not in the Preparation stage
+     * @throws GameInternalProblemException       if the player cannot otherwise be marked ready
+     */
     @Override
     public Player startGame(final String sessionId, final String playerId) {
         ValidationUtils.validatePlayerId(playerId);
 
-        val game = loadGame(sessionId);
-
+        val lock = lockFor(sessionId);
+        Player player;
+        lock.lock();
         try {
-            game.changePlayerStatusToReady(playerId);
-            val player = game.getPlayer(playerId);
+            val game = loadGame(sessionId);
 
-            saveGame(game);
+            try {
+                game.changePlayerStatusToReady(playerId);
+                player = game.getPlayer(playerId);
 
-            return player;
-        } catch (IllegalArgumentException | IllegalStateException ex) {
-            throw new GameInternalProblemException(ex.getMessage());
+                saveGame(game);
+            } catch (ShipsNotAllPlacedException ex) {
+                throw new GameShipsNotAllPlacedException(ex.getMessage());
+            } catch (IllegalStateException ex) {
+                throw new GameStageIsNotCorrectException(ex.getMessage());
+            } catch (IllegalArgumentException ex) {
+                throw new GameInternalProblemException(ex.getMessage());
+            }
+        } finally {
+            lock.unlock();
         }
+
+        eventPublisher.publishEvent(new GameStateChangedEvent(sessionId));
+        return player;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @param sessionId the ID of the game session
+     * @param playerId  the ID of the player
+     * @return the gameplay state, including both players' fields (the opponent's ships are hidden unless the
+     * game is {@link GameStage#FINISHED}), alive cell/ship counts, and winner information
+     * @throws GamePlayerIdIsNotCorrectException  if the player ID is blank
+     * @throws GameSessionIdIsNotCorrectException if the session ID is blank or no session exists for it
+     * @throws GamePlayerNotFoundException        if no player with the given ID exists in the session
+     * @throws GameOpponentNotFoundException      if no opponent has joined the session yet
+     */
     @Override
     public GameplayState getGameState(final String sessionId, final String playerId) {
         ValidationUtils.validatePlayerId(playerId);
@@ -218,8 +481,20 @@ public class GameControllerApiImpl implements GameControllerApi {
         val game = loadGame(sessionId);
         val currentGameStage = game.getGameState()
                 .gameStage();
-        var currentPlayer = game.getPlayer(playerId);
-        var opponentPlayer = game.getOpponent(playerId);
+
+        Player currentPlayer;
+        try {
+            currentPlayer = game.getPlayer(playerId);
+        } catch (IllegalArgumentException ex) {
+            throw new GamePlayerNotFoundException(ex.getMessage());
+        }
+
+        Player opponentPlayer;
+        try {
+            opponentPlayer = game.getOpponent(playerId);
+        } catch (IllegalArgumentException ex) {
+            throw new GameOpponentNotFoundException(ex.getMessage());
+        }
 
         val playerFieldManagement = currentPlayer.getFieldManagement();
         val opponentFieldManagement = opponentPlayer.getFieldManagement();
@@ -252,19 +527,50 @@ public class GameControllerApiImpl implements GameControllerApi {
                 .build();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @param sessionId  the ID of the game session
+     * @param playerId   the ID of the player
+     * @param coordinate the coordinate at which to make the shot
+     * @return the result of the shot as a {@link ShotResult}
+     * @throws GamePlayerIdIsNotCorrectException            if the player ID is blank
+     * @throws GameCoordinateIsNotCorrectIncorrectException if the coordinate is invalid
+     * @throws GameSessionIdIsNotCorrectException           if the session ID is blank or no session exists for it
+     * @throws GamePlayerNotActiveException                 if it is not the given player's turn
+     * @throws GameCellAlreadyShotException                 if the target cell has already been shot
+     * @throws GameStageIsNotCorrectException               if the session is not in the {@link GameStage#IN_GAME}
+     *                                                      stage
+     * @throws GameInternalProblemException                 if the shot cannot otherwise be made
+     */
     @Override
     public ShotResult makeShotByField(final String sessionId, final String playerId, final Coordinate coordinate) {
         ValidationUtils.validatePlayerId(playerId);
         ValidationUtils.validateCoordinate(coordinate);
 
-        val game = loadGame(sessionId);
-
+        val lock = lockFor(sessionId);
+        ShotResult shotResult;
+        lock.lock();
         try {
-            val shotResult = game.makeShot(playerId, coordinate);
-            saveGame(game);
-            return shotResult;
-        } catch (IllegalArgumentException | IllegalStateException ex) {
-            throw new GameInternalProblemException(ex.getMessage());
+            val game = loadGame(sessionId);
+
+            try {
+                shotResult = game.makeShot(playerId, coordinate);
+                saveGame(game);
+            } catch (PlayerNotActiveException ex) {
+                throw new GamePlayerNotActiveException(ex.getMessage());
+            } catch (CellAlreadyShotException ex) {
+                throw new GameCellAlreadyShotException(ex.getMessage());
+            } catch (IllegalStateException ex) {
+                throw new GameStageIsNotCorrectException(ex.getMessage());
+            } catch (IllegalArgumentException ex) {
+                throw new GameInternalProblemException(ex.getMessage());
+            }
+        } finally {
+            lock.unlock();
         }
+
+        eventPublisher.publishEvent(new GameStateChangedEvent(sessionId));
+        return shotResult;
     }
 }

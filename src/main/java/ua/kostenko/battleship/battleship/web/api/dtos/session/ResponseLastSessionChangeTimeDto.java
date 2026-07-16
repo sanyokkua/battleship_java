@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.battleship.web.api.dtos.session;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,5 +21,6 @@ public class ResponseLastSessionChangeTimeDto {
     /**
      * The ID of the last session change.
      */
+    @Schema(description = "Last-update timestamp as a string, used for client polling comparisons")
     private String lastId;
 }

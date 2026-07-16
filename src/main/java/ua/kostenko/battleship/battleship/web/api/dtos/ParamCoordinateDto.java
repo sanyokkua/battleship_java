@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.battleship.web.api.dtos;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,11 +24,13 @@ public class ParamCoordinateDto {
     /**
      * The row coordinate of the cell.
      */
+    @Schema(description = "Zero-based board row")
     private int row;
 
     /**
      * The column coordinate of the cell.
      */
+    @Schema(description = "Zero-based board column")
     private int col;
 
     /**

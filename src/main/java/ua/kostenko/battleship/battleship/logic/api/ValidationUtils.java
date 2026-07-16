@@ -25,18 +25,13 @@ import ua.kostenko.battleship.battleship.logic.engine.utils.CoordinateUtils;
 public final class ValidationUtils {
 
     /**
-     * Template message for logging debug information.
-     */
-    private static final String DEBUG_TEMPLATE_MESSAGE = "Validations of: {}";
-
-    /**
      * Validates if a coordinate is correct.
      *
      * @param coordinate the coordinate to validate
      * @throws GameCoordinateIsNotCorrectIncorrectException if the coordinate is not valid
      */
     public static void validateCoordinate(Coordinate coordinate) {
-        log.debug(DEBUG_TEMPLATE_MESSAGE, coordinate);
+        log.debug("Validating coordinate: {}", coordinate);
         if (!CoordinateUtils.isCorrectCoordinate(coordinate)) {
             throw new GameCoordinateIsNotCorrectIncorrectException("Coordinate: %s is not VALID!".formatted(coordinate));
         }
@@ -49,7 +44,7 @@ public final class ValidationUtils {
      * @throws GamePlayerIdIsNotCorrectException if the player ID is not valid
      */
     public static void validatePlayerId(String playerId) {
-        log.debug(DEBUG_TEMPLATE_MESSAGE, playerId);
+        log.debug("Validating player ID: {}", playerId);
         if (StringUtils.isBlank(playerId)) {
             throw new GamePlayerIdIsNotCorrectException("Player ID: %s is not VALID!".formatted(playerId));
         }
@@ -62,7 +57,7 @@ public final class ValidationUtils {
      * @throws GamePlayerNameIsNotCorrectException if the player name is not valid
      */
     public static void validatePlayerName(String playerName) {
-        log.debug(DEBUG_TEMPLATE_MESSAGE, playerName);
+        log.debug("Validating player name: {}", playerName);
         if (StringUtils.isBlank(playerName)) {
             throw new GamePlayerNameIsNotCorrectException("Player Name: %s is not VALID!".formatted(playerName));
         }
@@ -75,7 +70,7 @@ public final class ValidationUtils {
      * @throws GameSessionIdIsNotCorrectException if the session ID is not valid
      */
     public static void validateSessionId(String sessionId) {
-        log.debug(DEBUG_TEMPLATE_MESSAGE, sessionId);
+        log.debug("Validating session ID: {}", sessionId);
         if (StringUtils.isBlank(sessionId)) {
             throw new GameSessionIdIsNotCorrectException("Session ID: %s is not VALID!".formatted(sessionId));
         }
@@ -88,13 +83,13 @@ public final class ValidationUtils {
      * @throws GameShipDirectionIsNotCorrectException if the ship direction is not valid
      */
     public static void validateShipDirection(String shipDirection) {
-        log.debug(DEBUG_TEMPLATE_MESSAGE, shipDirection);
+        log.debug("Validating ship direction: {}", shipDirection);
         if (StringUtils.isBlank(shipDirection)) {
             throw new GameShipDirectionIsNotCorrectException("Ship Direction: %s is not VALID!".formatted(shipDirection));
         }
         try {
             ShipDirection.valueOf(shipDirection);
-        } catch (Exception ex) {
+        } catch (Exception _) {
             throw new GameShipDirectionIsNotCorrectException("Ship Direction: %s is not VALID!".formatted(shipDirection));
         }
     }
@@ -106,7 +101,7 @@ public final class ValidationUtils {
      * @throws GameShipIdIsNotCorrectException if the ship ID is not valid
      */
     public static void validateShipId(String shipId) {
-        log.debug(DEBUG_TEMPLATE_MESSAGE, shipId);
+        log.debug("Validating ship ID: {}", shipId);
         if (StringUtils.isBlank(shipId)) {
             throw new GameShipIdIsNotCorrectException("Ship ID: %s is not VALID!".formatted(shipId));
         }
@@ -119,13 +114,13 @@ public final class ValidationUtils {
      * @throws GameEditionIsNotCorrectException if the game edition is not valid
      */
     public static void validateGameEdition(String gameEdition) {
-        log.debug(DEBUG_TEMPLATE_MESSAGE, gameEdition);
+        log.debug("Validating game edition: {}", gameEdition);
         if (StringUtils.isBlank(gameEdition)) {
             throw new GameEditionIsNotCorrectException("Game Edition: %s is not VALID!".formatted(gameEdition));
         }
         try {
             GameEdition.valueOf(gameEdition);
-        } catch (Exception ex) {
+        } catch (Exception _) {
             throw new GameEditionIsNotCorrectException("Game Edition: %s is not VALID!".formatted(gameEdition));
         }
     }

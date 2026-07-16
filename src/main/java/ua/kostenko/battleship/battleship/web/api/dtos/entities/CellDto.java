@@ -1,6 +1,7 @@
 package ua.kostenko.battleship.battleship.web.api.dtos.entities;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import ua.kostenko.battleship.battleship.logic.engine.models.records.Cell;
 import ua.kostenko.battleship.battleship.logic.engine.models.records.Ship;
@@ -23,28 +24,33 @@ public class CellDto {
     /**
      * The row coordinate of the cell.
      */
+    @Schema(description = "Zero-based board row")
     private int row;
 
     /**
      * The column coordinate of the cell.
      */
+    @Schema(description = "Zero-based board column")
     private int col;
 
     /**
      * The ship associated with the cell, if any.
      */
+    @Schema(description = "Ship occupying this cell, if any (engine record: shipId, shipType, shipDirection, shipSize)")
     private Ship ship;
 
     /**
      * Indicates whether the cell has been shot at.
      */
+    @Schema(description = "Whether this cell has already been shot at")
     private boolean hasShot;
 
     /**
      * Indicates whether the cell is available for placing a ship.
      */
     @JsonProperty("isAvailable")
-    private boolean isAvailable;
+    @Schema(description = "Whether this cell is available for placing a ship")
+    private boolean available;
 
     /**
      * Creates a CellDto object from a Cell object.
@@ -59,7 +65,7 @@ public class CellDto {
                 .col(coordinate.column())
                 .ship(cell.ship())
                 .hasShot(cell.hasShot())
-                .isAvailable(cell.isAvailable())
+                .available(cell.isAvailable())
                 .build();
     }
 }

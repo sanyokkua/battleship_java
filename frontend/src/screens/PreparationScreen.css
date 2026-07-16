@@ -1,0 +1,55 @@
+/* Two-column desktop layout (fleet panel + direction toggle on the left, board
+ * on the right), single column / stacked on mobile (tray above board). */
+
+.prep-screen-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.prep-screen-head .title {
+    font-size: 22px;
+    margin: 0;
+}
+
+.prep-screen-head .sub {
+    margin: 0;
+}
+
+.prep-grid {
+    display: grid;
+    gap: 22px;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 641px) {
+    .prep-grid {
+        grid-template-columns: 290px 1fr;
+        align-items: start;
+    }
+}
+
+.fleet-panel-wrap {
+    display: flex;
+    flex-direction: column;
+}
+
+/* On mobile, show the fleet list before the H/V toggle (the toggle matters most once a
+ * ship is selected, so it reads better just above the board rather than at the very top). */
+@media (max-width: 640px) {
+    .prep-dir-toggle-wrap {
+        order: 2;
+    }
+
+    .fleet-panel-wrap > .fleet-panel {
+        order: 1;
+    }
+}
+
+.prep-ready-btn {
+    margin-top: 16px;
+    width: 100%;
+}

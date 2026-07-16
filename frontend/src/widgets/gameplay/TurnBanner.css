@@ -1,0 +1,20 @@
+.turn-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: linear-gradient(135deg, #fff, #fde9eb);
+    border: 1px solid #f6c9cd;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 18px;
+    font-weight: 700;
+    color: var(--navy);
+    font-size: 14.5px;
+}
+
+.turn-banner.yours {
+    background: linear-gradient(135deg, #fff, #e5f7f4);
+    border-color: #bfe9e1;
+    color: #177a6b;
+}

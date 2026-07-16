@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.battleship.web.api.dtos.preparation;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,5 +19,6 @@ public class ResponsePlayerReady {
     /**
      * Indicates whether the player is ready.
      */
+    @Schema(description = "Whether the player is now marked ready")
     private boolean ready;
 }

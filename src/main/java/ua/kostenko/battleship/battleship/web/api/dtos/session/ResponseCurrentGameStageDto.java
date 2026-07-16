@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.battleship.web.api.dtos.session;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,5 +21,7 @@ public class ResponseCurrentGameStageDto {
     /**
      * The current game stage, represented as a string.
      */
+    @Schema(description = "Current GameStage name",
+            allowableValues = {"INITIALIZED", "WAITING_FOR_PLAYERS", "PREPARATION", "IN_GAME", "FINISHED"})
     private String gameStage;
 }

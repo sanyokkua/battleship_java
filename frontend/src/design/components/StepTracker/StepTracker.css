@@ -1,0 +1,65 @@
+.step-track {
+    display: flex;
+    justify-content: space-between;
+    margin: 0 0 26px;
+    padding: 0 4px;
+}
+
+.step-track .st {
+    flex: 1;
+    text-align: center;
+    position: relative;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    font-weight: 600;
+}
+
+.step-track .st::before {
+    content: "";
+    position: absolute;
+    top: 11px;
+    left: -50%;
+    width: 100%;
+    height: 3px;
+    background: var(--line);
+    z-index: 0;
+}
+
+.step-track .st:first-child::before {
+    display: none;
+}
+
+.step-track .st .dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2.5px solid var(--line);
+    margin: 0 auto 6px;
+    display: grid;
+    place-items: center;
+    position: relative;
+    z-index: 1;
+    font-size: 11px;
+}
+
+.step-track .st.done .dot {
+    background: var(--teal);
+    border-color: var(--teal);
+    color: #fff;
+}
+
+.step-track .st.active .dot {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: #fff;
+    box-shadow: 0 0 0 4px rgba(11, 37, 69, .12);
+}
+
+.step-track .st.active {
+    color: var(--navy);
+}
+
+.step-track .st.done::before {
+    background: var(--teal);
+}

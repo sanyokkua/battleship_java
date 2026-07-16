@@ -11,13 +11,13 @@ class ValidationUtilsTest {
     @Test
     void validateCoordinate() {
         assertThrows(GameCoordinateIsNotCorrectIncorrectException.class,
-                     () -> ValidationUtils.validateCoordinate(Coordinate.of(-1, 0)));
+                () -> ValidationUtils.validateCoordinate(Coordinate.of(-1, 0)));
         assertThrows(GameCoordinateIsNotCorrectIncorrectException.class,
-                     () -> ValidationUtils.validateCoordinate(Coordinate.of(0, -1)));
+                () -> ValidationUtils.validateCoordinate(Coordinate.of(0, -1)));
         assertThrows(GameCoordinateIsNotCorrectIncorrectException.class,
-                     () -> ValidationUtils.validateCoordinate(Coordinate.of(10, 0)));
+                () -> ValidationUtils.validateCoordinate(Coordinate.of(10, 0)));
         assertThrows(GameCoordinateIsNotCorrectIncorrectException.class,
-                     () -> ValidationUtils.validateCoordinate(Coordinate.of(0, 10)));
+                () -> ValidationUtils.validateCoordinate(Coordinate.of(0, 10)));
         assertDoesNotThrow(() -> ValidationUtils.validateCoordinate(Coordinate.of(0, 0)));
         assertDoesNotThrow(() -> ValidationUtils.validateCoordinate(Coordinate.of(5, 5)));
     }
@@ -52,13 +52,13 @@ class ValidationUtilsTest {
         assertThrows(GameShipDirectionIsNotCorrectException.class, () -> ValidationUtils.validateShipDirection(null));
         assertThrows(GameShipDirectionIsNotCorrectException.class, () -> ValidationUtils.validateShipDirection("    "));
         assertThrows(GameShipDirectionIsNotCorrectException.class,
-                     () -> ValidationUtils.validateShipDirection("horizontal"));
+                () -> ValidationUtils.validateShipDirection("horizontal"));
         assertThrows(GameShipDirectionIsNotCorrectException.class,
-                     () -> ValidationUtils.validateShipDirection("vertical"));
+                () -> ValidationUtils.validateShipDirection("vertical"));
         assertThrows(GameShipDirectionIsNotCorrectException.class,
-                     () -> ValidationUtils.validateShipDirection("other"));
+                () -> ValidationUtils.validateShipDirection("other"));
         assertThrows(GameShipDirectionIsNotCorrectException.class,
-                     () -> ValidationUtils.validateShipDirection("INCORRECT"));
+                () -> ValidationUtils.validateShipDirection("INCORRECT"));
         assertDoesNotThrow(() -> ValidationUtils.validateShipDirection("HORIZONTAL"));
         assertDoesNotThrow(() -> ValidationUtils.validateShipDirection("VERTICAL"));
     }

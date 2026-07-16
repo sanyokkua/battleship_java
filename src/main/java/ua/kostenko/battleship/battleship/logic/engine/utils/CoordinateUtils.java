@@ -30,6 +30,8 @@ import java.util.stream.Collectors;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class CoordinateUtils {
 
+    private static final Set<Coordinate> NEIGHBOUR_OFFSETS = Set.of(Coordinate.of(-1, -1), Coordinate.of(-1, 0), Coordinate.of(-1, 1), Coordinate.of(0, -1), Coordinate.of(0, 1), Coordinate.of(1, -1), Coordinate.of(1, 0), Coordinate.of(1, 1));
+
     /**
      * Checks if a given coordinate is valid within the game board dimensions.
      *
@@ -55,7 +57,7 @@ public final class CoordinateUtils {
      * @throws IllegalArgumentException if the coordinate is not valid
      */
     public static void validateCoordinate(Coordinate coordinate) {
-        log.trace("In method: validateCoordinateAndThrowException");
+        log.trace("In method: validateCoordinate");
         if (!isCorrectCoordinate(coordinate)) {
             throw new IllegalArgumentException("Coordinate is not valid. %s".formatted(coordinate));
         }
@@ -68,7 +70,7 @@ public final class CoordinateUtils {
      * @throws IllegalArgumentException if any coordinate in the set is not valid
      */
     public static void validateCoordinates(Set<Coordinate> coordinates) {
-        log.trace("In method: validateCoordinateAndThrowException");
+        log.trace("In method: validateCoordinates");
         for (Coordinate coordinate : coordinates) {
             validateCoordinate(coordinate);
         }
@@ -81,15 +83,14 @@ public final class CoordinateUtils {
      * @return a set of neighboring coordinates
      */
     public static Set<Coordinate> buildNeighbourCoordinates(final Coordinate currentCoordinate) {
-        log.trace("In method: buildNeighbourCoordinates");
+        log.trace("In method: buildNeighbourCoordinates(Coordinate)");
         val row = currentCoordinate.row();
         val col = currentCoordinate.column();
-        val modifiers = Set.of(Coordinate.of(-1, -1), Coordinate.of(-1, 0), Coordinate.of(-1, 1), Coordinate.of(0, -1), Coordinate.of(0, 1), Coordinate.of(1, -1), Coordinate.of(1, 0), Coordinate.of(1, 1));
-        return modifiers.stream().map(modifier -> {
+        return NEIGHBOUR_OFFSETS.stream().map(modifier -> {
             val neighbourRow = row + modifier.row();
             val neighbourCol = col + modifier.column();
             return Coordinate.of(neighbourRow, neighbourCol);
-        }).filter(CoordinateUtils::isCorrectCoordinate).filter(coordinate -> !currentCoordinate.equals(coordinate)).collect(Collectors.toSet());
+        }).filter(CoordinateUtils::isCorrectCoordinate).collect(Collectors.toSet());
     }
 
     /**
@@ -104,12 +105,12 @@ public final class CoordinateUtils {
         Set<Coordinate> coordinates = new HashSet<>();
         val row = coordinate.row();
         val col = coordinate.column();
+        val isHorizontal = ShipDirection.HORIZONTAL == ship.shipDirection();
+        log.debug(isHorizontal ? "For Horizontal ship" : "For Vertical ship");
         for (int diff = 0; diff < ship.shipSize(); diff++) {
-            if (ShipDirection.HORIZONTAL == ship.shipDirection()) {
-                log.debug("For Horizontal ship");
+            if (isHorizontal) {
                 coordinates.add(Coordinate.of(row, col + diff));
             } else {
-                log.debug("For Vertical ship");
                 coordinates.add(Coordinate.of(row + diff, col));
             }
         }
@@ -123,7 +124,7 @@ public final class CoordinateUtils {
      * @return a set of neighboring coordinates
      */
     public static Set<Coordinate> buildNeighbourCoordinates(Set<Coordinate> shipCoordinates) {
-        log.trace("In method: buildNeighbourCoordinates");
+        log.trace("In method: buildNeighbourCoordinates(Set<Coordinate>)");
         return shipCoordinates.stream().map(CoordinateUtils::buildNeighbourCoordinates).flatMap(Collection::stream).filter(c -> !shipCoordinates.contains(c)).collect(Collectors.toSet());
     }
 }
