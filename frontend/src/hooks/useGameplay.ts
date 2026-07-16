@@ -2,7 +2,7 @@ import {useCallback, useRef, useState} from "react";
 import {useGameAdapter} from "../adapters/GameAdapterContext";
 import {GameAdapterError, isGameAdapterError} from "../adapters/AdapterErrors";
 import {useSessionEvents} from "./useSessionEvents";
-import type {Coordinate, ResponseGameplayStateDto} from "../logic/ApplicationTypes";
+import type {Coordinate, ResponseGameplayStateDto, ResponseSessionPushDto} from "../logic/ApplicationTypes";
 
 /**
  * Return type of {@link useGameplay}.
@@ -20,6 +20,9 @@ export type GameplayHookState = {
     loading: boolean;
     /** Error from the most recent poll or shot attempt, or `null` if it succeeded. */
     error: GameAdapterError | null;
+    /** Manually re-fetches the current session snapshot, bypassing the push channel — wired to a
+     * visible refresh affordance for when a push connection has silently died. */
+    refresh: () => Promise<void>;
 };
 
 function toAdapterError(e: unknown, context: string): GameAdapterError {
@@ -40,7 +43,8 @@ function toAdapterError(e: unknown, context: string): GameAdapterError {
  *
  * @param sessionId - ID of the game session.
  * @param playerId - ID of the current player within that session.
- * @returns Gameplay state, loading/error flags, and the `shoot` action — see {@link GameplayHookState}.
+ * @returns Gameplay state, loading/error flags, the `shoot` action, and `refresh` — see
+ *   {@link GameplayHookState}.
  */
 export function useGameplay(sessionId: string, playerId: string): GameplayHookState {
     const adapter = useGameAdapter();
@@ -57,7 +61,12 @@ export function useGameplay(sessionId: string, playerId: string): GameplayHookSt
         }
     }, []);
 
-    useSessionEvents(sessionId, playerId, payload => {
+    const refetch = useCallback(async (): Promise<ResponseSessionPushDto> => {
+        const gameplayState = await adapter.getGameState(sessionId, playerId);
+        return {gameStage: "", lastUpdate: "", opponent: null, gameplayState};
+    }, [adapter, sessionId, playerId]);
+
+    const {refresh} = useSessionEvents(sessionId, playerId, payload => {
         if (doneRef.current) {
             return;
         }
@@ -65,7 +74,7 @@ export function useGameplay(sessionId: string, playerId: string): GameplayHookSt
         if (payload.gameplayState) {
             applyGameplayState(payload.gameplayState);
         }
-    });
+    }, refetch);
 
     const shoot = useCallback(async (at: Coordinate): Promise<"HIT" | "MISS" | "DESTROYED" | null> => {
         try {
@@ -80,5 +89,5 @@ export function useGameplay(sessionId: string, playerId: string): GameplayHookSt
         }
     }, [adapter, sessionId, playerId, applyGameplayState]);
 
-    return {state, shoot, loading, error};
+    return {state, shoot, loading, error, refresh};
 }

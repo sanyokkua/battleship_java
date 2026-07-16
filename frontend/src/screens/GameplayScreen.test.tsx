@@ -1,5 +1,5 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {act, render, screen, waitFor, within} from '@testing-library/react';
+import {act, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import '../i18n';
@@ -436,6 +436,24 @@ describe('GameplayScreen', () => {
         // already reflected, no poll wait needed.
         await waitFor(() => expect(screen.getByText('Results route')).toBeInTheDocument());
         expect(localStorage.getItem('gameStage_str')).toBe('FINISHED');
+    });
+
+    it('shows a refresh button that re-fetches gameplay state when clicked', async () => {
+        const {sessionId, p1, p1Name} = await setUpInGameSession(adapterInstance);
+        saveSession(sessionId);
+        savePlayer({playerId: p1, playerName: p1Name});
+        saveStage('IN_GAME');
+
+        renderGameplayScreen();
+        await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+
+        const getGameStateSpy = vi.spyOn(adapterInstance, 'getGameState');
+
+        await act(async () => {
+            fireEvent.click(screen.getByRole('button', {name: '⟳ Refresh'}));
+        });
+
+        expect(getGameStateSpy).toHaveBeenCalledWith(sessionId, p1);
     });
 
     it('sanity: findEmptyCell/findShipCellOfSize helpers work against a prepared field', async () => {

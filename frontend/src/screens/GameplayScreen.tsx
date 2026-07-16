@@ -6,6 +6,7 @@ import {useGameplay} from '../hooks/useGameplay';
 import {saveStage} from '../services/GameBrowserStorage';
 import type {CellDto} from '../logic/ApplicationTypes';
 import {formatCoordinateLabel} from '../logic/boardCoordinates';
+import {Button} from '../design/components/Button/Button';
 import {LoadingView} from '../widgets/layout/LoadingView';
 import {Board, computeMoatCellKeys, computeSunkShipIds} from '../widgets/board/Board';
 import {BoardTabs} from '../widgets/board/BoardTabs';
@@ -47,7 +48,7 @@ export function GameplayScreen() {
     const {push} = useToastContext();
 
     const {sessionId, player} = useSessionGuard();
-    const {state, shoot, loading, error} = useGameplay(sessionId ?? '', player?.playerId ?? '');
+    const {state, shoot, loading, error, refresh} = useGameplay(sessionId ?? '', player?.playerId ?? '');
 
     // 'target' here is only a pre-any-state placeholder — it's immediately overwritten by
     // the correct tab (based on state.isPlayerActive) the moment `state` first arrives, in
@@ -372,6 +373,10 @@ export function GameplayScreen() {
                         sunk: t('screens:legend.sunk'),
                     }}
                 />
+
+                <Button variant="ghost" size="sm" onClick={() => void refresh()}>
+                    ⟳ {t('common:button.refresh')}
+                </Button>
             </div>
         </div>
     );
