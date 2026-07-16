@@ -145,6 +145,10 @@ export class HttpGameAdapter implements GameAdapter {
             onEvent(JSON.parse(event.data) as ResponseSessionPushDto);
         });
 
+        eventSource.addEventListener("error", (event) => {
+            console.error(`SSE connection error for session ${sessionId} player ${playerId}`, event);
+        });
+
         return () => {
             eventSource.close();
         };
