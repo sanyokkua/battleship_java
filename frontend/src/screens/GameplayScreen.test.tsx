@@ -341,6 +341,15 @@ describe('GameplayScreen', () => {
         });
 
         await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+
+        // The switch to the Target tab is deliberately delayed (SWITCH_DELAY_MS) so the player
+        // sees the just-shot cell's flash on the fleet board before the view moves on — the tab
+        // hasn't switched yet immediately after the push.
+        expect(fleetPanel).not.toHaveClass('hide');
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(1500);
+        });
+
         await waitFor(() => expect(targetPanel).not.toHaveClass('hide'));
         expect(fleetPanel).toHaveClass('hide');
     });
@@ -596,6 +605,91 @@ describe('GameplayScreen', () => {
             const secondLabel = formatCoordinateLabel(second.row, second.col);
             expect(await screen.findByText(`The opponent fired at ${firstLabel} and missed.`)).toBeInTheDocument();
             expect(screen.getByText(`The opponent fired at ${secondLabel} and missed.`)).toBeInTheDocument();
+        });
+    });
+
+    describe('shot-highlight flash and delayed mobile tab switch', () => {
+        async function flipTurnToP2(sessionId: string, p2: string, user: ReturnType<typeof userEvent.setup>) {
+            const p2Prep = await adapterInstance.getPreparationState(sessionId, p2);
+            const {row, col} = findEmptyCell(p2Prep.field);
+            const targetPanel = document.querySelector('.bp-target')!;
+            const targetCell = within(targetPanel as HTMLElement).getAllByRole('button')[row * 10 + col];
+            await user.click(targetCell);
+            await waitFor(() => expect(screen.getByText(/is taking a shot/)).toBeInTheDocument());
+        }
+
+        it('flashes the just-shot cell on the fleet board, then clears the flash after it finishes', async () => {
+            const {sessionId, p1, p2, p1Name} = await setUpInGameSession(adapterInstance);
+            saveSession(sessionId);
+            savePlayer({playerId: p1, playerName: p1Name});
+            saveStage('IN_GAME');
+
+            const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
+            renderGameplayScreen();
+            await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+
+            await flipTurnToP2(sessionId, p2, user);
+
+            const p1Prep = await adapterInstance.getPreparationState(sessionId, p1);
+            const at = findEmptyCell(p1Prep.field);
+            await act(async () => {
+                await adapterInstance.shoot(sessionId, p2, {row: at.row, column: at.col});
+            });
+
+            const label = formatCoordinateLabel(at.row, at.col);
+            const fleetPanel = document.querySelector('.bp-fleet')!;
+            const shotCell = await within(fleetPanel as HTMLElement).findByLabelText(`${label}, miss`);
+            expect(shotCell).toHaveClass('is-shot-flash');
+
+            // HIGHLIGHT_DURATION_MS (1100ms) — deliberately less than SWITCH_DELAY_MS (1500ms), so
+            // the fleet panel is still the visible tab and the cell still mounted when this fires.
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(1100);
+            });
+
+            expect(shotCell).not.toHaveClass('is-shot-flash');
+        });
+
+        it('a manual tab tap cancels a pending delayed switch, and the stale timer never fires later', async () => {
+            const {sessionId, p1, p2, p1Name} = await setUpInGameSession(adapterInstance);
+            saveSession(sessionId);
+            savePlayer({playerId: p1, playerName: p1Name});
+            saveStage('IN_GAME');
+
+            const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
+            renderGameplayScreen();
+            await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+
+            await flipTurnToP2(sessionId, p2, user);
+
+            const p1Prep = await adapterInstance.getPreparationState(sessionId, p1);
+            const at = findEmptyCell(p1Prep.field);
+            await act(async () => {
+                await adapterInstance.shoot(sessionId, p2, {row: at.row, column: at.col});
+            });
+
+            const targetPanel = document.querySelector('.bp-target')!;
+            const fleetPanel = document.querySelector('.bp-fleet')!;
+
+            // Turn is back on p1, but the switch to Target is still pending (SWITCH_DELAY_MS).
+            await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+            expect(fleetPanel).not.toHaveClass('hide');
+
+            // Manually tap the Target tab before the delayed switch fires — this must take over
+            // immediately and cancel the pending timer.
+            await user.click(screen.getByRole('tab', {name: 'Target grid'}));
+            expect(targetPanel).not.toHaveClass('hide');
+            expect(fleetPanel).toHaveClass('hide');
+
+            // Tap back to Fleet, then let the (now-stale) original switch timer's deadline pass —
+            // it must not fire and yank the view back to Target.
+            await user.click(screen.getByRole('tab', {name: 'Your fleet'}));
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(1500);
+            });
+
+            expect(fleetPanel).not.toHaveClass('hide');
+            expect(targetPanel).toHaveClass('hide');
         });
     });
 });

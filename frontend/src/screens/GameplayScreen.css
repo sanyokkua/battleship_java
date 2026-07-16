@@ -1,8 +1,9 @@
 /* Both board panels always render in the DOM (matches this project's established
  * CSS-driven-visibility convention, e.g. BoardTabs.css only `display:flex`-ing on
- * mobile) — a `.hide` class (added by the screen based on the active tab) collapses
- * the non-active panel only under the mobile breakpoint. On desktop both panels show
- * side-by-side regardless of `.hide`, since BoardTabs itself is hidden there too.
+ * mobile) — a `.hide` class (added by the screen based on the active tab) crossfades
+ * the non-active panel out of view only under the mobile breakpoint, where both panels
+ * share the same grid cell. On desktop both panels show side-by-side regardless of
+ * `.hide`, since BoardTabs itself is hidden there too.
  */
 
 .gameplay-screen {
@@ -28,7 +29,16 @@
         grid-template-columns: 1fr;
     }
 
+    .board-panel {
+        grid-column: 1;
+        grid-row: 1;
+        transition: opacity 0.28s ease, visibility 0s linear 0s;
+    }
+
     .board-panel.hide {
-        display: none;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.28s ease, visibility 0s linear 0.28s;
     }
 }

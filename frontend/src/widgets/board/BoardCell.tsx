@@ -8,6 +8,7 @@ export type BoardCellProps = {
     mode: BoardMode;
     sunk: boolean;
     isGhost: boolean;
+    isHighlighted: boolean;
     readonly?: boolean;
     onClick?: () => void;
 };
@@ -70,14 +71,14 @@ function resolveState(cell: CellDto, mode: BoardMode, sunk: boolean, isGhost: bo
  * `<div>` otherwise. Derives its visual state, coordinate-based aria-label (e.g. "B4, hit"),
  * and hit/sunk symbol from `resolveState`.
  */
-export function BoardCell({cell, mode, sunk, isGhost, readonly, onClick}: BoardCellProps) {
+export function BoardCell({cell, mode, sunk, isGhost, isHighlighted, readonly, onClick}: BoardCellProps) {
     const state = resolveState(cell, mode, sunk, isGhost);
     const ariaLabel = `${formatCoordinateLabel(cell.row, cell.col)}, ${STATE_LABEL[state]}`;
 
     const isBlocked = state === 'block' || (mode === 'target' && cell.hasShot);
     const isClickable = Boolean(onClick) && !readonly && !isBlocked;
 
-    const className = `cell cell-${state}`;
+    const className = `cell cell-${state}${isHighlighted ? ' is-shot-flash' : ''}`;
 
     let symbol: string | null = null;
     if (state === 'hit' || state === 'sunk') {

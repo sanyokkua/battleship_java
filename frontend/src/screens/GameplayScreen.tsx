@@ -23,6 +23,14 @@ import './GameplayScreen.css';
 // a session exists anyway).
 const TOTAL_SHIPS = 10;
 
+// How long a just-shot cell's flash animation runs (must match Board.css's
+// board-cell-shot-flash keyframes duration).
+const HIGHLIGHT_DURATION_MS = 1100;
+// How long the mobile view lingers on the fleet board after an opponent's shot
+// resolves as a miss before auto-switching to the target board — comfortably
+// longer than HIGHLIGHT_DURATION_MS so the flash always finishes before the switch.
+const SWITCH_DELAY_MS = 1500;
+
 type MaxCells = { player: number | null; opponent: number | null };
 
 /**
@@ -81,36 +89,63 @@ export function GameplayScreen() {
     // every 5s) — so a manual tab switch made mid-turn is never fought.
     const prevIsPlayerActiveRef = useRef<boolean | undefined>(undefined);
 
-    useEffect(() => {
-        if (!state) return;
-        const current = state.isPlayerActive;
-        const prev = prevIsPlayerActiveRef.current;
-        if (prev !== undefined && prev !== current) {
-            setActiveTab(current ? 'target' : 'fleet');
-        }
-        prevIsPlayerActiveRef.current = current;
-        // Deliberately keyed on state?.isPlayerActive only — see comment above; re-running this
-        // effect on every `state` reference change (e.g. same-value poll refetch) would defeat
-        // the "only fire on an actual flip" guard this effect exists to provide.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [state?.isPlayerActive]);
-
     // Detects opponent shots by diffing `state.playerField` against the previous poll's
     // snapshot — there's no server-pushed "last shot" event, only full-board snapshots, so
-    // this is the only way to notice one. Mirrors `prevIsPlayerActiveRef` above (a
-    // previous-value ref compared inside an effect) but at cell granularity instead of a
-    // scalar. `null` specifically (not e.g. an empty array) marks "no snapshot yet", so the
-    // very first arrival of `state` — including a page refresh mid-game with shots already
-    // on the board — only seeds the baseline and never replays pre-existing hits as new.
+    // this is the only way to notice one. `null` specifically (not e.g. an empty array)
+    // marks "no snapshot yet", so the very first arrival of `state` — including a page
+    // refresh mid-game with shots already on the board — only seeds the baseline and never
+    // replays pre-existing hits as new.
     const prevPlayerFieldRef = useRef<CellDto[][] | null>(null);
 
+    // Which own-board cells are currently mid-flash (see Board.css's .is-shot-flash), keyed
+    // `${row}-${col}` to match the ghostCells convention. A per-cell timer (not one shared
+    // timer) matters because a hit/sunk shot grants the opponent another turn, so multiple
+    // shots can land on consecutive pushes before the turn flips back — each cell's flash
+    // must run its own full duration independently rather than one shot resetting another's.
+    const [highlightedCells, setHighlightedCells] = useState<Set<string>>(new Set());
+    const highlightTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+    // A single pending mobile tab-switch timer — a new delayed switch always supersedes an
+    // old one, and a manual tab tap (see handleTabChange) always cancels it outright.
+    const switchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    function scheduleDelayedSwitch(tab: 'target' | 'fleet') {
+        if (switchTimerRef.current) {
+            clearTimeout(switchTimerRef.current);
+        }
+        switchTimerRef.current = setTimeout(() => {
+            switchTimerRef.current = null;
+            setActiveTab(tab);
+        }, SWITCH_DELAY_MS);
+    }
+
+    function cancelPendingSwitch() {
+        if (switchTimerRef.current) {
+            clearTimeout(switchTimerRef.current);
+            switchTimerRef.current = null;
+        }
+    }
+
+    function handleTabChange(tab: 'target' | 'fleet') {
+        cancelPendingSwitch();
+        setActiveTab(tab);
+    }
+
+    // Merges what used to be two separate effects (turn-flip detection and shot-diff
+    // detection) into one, keyed on `[state]`: the delayed-switch decision below needs to
+    // know, in the same pass, both "did the turn just flip to the player" and "were there
+    // newly-highlighted cells in this same snapshot" — computing that across two
+    // separately-scheduled effects would introduce an off-by-one-push race.
     useEffect(() => {
         if (!state) return;
         const field = state.playerField;
         const prevField = prevPlayerFieldRef.current;
+        const current = state.isPlayerActive;
+        const prev = prevIsPlayerActiveRef.current;
 
         if (prevField === null) {
             prevPlayerFieldRef.current = field;
+            prevIsPlayerActiveRef.current = current;
             return;
         }
 
@@ -126,6 +161,8 @@ export function GameplayScreen() {
         );
         const moatCellKeys = computeMoatCellKeys(field, newlySunkShipIds);
 
+        const newlyShotKeys = new Set<string>();
+
         for (let row = 0; row < field.length; row++) {
             for (let col = 0; col < field[row].length; col++) {
                 const cell = field[row][col];
@@ -139,6 +176,7 @@ export function GameplayScreen() {
                     // the client has no per-shot server data to disambiguate that rare coincidence.
                     continue;
                 }
+                newlyShotKeys.add(`${row}-${col}`);
                 const coordinate = formatCoordinateLabel(row, col);
                 if (cell.ship == null) {
                     notify.info('incomingShot.miss', {coordinate});
@@ -150,13 +188,61 @@ export function GameplayScreen() {
             }
         }
 
+        if (newlyShotKeys.size > 0) {
+            // highlightTimersRef is the source of truth for "which cells are currently
+            // flashing" — its key set is snapshotted into `highlightedCells` state below
+            // every time it changes, so BoardCell renders read a plain value rather than
+            // reconstructing it from a setState updater callback.
+            newlyShotKeys.forEach(key => {
+                const existingTimer = highlightTimersRef.current.get(key);
+                if (existingTimer) {
+                    clearTimeout(existingTimer);
+                }
+                const timer = setTimeout(() => {
+                    highlightTimersRef.current.delete(key);
+                    setHighlightedCells(new Set(highlightTimersRef.current.keys()));
+                }, HIGHLIGHT_DURATION_MS);
+                highlightTimersRef.current.set(key, timer);
+            });
+            setHighlightedCells(new Set(highlightTimersRef.current.keys()));
+        }
+
+        if (prev !== undefined && prev !== current) {
+            if (current) {
+                // false -> true: the opponent's shot just resolved as a miss and the turn
+                // passed back. Give the player a moment to see the flash before switching —
+                // unless, for some reason, no diff was detected this pass, in which case
+                // switch immediately so the UI never gets stuck on the fleet board.
+                if (newlyShotKeys.size > 0) {
+                    scheduleDelayedSwitch('target');
+                } else {
+                    cancelPendingSwitch();
+                    setActiveTab('target');
+                }
+            } else {
+                // true -> false: the player just fired — no highlight to protect on this side.
+                cancelPendingSwitch();
+                setActiveTab('fleet');
+            }
+        }
+
         prevPlayerFieldRef.current = field;
+        prevIsPlayerActiveRef.current = current;
         // Deliberately excludes `notify` — useNotify() returns a fresh object every render,
         // and keying on it would re-run this diff on every render instead of only when
         // `state` changes; the diff itself is a no-op once `prevPlayerFieldRef` catches up
         // to the current `state`, so this stays correct either way, just noisier.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [state]);
+
+    useEffect(() => {
+        const highlightTimers = highlightTimersRef.current;
+        return () => {
+            highlightTimers.forEach(timer => clearTimeout(timer));
+            highlightTimers.clear();
+            cancelPendingSwitch();
+        };
+    }, []);
 
     if (!sessionId || !player) {
         // Defensive only — StageGuard at the routing layer is responsible for redirecting
@@ -244,7 +330,7 @@ export function GameplayScreen() {
 
                 <BoardTabs
                     active={activeTab}
-                    onChange={setActiveTab}
+                    onChange={handleTabChange}
                     targetLabel={t('screens:gameplay.tabTarget')}
                     fleetLabel={t('screens:gameplay.tabFleet')}
                 />
@@ -262,7 +348,7 @@ export function GameplayScreen() {
                             <h3>{t('screens:gameplay.fleetLabel')}</h3>
                             <span className="tag">{t('screens:gameplay.defensiveView')}</span>
                         </div>
-                        <Board mode="own" field={state.playerField} readonly/>
+                        <Board mode="own" field={state.playerField} readonly highlightedCells={highlightedCells}/>
                     </div>
                 </div>
 
