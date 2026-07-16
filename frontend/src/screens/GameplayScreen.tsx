@@ -49,6 +49,9 @@ export function GameplayScreen() {
     const {sessionId, player} = useSessionGuard();
     const {state, shoot, loading, error} = useGameplay(sessionId ?? '', player?.playerId ?? '');
 
+    // 'target' here is only a pre-any-state placeholder — it's immediately overwritten by
+    // the correct tab (based on state.isPlayerActive) the moment `state` first arrives, in
+    // the maxCells render-time block below.
     const [activeTab, setActiveTab] = useState<'target' | 'fleet'>('target');
 
     // Known API limitation: `*NumberOfAliveCells` are absolute counts and the true edition
@@ -72,6 +75,12 @@ export function GameplayScreen() {
             player: maxCells.player ?? state.playerNumberOfAliveCells,
             opponent: maxCells.opponent ?? state.opponentNumberOfAliveCells,
         });
+        // Same "first arrival of state" guard as maxCells above: the initial tab must reflect
+        // whose turn it actually is on this first snapshot (waiting players have nothing to
+        // target yet), not an unconditional 'target' default. Set here, during render, rather
+        // than in the [state] effect below, so there's no one-frame flash of the wrong board
+        // before the effect would otherwise correct it.
+        setActiveTab(state.isPlayerActive ? 'target' : 'fleet');
     }
 
     useEffect(() => {
@@ -83,10 +92,11 @@ export function GameplayScreen() {
 
     // Tracks the previous isPlayerActive value purely to detect an actual flip — starts
     // `undefined` so the *first* time state loads (regardless of whether the player
-    // happens to start active or waiting) is never mistaken for a flip and never forces
-    // the tab away from its default ('target'). Only forces a switch AT THE MOMENT the
-    // value changes, never on a same-value re-render (e.g. a same-value poll refetch
-    // every 5s) — so a manual tab switch made mid-turn is never fought.
+    // happens to start active or waiting) is never mistaken for a flip. The initial tab
+    // itself is already set correctly for this first snapshot by the maxCells render-time
+    // block above, so this ref's job is narrower: only force a switch AT THE MOMENT the
+    // value changes on a later render, never on a same-value re-render (e.g. a same-value
+    // poll refetch every 5s) — so a manual tab switch made mid-turn is never fought.
     const prevIsPlayerActiveRef = useRef<boolean | undefined>(undefined);
 
     // Detects opponent shots by diffing `state.playerField` against the previous poll's

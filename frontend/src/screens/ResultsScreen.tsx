@@ -103,14 +103,14 @@ export function ResultsScreen() {
                 </div>
             </div>
 
-            <div className="boards-area">
-                <div className="board-panel">
+            <div className="results-boards-area">
+                <div className="results-board-panel">
                     <div className="board-head">
                         <h3>{t('screens:gameplay.targetBoard', {name: state.opponentName})}</h3>
                     </div>
                     <Board mode="result-target" field={state.opponentField} readonly/>
                 </div>
-                <div className="board-panel">
+                <div className="results-board-panel">
                     <div className="board-head">
                         <h3>{t('screens:gameplay.fleetLabel')}</h3>
                     </div>

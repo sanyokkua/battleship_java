@@ -279,6 +279,25 @@ describe('GameplayScreen', () => {
         expect(fleetPanel).toHaveClass('hide');
     });
 
+    it('defaults to the Fleet tab on first render when the local player is not active yet', async () => {
+        const {sessionId, p2, p2Name} = await setUpInGameSession(adapterInstance);
+        // p2 is not active right after setup (p1 goes first) — mirrors the TurnBanner test's
+        // non-active-first setup above.
+        saveSession(sessionId);
+        savePlayer({playerId: p2, playerName: p2Name});
+        saveStage('IN_GAME');
+
+        renderGameplayScreen();
+
+        await waitFor(() => expect(screen.getByText(/is taking a shot/)).toBeInTheDocument());
+
+        const targetPanel = document.querySelector('.bp-target')!;
+        const fleetPanel = document.querySelector('.bp-fleet')!;
+        expect(fleetPanel).not.toHaveClass('hide');
+        expect(targetPanel).toHaveClass('hide');
+        expect(screen.getByRole('tab', {name: 'Your fleet'})).toHaveAttribute('aria-selected', 'true');
+    });
+
     it('auto-switches to the Fleet tab when the turn passes to the opponent', async () => {
         const {sessionId, p1, p2, p1Name} = await setUpInGameSession(adapterInstance);
         saveSession(sessionId);

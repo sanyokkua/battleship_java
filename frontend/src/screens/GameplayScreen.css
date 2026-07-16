@@ -27,6 +27,7 @@
 @media (max-width: 640px) {
     .boards-area {
         grid-template-columns: 1fr;
+        overflow-anchor: none;
     }
 
     .board-panel {
