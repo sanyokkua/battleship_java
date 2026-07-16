@@ -119,6 +119,12 @@ The `Dockerfile` isn't written in Containerfile-specific syntax, so Podman needs
 docker`:
 
 ```shell
+# Dont forget to
+podman machine init
+podman machine start
+```
+
+```shell
 podman build --format docker -t battleship . && podman run -p 8080:8080 battleship
 ```
 
