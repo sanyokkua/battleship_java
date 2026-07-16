@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import lombok.val;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import ua.kostenko.battleship.battleship.logic.api.GameControllerApi;
 import ua.kostenko.battleship.battleship.logic.api.events.GameStateChangedEvent;
@@ -45,16 +46,14 @@ public class SessionEventBroadcaster {
     /**
      * Subscribes a player to a session's push notifications, sending an immediate snapshot of the
      * current state before returning the emitter. Any failure resolving the initial snapshot (e.g.
-     * an unknown session ID) propagates to the caller synchronously, before any SSE state is
-     * registered, so it's reported the same way every other endpoint reports such failures.
+     * an unknown session ID) propagates to the caller synchronously, and no SSE subscription is
+     * left registered, so it's reported the same way every other endpoint reports such failures.
      *
      * @param sessionId the ID of the game session
      * @param playerId  the ID of the subscribing player
      * @return the emitter the caller's controller method should return to the client
      */
     public SseEmitter subscribe(final String sessionId, final String playerId) {
-        val initialPayload = buildPayload(sessionId, playerId);
-
         val emitter = new SseEmitter(0L);
         val playerEmitters = subscribers.computeIfAbsent(sessionId, id -> new ConcurrentHashMap<>())
                 .computeIfAbsent(playerId, id -> new CopyOnWriteArrayList<>());
@@ -64,7 +63,13 @@ public class SessionEventBroadcaster {
         emitter.onTimeout(() -> removeEmitter(sessionId, playerId, emitter));
         emitter.onError(ex -> removeEmitter(sessionId, playerId, emitter));
 
-        send(sessionId, playerId, emitter, initialPayload);
+        try {
+            val initialPayload = buildPayload(sessionId, playerId);
+            send(sessionId, playerId, emitter, initialPayload);
+        } catch (RuntimeException ex) {
+            removeEmitter(sessionId, playerId, emitter);
+            throw ex;
+        }
 
         return emitter;
     }
@@ -101,10 +106,18 @@ public class SessionEventBroadcaster {
     private void send(
             final String sessionId, final String playerId, final SseEmitter emitter,
             final ResponseSessionPushDto payload) {
+        sendEvent(sessionId, playerId, emitter, SseEmitter.event().name("state-changed").data(payload));
+    }
+
+    private void sendHeartbeat(final String sessionId, final String playerId, final SseEmitter emitter) {
+        sendEvent(sessionId, playerId, emitter, SseEmitter.event().comment("keep-alive"));
+    }
+
+    private void sendEvent(
+            final String sessionId, final String playerId, final SseEmitter emitter,
+            final SseEmitter.SseEventBuilder event) {
         try {
-            emitter.send(SseEmitter.event()
-                    .name("state-changed")
-                    .data(payload));
+            emitter.send(event);
         } catch (IOException | IllegalStateException ex) {
             log.debug("Removing dead SSE emitter for session {} player {}: {}", sessionId, playerId,
                     ex.getMessage());
@@ -145,6 +158,22 @@ public class SessionEventBroadcaster {
         val emitters = playerSubscribers.get(playerId);
         if (emitters != null) {
             emitters.remove(emitter);
+            if (emitters.isEmpty()) {
+                playerSubscribers.remove(playerId);
+                if (playerSubscribers.isEmpty()) {
+                    subscribers.remove(sessionId);
+                }
+            }
         }
+    }
+
+    @Scheduled(fixedRate = 15_000)
+    public void sendHeartbeats() {
+        subscribers.forEach((sessionId, playerSubscribers) ->
+                playerSubscribers.forEach((playerId, emitters) -> {
+                    for (val emitter : List.copyOf(emitters)) {
+                        sendHeartbeat(sessionId, playerId, emitter);
+                    }
+                }));
     }
 }

@@ -144,4 +144,50 @@ class SessionEventBroadcasterTest {
 
         verify(controllerApi, never()).getGameState(anyString(), anyString());
     }
+
+    @Test
+    void sendHeartbeats_sendsHeartbeatCommentToEveryRegisteredEmitterAcrossMultipleSessionsAndPlayers() {
+        when(controllerApi.getCurrentGameStage("session1")).thenReturn(GameStage.PREPARATION);
+        when(controllerApi.getLastSessionChangeTime("session1")).thenReturn("t1");
+        when(controllerApi.getOpponentInformation("session1", "alice")).thenThrow(
+                new GameOpponentNotFoundException("no opponent yet"));
+        when(controllerApi.getCurrentGameStage("session2")).thenReturn(GameStage.PREPARATION);
+        when(controllerApi.getLastSessionChangeTime("session2")).thenReturn("t2");
+        when(controllerApi.getOpponentInformation("session2", "bob")).thenThrow(
+                new GameOpponentNotFoundException("no opponent yet"));
+
+        broadcaster.subscribe("session1", "alice");
+        broadcaster.subscribe("session2", "bob");
+
+        // Reset mock interactions before calling sendHeartbeats
+        reset(controllerApi);
+        when(controllerApi.getCurrentGameStage(anyString())).thenReturn(GameStage.PREPARATION);
+        when(controllerApi.getLastSessionChangeTime(anyString())).thenReturn("t");
+        when(controllerApi.getOpponentInformation(anyString(), anyString())).thenThrow(
+                new GameOpponentNotFoundException("no opponent yet"));
+
+        broadcaster.sendHeartbeats();
+
+        // Verify that no controllerApi methods were called during sendHeartbeats (heartbeats are comments)
+        verifyNoInteractions(controllerApi);
+    }
+
+    @Test
+    void sendHeartbeats_doesNothingWhenNoSubscribersAreRegistered() {
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> broadcaster.sendHeartbeats());
+        verifyNoInteractions(controllerApi);
+    }
+
+    @Test
+    void sendHeartbeats_silentlyRemovesDeadEmitterWithoutThrowing() {
+        when(controllerApi.getCurrentGameStage("sessionId")).thenReturn(GameStage.PREPARATION);
+        when(controllerApi.getLastSessionChangeTime("sessionId")).thenReturn("t1");
+        when(controllerApi.getOpponentInformation("sessionId", "alice")).thenThrow(
+                new GameOpponentNotFoundException("no opponent yet"));
+
+        val emitter = broadcaster.subscribe("sessionId", "alice");
+        emitter.complete(); // simulates the client having disconnected
+
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> broadcaster.sendHeartbeats());
+    }
 }

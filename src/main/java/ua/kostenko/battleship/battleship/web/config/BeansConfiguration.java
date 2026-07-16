@@ -3,6 +3,7 @@ package ua.kostenko.battleship.battleship.web.config;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import ua.kostenko.battleship.battleship.logic.api.GameControllerApi;
 import ua.kostenko.battleship.battleship.logic.api.IdGenerator;
 import ua.kostenko.battleship.battleship.logic.api.impl.GameControllerApiImpl;
@@ -24,6 +25,7 @@ import ua.kostenko.battleship.battleship.web.sse.SessionEventBroadcaster;
  * @see SessionEventBroadcaster
  */
 @Configuration
+@EnableScheduling
 public class BeansConfiguration {
 
     /**
