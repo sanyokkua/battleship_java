@@ -68,9 +68,10 @@ test('happy path: create -> wait -> prepare -> play -> results (win)', async ({p
     await hardNavigate(page, '/game/preparation');
     await expect(page.getByText('Place your fleet')).toBeVisible();
 
-    // Place Player 1's whole fleet via real UI interaction, exercising DirectionToggle
-    // for one ship (the smallest ship in the fleet is placed VERTICAL - see
-    // computeFleetLayout's `verticalFirst` doc comment for why that one is always safe).
+    // Place Player 1's whole fleet via real UI interaction, exercising the guided
+    // placement popup's direction step for one ship (the smallest ship in the fleet is
+    // placed VERTICAL - see computeFleetLayout's `verticalFirst` doc comment for why
+    // that one is always safe).
     const ownShips = await fetchShipCatalog(page, sessionId, player!.playerId);
     const ownPlacements = computeFleetLayout(ownShips, {verticalFirst: true});
     expect(ownPlacements.some((p) => p.direction === 'VERTICAL')).toBe(true);

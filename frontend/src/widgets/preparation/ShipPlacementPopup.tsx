@@ -42,8 +42,7 @@ export type ShipPlacementPopupProps = {
  * Tap-empty-cell placement popup: step 1 lists remaining ships that fit at the tapped cell
  * (pre-filtered by the caller via `computeEligibleShips`), step 2 lists only that ship's valid
  * orientations there (pre-filtered via `computeValidDirections`). Confirming a direction calls
- * `onConfirm`; the caller owns the actual `placeShip` adapter call, toasts, and error handling,
- * matching how `ShipTray`/`DirectionToggle` bubble plain callbacks up to `PreparationScreen`.
+ * `onConfirm`; the caller owns the actual `placeShip` adapter call, toasts, and error handling.
  */
 export function ShipPlacementPopup({
                                        open,

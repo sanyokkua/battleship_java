@@ -17,20 +17,6 @@
       "message": "Ship removed — place it again."
     }
   },
-  "place": {
-    "tooClose": {
-      "title": "Can't place there",
-      "message": "Ships can't touch — try another spot."
-    },
-    "outOfBounds": {
-      "title": "Can't place there",
-      "message": "That placement goes off the board."
-    },
-    "occupied": {
-      "title": "Can't place there",
-      "message": "That cell is already occupied."
-    }
-  },
   "ready": {
     "needAllShips": {
       "title": "Not ready yet",

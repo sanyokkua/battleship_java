@@ -1,5 +1,5 @@
-/* Two-column desktop layout (fleet panel + direction toggle on the left, board
- * on the right), single column / stacked on mobile (tray above board). */
+/* Single-column stack: board panel only (ship placement is handled entirely via
+ * ShipPlacementPopup/ShipActionPopup, tapped from the board). */
 
 .prep-screen-head {
     display: flex;
@@ -20,33 +20,9 @@
 }
 
 .prep-grid {
-    display: grid;
-    gap: 22px;
-    grid-template-columns: 1fr;
-}
-
-@media (min-width: 641px) {
-    .prep-grid {
-        grid-template-columns: 290px 1fr;
-        align-items: start;
-    }
-}
-
-.fleet-panel-wrap {
     display: flex;
     flex-direction: column;
-}
-
-/* On mobile, show the fleet list before the H/V toggle (the toggle matters most once a
- * ship is selected, so it reads better just above the board rather than at the very top). */
-@media (max-width: 640px) {
-    .prep-dir-toggle-wrap {
-        order: 2;
-    }
-
-    .fleet-panel-wrap > .fleet-panel {
-        order: 1;
-    }
+    gap: 22px;
 }
 
 .prep-ready-btn {

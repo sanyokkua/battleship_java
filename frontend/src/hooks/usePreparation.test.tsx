@@ -1,5 +1,5 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
-import {act, renderHook, waitFor} from "@testing-library/react";
+import {renderHook, waitFor} from "@testing-library/react";
 import type {ReactNode} from "react";
 import {MockGameAdapter} from "../adapters/MockGameAdapter";
 import {GameAdapterProvider} from "../adapters/GameAdapterContext";
@@ -77,7 +77,7 @@ describe("usePreparation", () => {
         const oneCellShip = result.current.ships.find(s => s.shipSize === 1)!;
         const initialShipCount = result.current.ships.length;
 
-        await result.current.placeShip(oneCellShip.shipId, {row: 5, column: 5});
+        await result.current.placeShip(oneCellShip.shipId, {row: 5, column: 5}, "HORIZONTAL");
 
         await waitFor(() => {
             expect(result.current.ships.length).toBe(initialShipCount - 1);
@@ -109,13 +109,11 @@ describe("usePreparation", () => {
         await waitFor(() => expect(result.current.loading).toBe(false));
         expect(result.current.allPlaced).toBe(false);
 
-        // Place every ship using a non-colliding VERTICAL layout (see nonCollidingPlacements) —
-        // the hook's placeShip uses whatever `direction` is currently set, so set it first.
-        act(() => result.current.setDirection("VERTICAL"));
+        // Place every ship using a non-colliding VERTICAL layout (see nonCollidingPlacements).
         const shipsToPlace = [...result.current.ships];
         const placements = nonCollidingPlacements(shipsToPlace);
         for (const ship of shipsToPlace) {
-            await result.current.placeShip(ship.shipId, placements.get(ship.shipId)!);
+            await result.current.placeShip(ship.shipId, placements.get(ship.shipId)!, "VERTICAL");
         }
 
         await waitFor(() => expect(result.current.allPlaced).toBe(true));
@@ -134,7 +132,7 @@ describe("usePreparation", () => {
         const shipsBefore = result.current.ships;
         const fieldBefore = result.current.field;
 
-        await result.current.placeShip("non-existent-ship-id", {row: 0, column: 0});
+        await result.current.placeShip("non-existent-ship-id", {row: 0, column: 0}, "HORIZONTAL");
 
         await waitFor(() => expect(result.current.error).not.toBeNull());
         expect(result.current.error?.errorCode).toBe("SHIP_ID_INVALID");

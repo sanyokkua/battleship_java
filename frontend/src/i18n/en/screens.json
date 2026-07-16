@@ -41,11 +41,8 @@
   "preparation": {
     "title": "Place your fleet",
     "progress": "{{placed}} of {{total}} ships placed",
-    "hint": "Pick a ship, choose a direction, then tap a cell — or tap an empty cell to choose a ship there. Tap a placed ship to rotate or remove it (or use ✕).",
     "directionHorizontal": "Horizontal",
     "directionVertical": "Vertical",
-    "fleetLabel": "Your fleet",
-    "placedLabel": "placed",
     "readyButton": "Ready to go!",
     "opponentLabel": "Opponent",
     "boardLabel": "Your waters",
