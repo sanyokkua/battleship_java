@@ -12,9 +12,18 @@ frontend (verified against `frontend/src/hooks/` and `frontend/src/screens/`). S
 
 The backend is a strict top-down layering with no back-references:
 
-- **`web.controllers.rest`** — three `@RestController`s (`GameSessionCommonRestController`,
-  `PreparationRestController`, `GameplayRestController`), all under `/api/v2/game`. Controllers do
-  request/response DTO mapping only; they hold no business logic.
+- **`web.controllers.rest`** — four `@RestController`s (`GameSessionCommonRestController`,
+  `PreparationRestController`, `GameplayRestController`, `GameSessionEventsRestController`), all
+  under `/api/v2/game`. Controllers do request/response DTO mapping only; they hold no business
+  logic. `GameSessionEventsRestController` is the exception to "request/response" — it returns a
+  long-lived `SseEmitter` (see `web.sse` below) rather than a single response.
+- **`web.sse`** — `SessionEventBroadcaster` holds per-`(sessionId, playerId)` `SseEmitter`
+  subscriptions and pushes a fresh `ResponseSessionPushDto` snapshot to them whenever a
+  `GameStateChangedEvent` is published. Every mutating `GameControllerApiImpl` method (session
+  creation, player join, ship placement/removal, marking ready, taking a shot) publishes this
+  event after releasing its per-session lock, so broadcasting can never stall an unrelated request
+  against the same session. Payloads are built per-subscriber (not broadcast identically), since an
+  opponent's ships stay hidden until the game finishes.
 - **`logic.api`** — `GameControllerApi` / `GameControllerApiImpl` is the single boundary between
   web and engine. `ValidationUtils` performs all input validation here (blank checks, enum
   parsing, coordinate bounds), throwing one of 8 typed exceptions on failure. No Spring MVC type
@@ -47,17 +56,20 @@ hooks, following an Adapter/Widget architecture (see the tree in
   `JoinGameScreen`, `WaitScreen`, `PreparationScreen`, `GameplayScreen`, `ResultsScreen`), composed
   from `widgets/` and driven by the `hooks/` below. Routing and stage-based redirects live in
   `routing/AppRoutes.tsx` and `routing/StageGuard.tsx`.
-- **`hooks/`** — one polling/state hook per screen that needs it: `usePreparation` (3s poll),
-  `useWaitRoom` (3s poll, stops once the session stage moves past `WAITING_FOR_PLAYERS`),
-  `useGameplay` (5s poll, stops once the gameplay state reports a winner), `useSessionGuard`
-  (reads/validates the locally stored session/player). All are built on the shared `usePolling`
-  interval hook.
+- **`hooks/`** — one push/state hook per screen that needs it, each built on the shared
+  `useSessionEvents` SSE-subscription hook: `usePreparation` (also does a one-time fetch of the
+  current player's ships/field on mount; opponent-ready/stage come from the push), `useWaitRoom`
+  (stops applying pushes once the session stage moves past `WAITING_FOR_PLAYERS`), `useGameplay`
+  (stops applying pushes once the gameplay state reports a winner; the acting player's own shot
+  outcome bypasses the push via an explicit refetch — see Diagram 3), `useSessionGuard`
+  (reads/validates the locally stored session/player).
 - **`widgets/`** — reusable feature UI grouped by area: `board/` (the 10×10 grid + legend),
-  `preparation/` (ship tray, direction toggle), `gameplay/` (player card, turn banner), `feedback/`
-  (toasts, confirm dialogs, backend-error-to-i18n-key mapping), `layout/` (app bar, loading view).
+  `preparation/` (ship tray, direction toggle, ship-action/placement popups), `gameplay/` (player
+  card, turn banner), `feedback/` (toasts, confirm dialogs, backend-error-to-i18n-key mapping),
+  `layout/` (app bar, loading view).
 - **`design/`** — the custom CSS design system that replaced Bootstrap: design tokens
-  (`tokens.css`, `base.css`) and a small component set (`Button`, `Card`, `Field`, `Input`,
-  `LoadingBar`, `ModeCard`, `Pill`, `StepTracker`).
+  (`tokens.css`, `base.css`) and a small component set (`Button`, `Field`, `Input`, `LoadingBar`,
+  `ModeCard`, `Pill`, `Sheet`, `StepTracker`).
 - **`i18n/`** / **`i18n-support/`** — i18next configuration and `en`/`uk` locale JSON (`common`,
   `errors`, `notifications`, `screens` namespaces), plus lookup helpers for edition/ship-type
   display names.
@@ -87,54 +99,48 @@ stateDiagram-v2
 ## Diagram 2 — Session setup (creation through entering PREPARATION)
 
 Covers `HomeScreen` → `NewGameScreen`/`JoinGameScreen` → session/player creation →
-`WaitScreen` polling (`useWaitRoom`) → both browsers landing in `PreparationScreen`.
+`WaitScreen`'s SSE subscription (`useWaitRoom`) → both browsers landing in `PreparationScreen`.
 
 ```mermaid
 sequenceDiagram
     participant p1 as "Player 1 Browser"
     participant api as "REST API"
     participant p2 as "Player 2 Browser"
-
-    p1->>api: POST /sessions #40;edition#41;
-    api-->>p1: sessionId #40;201#41;
-    p1->>api: POST /sessions/#123;id#125;/players #40;name#41;
-    api-->>p1: playerId1 #40;201#41;
-    p1->>p1: Navigate to WaitScreen
-
-    loop every 3s until stage leaves WAITING_FOR_PLAYERS
-        p1->>api: GET .../players/#123;p1#125;/opponent
-        p1->>api: GET .../state #40;stage#41;
-        api-->>p1: opponent not yet joined, stage#58; WAITING_FOR_PLAYERS
-    end
-
-    p2->>api: POST /sessions/#123;id#125;/players #40;name#41;
-    api-->>p2: playerId2 #40;201#41;
-    p2->>p2: Navigate to WaitScreen
-    p2->>api: GET .../players/#123;p2#125;/opponent
-    p2->>api: GET .../state #40;stage#41;
-    api-->>p2: stage#58; PREPARATION #40;already past waiting#41;
-    p2->>p2: navigate to PreparationScreen
-
-    p1->>api: GET .../players/#123;p1#125;/opponent
-    p1->>api: GET .../state #40;stage#41;
-    api-->>p1: opponent.playerName populated, stage#58; PREPARATION
-    p1->>p1: stop polling, navigate to PreparationScreen
+    p1 ->> api: POST /sessions #40; edition #41;
+    api -->> p1: sessionId #40; 201 #41;
+    p1 ->> api: POST /sessions/ #123; id #125; /players #40; name #41;
+    api -->> p1: playerId1 #40; 201 #41;
+    p1 ->> p1: Navigate to WaitScreen
+    p1 ->> api: GET .../players/ #123; p1 #125; /events #40; open SSE #41;
+    api -->> p1: snapshot #58; opponent #61; null, stage #58; WAITING_FOR_PLAYERS
+    p2 ->> api: POST /sessions/ #123; id #125; /players #40; name #41;
+    api -->> p2: playerId2 #40; 201 #41;
+    Note over api: publishes GameStateChangedEvent
+    api --) p1: push #58; opponent populated, stage #58; PREPARATION
+    p1 ->> p1: close SSE, navigate to PreparationScreen
+    p2 ->> p2: Navigate to WaitScreen
+    p2 ->> api: GET .../players/ #123; p2 #125; /events #40; open SSE #41;
+    api -->> p2: snapshot #58; stage #58; PREPARATION #40; already past waiting #41;
+    p2 ->> p2: close SSE, navigate to PreparationScreen
 ```
 
-Both players route through `WaitScreen`/`useWaitRoom`, which polls the opponent-info and stage
-endpoints together every 3 seconds (immediately on mount, then every 3s) and stops as soon as the
-stage is `PREPARATION` or later. In practice this still produces the same asymmetry as before:
-player 1 (the creator) genuinely waits through one or more 3-second polls, while player 2 (the
-joiner) sees `PREPARATION` on its very first, immediate poll — since by definition the session
-already has both players once they join — and passes through `WaitScreen` almost instantly rather
-than rendering it for a full interval.
+Both players route through `WaitScreen`/`useWaitRoom`, which opens a single SSE subscription
+(`useSessionEvents`) instead of polling: `GameSessionEventsRestController` sends an immediate
+state snapshot on connect, then a fresh push whenever another mutating call (here, player 2
+joining) publishes a `GameStateChangedEvent` for that session. `useWaitRoom` stops applying
+further pushes once a received snapshot's stage reaches `PREPARATION` or later, and the
+subscription itself closes on unmount (navigation away from `WaitScreen`). This produces the same
+asymmetry as before: player 1 (the creator) genuinely waits for a push once player 2 joins, while
+player 2 (the joiner) sees `PREPARATION` on its very first, immediate snapshot — since by
+definition the session already has both players once they join — and passes through `WaitScreen`
+almost instantly rather than waiting on a push at all.
 
 ---
 
 ## Diagram 3 — Gameplay loop (ship placement/ready through a finished game)
 
 Covers `PreparationScreen` ship placement/ready (`usePreparation`), the transition into
-`GameplayScreen`, a shot and its result, the 5-second gameplay-state poll (`useGameplay`), and the
+`GameplayScreen`, a shot and its result, the SSE-pushed gameplay state (`useGameplay`), and the
 transition to `ResultsScreen` on a winner.
 
 ```mermaid
@@ -142,43 +148,38 @@ sequenceDiagram
     participant act as "Active Player Browser"
     participant api as "REST API"
     participant opp as "Opponent Browser"
-
-    act->>api: PUT .../ships/#123;shipId#125; #40;place each ship#41;
-    act->>api: POST .../players/#123;act#125;/start
-    api-->>act: ready#61;true, first-ready becomes active
-    opp->>api: POST .../players/#123;opp#125;/start
-    api-->>opp: ready#61;true
-    Note over api: PREPARATION to IN_GAME #40;both ready#41;
-    act->>act: Navigate to GameplayScreen
-
-    act->>api: POST .../field/shot #40;row, col#41;
-    api-->>act: shotResult#58; MISS
-    act->>api: GET .../players/#123;act#125;/state #40;immediate refetch after the shot#41;
-
-    loop opponent polls every 5s #40;useGameplay#41; while waiting for their turn
-        opp->>api: GET .../players/#123;opp#125;/state
-        api-->>opp: isPlayerActive#58; false
-    end
-    opp->>api: GET .../players/#123;opp#125;/state
-    api-->>opp: isPlayerActive#58; true
-
-    opp->>api: POST .../field/shot #40;row, col#41;
-    api-->>opp: shotResult#58; DESTROYED #40;opponent#39;s last ship#41;
-    opp->>api: GET .../players/#123;opp#125;/state #40;immediate refetch#41;
-    api-->>opp: hasWinner#58; true
-    opp->>opp: Navigate to ResultsScreen
-    act->>api: GET .../players/#123;act#125;/state
-    api-->>act: hasWinner#58; true, winnerPlayerName
-    act->>act: Navigate to ResultsScreen
+    act ->> api: PUT .../ships/ #123; shipId #125; #40; place each ship #41;
+    act ->> api: POST .../players/ #123; act #125; /start
+    api -->> act: ready #61; true, first-ready becomes active
+    opp ->> api: POST .../players/ #123; opp #125; /start
+    api -->> opp: ready #61; true
+    Note over api: PREPARATION to IN_GAME #40; both ready #41; #8212; publishes GameStateChangedEvent
+    api --) act: push on PreparationScreen's SSE #58; stage #58; IN_GAME
+    api --) opp: push on PreparationScreen's SSE #58; stage #58; IN_GAME
+    act ->> act: Navigate to GameplayScreen, open a new SSE #40; useGameplay #41;
+    opp ->> opp: Navigate to GameplayScreen, open a new SSE #40; useGameplay #41;
+    act ->> api: POST .../field/shot #40; row, col #41;
+    api -->> act: shotResult #58; MISS
+    act ->> api: GET .../players/ #123; act #125; /state #40; explicit self-refetch, bypasses the push #41;
+    Note over api: shot mutation publishes GameStateChangedEvent
+    api --) opp: push #58; isPlayerActive #58; true #40; opponent #39; s turn #41;
+    opp ->> api: POST .../field/shot #40; row, col #41;
+    api -->> opp: shotResult #58; DESTROYED #40; opponent #39; s last ship #41;
+    opp ->> api: GET .../players/ #123; opp #125; /state #40; explicit self-refetch #41;
+    api -->> opp: hasWinner #58; true
+    opp ->> opp: Navigate to ResultsScreen
+    api --) act: push #58; hasWinner #58; true, winnerPlayerName
+    act ->> act: Navigate to ResultsScreen
 ```
 
-`useGameplay` polls the full `GET .../players/{playerId}/state` endpoint every 5 seconds
-unconditionally (there is no separate cheap `changesTime` pre-check in the current frontend — it
-polls the same state endpoint the whole time) and stops only once that state reports a winner. It
-does not specially suspend polling on a `HIT`/`DESTROYED`; instead, every `shoot()` call
-synchronously refetches state right after the shot resolves, which is what makes chained shots on a
-`HIT` feel instant regardless of the 5-second interval — see `frontend/src/hooks/useGameplay.ts`
-and `frontend/src/screens/GameplayScreen.tsx`.
+`useGameplay` opens a single SSE subscription (`useSessionEvents`) on mount instead of polling, and
+applies each pushed `gameplayState` directly. The *acting* player's own view bypasses the push
+entirely: `shoot()` calls the adapter immediately and refetches state right after via a plain
+`GET .../state` call, so the UI reflects the shot's outcome without waiting for a round trip
+through the push channel — the push exists to observe the *opponent's* moves. Once a pushed or
+refetched state reports `hasWinner`, a `doneRef` flag stops applying any further pushes, so a stray
+late event can't resurrect a stale non-winning state — see `frontend/src/hooks/useGameplay.ts` and
+`frontend/src/screens/GameplayScreen.tsx`.
 
 ---
 
@@ -187,15 +188,15 @@ and `frontend/src/screens/GameplayScreen.tsx`.
 Both editions use a 10×10 board and exactly 10 ships; only the ship-size distribution (and
 therefore total occupied cells) differs.
 
-| Ship Type | Size | Ukrainian — Count | Milton Bradley — Count |
-|---|---|---|---|
-| PATROL_BOAT | 1 | 4 | — |
-| SUBMARINE | 2 | 3 | 4 |
-| DESTROYER | 3 | 2 | 3 |
-| BATTLESHIP | 4 | 1 | 2 |
-| CARRIER | 5 | — | 1 |
-| **Total ships** | | **10** | **10** |
-| **Total occupied cells** | | **20** | **30** |
+| Ship Type                | Size | Ukrainian — Count | Milton Bradley — Count |
+|--------------------------|------|-------------------|------------------------|
+| PATROL_BOAT              | 1    | 4                 | —                      |
+| SUBMARINE                | 2    | 3                 | 4                      |
+| DESTROYER                | 3    | 2                 | 3                      |
+| BATTLESHIP               | 4    | 1                 | 2                      |
+| CARRIER                  | 5    | —                 | 1                      |
+| **Total ships**          |      | **10**            | **10**                 |
+| **Total occupied cells** |      | **20**            | **30**                 |
 
 Source: `logic/engine/config/UkrainianGameEditionConfiguration.java` and
 `MiltonBradleyGameEditionConfiguration.java`.

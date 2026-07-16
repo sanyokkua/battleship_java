@@ -15,6 +15,9 @@
     "copy": "Copy",
     "back": "Back"
   },
+  "toast": {
+    "dismiss": "Dismiss notification"
+  },
   "edition": {
     "ukrainian": {
       "name": "Ukrainian",

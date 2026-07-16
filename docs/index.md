@@ -5,7 +5,7 @@ domain: "Game Engine / Turn-Based Multiplayer"
 owner: "Oleksandr Kostenko"
 stack: "Java 25, Spring Boot 4.1.0 (backend); Vite + React 19 + TypeScript (frontend)"
 project_type: "Web service (REST backend + bundled SPA frontend)"
-last_updated: "2026-07-15"
+last_updated: "2026-07-16"
 ---
 
 # battleship_java
@@ -20,16 +20,16 @@ frontend, Docker/Podman packaging). This branch is not yet merged to `master`. S
 
 ## 1. Service Identity Card
 
-| Field | Value |
-|---|---|
-| **Service Name** | battleship_java |
-| **Service ID** | battleship-java |
-| **Purpose** | Play a two-player Battleship game end-to-end (session creation, ship placement, turn-based shooting, win detection) via a REST API and a bundled web UI. |
-| **Domain** | Game engine / turn-based multiplayer (educational project — not for production use) |
-| **Keywords & Synonyms** | Battleship, Sea Battle, Морський бій; "session" = one game instance; "edition" = ruleset |
-| **Owner / Team** | Oleksandr Kostenko (sole contributor per git history) |
-| **Technology Stack** | Java 25 + Spring Boot 4.1.0 (Web MVC, Lombok, springdoc-openapi) backend; Vite + React 19 + TypeScript + a custom CSS design system frontend; i18next (en/uk) for UI copy; Maven (`frontend-maven-plugin` + `maven-resources-plugin`) bundles the frontend build into the Spring Boot JAR; Docker/Podman packaging (`eclipse-temurin:25-jre` runtime image) |
-| **Repository** | `git@github.com:sanyokkua/battleship_java.git` (default branch `master`; this doc reflects branch `feature/redesign-v2`) |
+| Field                   | Value                                                                                                                                                                                                                                                                                                                                                       |
+|-------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Service Name**        | battleship_java                                                                                                                                                                                                                                                                                                                                             |
+| **Service ID**          | battleship-java                                                                                                                                                                                                                                                                                                                                             |
+| **Purpose**             | Play a two-player Battleship game end-to-end (session creation, ship placement, turn-based shooting, win detection) via a REST API and a bundled web UI.                                                                                                                                                                                                    |
+| **Domain**              | Game engine / turn-based multiplayer (educational project — not for production use)                                                                                                                                                                                                                                                                         |
+| **Keywords & Synonyms** | Battleship, Sea Battle, Морський бій; "session" = one game instance; "edition" = ruleset                                                                                                                                                                                                                                                                    |
+| **Owner / Team**        | Oleksandr Kostenko (sole contributor per git history)                                                                                                                                                                                                                                                                                                       |
+| **Technology Stack**    | Java 25 + Spring Boot 4.1.0 (Web MVC, Lombok, springdoc-openapi) backend; Vite + React 19 + TypeScript + a custom CSS design system frontend; i18next (en/uk) for UI copy; Maven (`frontend-maven-plugin` + `maven-resources-plugin`) bundles the frontend build into the Spring Boot JAR; Docker/Podman packaging (`eclipse-temurin:25-jre` runtime image) |
+| **Repository**          | `git@github.com:sanyokkua/battleship_java.git` (default branch `master`; this doc reflects branch `feature/redesign-v2`)                                                                                                                                                                                                                                    |
 
 ---
 
@@ -58,7 +58,6 @@ flowchart LR
     engine["Game / GameImpl<br/>FieldManagement / Impl"]
     config["GameEditionConfiguration<br/>#40;Ukrainian, Milton Bradley#41;"]
     persistence[("InMemoryPersistence<br/>ConcurrentHashMap#60;sessionId, GameState#62;")]
-
     browser --> brs
     brs --> sessionCtrl
     brs --> prepCtrl
@@ -78,8 +77,9 @@ Deeper diagrams (the `GameStage` state machine and two sequence flows) are in
 
 ## 3. Entry Points (Inputs)
 
-All entry points are synchronous REST endpoints under base path `/api/v2/game`, defined across
-three controllers. **Auth: none — there is no authentication/authorization layer anywhere in the
+All entry points are REST endpoints under base path `/api/v2/game`, defined across four
+controllers — three synchronous request/response controllers plus one Server-Sent Events (SSE)
+controller for push notifications (§3.4). **Auth: none — there is no authentication/authorization layer anywhere in the
 project; any caller who knows a `sessionId`/`playerId` can act as that player.** This is stated
 explicitly rather than omitted, per the project's frozen-scope, no-database, single-instance
 design.
@@ -89,38 +89,55 @@ design.
 Base: `@RequestMapping("/api/v2/game")`, file:
 `src/main/java/ua/kostenko/battleship/battleship/web/controllers/rest/GameSessionCommonRestController.java`
 
-| Verb | Path | Request DTO | Response DTO | Trigger Semantics |
-|---|---|---|---|---|
-| GET | `/editions` | — | `ResponseAvailableGameEditionsDto` | List supported rulesets (UKRAINIAN, MILTON_BRADLEY) |
-| POST | `/sessions` | `ParamGameEditionDto` | `ResponseCreatedSessionIdDto` | Start a new game session for the chosen edition (201 CREATED) |
-| POST | `/sessions/{sessionId}/players` | `ParamPlayerNameDto` | `ResponseCreatedPlayerDto` | A player joins a session (1st or 2nd) (201 CREATED) |
-| GET | `/sessions/{sessionId}/state` | — | `ResponseCurrentGameStageDto` | Poll the session's current `GameStage` |
-| GET | `/sessions/{sessionId}/changesTime` | — | `ResponseLastSessionChangeTimeDto` | Poll a cheap "has anything changed" timestamp, used to gate more expensive state fetches |
+| Verb | Path                                | Request DTO           | Response DTO                       | Trigger Semantics                                                                        |
+|------|-------------------------------------|-----------------------|------------------------------------|------------------------------------------------------------------------------------------|
+| GET  | `/editions`                         | —                     | `ResponseAvailableGameEditionsDto` | List supported rulesets (UKRAINIAN, MILTON_BRADLEY)                                      |
+| POST | `/sessions`                         | `ParamGameEditionDto` | `ResponseCreatedSessionIdDto`      | Start a new game session for the chosen edition (201 CREATED)                            |
+| POST | `/sessions/{sessionId}/players`     | `ParamPlayerNameDto`  | `ResponseCreatedPlayerDto`         | A player joins a session (1st or 2nd) (201 CREATED)                                      |
+| GET  | `/sessions/{sessionId}/state`       | —                     | `ResponseCurrentGameStageDto`      | Poll the session's current `GameStage`                                                   |
+| GET  | `/sessions/{sessionId}/changesTime` | —                     | `ResponseLastSessionChangeTimeDto` | Poll a cheap "has anything changed" timestamp, used to gate more expensive state fetches |
 
 ### 3.2 PreparationRestController — ship placement endpoints
 
 Base: `@RequestMapping("/api/v2/game/sessions/{sessionId}")`, file:
 `src/main/java/ua/kostenko/battleship/battleship/web/controllers/rest/PreparationRestController.java`
 
-| Verb | Path | Request DTO | Response DTO | Trigger Semantics |
-|---|---|---|---|---|
-| GET | `/players/{playerId}/preparationState` | — | `ResponsePreparationState` | Fetch ships not yet placed + current board |
-| PUT | `/players/{playerId}/ships/{shipId}` | `ParamShipDto` | `ResponseShipAddedDto` | Place a specific ship at a coordinate/direction |
-| DELETE | `/players/{playerId}/ships` | `ParamCoordinateDto` | `ResponseShipRemovedDto` | Remove whatever ship occupies a coordinate |
-| GET | `/players/{playerId}/opponent` | — | `ResponseOpponentInformationDto` | Poll opponent's name/ready status |
-| POST | `/players/{playerId}/start` | — | `ResponsePlayerReady` | Mark the calling player ready (requires all ships placed) |
+| Verb   | Path                                   | Request DTO          | Response DTO                     | Trigger Semantics                                         |
+|--------|----------------------------------------|----------------------|----------------------------------|-----------------------------------------------------------|
+| GET    | `/players/{playerId}/preparationState` | —                    | `ResponsePreparationState`       | Fetch ships not yet placed + current board                |
+| PUT    | `/players/{playerId}/ships/{shipId}`   | `ParamShipDto`       | `ResponseShipAddedDto`           | Place a specific ship at a coordinate/direction           |
+| DELETE | `/players/{playerId}/ships`            | `ParamCoordinateDto` | `ResponseShipRemovedDto`         | Remove whatever ship occupies a coordinate                |
+| GET    | `/players/{playerId}/opponent`         | —                    | `ResponseOpponentInformationDto` | Poll opponent's name/ready status                         |
+| POST   | `/players/{playerId}/start`            | —                    | `ResponsePlayerReady`            | Mark the calling player ready (requires all ships placed) |
 
 ### 3.3 GameplayRestController — shooting endpoints
 
 Base: `@RequestMapping("/api/v2/game/sessions/{sessionId}")`, file:
 `src/main/java/ua/kostenko/battleship/battleship/web/controllers/rest/GameplayRestController.java`
 
-| Verb | Path | Request DTO | Response DTO | Trigger Semantics |
-|---|---|---|---|---|
-| GET | `/players/{playerId}/state` | — | `ResponseGameplayStateDto` | Fetch full gameplay state: both boards, alive counts, winner |
-| POST | `/players/{playerId}/field/shot` | `ParamCoordinateDto` | `ResponseShotResultDto` | Fire a shot at a coordinate on the opponent's board |
+| Verb | Path                             | Request DTO          | Response DTO               | Trigger Semantics                                            |
+|------|----------------------------------|----------------------|----------------------------|--------------------------------------------------------------|
+| GET  | `/players/{playerId}/state`      | —                    | `ResponseGameplayStateDto` | Fetch full gameplay state: both boards, alive counts, winner |
+| POST | `/players/{playerId}/field/shot` | `ParamCoordinateDto` | `ResponseShotResultDto`    | Fire a shot at a coordinate on the opponent's board          |
 
-**12 endpoints total** (5 + 5 + 2).
+### 3.4 GameSessionEventsRestController — push notifications (SSE)
+
+Base: `@RequestMapping("/api/v2/game/sessions/{sessionId}")`, file:
+`src/main/java/ua/kostenko/battleship/battleship/web/controllers/rest/GameSessionEventsRestController.java`
+
+| Verb | Path                         | Request DTO | Response DTO                                               | Trigger Semantics                                                                                                                                                                                                                  |
+|------|------------------------------|-------------|------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| GET  | `/players/{playerId}/events` | —           | `ResponseSessionPushDto` (SSE stream, `text/event-stream`) | Subscribe to a session's state-change push notifications: an immediate snapshot is sent on connect, then a fresh snapshot whenever the session's state changes (opponent joins/readies, a shot resolves, a stage transition, etc.) |
+
+This controller replaces client-side polling for the frontend's Preparation/Gameplay/WaitRoom
+screens (see [`docs/architecture.md`](architecture.md) for the push flow). `ResponseSessionPushDto`
+wraps the existing `ResponseOpponentInformationDto`/`ResponseGameplayStateDto` shapes rather than
+duplicating their fields — `opponent` is populated once an opponent has joined, `gameplayState`
+once the session is `IN_GAME` or `FINISHED`; both are `null` otherwise. Delivery is backed by
+`web.sse.SessionEventBroadcaster`, which holds open `SseEmitter`s per subscriber and pushes a new
+snapshot whenever a mutating engine call publishes a `GameStateChangedEvent`.
+
+**13 endpoints total** (5 + 5 + 2 + 1).
 
 ---
 
@@ -128,13 +145,13 @@ Base: `@RequestMapping("/api/v2/game/sessions/{sessionId}")`, file:
 
 ### 4.1 In-memory game-state write
 
-| Field | Value |
-|---|---|
-| **Type** | In-process map write |
-| **Target** | `InMemoryPersistence`'s `ConcurrentHashMap<String sessionId, GameState>` (`logic/persistence/InMemoryPersistence.java`), written under a per-session lock held by `GameControllerApiImpl` |
-| **Schema** | `GameState` record — see [§8.1](#81-key-entities) |
-| **Semantics** | Durable-for-the-JVM-lifetime snapshot of a session, replaced wholesale on every mutating call |
-| **Conditions** | Always, on every successful mutating engine call (`createPlayerInSession`, `addShipToField`, `removeShipFromField`, `startGame`, `makeShotByField`) |
+| Field          | Value                                                                                                                                                                                     |
+|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Type**       | In-process map write                                                                                                                                                                      |
+| **Target**     | `InMemoryPersistence`'s `ConcurrentHashMap<String sessionId, GameState>` (`logic/persistence/InMemoryPersistence.java`), written under a per-session lock held by `GameControllerApiImpl` |
+| **Schema**     | `GameState` record — see [§8.1](#81-key-entities)                                                                                                                                         |
+| **Semantics**  | Durable-for-the-JVM-lifetime snapshot of a session, replaced wholesale on every mutating call                                                                                             |
+| **Conditions** | Always, on every successful mutating engine call (`createPlayerInSession`, `addShipToField`, `removeShipFromField`, `startGame`, `makeShotByField`)                                       |
 
 This is the **only** exit point in the system. There are no outbound HTTP calls, no database, no
 message queues, no file writes, and no cache layer — stated explicitly, not omitted, because the
@@ -192,11 +209,13 @@ Every step re-reads and re-writes the same `GameState` record through
    advances `GameStage`: 1st player → `WAITING_FOR_PLAYERS`, 2nd player → `PREPARATION`.
 
 **Branching Conditions:**
+
 - Invalid/unknown edition string → `GameEditionIsNotCorrectException` (400).
 - 3rd player attempt → wrapped as `GameInternalProblemException` (500) by the API layer (the
   underlying `IllegalStateException` isn't one of the typed validation exceptions).
 
 **Business Rules:**
+
 - Maximum 2 players per session, hard-enforced in `GameUtils#validateNumberOfPlayers`.
 
 #### Flow: Ship placement
@@ -215,12 +234,14 @@ Every step re-reads and re-writes the same `GameState` record through
    (`player.setReady(false)`) and returns the ship to the player's unplaced pool.
 
 **Branching Conditions:**
+
 - Out-of-bounds or overlapping/adjacent placement → `GameCoordinateIsNotCorrectIncorrectException`
   (400).
 - Unknown `shipId` → `GameShipIdIsNotCorrectException` (400).
 - Called outside `PREPARATION` stage → `GameStageIsNotCorrectException` (400).
 
 **Business Rules:**
+
 - 8-neighbor "no touching" adjacency rule (not just no-overlap).
 - Removing a placed ship always resets that player's ready flag — a player cannot stay "ready"
   after changing their board.
@@ -230,22 +251,24 @@ Every step re-reads and re-writes the same `GameState` record through
 1. Client calls `POST /sessions/{sessionId}/players/{playerId}/field/shot` with a target
    `Coordinate` (`GameplayRestController#makeShotByField`).
 2. `FieldManagementImpl#makeShot` (lines 115-144) marks the target cell shot, then:
-   - No ship at that cell → `ShotResult.MISS`.
-   - Ship present → gathers every cell belonging to that ship
-     (`FieldUtils#findShipCells`); if all are now shot → `ShotResult.DESTROYED`, else `HIT`.
-   - On `DESTROYED`, `processDestroyedShip` (lines 222-236) marks all 8-neighbor cells of every
-     ship cell as `hasShot = true` too, so the opponent's board immediately reveals the empty
-     "moat" around a sunk ship (this is why sinking a ship can reveal more than the ship's own
-     cells).
+    - No ship at that cell → `ShotResult.MISS`.
+    - Ship present → gathers every cell belonging to that ship
+      (`FieldUtils#findShipCells`); if all are now shot → `ShotResult.DESTROYED`, else `HIT`.
+    - On `DESTROYED`, `processDestroyedShip` (lines 222-236) marks all 8-neighbor cells of every
+      ship cell as `hasShot = true` too, so the opponent's board immediately reveals the empty
+      "moat" around a sunk ship (this is why sinking a ship can reveal more than the ship's own
+      cells).
 3. `GameImpl#updateGameState` (lines 306-318) recomputes both players' remaining ship counts after
    every shot; if either reaches zero, the stage becomes `FINISHED` and the surviving player is
    flagged `winner`.
 
 **Branching Conditions:**
+
 - Called outside `IN_GAME` stage → `GameStageIsNotCorrectException` (400).
 - Out-of-bounds coordinate → `GameCoordinateIsNotCorrectIncorrectException` (400).
 
 **Business Rules:**
+
 - A sunk ship auto-reveals its neighbor cells on the opponent's view of the board.
 - Whoever reduces the opponent to zero surviving ships wins immediately (no separate "confirm win"
   step).
@@ -277,17 +300,17 @@ schedule first, but the resulting state is never a torn or lost update.
 
 ### 6.3 Error Handling & Edge Cases
 
-| Exception | HTTP Status | Triggering Condition |
-|---|---|---|
-| `GameCoordinateIsNotCorrectIncorrectException` | 400 | Coordinate outside the 10×10 board, or violates placement/adjacency rules |
-| `GameEditionIsNotCorrectException` | 400 | Blank or unrecognized `GameEdition` string |
-| `GamePlayerIdIsNotCorrectException` | 400 | Blank/null player ID |
-| `GamePlayerNameIsNotCorrectException` | 400 | Blank/null player name |
-| `GameSessionIdIsNotCorrectException` | 400 | Blank session ID, or session not found in persistence |
-| `GameShipDirectionIsNotCorrectException` | 400 | Blank or unrecognized `ShipDirection` string |
-| `GameShipIdIsNotCorrectException` | 400 | Blank ship ID, or ship not found among the player's ships |
-| `GameStageIsNotCorrectException` | 400 | Operation attempted while the session is in the wrong `GameStage` |
-| `GameInternalProblemException` | 500 | Any other unexpected `IllegalArgumentException`/`IllegalStateException` from the engine, wrapped by `GameControllerApiImpl` |
+| Exception                                      | HTTP Status | Triggering Condition                                                                                                        |
+|------------------------------------------------|-------------|-----------------------------------------------------------------------------------------------------------------------------|
+| `GameCoordinateIsNotCorrectIncorrectException` | 400         | Coordinate outside the 10×10 board, or violates placement/adjacency rules                                                   |
+| `GameEditionIsNotCorrectException`             | 400         | Blank or unrecognized `GameEdition` string                                                                                  |
+| `GamePlayerIdIsNotCorrectException`            | 400         | Blank/null player ID                                                                                                        |
+| `GamePlayerNameIsNotCorrectException`          | 400         | Blank/null player name                                                                                                      |
+| `GameSessionIdIsNotCorrectException`           | 400         | Blank session ID, or session not found in persistence                                                                       |
+| `GameShipDirectionIsNotCorrectException`       | 400         | Blank or unrecognized `ShipDirection` string                                                                                |
+| `GameShipIdIsNotCorrectException`              | 400         | Blank ship ID, or ship not found among the player's ships                                                                   |
+| `GameStageIsNotCorrectException`               | 400         | Operation attempted while the session is in the wrong `GameStage`                                                           |
+| `GameInternalProblemException`                 | 500         | Any other unexpected `IllegalArgumentException`/`IllegalStateException` from the engine, wrapped by `GameControllerApiImpl` |
 
 All error responses share one JSON shape (`ExceptionDto`): `{"status": <code>, "errorMessage": "<message>"}`,
 produced by two `@RestControllerAdvice` handlers: `ValidationExceptionHandler` (the 8× 400 cases)
@@ -311,52 +334,52 @@ All four are immutable Java records under `logic/engine/models/records/`.
 
 #### Ship
 
-| Field | Type | Description |
-|---|---|---|
-| `shipId` | `String` | UUID identifying this ship instance |
-| `shipType` | `ShipType` | `PATROL_BOAT` / `SUBMARINE` / `DESTROYER` / `BATTLESHIP` / `CARRIER` |
-| `shipDirection` | `ShipDirection` | `HORIZONTAL` or `VERTICAL` |
-| `shipSize` | `int` | Length in cells (1–5, edition-dependent) |
+| Field           | Type            | Description                                                          |
+|-----------------|-----------------|----------------------------------------------------------------------|
+| `shipId`        | `String`        | UUID identifying this ship instance                                  |
+| `shipType`      | `ShipType`      | `PATROL_BOAT` / `SUBMARINE` / `DESTROYER` / `BATTLESHIP` / `CARRIER` |
+| `shipDirection` | `ShipDirection` | `HORIZONTAL` or `VERTICAL`                                           |
+| `shipSize`      | `int`           | Length in cells (1–5, edition-dependent)                             |
 
 #### Cell
 
-| Field | Type | Description |
-|---|---|---|
-| `coordinate` | `Coordinate` | Board position |
-| `ship` | `Ship` (nullable) | Ship occupying this cell, if any |
-| `hasShot` | `boolean` | Whether this cell has been fired on |
-| `isAvailable` | `boolean` | Whether a new ship may be placed here (false if occupied or in another ship's 8-neighbor zone) |
+| Field         | Type              | Description                                                                                    |
+|---------------|-------------------|------------------------------------------------------------------------------------------------|
+| `coordinate`  | `Coordinate`      | Board position                                                                                 |
+| `ship`        | `Ship` (nullable) | Ship occupying this cell, if any                                                               |
+| `hasShot`     | `boolean`         | Whether this cell has been fired on                                                            |
+| `isAvailable` | `boolean`         | Whether a new ship may be placed here (false if occupied or in another ship's 8-neighbor zone) |
 
 #### Coordinate
 
-| Field | Type | Description |
-|---|---|---|
-| `row` | `int` | 0–9 |
-| `column` | `int` | 0–9 |
+| Field    | Type  | Description |
+|----------|-------|-------------|
+| `row`    | `int` | 0–9         |
+| `column` | `int` | 0–9         |
 
 #### GameState
 
-| Field | Type | Description |
-|---|---|---|
-| `gameEdition` | `GameEdition` | `UKRAINIAN` or `MILTON_BRADLEY` |
-| `sessionId` | `String` | Unique session identifier |
-| `gameStage` | `GameStage` | Current stage (see [§6.2](#62-state-transitions)) |
-| `players` | `Set<Player>` | 0–2 players |
-| `lastUpdate` | `String` | ISO `LocalDateTime` string, refreshed on every save |
+| Field         | Type          | Description                                         |
+|---------------|---------------|-----------------------------------------------------|
+| `gameEdition` | `GameEdition` | `UKRAINIAN` or `MILTON_BRADLEY`                     |
+| `sessionId`   | `String`      | Unique session identifier                           |
+| `gameStage`   | `GameStage`   | Current stage (see [§6.2](#62-state-transitions))   |
+| `players`     | `Set<Player>` | 0–2 players                                         |
+| `lastUpdate`  | `String`      | ISO `LocalDateTime` string, refreshed on every save |
 
 **Data Ownership:** `battleship_java` is the sole source of truth for all of the above — nothing is
 synced from or to another system.
 
 ### 8.2 Ubiquitous Language
 
-| Term | Meaning in This Service |
-|---|---|
-| **Session** | One game instance, keyed by `sessionId` — *not* an HTTP session |
-| **Edition** | A ruleset (ship set + counts) — `UKRAINIAN` or `MILTON_BRADLEY` — *not* a UI theme |
-| **Stage** | The session-level lifecycle state (`GameStage`), distinct from a player's `ready`/`active` flags |
-| **Active player** | The player whose turn it currently is to shoot |
-| **Ready** | A player has placed all required ships and called `start`; reset to false if they remove a ship |
-| **Destroyed / DESTROYED** | A ship whose every cell has been hit (as opposed to a single `HIT`) |
+| Term                      | Meaning in This Service                                                                          |
+|---------------------------|--------------------------------------------------------------------------------------------------|
+| **Session**               | One game instance, keyed by `sessionId` — *not* an HTTP session                                  |
+| **Edition**               | A ruleset (ship set + counts) — `UKRAINIAN` or `MILTON_BRADLEY` — *not* a UI theme               |
+| **Stage**                 | The session-level lifecycle state (`GameStage`), distinct from a player's `ready`/`active` flags |
+| **Active player**         | The player whose turn it currently is to shoot                                                   |
+| **Ready**                 | A player has placed all required ships and called `start`; reset to false if they remove a ship  |
+| **Destroyed / DESTROYED** | A ship whose every cell has been hit (as opposed to a single `HIT`)                              |
 
 ---
 
@@ -373,24 +396,29 @@ Shared Infrastructure:
   - None (in-process ConcurrentHashMap only, via InMemoryPersistence; concurrent mutations against
     the same session are serialized by a per-session lock in GameControllerApiImpl)
 
-Events Consumed:  N/A — no event/message infrastructure; state changes are pulled via polling
-Events Published: N/A
+Events Consumed:  N/A — no external event/message infrastructure
+Events Published: In-process only — `web.sse.SessionEventBroadcaster` publishes a
+  `GameStateChangedEvent`/`ResponseSessionPushDto` snapshot to subscribed browser clients over
+  Server-Sent Events (§3.4) whenever a mutating engine call changes session state. No message
+  broker or cross-instance event bus; delivery is scoped to open `SseEmitter` connections held by
+  this single backend instance.
 ```
 
 ---
 
 ## 10. Configuration
 
-`src/main/resources/application.properties` — 4 keys, no secrets exist in this project:
+`src/main/resources/application.properties` — 5 keys, no secrets exist in this project:
 
-| Config Value | Source | Env Var | Application Property |
-|---|---|---|---|
-| Root log level | `application.properties` | — | `logging.level.root=info` |
-| `ua.*` package log level | `application.properties` | — | `logging.level.ua=error` |
-| Spring Web log level | `application.properties` | — | `logging.level.org.springframework.web=info` |
-| Swagger UI path | `application.properties` | — | `springdoc.swagger-ui.path=/swagger-ui.html` |
+| Config Value             | Source                   | Env Var | Application Property                                                                                                                              |
+|--------------------------|--------------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| Root log level           | `application.properties` | —       | `logging.level.root=info`                                                                                                                         |
+| `ua.*` package log level | `application.properties` | —       | `logging.level.ua=error`                                                                                                                          |
+| Spring Web log level     | `application.properties` | —       | `logging.level.org.springframework.web=info`                                                                                                      |
+| Swagger UI path          | `application.properties` | —       | `springdoc.swagger-ui.path=/swagger-ui.html`                                                                                                      |
+| Virtual threads          | `application.properties` | —       | `spring.threads.virtual.enabled=true` (enabled so `SessionEventBroadcaster`'s per-subscriber `SseEmitter` connections don't pin platform threads) |
 
-No environment-specific overrides exist (no `application-{profile}.properties`); the same 4 values
+No environment-specific overrides exist (no `application-{profile}.properties`); the same 5 values
 apply in every environment.
 
 ---
@@ -418,7 +446,7 @@ battleship_java/
 │   │   │   ├── api/                # GameControllerApi(Impl), ValidationUtils, IdGenerator(Impl), exceptions
 │   │   │   └── persistence/        # Persistence, InMemoryPersistence
 │   │   └── web/
-│   │       ├── controllers/rest/   # 3 REST controllers
+│   │       ├── controllers/rest/   # 4 REST controllers
 │   │       ├── api/dtos/           # session/, preparation/, gameplay/, entities/
 │   │       ├── exceptions/         # @RestControllerAdvice handlers
 │   │       └── config/             # BeansConfiguration
@@ -439,26 +467,26 @@ battleship_java/
 
 ### 11.2 Build & Run
 
-| Aspect | Details |
-|---|---|
-| **Build Tool** | Maven (backend) + npm (frontend), orchestrated by `frontend-maven-plugin` |
+| Aspect            | Details                                                                                                                                                                                                                                                                             |
+|-------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Build Tool**    | Maven (backend) + npm (frontend), orchestrated by `frontend-maven-plugin`                                                                                                                                                                                                           |
 | **Build Command** | `mvn clean install` — installs Node v24.18.0 (pinned in `pom.xml`'s plugin config; `frontend/package.json` has no `engines` field), runs `npm run build` (`tsc && vite build`) in `frontend/` during the `compile` phase, then copies `frontend/build` into `target/classes/static` |
-| **Test Command** | `mvn test` (backend); `mvn test -Dtest=ClassName#methodName` for a single test; frontend (from `frontend/`): `npm run test` (Vitest), `npm run test:coverage`, `npm run test:e2e` (Playwright), `npm run test:e2e:live` (Playwright against a live server), `npm run lint` |
-| **Run Command** | `mvn spring-boot:run` → serves at `http://localhost:8080`; Swagger UI at `/swagger-ui.html`. Frontend dev loop: `npm run dev` or `npm run dev:mock` (no backend needed) |
-| **Container** | `docker compose up`, or `docker build -t battleship . && docker run -p 8080:8080 battleship`; Podman needs `--format docker` on the build command. Runtime image is `eclipse-temurin:25-jre`, runs as non-root UID 10001, with a `HEALTHCHECK` against `GET /api/v2/game/editions`. |
-| **CI / Pipeline** | **None** — no `.github/workflows/`, no other CI config found in the repository. |
-| **Environments** | Single environment; no profile-based config differences (see [§10](#10-configuration)) |
+| **Test Command**  | `mvn test` (backend); `mvn test -Dtest=ClassName#methodName` for a single test; frontend (from `frontend/`): `npm run test` (Vitest), `npm run test:coverage`, `npm run test:e2e` (Playwright), `npm run test:e2e:live` (Playwright against a live server), `npm run lint`          |
+| **Run Command**   | `mvn spring-boot:run` → serves at `http://localhost:8080`; Swagger UI at `/swagger-ui.html`. Frontend dev loop: `npm run dev` or `npm run dev:mock` (no backend needed)                                                                                                             |
+| **Container**     | `docker compose up`, or `docker build -t battleship . && docker run -p 8080:8080 battleship`; Podman needs `--format docker` on the build command. Runtime image is `eclipse-temurin:25-jre`, runs as non-root UID 10001, with a `HEALTHCHECK` against `GET /api/v2/game/editions`. |
+| **CI / Pipeline** | **None** — no `.github/workflows/`, no other CI config found in the repository.                                                                                                                                                                                                     |
+| **Environments**  | Single environment; no profile-based config differences (see [§10](#10-configuration))                                                                                                                                                                                              |
 
 ---
 
 ## 12. Searchability Anchors
 
-| Anchor Type | Values |
-|---|---|
-| **Feature Flags** | None found in the codebase |
-| **Functional Areas** | `#game-engine`, `#rest-api`, `#preparation`, `#gameplay`, `#persistence`, `#frontend-spa` |
-| **User-Facing Features** | New Game, Join Game, Wait for Opponent, Ship Placement, Shooting/Gameplay, Game Results |
-| **Key Code Locations** | `logic/engine/GameImpl.java` (state machine + orchestration) · `logic/engine/FieldManagementImpl.java` (placement + shot resolution) · `logic/api/impl/GameControllerApiImpl.java` (API boundary) · `web/controllers/rest/GameSessionCommonRestController.java`, `PreparationRestController.java`, `GameplayRestController.java` (REST layer) · `logic/persistence/InMemoryPersistence.java` (storage) · `frontend/src/adapters/GameAdapter.ts` + `HttpGameAdapter.ts` (all frontend↔backend calls) · `frontend/src/hooks/` (per-screen polling/state) · `frontend/src/widgets/` (reusable feature UI) |
+| Anchor Type              | Values                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+|--------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Feature Flags**        | None found in the codebase                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **Functional Areas**     | `#game-engine`, `#rest-api`, `#preparation`, `#gameplay`, `#persistence`, `#frontend-spa`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **User-Facing Features** | New Game, Join Game, Wait for Opponent, Ship Placement, Shooting/Gameplay, Game Results                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **Key Code Locations**   | `logic/engine/GameImpl.java` (state machine + orchestration) · `logic/engine/FieldManagementImpl.java` (placement + shot resolution) · `logic/api/impl/GameControllerApiImpl.java` (API boundary) · `web/controllers/rest/GameSessionCommonRestController.java`, `PreparationRestController.java`, `GameplayRestController.java`, `GameSessionEventsRestController.java` (REST layer) · `web/sse/SessionEventBroadcaster.java` (SSE push) · `logic/persistence/InMemoryPersistence.java` (storage) · `frontend/src/adapters/GameAdapter.ts` + `HttpGameAdapter.ts` (all frontend↔backend calls) · `frontend/src/hooks/` (per-screen push/state via `useSessionEvents`) · `frontend/src/widgets/` (reusable feature UI) |
 
 ---
 

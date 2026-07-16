@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
@@ -18,13 +18,9 @@
 
     <properties>
         <java.version>25</java.version>
-        <!--
-          JaCoCo's `check` goal is bound to the `verify` phase (part of the default
-          `install` lifecycle). Coverage thresholds below are enforced by default;
-          pass -Djacoco.check.skip=true to skip the check locally if needed.
-        -->
         <jacoco.check.skip>false</jacoco.check.skip>
     </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -57,6 +53,7 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -234,15 +231,6 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <!--
-                          Without this execution, `mvn clean package` only succeeds if a developer
-                          already ran `npm install` by hand (frontend/node_modules is git-ignored).
-                          On a clean checkout (or a Docker build context) the build would fail at
-                          `vite: not found`. Bound to the same default phase as install-node-and-npm
-                          (generate-resources) so declaration order runs it before "npm build"
-                          (bound to compile). Uses `npm ci` (not `npm install`) since
-                          frontend/package-lock.json is committed, giving reproducible installs.
-                        -->
                         <id>npm ci</id>
                         <goals>
                             <goal>npm</goal>

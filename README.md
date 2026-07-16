@@ -30,8 +30,9 @@ The Maven build compiles the frontend into the backend's JAR — see
 
 ## API
 
-The backend exposes 12 REST endpoints across 3 controllers (session/common, preparation,
-gameplay) under `/api/v2/game`. With the app running, the full interactive API description is at
+The backend exposes 13 REST endpoints across 4 controllers (session/common, preparation,
+gameplay, and a server-sent-events stream for session/player push updates) under
+`/api/v2/game`. With the app running, the full interactive API description is at
 [localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html). For the complete
 endpoint table (verbs, paths, request/response DTOs, trigger semantics), see
 [docs/index.md §3 Entry Points](docs/index.md#3-entry-points-inputs). The generated OpenAPI 3

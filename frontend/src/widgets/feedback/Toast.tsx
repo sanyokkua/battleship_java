@@ -1,3 +1,4 @@
+import {useTranslation} from 'react-i18next';
 import type {ToastData} from './ToastContext';
 import './Toast.css';
 
@@ -16,6 +17,7 @@ const VARIANT_ICON: Record<ToastData['variant'], string> = {
  * lifecycle, this just draws one toast and reports dismiss clicks by id.
  */
 export function Toast({toast, onDismiss}: { toast: ToastData; onDismiss: (id: string) => void }) {
+    const {t} = useTranslation('common');
     return (
         <div className={`toast ${toast.variant}`}>
             <div className="ic" aria-hidden="true">
@@ -28,7 +30,7 @@ export function Toast({toast, onDismiss}: { toast: ToastData; onDismiss: (id: st
             <button
                 type="button"
                 className="toast-dismiss"
-                aria-label="Dismiss notification"
+                aria-label={t('toast.dismiss')}
                 onClick={() => onDismiss(toast.id)}
             >
                 ✕

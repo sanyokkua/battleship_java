@@ -1,4 +1,5 @@
 import {act, render, screen} from '@testing-library/react';
+import '../../i18n';
 import type {ToastData} from './ToastContext';
 import {ToastProvider, useToastContext} from './ToastContext';
 import {ToastStack} from './ToastStack';

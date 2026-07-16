@@ -3,21 +3,20 @@ import {useGameAdapter} from "../adapters/GameAdapterContext";
 import type {ResponseSessionPushDto} from "../logic/ApplicationTypes";
 
 /**
- * Subscribes to a session/player's push notifications via `GameAdapter.subscribeToSessionEvents`,
- * replacing `usePolling`-driven refetches: `onEvent` is called once immediately with the current
- * snapshot (matching the server's snapshot-on-subscribe behavior), then again whenever the
- * session's state changes.
+ * Subscribes to a session/player's push notifications via `GameAdapter.subscribeToSessionEvents`.
+ * `onEvent` is called once immediately with the current snapshot (matching the server's
+ * snapshot-on-subscribe behavior), then again whenever the session's state changes.
  *
- * Mirrors `usePolling`'s ref-stashed-callback shape (see its doc comment): `onEvent` is stashed in
- * a ref and always called through it, so callers can pass a fresh closure every render without
- * tearing down/rebuilding the subscription — the effect is keyed only on `[sessionId, playerId]`,
- * not on `onEvent`. This also keeps every `setState` call a caller makes inside `onEvent` reached
- * via an opaque callback rather than written directly in this hook's effect body, avoiding the
- * "derived state via effect" pattern `react-hooks/set-state-in-effect` flags.
+ * `onEvent` is stashed in a ref and always called through it, so callers can pass a fresh closure
+ * every render without tearing down/rebuilding the subscription — the effect is keyed only on
+ * `[sessionId, playerId]`, not on `onEvent`. This also keeps every `setState` call a caller makes
+ * inside `onEvent` reached via an opaque callback rather than written directly in this hook's
+ * effect body, avoiding the "derived state via effect" pattern `react-hooks/set-state-in-effect`
+ * flags.
  *
  * Opens on mount (and whenever `sessionId`/`playerId` change), and unsubscribes on unmount/
- * dependency change — StrictMode-safe for the same reason `usePolling` is: the first (discarded)
- * mount's subscription is torn down before the second mount's is created.
+ * dependency change — StrictMode-safe: the first (discarded) mount's subscription is torn down
+ * before the second mount's is created.
  *
  * @param sessionId - ID of the game session.
  * @param playerId - ID of the subscribing player.
