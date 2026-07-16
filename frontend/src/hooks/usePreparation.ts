@@ -2,7 +2,7 @@ import {useCallback, useEffect, useState} from "react";
 import {useGameAdapter} from "../adapters/GameAdapterContext";
 import {GameAdapterError, isGameAdapterError} from "../adapters/AdapterErrors";
 import {useSessionEvents} from "./useSessionEvents";
-import type {CellDto, Coordinate, ShipDirection, ShipDto} from "../logic/ApplicationTypes";
+import type {CellDto, Coordinate, ResponseSessionPushDto, ShipDirection, ShipDto} from "../logic/ApplicationTypes";
 
 /**
  * Return type of {@link usePreparation}.
@@ -44,6 +44,9 @@ export type PreparationHookState = {
      * successful action that happens to follow another successful action.
      */
     actionTick: number;
+    /** Manually re-fetches the current session snapshot, bypassing the push channel — wired to a
+     * visible refresh affordance for when a push connection has silently died. */
+    refresh: () => Promise<void>;
 };
 
 function toAdapterError(e: unknown, context: string): GameAdapterError {
@@ -119,12 +122,25 @@ export function usePreparation(sessionId: string, playerId: string): Preparation
         };
     }, [refetch]);
 
-    useSessionEvents(sessionId, playerId, payload => {
+    const refetchPush = useCallback(async (): Promise<ResponseSessionPushDto> => {
+        const [gameStage, opponent] = await Promise.all([
+            adapter.getStage(sessionId),
+            adapter.getOpponent(sessionId, playerId).catch(e => {
+                if (isGameAdapterError(e) && e.errorCode === "OPPONENT_NOT_FOUND") {
+                    return null;
+                }
+                throw e;
+            }),
+        ]);
+        return {gameStage, lastUpdate: "", opponent, gameplayState: null};
+    }, [adapter, sessionId, playerId]);
+
+    const {refresh} = useSessionEvents(sessionId, playerId, payload => {
         if (payload.opponent) {
             setOpponentReady(payload.opponent.ready);
         }
         setStage(payload.gameStage);
-    });
+    }, refetchPush);
 
     const placeShip = useCallback(async (shipId: string, at: Coordinate, dir: ShipDirection) => {
         try {
@@ -172,6 +188,7 @@ export function usePreparation(sessionId: string, playerId: string): Preparation
         allPlaced: computeAllPlaced(ships, field),
         loading,
         error,
-        actionTick
+        actionTick,
+        refresh
     };
 }

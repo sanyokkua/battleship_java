@@ -1,5 +1,5 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {render, screen, waitFor, within} from '@testing-library/react';
+import {act, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import '../i18n';
@@ -414,5 +414,22 @@ describe('PreparationScreen', () => {
         expect(
             within(screen.getByRole('dialog')).getByRole('button', {name: /Patrol Boat.*3 available/}),
         ).toBeInTheDocument();
+    });
+
+    it('shows a refresh button that re-fetches the session snapshot when clicked', async () => {
+        const {adapter, sessionId, playerId} = await setUpSeededSession();
+
+        renderPrepScreen(adapter);
+        await waitForBoardToLoad();
+
+        const getStageSpy = vi.spyOn(adapter, 'getStage');
+        const getOpponentSpy = vi.spyOn(adapter, 'getOpponent');
+
+        await act(async () => {
+            fireEvent.click(screen.getByRole('button', {name: '⟳ Refresh'}));
+        });
+
+        expect(getStageSpy).toHaveBeenCalledWith(sessionId);
+        expect(getOpponentSpy).toHaveBeenCalledWith(sessionId, playerId);
     });
 });

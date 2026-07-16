@@ -81,6 +81,7 @@ export function PreparationScreen() {
         loading,
         error,
         actionTick,
+        refresh,
     } = usePreparation(sessionId ?? '', player?.playerId ?? '');
 
     // usePreparation's placeShip/removeShipAt/markReady swallow adapter failures internally
@@ -345,6 +346,10 @@ export function PreparationScreen() {
                     />
                 </div>
             </div>
+
+            <Button variant="ghost" size="sm" onClick={() => void refresh()}>
+                ⟳ {t('common:button.refresh')}
+            </Button>
 
             <ShipPlacementPopup
                 open={placementCell != null}
