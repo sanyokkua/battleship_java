@@ -28,7 +28,7 @@ export function WaitScreen() {
     const notify = useNotify();
 
     const {sessionId, player} = useSessionGuard();
-    const {stage, loading} = useWaitRoom(sessionId ?? '', player?.playerId ?? '');
+    const {stage, loading, refresh} = useWaitRoom(sessionId ?? '', player?.playerId ?? '');
 
     useEffect(() => {
         if (stage && !STILL_WAITING_STAGES.has(stage)) {
@@ -102,6 +102,9 @@ export function WaitScreen() {
               <i></i>
             </span>
                     </div>
+                    <Button variant="ghost" size="sm" onClick={() => void refresh()}>
+                        ⟳ {t('common:button.refresh')}
+                    </Button>
                 </div>
             </div>
         </div>

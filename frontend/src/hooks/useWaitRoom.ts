@@ -1,7 +1,8 @@
-import {useRef, useState} from "react";
-import {GameAdapterError} from "../adapters/AdapterErrors";
+import {useCallback, useRef, useState} from "react";
+import {GameAdapterError, isGameAdapterError} from "../adapters/AdapterErrors";
+import {useGameAdapter} from "../adapters/GameAdapterContext";
 import {useSessionEvents} from "./useSessionEvents";
-import type {ResponseOpponentInformationDto} from "../logic/ApplicationTypes";
+import type {ResponseOpponentInformationDto, ResponseSessionPushDto} from "../logic/ApplicationTypes";
 
 /**
  * Return type of {@link useWaitRoom}.
@@ -15,6 +16,9 @@ export type WaitRoomState = {
     loading: boolean;
     /** Error from the most recent poll attempt, or `null` if it succeeded. */
     error: GameAdapterError | null;
+    /** Manually re-fetches the current session snapshot, bypassing the push channel — wired to a
+     * visible refresh affordance for when a push connection has silently died. */
+    refresh: () => Promise<void>;
 };
 
 // Stages at or after PREPARATION mean the wait is over — no point polling further.
@@ -41,7 +45,21 @@ export function useWaitRoom(sessionId: string, playerId: string): WaitRoomState 
     // Tracks whether the wait is over so a stray late push can't revive "still waiting" state.
     const doneRef = useRef(false);
 
-    useSessionEvents(sessionId, playerId, payload => {
+    const adapter = useGameAdapter();
+    const refetch = useCallback(async (): Promise<ResponseSessionPushDto> => {
+        const [gameStage, opponent] = await Promise.all([
+            adapter.getStage(sessionId),
+            adapter.getOpponent(sessionId, playerId).catch(e => {
+                if (isGameAdapterError(e) && e.errorCode === "OPPONENT_NOT_FOUND") {
+                    return null;
+                }
+                throw e;
+            }),
+        ]);
+        return {gameStage, lastUpdate: "", opponent, gameplayState: null};
+    }, [adapter, sessionId, playerId]);
+
+    const {refresh} = useSessionEvents(sessionId, playerId, payload => {
         if (doneRef.current) {
             return;
         }
@@ -52,7 +70,7 @@ export function useWaitRoom(sessionId: string, playerId: string): WaitRoomState 
         if (WAIT_OVER_STAGES.has(payload.gameStage)) {
             doneRef.current = true;
         }
-    });
+    }, refetch);
 
-    return {opponent, stage, loading, error};
+    return {opponent, stage, loading, error, refresh};
 }
