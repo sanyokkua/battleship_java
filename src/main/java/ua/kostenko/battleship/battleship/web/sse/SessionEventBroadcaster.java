@@ -55,9 +55,7 @@ public class SessionEventBroadcaster {
      */
     public SseEmitter subscribe(final String sessionId, final String playerId) {
         val emitter = new SseEmitter(0L);
-        val playerEmitters = subscribers.computeIfAbsent(sessionId, id -> new ConcurrentHashMap<>())
-                .computeIfAbsent(playerId, id -> new CopyOnWriteArrayList<>());
-        playerEmitters.add(emitter);
+        registerEmitter(sessionId, playerId, emitter);
 
         emitter.onCompletion(() -> removeEmitter(sessionId, playerId, emitter));
         emitter.onTimeout(() -> removeEmitter(sessionId, playerId, emitter));
@@ -150,21 +148,59 @@ public class SessionEventBroadcaster {
                 .build();
     }
 
+    /**
+     * Registers {@code emitter} under (sessionId, playerId). The get-or-create of both map levels
+     * <em>and</em> the add to the per-player emitter list all happen inside a single
+     * {@link ConcurrentHashMap#compute} remapping function on the outer {@code subscribers} map,
+     * keyed by {@code sessionId}.
+     * <p>
+     * A naive two-step version (get-or-create the per-player list via {@code computeIfAbsent},
+     * then separately call {@code list.add(emitter)}) is not enough: {@code computeIfAbsent} only
+     * guarantees the lookup/creation itself is atomic, not what the caller does with the reference
+     * afterward. A concurrent {@link #removeEmitter} could atomically decide that very list is
+     * empty and unlink it from the map <em>between</em> this method's lookup and its {@code add}
+     * call, silently orphaning the new emitter — the same class of bug {@link #removeEmitter}
+     * itself was just hardened against, one map level up.
+     * </p>
+     * <p>
+     * By doing the add inside the same remapping function passed to {@code compute}, this call is
+     * mutually atomic with {@link #removeEmitter}'s {@code computeIfPresent} on the same
+     * {@code sessionId} key (per {@link ConcurrentHashMap}'s own guarantee for same-key
+     * operations): the two calls can never interleave, so {@link #removeEmitter} either runs
+     * entirely before this registration (in which case it's registering into freshly created,
+     * empty containers) or entirely after (in which case it sees this emitter already present and
+     * won't remove the entry).
+     * </p>
+     */
+    private void registerEmitter(final String sessionId, final String playerId, final SseEmitter emitter) {
+        subscribers.compute(sessionId, (sid, existingPlayerSubscribers) -> {
+            val playerSubscribers = existingPlayerSubscribers != null
+                    ? existingPlayerSubscribers
+                    : new ConcurrentHashMap<String, CopyOnWriteArrayList<SseEmitter>>();
+            playerSubscribers.compute(playerId, (pid, existingEmitters) -> {
+                val emitters = existingEmitters != null ? existingEmitters : new CopyOnWriteArrayList<SseEmitter>();
+                emitters.add(emitter);
+                return emitters;
+            });
+            return playerSubscribers;
+        });
+    }
+
     private void removeEmitter(final String sessionId, final String playerId, final SseEmitter emitter) {
-        val playerSubscribers = subscribers.get(sessionId);
-        if (playerSubscribers == null) {
-            return;
-        }
-        val emitters = playerSubscribers.get(playerId);
-        if (emitters != null) {
-            emitters.remove(emitter);
-            if (emitters.isEmpty()) {
-                playerSubscribers.remove(playerId);
-                if (playerSubscribers.isEmpty()) {
-                    subscribers.remove(sessionId);
-                }
-            }
-        }
+        // computeIfPresent guarantees the remapping function runs atomically per key, properly
+        // synchronized against any other compute/computeIfAbsent/put/remove call on that SAME key
+        // in the SAME map. This closes a TOCTOU race against registerEmitter()'s compute call for
+        // the same (sessionId, playerId): without this, a concurrent subscribe() could re-add an
+        // emitter to a list this method is about to unlink from the map, silently orphaning the
+        // newly subscribed emitter (it would never receive another broadcast or heartbeat).
+        // Returning null from the remapping function removes the key.
+        subscribers.computeIfPresent(sessionId, (sid, playerSubscribers) -> {
+            playerSubscribers.computeIfPresent(playerId, (pid, emitters) -> {
+                emitters.remove(emitter);
+                return emitters.isEmpty() ? null : emitters;
+            });
+            return playerSubscribers.isEmpty() ? null : playerSubscribers;
+        });
     }
 
     @Scheduled(fixedRate = 15_000)
