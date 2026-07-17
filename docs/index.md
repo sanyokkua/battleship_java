@@ -5,7 +5,7 @@ domain: "Game Engine / Turn-Based Multiplayer"
 owner: "Oleksandr Kostenko"
 stack: "Java 25, Spring Boot 4.1.0 (backend); Vite + React 19 + TypeScript (frontend)"
 project_type: "Web service (REST backend + bundled SPA frontend)"
-last_updated: "2026-07-16"
+last_updated: "2026-07-17"
 ---
 
 # battleship_java
@@ -13,9 +13,12 @@ last_updated: "2026-07-16"
 > An educational two-player Battleship game: a Java/Spring Boot REST API driving a game engine,
 > served together with a React/TypeScript single-page frontend in one runnable JAR.
 
-This document describes the **current, as-built system** on branch `feature/redesign-v2` — the
-shipped result of the v2 modernization (Java 25 + Spring Boot 4.1.0 backend, Vite + React 19
-frontend, Docker/Podman packaging). This branch is not yet merged to `master`. See
+This document describes the **current, as-built system** on `master`, at the tip of
+`feature/shot-highlight-mobile-switch` — ten commits of frontend UI/UX polish and SSE-reliability hardening layered on
+top of the shipped v2 modernization (`feature/redesign-v2`, merged to
+`master` at `888b0c9`: Java 25 + Spring Boot 4.1.0 backend, Vite + React 19 frontend, Docker/Podman packaging). The game
+engine, REST API, and persistence layer are unchanged since that merge — this branch's changes are confined to the
+frontend and to SSE push delivery (`web.sse`). See
 [§13 Additional Notes](#13-additional-notes) for remaining known gaps.
 
 ## 1. Service Identity Card
@@ -29,23 +32,21 @@ frontend, Docker/Podman packaging). This branch is not yet merged to `master`. S
 | **Keywords & Synonyms** | Battleship, Sea Battle, Морський бій; "session" = one game instance; "edition" = ruleset                                                                                                                                                                                                                                                                    |
 | **Owner / Team**        | Oleksandr Kostenko (sole contributor per git history)                                                                                                                                                                                                                                                                                                       |
 | **Technology Stack**    | Java 25 + Spring Boot 4.1.0 (Web MVC, Lombok, springdoc-openapi) backend; Vite + React 19 + TypeScript + a custom CSS design system frontend; i18next (en/uk) for UI copy; Maven (`frontend-maven-plugin` + `maven-resources-plugin`) bundles the frontend build into the Spring Boot JAR; Docker/Podman packaging (`eclipse-temurin:25-jre` runtime image) |
-| **Repository**          | `git@github.com:sanyokkua/battleship_java.git` (default branch `master`; this doc reflects branch `feature/redesign-v2`)                                                                                                                                                                                                                                    |
+| **Repository**          | `git@github.com:sanyokkua/battleship_java.git` (default branch `master`; this doc reflects `master` plus branch `feature/shot-highlight-mobile-switch`)                                                                                                                                                                                                     |
 
 ---
 
 ## 2. Architecture Overview
 
-The system is a single deployable JAR containing a React SPA served as static content and a
-layered Spring Boot backend. Frontend widgets/screens never talk to the backend directly — every
-call goes through the `GameAdapter` port, implemented by `HttpGameAdapter` (axios under the hood)
-for real use and `MockGameAdapter` for tests/`dev:mock`; the backend is layered strictly REST
-Controller → API/Service → Engine → Persistence, with no Spring MVC types leaking below the
-controller layer (`GameControllerApiImpl` is verified free of `@RequestParam`/`ResponseEntity`/etc.).
-There is no database — game state lives entirely in an in-process `ConcurrentHashMap`, so the app
-is single-instance only by design. `GameControllerApiImpl` serializes each mutating request's
-load → mutate → save sequence with a lock scoped to that `sessionId`, so concurrent requests
-against the same session can't race each other; unrelated sessions never contend for the same
-lock.
+The system is a single deployable JAR containing a React SPA served as static content and a layered Spring Boot backend.
+Frontend widgets/screens never talk to the backend directly — every call goes through the `GameAdapter` port,
+implemented by `HttpGameAdapter` (axios under the hood)
+for real use and `MockGameAdapter` for tests/`dev:mock`; the backend is layered strictly REST Controller → API/Service →
+Engine → Persistence, with no Spring MVC types leaking below the controller layer (`GameControllerApiImpl` is verified
+free of `@RequestParam`/`ResponseEntity`/etc.). There is no database — game state lives entirely in an in-process
+`ConcurrentHashMap`, so the app is single-instance only by design. `GameControllerApiImpl` serializes each mutating
+request's load → mutate → save sequence with a lock scoped to that `sessionId`, so concurrent requests against the same
+session can't race each other; unrelated sessions never contend for the same lock.
 
 ```mermaid
 flowchart LR
@@ -77,12 +78,11 @@ Deeper diagrams (the `GameStage` state machine and two sequence flows) are in
 
 ## 3. Entry Points (Inputs)
 
-All entry points are REST endpoints under base path `/api/v2/game`, defined across four
-controllers — three synchronous request/response controllers plus one Server-Sent Events (SSE)
+All entry points are REST endpoints under base path `/api/v2/game`, defined across four controllers — three synchronous
+request/response controllers plus one Server-Sent Events (SSE)
 controller for push notifications (§3.4). **Auth: none — there is no authentication/authorization layer anywhere in the
-project; any caller who knows a `sessionId`/`playerId` can act as that player.** This is stated
-explicitly rather than omitted, per the project's frozen-scope, no-database, single-instance
-design.
+project; any caller who knows a `sessionId`/`playerId` can act as that player.** This is stated explicitly rather than
+omitted, per the project's frozen-scope, no-database, single-instance design.
 
 ### 3.1 GameSessionCommonRestController — session & common endpoints
 
@@ -129,13 +129,22 @@ Base: `@RequestMapping("/api/v2/game/sessions/{sessionId}")`, file:
 |------|------------------------------|-------------|------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | GET  | `/players/{playerId}/events` | —           | `ResponseSessionPushDto` (SSE stream, `text/event-stream`) | Subscribe to a session's state-change push notifications: an immediate snapshot is sent on connect, then a fresh snapshot whenever the session's state changes (opponent joins/readies, a shot resolves, a stage transition, etc.) |
 
-This controller replaces client-side polling for the frontend's Preparation/Gameplay/WaitRoom
-screens (see [`docs/architecture.md`](architecture.md) for the push flow). `ResponseSessionPushDto`
-wraps the existing `ResponseOpponentInformationDto`/`ResponseGameplayStateDto` shapes rather than
-duplicating their fields — `opponent` is populated once an opponent has joined, `gameplayState`
+This controller replaces client-side polling for the frontend's Preparation/Gameplay/WaitRoom screens (see [
+`docs/architecture.md`](architecture.md) for the push flow). `ResponseSessionPushDto`
+wraps the existing `ResponseOpponentInformationDto`/`ResponseGameplayStateDto` shapes rather than duplicating their
+fields — `opponent` is populated once an opponent has joined, `gameplayState`
 once the session is `IN_GAME` or `FINISHED`; both are `null` otherwise. Delivery is backed by
-`web.sse.SessionEventBroadcaster`, which holds open `SseEmitter`s per subscriber and pushes a new
-snapshot whenever a mutating engine call publishes a `GameStateChangedEvent`.
+`web.sse.SessionEventBroadcaster`, which holds open `SseEmitter`s per subscriber and pushes a new snapshot whenever a
+mutating engine call publishes a `GameStateChangedEvent`. The broadcaster also sends a `@Scheduled` keep-alive comment
+to every open emitter every 15s, and its emitter registration/removal is hardened against a same-key TOCTOU race
+(`ConcurrentHashMap#compute`/
+`computeIfPresent`) so a concurrent subscribe can never be silently orphaned by a concurrent removal (the 15s heartbeat
+is an invisible-to-`EventSource` SSE comment, purely to stop intermediaries from timing out an idle connection — it
+doesn't itself count as a received event). On the frontend, `useSessionEvents` treats this stream as best-effort rather
+than fully reliable:
+an optional `refetch`/`staleAfterMs` pair triggers a plain HTTP fallback fetch if no real push event has landed within
+`staleAfterMs` (default 20s), on tab foreground (Page Visibility API — the primary mobile background/foreground recovery
+path), or on a manual `refresh()` call wired to a refresh button on `WaitScreen`/`GameplayScreen`/`PreparationScreen`.
 
 **13 endpoints total** (5 + 5 + 2 + 1).
 
@@ -153,34 +162,34 @@ snapshot whenever a mutating engine call publishes a `GameStateChangedEvent`.
 | **Semantics**  | Durable-for-the-JVM-lifetime snapshot of a session, replaced wholesale on every mutating call                                                                                             |
 | **Conditions** | Always, on every successful mutating engine call (`createPlayerInSession`, `addShipToField`, `removeShipFromField`, `startGame`, `makeShotByField`)                                       |
 
-This is the **only** exit point in the system. There are no outbound HTTP calls, no database, no
-message queues, no file writes, and no cache layer — stated explicitly, not omitted, because the
-project is deliberately self-contained (see [§7](#7-external-services--dependencies)).
+This is the **only** exit point in the system. There are no outbound HTTP calls, no database, no message queues, no file
+writes, and no cache layer — stated explicitly, not omitted, because the project is deliberately self-contained
+(see [§7](#7-external-services--dependencies)).
 
 ---
 
 ## 5. Data Flow
 
-A full game, from creation to a finished match, flows entirely through in-process calls — nothing
-ever leaves the JVM:
+A full game, from creation to a finished match, flows entirely through in-process calls — nothing ever leaves the JVM:
 
 1. **Create session** — `HomeScreen` → `NewGameScreen` calls `POST /sessions` with a `GameEdition`;
-   `GameControllerApiImpl` generates a `sessionId` (`IdGeneratorImpl#generateId`, UUID v4) and
-   writes an `INITIALIZED` `GameState` via `InMemoryPersistence#save`.
+   `GameControllerApiImpl` generates a `sessionId` (`IdGeneratorImpl#generateId`, UUID v4) and writes an `INITIALIZED`
+   `GameState` via `InMemoryPersistence#save`.
 2. **Join** — the creator (and later the second player, via `JoinGameScreen`) each call
-   `POST /sessions/{id}/players`; `GameImpl#createPlayer` adds a `Player`, and the session
-   transitions `INITIALIZED → WAITING_FOR_PLAYERS` (after player 1) then
+   `POST /sessions/{id}/players`; `GameImpl#createPlayer` adds a `Player`, and the session transitions
+   `INITIALIZED → WAITING_FOR_PLAYERS` (after player 1) then
    `WAITING_FOR_PLAYERS → PREPARATION` (after player 2).
-3. **Prepare ships** — `PreparationScreen` repeatedly calls `PUT .../ships/{shipId}` /
-   `DELETE .../ships`, driven by `FieldManagementImpl#addShip`/`#removeShip`, which enforce bounds
-   and the 8-neighbor no-touching rule. Once a player has placed every ship, `POST .../start` marks
-   them ready; the first player to do so also becomes the active player
-   (`GameImpl#changePlayerStatusToReady`); once both are ready, the session transitions
+3. **Prepare ships** — placement is popup-only: tapping an empty board cell opens a placement popup pre-filtered to the
+   ship/direction combinations valid at that cell (so an invalid combination can never be chosen through the UI), and
+   tapping a placed ship's cell opens a rotate/remove popup. Confirming either drives `PreparationScreen`'s repeated `PUT
+   .../ships/{shipId}` / `DELETE .../ships` calls, driven by `FieldManagementImpl#addShip`/
+   `#removeShip`, which enforce bounds and the 8-neighbor no-touching rule server-side regardless of what the UI already
+   filtered out. Once a player has placed every ship, `POST .../start` marks them ready; the first player to do so also
+   becomes the active player (`GameImpl#changePlayerStatusToReady`); once both are ready, the session transitions
    `PREPARATION → IN_GAME`.
-4. **Shoot** — `GameplayScreen` calls `POST .../field/shot`; `FieldManagementImpl#makeShot` resolves
-   MISS/HIT/DESTROYED, revealing neighbor cells on a sink. `GameImpl#updateGameState` checks both
-   players' remaining ship counts after every shot and transitions `IN_GAME → FINISHED` the moment
-   either side has zero ships left.
+4. **Shoot** — `GameplayScreen` calls `POST .../field/shot`; `FieldManagementImpl#makeShot` resolves MISS/HIT/DESTROYED,
+   revealing neighbor cells on a sink. `GameImpl#updateGameState` checks both players' remaining ship counts after every
+   shot and transitions `IN_GAME → FINISHED` the moment either side has zero ships left.
 5. **Finish** — `ResultsScreen` reads the terminal `GameplayState` (winner, both final boards) via
    `GET .../state`.
 
@@ -199,20 +208,20 @@ Every step re-reads and re-writes the same `GameState` record through
 
 1. Client calls `POST /api/v2/game/sessions` with a `GameEdition` name
    (`GameSessionCommonRestController#createGameSession`).
-2. `GameControllerApiImpl#createGameSession` validates the edition string
-   (`ValidationUtils#validateGameEdition`), generates a `sessionId`, and persists a new
+2. `GameControllerApiImpl#createGameSession` validates the edition string (`ValidationUtils#validateGameEdition`),
+   generates a `sessionId`, and persists a new
    `INITIALIZED` `GameState`.
 3. Client (creator, then joiner) calls `POST /sessions/{sessionId}/players` with a player name
    (`GameSessionCommonRestController#createPlayerInSession`).
 4. `GameImpl#createPlayer` (`logic/engine/GameImpl.java` ~line 59) enforces the 2-player cap
-   (`GameUtils#validateNumberOfPlayers`, throws `IllegalStateException` on a 3rd attempt) and
-   advances `GameStage`: 1st player → `WAITING_FOR_PLAYERS`, 2nd player → `PREPARATION`.
+   (`GameUtils#validateNumberOfPlayers`, throws `IllegalStateException` on a 3rd attempt) and advances `GameStage`: 1st
+   player → `WAITING_FOR_PLAYERS`, 2nd player → `PREPARATION`.
 
 **Branching Conditions:**
 
 - Invalid/unknown edition string → `GameEditionIsNotCorrectException` (400).
-- 3rd player attempt → wrapped as `GameInternalProblemException` (500) by the API layer (the
-  underlying `IllegalStateException` isn't one of the typed validation exceptions).
+- 3rd player attempt → wrapped as `GameInternalProblemException` (500) by the API layer (the underlying
+  `IllegalStateException` isn't one of the typed validation exceptions).
 
 **Business Rules:**
 
@@ -222,11 +231,10 @@ Every step re-reads and re-writes the same `GameState` record through
 
 1. Client calls `PUT /sessions/{sessionId}/players/{playerId}/ships/{shipId}` with a starting
    `Coordinate` and `ShipDirection` (`PreparationRestController#addShipToField`).
-2. `FieldManagementImpl#addShip` (`logic/engine/FieldManagementImpl.java` lines 46-84) computes
-   every cell the ship would occupy (`CoordinateUtils#buildShipCoordinates`), validates all cells
-   are in-bounds, then validates the **8-neighbor adjacency rule**: the ship's cells plus all of
-   their diagonal/orthogonal neighbors must contain no other ship
-   (`validateShipIntersections`, lines 46-60) — ships may not touch, even diagonally.
+2. `FieldManagementImpl#addShip` (`logic/engine/FieldManagementImpl.java` lines 46-84) computes every cell the ship
+   would occupy (`CoordinateUtils#buildShipCoordinates`), validates all cells are in-bounds, then validates the
+   **8-neighbor adjacency rule**: the ship's cells plus all of their diagonal/orthogonal neighbors must contain no other
+   ship (`validateShipIntersections`, lines 46-60) — ships may not touch, even diagonally.
 3. On success, the ship's cells and their 8 neighbors are marked `isAvailable = false`.
 4. `DELETE /sessions/{sessionId}/players/{playerId}/ships` with a `Coordinate` reverses this:
    `FieldManagementImpl#removeShip` frees the cells/neighbors and — importantly —
@@ -252,15 +260,13 @@ Every step re-reads and re-writes the same `GameState` record through
    `Coordinate` (`GameplayRestController#makeShotByField`).
 2. `FieldManagementImpl#makeShot` (lines 115-144) marks the target cell shot, then:
     - No ship at that cell → `ShotResult.MISS`.
-    - Ship present → gathers every cell belonging to that ship
-      (`FieldUtils#findShipCells`); if all are now shot → `ShotResult.DESTROYED`, else `HIT`.
-    - On `DESTROYED`, `processDestroyedShip` (lines 222-236) marks all 8-neighbor cells of every
-      ship cell as `hasShot = true` too, so the opponent's board immediately reveals the empty
-      "moat" around a sunk ship (this is why sinking a ship can reveal more than the ship's own
-      cells).
-3. `GameImpl#updateGameState` (lines 306-318) recomputes both players' remaining ship counts after
-   every shot; if either reaches zero, the stage becomes `FINISHED` and the surviving player is
-   flagged `winner`.
+    - Ship present → gathers every cell belonging to that ship (`FieldUtils#findShipCells`); if all are now shot →
+      `ShotResult.DESTROYED`, else `HIT`.
+    - On `DESTROYED`, `processDestroyedShip` (lines 222-236) marks all 8-neighbor cells of every ship cell as
+      `hasShot = true` too, so the opponent's board immediately reveals the empty
+      "moat" around a sunk ship (this is why sinking a ship can reveal more than the ship's own cells).
+3. `GameImpl#updateGameState` (lines 306-318) recomputes both players' remaining ship counts after every shot; if either
+   reaches zero, the stage becomes `FINISHED` and the surviving player is flagged `winner`.
 
 **Branching Conditions:**
 
@@ -284,19 +290,18 @@ PREPARATION         → IN_GAME              [trigger: both players ready — Ga
 IN_GAME             → FINISHED             [trigger: a player's ship count reaches 0 — GameImpl#updateGameState, lines 306-318]
 ```
 
-Note: within `PREPARATION`, removing a placed ship resets that player's `ready` flag
-(`GameImpl#removeShipFromField`, line 150) — this does **not** change `GameStage`, only the
-player's readiness, but it can delay the `PREPARATION → IN_GAME` transition indefinitely.
+Note: within `PREPARATION`, removing a placed ship resets that player's `ready` flag (`GameImpl#removeShipFromField`,
+line 150) — this does **not** change `GameStage`, only the player's readiness, but it can delay the
+`PREPARATION → IN_GAME` transition indefinitely.
 
 **Explicit rule — first-ready player becomes the active player:** confirmed in code
 (`GameImpl#changePlayerStatusToReady`, lines 170-176): when a player calls `start`, their `ready`
-flag is set, and if the opponent is not already `active`, the calling player is set `active`. This
-is **not** an implicit/race-condition-shaped behavior — it is a deterministic, explicitly coded
-rule: whichever player's ready-call is processed first becomes the first shooter. Concurrent
-requests for both players' ready calls are serialized by `GameControllerApiImpl`'s per-session
-lock (see [§13](#13-additional-notes)), so exactly one call's load → mutate → save sequence runs
-at a time; ordering between the two calls is still whatever the servlet container happens to
-schedule first, but the resulting state is never a torn or lost update.
+flag is set, and if the opponent is not already `active`, the calling player is set `active`. This is **not** an
+implicit/race-condition-shaped behavior — it is a deterministic, explicitly coded rule: whichever player's ready-call is
+processed first becomes the first shooter. Concurrent requests for both players' ready calls are serialized by
+`GameControllerApiImpl`'s per-session lock (see [§13](#13-additional-notes)), so exactly one call's load → mutate → save
+sequence runs at a time; ordering between the two calls is still whatever the servlet container happens to schedule
+first, but the resulting state is never a torn or lost update.
 
 ### 6.3 Error Handling & Edge Cases
 
@@ -312,17 +317,16 @@ schedule first, but the resulting state is never a torn or lost update.
 | `GameStageIsNotCorrectException`               | 400         | Operation attempted while the session is in the wrong `GameStage`                                                           |
 | `GameInternalProblemException`                 | 500         | Any other unexpected `IllegalArgumentException`/`IllegalStateException` from the engine, wrapped by `GameControllerApiImpl` |
 
-All error responses share one JSON shape (`ExceptionDto`): `{"status": <code>, "errorMessage": "<message>"}`,
-produced by two `@RestControllerAdvice` handlers: `ValidationExceptionHandler` (the 8× 400 cases)
+All error responses share one JSON shape (`ExceptionDto`): `{"status": <code>, "errorMessage": "<message>"}`, produced
+by two `@RestControllerAdvice` handlers: `ValidationExceptionHandler` (the 8× 400 cases)
 and `InternalExceptionHandler` (the 500 case).
 
 ---
 
 ## 7. External Services & Dependencies
 
-**None.** The application is fully self-contained: no external APIs, no database, no message
-broker, no cache. This is a deliberate design constraint (see the persistence scope note in the
-root `CLAUDE.md`) rather than a gap.
+**None.** The application is fully self-contained: no external APIs, no database, no message broker, no cache. This is a
+deliberate design constraint (see the persistence scope note in the root `CLAUDE.md`) rather than a gap.
 
 ---
 
@@ -367,8 +371,8 @@ All four are immutable Java records under `logic/engine/models/records/`.
 | `players`     | `Set<Player>` | 0–2 players                                         |
 | `lastUpdate`  | `String`      | ISO `LocalDateTime` string, refreshed on every save |
 
-**Data Ownership:** `battleship_java` is the sole source of truth for all of the above — nothing is
-synced from or to another system.
+**Data Ownership:** `battleship_java` is the sole source of truth for all of the above — nothing is synced from or to
+another system.
 
 ### 8.2 Ubiquitous Language
 
@@ -399,9 +403,12 @@ Shared Infrastructure:
 Events Consumed:  N/A — no external event/message infrastructure
 Events Published: In-process only — `web.sse.SessionEventBroadcaster` publishes a
   `GameStateChangedEvent`/`ResponseSessionPushDto` snapshot to subscribed browser clients over
-  Server-Sent Events (§3.4) whenever a mutating engine call changes session state. No message
-  broker or cross-instance event bus; delivery is scoped to open `SseEmitter` connections held by
-  this single backend instance.
+  Server-Sent Events (§3.4) whenever a mutating engine call changes session state, plus a 15s
+  `@Scheduled` keep-alive comment per open emitter. No message broker or cross-instance event bus;
+  delivery is scoped to open `SseEmitter` connections held by this single backend instance. The
+  frontend does not treat this channel as fully reliable — `useSessionEvents` layers a
+  stale-fallback HTTP poll and a tab-foreground refetch on top (§3.4) — so a missed or delayed push
+  is a UX-latency concern, not a correctness gap.
 ```
 
 ---
@@ -418,8 +425,8 @@ Events Published: In-process only — `web.sse.SessionEventBroadcaster` publishe
 | Swagger UI path          | `application.properties` | —       | `springdoc.swagger-ui.path=/swagger-ui.html`                                                                                                      |
 | Virtual threads          | `application.properties` | —       | `spring.threads.virtual.enabled=true` (enabled so `SessionEventBroadcaster`'s per-subscriber `SseEmitter` connections don't pin platform threads) |
 
-No environment-specific overrides exist (no `application-{profile}.properties`); the same 5 values
-apply in every environment.
+No environment-specific overrides exist (no `application-{profile}.properties`); the same 5 values apply in every
+environment.
 
 ---
 
@@ -457,8 +464,8 @@ battleship_java/
     └── src/
         ├── adapters/                 # GameAdapter port + HttpGameAdapter (axios) / MockGameAdapter
         ├── screens/                  # 7 screens (Home, NewGame, JoinGame, Wait, Preparation, Gameplay, Results)
-        ├── widgets/                  # board/, preparation/, gameplay/, feedback/, layout/ feature UI
-        ├── hooks/                    # usePreparation, useGameplay, useWaitRoom, usePolling, useSessionGuard
+        ├── widgets/                  # board/, preparation/ (popup-only placement), gameplay/, feedback/, layout/
+        ├── hooks/                    # usePreparation, useGameplay, useWaitRoom, useSessionEvents, useSessionGuard
         ├── routing/                  # AppRoutes, StageGuard
         ├── design/                   # custom CSS design system (tokens + components)
         ├── i18n/, i18n-support/      # i18next locales (en, uk) and name lookups
@@ -494,35 +501,35 @@ battleship_java/
 Known gaps and tech debt, verified directly against the code (not invented):
 
 - **Mutating requests against the same session are serialized by a per-session lock.**
-  `InMemoryPersistence` wraps a `ConcurrentHashMap<String, GameState>` (safe for individual
-  get/put/remove), but `Persistence#load` hands back a `Game` wrapping the same mutable
-  `GameState`/`Player`/field objects held in the store rather than a copy, so a load → mutate →
-  save sequence isn't atomic on its own. `GameControllerApiImpl` closes that gap by acquiring a
-  `ReentrantLock` keyed by `sessionId` (`GameControllerApiImpl#lockFor`) around the full
-  load → mutate → save critical section of every mutating method (`createGameSession`,
+  `InMemoryPersistence` wraps a `ConcurrentHashMap<String, GameState>` (safe for individual get/put/remove), but
+  `Persistence#load` hands back a `Game` wrapping the same mutable
+  `GameState`/`Player`/field objects held in the store rather than a copy, so a load → mutate → save sequence isn't
+  atomic on its own. `GameControllerApiImpl` closes that gap by acquiring a
+  `ReentrantLock` keyed by `sessionId` (`GameControllerApiImpl#lockFor`) around the full load → mutate → save critical
+  section of every mutating method (`createGameSession`,
   `createPlayerInSession`, `addShipToField`, `removeShipFromField`, `startGame`,
-  `makeShotByField`), so two concurrent requests against the same session (e.g. both players
-  readying up at once, or simultaneous shots) can no longer produce a lost update. Locks are
-  per-session, not global — unrelated sessions never block each other. The six read-only methods
-  (`getCurrentGameStage`, `getLastSessionChangeTime`, `getShipsNotOnTheBoard`,
+  `makeShotByField`), so two concurrent requests against the same session (e.g. both players readying up at once, or
+  simultaneous shots) can no longer produce a lost update. Locks are per-session, not global — unrelated sessions never
+  block each other. The six read-only methods (`getCurrentGameStage`, `getLastSessionChangeTime`,
+  `getShipsNotOnTheBoard`,
   `getOpponentInformation`, `getPreparationField`, `getGameState`) are deliberately left unlocked:
-  a stale read is self-correcting on the client's next poll (3-5s) and isn't part of the
-  lost-update race this locking addresses. Covered by
-  `GameControllerApiImplConcurrencyTest`. Persistence itself remains in-memory and
-  single-instance only — no database, no cross-instance sharing.
-- **No CORS configuration exists** — no `WebMvcConfigurer`/`addCorsMappings` bean was found. This
-  is only safe because the frontend is served same-origin from the same JAR; it would need to be
-  added if the frontend were ever split out.
+  a stale read is self-correcting on the client's next SSE push (near-immediate, since
+  `SessionEventBroadcaster` publishes right after the next mutating call releases its lock) or, in the worst case, on
+  `useSessionEvents`' stale-fallback poll (within `staleAfterMs`, default 20s)
+  — either way it isn't part of the lost-update race this locking addresses. Covered by
+  `GameControllerApiImplConcurrencyTest`. Persistence itself remains in-memory and single-instance only — no database,
+  no cross-instance sharing.
+- **No CORS configuration exists** — no `WebMvcConfigurer`/`addCorsMappings` bean was found. This is only safe because
+  the frontend is served same-origin from the same JAR; it would need to be added if the frontend were ever split out.
 - **Ship direction is validated server-side, not just client-side.** `ValidationUtils#validateShipDirection`
-  rejects unknown direction strings, and `FieldManagementImpl#addShip` computes the full set of
-  cells the ship would occupy from the given direction and validates bounds/adjacency for all of
-  them — so enforcement is not purely a client concern, though the client
-  (`frontend/src/widgets/preparation/DirectionToggle.tsx`) also restricts the UI to the two valid
-  directions.
+  rejects unknown direction strings, and `FieldManagementImpl#addShip` computes the full set of cells the ship would
+  occupy from the given direction and validates bounds/adjacency for all of them — so enforcement is not purely a client
+  concern, though the client (`frontend/src/widgets/preparation/ShipPlacementPopup.tsx`, which pre-filters the popup's
+  direction options to only those valid at the tapped cell) also restricts the UI to the two valid directions.
 
 REST-controller integration tests (`GameSessionCommonRestControllerTest`,
-`GameplayRestControllerTest`, `PreparationRestControllerTest`) and frontend automated tests
-(~44 test files across Vitest unit/component tests and Playwright e2e) were previously listed here
-as missing — both gaps are now closed and are not repeated above. See
+`GameplayRestControllerTest`, `PreparationRestControllerTest`) and frontend automated tests (~44 test files across
+Vitest unit/component tests and Playwright e2e) were previously listed here as missing — both gaps are now closed and
+are not repeated above. See
 [`docs/openapi.json`](openapi.json) for the full endpoint contract, and
 [`docs/architecture.md`](architecture.md) for deeper diagrams.

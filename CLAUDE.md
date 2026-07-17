@@ -8,8 +8,10 @@ Battleship game (educational project) — Java 25 + Spring Boot 4.1.0 REST/MVC b
 frontend in `frontend/`, bundled together into one runnable JAR. A rewrite of a
 prior [Python version](https://github.com/sanyokkua/battleship_py).
 
-The backend/engine/frontend architecture described in this file is the current, shipped state of this branch (
-`feature/redesign-v2`, not yet merged to `master`).
+The backend/engine/frontend architecture described in this file is the current, shipped state of
+`master` (the v2 redesign, `feature/redesign-v2`, merged at `888b0c9`). Work since that merge has been incremental
+frontend UI/UX and SSE-reliability hardening on top of that shipped baseline — see
+"Frontend (current state, shipped v2)" below for what's changed.
 
 ## Build, Run, Test
 
@@ -41,9 +43,9 @@ whenever the API changes.
 Base package `ua.kostenko.battleship.battleship`, layered as REST Controller → API/Service → Engine → Persistence:
 
 - `logic.engine` — pure, framework-agnostic game engine: `Game`/`GameImpl` (state machine driven by the `GameStage`
-  enum: INITIALIZED → WAITING_FOR_PLAYERS → PREPARATION → IN_GAME → FINISHED), `FieldManagement`/`FieldManagementImpl` (
-  per-player board, ship placement, shot resolution), immutable records (`Ship`, `Cell`, `Coordinate`, `GameState`), and
-  pluggable `GameEditionConfiguration` rule sets (Ukrainian, Milton Bradley) under `logic.engine.config`.
+  enum: INITIALIZED → WAITING_FOR_PLAYERS → PREPARATION → IN_GAME → FINISHED), `FieldManagement`/`FieldManagementImpl`
+  (per-player board, ship placement, shot resolution), immutable records (`Ship`, `Cell`, `Coordinate`, `GameState`),
+  and pluggable `GameEditionConfiguration` rule sets (Ukrainian, Milton Bradley) under `logic.engine.config`.
 - `logic.api` — `GameControllerApi`/`GameControllerApiImpl`, `ValidationUtils`, `IdGenerator`, typed exceptions. This is
   the boundary between web and engine; no Spring MVC types leak below it.
 - `logic.persistence` — `Persistence`/`InMemoryPersistence`. In-memory, single-instance only — no database, by design.
@@ -54,7 +56,11 @@ Base package `ua.kostenko.battleship.battleship`, layered as REST Controller →
   feature (`session`, `preparation`, `gameplay`, `entities`). `GameSessionEventsRestController` exposes a
   server-sent-events stream (`GET /sessions/{sessionId}/players/{playerId}/events`) backed by
   `web.sse.SessionEventBroadcaster`, which publishes a `GameStateChangedEvent`/`ResponseSessionPushDto` snapshot
-  whenever a mutating engine call changes session state.
+  whenever a mutating engine call changes session state. It also sends a `@Scheduled` keep-alive comment to every open
+  emitter every 15s so idle connections aren't silently dropped by intermediaries, and its emitter registration/removal
+  (`subscribe`/`removeEmitter`) is hardened against a TOCTOU race via same-key
+  `ConcurrentHashMap#compute`/`computeIfPresent`, so a concurrent subscribe can't be silently orphaned by a concurrent
+  removal (or vice versa).
 - `web.exceptions`, `web.config` — exception handlers and Spring bean configuration.
 
 Conventions used throughout: interface + `*Impl` pairs (`Game`/`GameImpl`, `FieldManagement`/`FieldManagementImpl`,
@@ -81,12 +87,23 @@ i18next (`i18n/`, `en`/`uk` locales) for all UI copy. Key structure:
   through this port.
 - `screens/` — one component per route: `HomeScreen`, `NewGameScreen`, `JoinGameScreen`, `WaitScreen`,
   `PreparationScreen`, `GameplayScreen`, `ResultsScreen`.
-- `widgets/` — reusable feature UI grouped by area: `board/` (Board, BoardCell, BoardTabs, Legend), `preparation/` (
-  ShipTray, ShipItem, DirectionToggle, ShipActionPopup, ShipPlacementPopup), `gameplay/` (PlayerCard, TurnBanner),
-  `feedback/` (Toast, ConfirmDialog, error mapping, ToastContext/ToastHost/ToastStack, `useNotify`), `layout/` (AppBar,
-  LoadingView).
+- `widgets/` — reusable feature UI grouped by area: `board/` (Board, BoardCell, BoardTabs, Legend — on the mobile
+  single-board layout, `GameplayScreen` flashes a just-hit cell on the player's own board for ~1.1s
+  (`HIGHLIGHT_DURATION_MS`) when an opponent's shot resolves, then waits ~1.5s (`SWITCH_DELAY_MS`, comfortably longer
+  than the flash) before crossfading the visible board back to the target board — so the flash is never cut off by an
+  instant switch), `preparation/` (
+  `ShipActionPopup`, `ShipPlacementPopup` — placement is popup-only: tapping any empty cell opens
+  `ShipPlacementPopup`, pre-filtered to only the ship/direction combinations valid at that cell; tapping a placed ship's
+  cell opens `ShipActionPopup` to rotate or remove it. The old tray-based `ShipTray`/`ShipItem`/
+  `DirectionToggle` widgets were removed), `gameplay/` (PlayerCard, TurnBanner), `feedback/` (Toast, ConfirmDialog,
+  error mapping, ToastContext/ToastHost/ToastStack, `useNotify`), `layout/` (AppBar, LoadingView).
 - `hooks/` — `usePreparation`, `useGameplay`, `useWaitRoom`, `useSessionEvents`, `useSessionGuard` encapsulate
-  push/state logic per screen; `useSessionEvents` is the shared SSE-subscription hook the other three build on.
+  push/state logic per screen; `useSessionEvents` is the shared SSE-subscription hook the other three build on. It also
+  hardens against a silently-dead SSE connection: an optional `refetch`/`staleAfterMs` pair drives a stale-fallback poll
+  (refetch if no event has landed within `staleAfterMs`, default 20s), an immediate refetch when the tab regains
+  foreground visibility (Page Visibility API — the primary mobile background/foreground recovery path), and a manual
+  `refresh()` escape hatch. `useWaitRoom`, `useGameplay`, and `usePreparation` all wire this up, and `WaitScreen`/
+  `GameplayScreen`/`PreparationScreen` each expose a manual refresh button backed by it.
 - `routing/` — `AppRoutes` + `StageGuard` (redirects based on the session's `GameStage`).
 - `design/` — the CSS design system: tokens (`tokens.css`, `base.css`), components (`Button`, `Field`, `Input`,
   `LoadingBar`, `ModeCard`, `Pill`, `Sheet`, `StepTracker`), and a `useFocusTrap` hook used by `Sheet`/`ConfirmDialog`.
