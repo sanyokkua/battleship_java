@@ -8,7 +8,7 @@ This is an educational two-player Battleship web service: a Spring Boot REST/MVC
 
 **State.** The application is running and feature work is active. Use the current branch, source, tests, and generated artifacts as the live state; do not infer completion from older documentation.
 
-**Authority.** Runtime behavior is defined by source, configuration, and tests. Human-facing architecture and API context are in `README.md`, `docs/index.md`, and `docs/architecture.md`. New behavior needs a written spec in `docs/agent/specs/`.
+**Authority.** Runtime behavior is defined by source, configuration, and tests. Human-facing architecture and API context are in `README.md`, `docs/index.md`, and `docs/architecture.md`. New behavior needs a written spec in `specs/<###-feature>/spec.md`.
 
 ## The loop
 
@@ -17,11 +17,11 @@ Six phases. No feature code before PLAN is complete.
 | Phase | Exit condition | Command or artifact |
 |---|---|---|
 | ORIENT | Current state and unit of work are named | Read this file, `README.md`, relevant docs/source, and `git status --short --branch` |
-| SPEC | Acceptance criteria and edge cases are written | `docs/agent/specs/<slug>.md` |
-| PLAN | Ordered tasks exist; one task = one branch = one commit | `docs/agent/work/<slug>.md` |
+| SPEC | Acceptance criteria and edge cases are written | `specs/<###-feature>/spec.md` |
+| PLAN | Ordered tasks exist; one task = one branch = one commit | `specs/<###-feature>/plan.md` and `tasks.md` |
 | BUILD | Each task is implemented and individually checked | Work on the task branch |
 | VERIFY | The gate is green and behavior matches the spec | `scripts/verify.sh` |
-| CLOSE | Evidence is recorded, docs are current, and the next unit is named | Update `docs/agent/`; leave final merge to the user |
+| CLOSE | Evidence is recorded, docs are current, and the next unit is named | Update the feature artifacts and relevant docs; leave final merge to the user |
 
 Advance through phases without asking. Stop only for an ambiguous spec, the same gate failure twice, an irreversible/out-of-repo action, a costly architectural decision, or information contradicting the approved spec.
 
@@ -89,7 +89,7 @@ Be honest: written is not verified, and a red or unrun gate is unverified. Give 
 ## Where things live
 
 - Behavior and API context: `README.md`, `docs/index.md`, `docs/architecture.md`, `docs/openapi.json`
-- Specs, decisions, and work records: `docs/agent/README.md`, with subdirectories `specs/`, `decisions/`, and `work/`
+- Spec Kit feature artifacts: `specs/<###-feature>/` (`spec.md`, `plan.md`, `tasks.md`, and optional research/design artifacts)
 - Canonical agent skills: `.agents/skills/`
 - Claude bridge/runtime: `CLAUDE.md`, `.claude/`; generated Codex mirror: `.codex/`
 - Synchronizer and verification gate: `scripts/sync-agent-files.py`, `scripts/verify.sh`

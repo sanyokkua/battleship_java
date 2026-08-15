@@ -1,252 +1,172 @@
 ---
-
-description: "Task list template for feature implementation"
+description: "Dependency-ordered task template for the battleship_java full-stack service"
 ---
 
 # Tasks: [FEATURE NAME]
 
-**Input**: Design documents from `/specs/[###-feature-name]/`
+**Input**: Design documents from `specs/[###-feature-name]/`
 
-**Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
+**Prerequisites**: `spec.md` and `plan.md` are required. Use `research.md`,
+`data-model.md`, `contracts/`, and `quickstart.md` when the plan creates them.
 
-**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
+## Task Rules
 
-**Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
-
-## Format: `[ID] [P?] [Story] Description`
-
-- **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
-- Include exact file paths in descriptions
+- Use the format `[ID] [P?] [Story] Description`.
+- `[P]` means the task can run in parallel without shared-file or dependency conflicts.
+- `[Story]` maps the task to `US1`, `US2`, or another independently testable story.
+- Every task MUST name exact repository paths and its proving test or command.
+- Tests are required for changed behavior; use the existing Java, Vitest, and Playwright suites.
+- Keep one task per task branch and one task commit, following `AGENTS.md`.
+- Do not mark a task complete from a checkbox alone; verify the live behavior and record evidence.
 
 ## Path Conventions
 
-- **Single project**: `src/`, `tests/` at repository root
-- **Web app**: `backend/src/`, `frontend/src/`
-- **Mobile**: `api/src/`, `ios/src/` or `android/src/`
-- Paths shown below assume single project - adjust based on plan.md structure
+| Concern | Paths |
+|---|---|
+| Backend application | `src/main/java/ua/kostenko/battleship/battleship/` |
+| Backend tests | `src/test/java/ua/kostenko/battleship/battleship/` |
+| Frontend application | `frontend/src/` |
+| Frontend unit/component tests | Co-located `frontend/src/**/*.test.ts` and `frontend/src/**/*.test.tsx` |
+| Mock browser tests | `frontend/e2e/` |
+| Live browser tests | `frontend/e2e-live/` |
+| API artifact | `docs/openapi.json` |
+| Human-facing docs | `README.md`, `docs/index.md`, `docs/architecture.md`, `docs/operations.md` when present |
 
-<!--
-  ============================================================================
-  IMPORTANT: The tasks below are SAMPLE TASKS for illustration purposes only.
+## Phase 1: Baseline and Setup
 
-  The $speckit-tasks command MUST replace these with actual tasks based on:
-  - User stories from spec.md (with their priorities P1, P2, P3...)
-  - Feature requirements from plan.md
-  - Entities from data-model.md
-  - Endpoints from contracts/
+**Purpose**: Confirm the starting state and prepare only the files required by
+the approved plan.
 
-  Tasks MUST be organized by user story so each story can be:
-  - Implemented independently
-  - Tested independently
-  - Delivered as an MVP increment
+- [ ] T001 Record `git status --short --branch`, affected source paths, and the existing verification baseline
+- [ ] T002 [P] Update the feature specification or plan artifacts if an approved clarification changes scope
+- [ ] T003 [P] Add or update the affected API contract/data model artifact under `specs/[###-feature-name]/`
 
-  DO NOT keep these sample tasks in the generated tasks.md file.
-  ============================================================================
--->
+## Phase 2: Backend Contract and Foundation
 
-## Phase 1: Setup (Shared Infrastructure)
+**Purpose**: Implement the backend boundary and engine prerequisites before
+frontend work that consumes them.
 
-**Purpose**: Project initialization and basic structure
+- [ ] T004 [P] Add or update Java DTOs and web API contracts in `src/main/java/.../web/api`
+- [ ] T005 Add or update application API interfaces/implementations in `src/main/java/.../logic/api`
+- [ ] T006 Add or update engine rules, state transitions, validation, or models in `src/main/java/.../logic/engine`
+- [ ] T007 Add or update persistence behavior in `src/main/java/.../logic/persistence` only when required by the approved spec
+- [ ] T008 Add focused Java unit/MVC/concurrency tests under `src/test/java` for the changed backend behavior
+- [ ] T009 [P] Update REST/SSE exception mapping or event broadcasting when required by the contract
 
-- [ ] T001 Create project structure per implementation plan
-- [ ] T002 Initialize [language] project with [framework] dependencies
-- [ ] T003 [P] Configure linting and formatting tools
+**Checkpoint**: Backend focused tests pass and the API/engine contract is
+stable enough for frontend integration.
 
----
+## Phase 3: Frontend Adapter and State Integration
 
-## Phase 2: Foundational (Blocking Prerequisites)
+**Purpose**: Connect the frontend to the approved backend contract through the
+existing adapter boundary.
 
-**Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented
+- [ ] T010 Update shared application types in `frontend/src/logic/ApplicationTypes.ts`
+- [ ] T011 Update `frontend/src/adapters/GameAdapter.ts` and `GameAdapterContext.tsx` for the contract change
+- [ ] T012 Update `frontend/src/adapters/HttpGameAdapter.ts` and `frontend/src/services/BackendRequestService.ts`
+- [ ] T013 Keep `frontend/src/adapters/MockGameAdapter.ts` behaviorally aligned for mock development and tests
+- [ ] T014 Update affected hooks, browser storage, routing, or lifecycle logic under `frontend/src/hooks`, `services`, `routing`, or `logic`
+- [ ] T015 Add/update co-located Vitest/Testing Library tests in `frontend/src/**/*.test.ts{,x}`
 
-**⚠️ CRITICAL**: No user story work can begin until this phase is complete
+## Phase 4: Screens, Widgets, and Browser Journeys
 
-Examples of foundational tasks (adjust based on your project):
+**Purpose**: Deliver the user-visible behavior and prove it in a browser where
+the feature crosses the UI boundary.
 
-- [ ] T004 Setup database schema and migrations framework
-- [ ] T005 [P] Implement authentication/authorization framework
-- [ ] T006 [P] Setup API routing and middleware structure
-- [ ] T007 Create base models/entities that all stories depend on
-- [ ] T008 Configure error handling and logging infrastructure
-- [ ] T009 Setup environment configuration management
+- [ ] T016 Update affected screens under `frontend/src/screens`
+- [ ] T017 [P] Update reusable widgets and design styles under `frontend/src/widgets` and `frontend/src/design`
+- [ ] T018 [P] Update English/Ukrainian resources under `frontend/src/i18n` and i18n support when copy changes
+- [ ] T019 Add/update mock-adapter Playwright coverage under `frontend/e2e`
+- [ ] T020 Add/update live packaged-JAR Playwright coverage under `frontend/e2e-live` when real REST/SSE or packaging behavior is material
 
-**Checkpoint**: Foundation ready - user story implementation can now begin in parallel
+## Phase 5: Integration, Artifacts, and Verification
 
----
+**Purpose**: Verify the complete packaged application and record evidence.
 
-## Phase 3: User Story 1 - [Title] (Priority: P1) 🎯 MVP
+- [ ] T021 Regenerate and review `docs/openapi.json` when backend API behavior changed
+- [ ] T022 [P] Update affected README or `docs/` architecture/operations documentation
+- [ ] T023 Run focused backend tests with `mvn -Dtest=<focused-test-class> test`
+- [ ] T024 Run frontend tests and lint using the repository-approved runtime: `npm --prefix frontend run test` and `npm --prefix frontend run lint`
+- [ ] T025 Run mock and live browser suites: `npm --prefix frontend run test:e2e` and `npm --prefix frontend run test:e2e:live`
+- [ ] T026 Run `scripts/verify.sh` and record acceptance criterion -> proving evidence -> result
+- [ ] T027 Run `python3 scripts/sync-agent-files.py --check` when agent/configuration files are involved
+- [ ] T028 Update the feature artifacts in `specs/[###-feature-name]/` and relevant README/docs with generated-artifact changes and remaining limitations
 
-**Goal**: [Brief description of what this story delivers]
+## User Story Phases
 
-**Independent Test**: [How to verify this story works on its own]
+For each user story in the specification, add a phase using this shape. Keep
+the story independently testable and do not hide backend/frontend work in a
+single vague task.
 
-### Tests for User Story 1 (OPTIONAL - only if tests requested) ⚠️
+## Phase N: User Story [N] - [Title] (Priority: P[N])
 
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+**Goal**: [What this story delivers.]
 
-- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
+**Independent Test**: [Exact focused test or browser journey and expected result.]
 
-### Implementation for User Story 1
+### Tests for User Story [N]
 
-- [ ] T012 [P] [US1] Create [Entity1] model in src/models/[entity1].py
-- [ ] T013 [P] [US1] Create [Entity2] model in src/models/[entity2].py
-- [ ] T014 [US1] Implement [Service] in src/services/[service].py (depends on T012, T013)
-- [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
-- [ ] T016 [US1] Add validation and error handling
-- [ ] T017 [US1] Add logging for user story 1 operations
+- [ ] TXXX [P] [USN] Add/update Java test in `src/test/java/...`
+- [ ] TXXX [P] [USN] Add/update Vitest test in `frontend/src/...test.tsx`
+- [ ] TXXX [USN] Add/update Playwright test in `frontend/e2e` or `frontend/e2e-live` when applicable
 
-**Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
+### Implementation for User Story [N]
 
----
+- [ ] TXXX [USN] Update the backend contract/engine file at `src/main/java/...`
+- [ ] TXXX [USN] Update the frontend adapter/hook/screen/widget file at `frontend/src/...`
+- [ ] TXXX [USN] Update generated artifacts/docs and name the verification command
 
-## Phase 4: User Story 2 - [Title] (Priority: P2)
+**Checkpoint**: Story [N] is independently functional and its focused tests
+pass before the next story begins.
 
-**Goal**: [Brief description of what this story delivers]
-
-**Independent Test**: [How to verify this story works on its own]
-
-### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
-
-- [ ] T018 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T019 [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
-
-### Implementation for User Story 2
-
-- [ ] T020 [P] [US2] Create [Entity] model in src/models/[entity].py
-- [ ] T021 [US2] Implement [Service] in src/services/[service].py
-- [ ] T022 [US2] Implement [endpoint/feature] in src/[location]/[file].py
-- [ ] T023 [US2] Integrate with User Story 1 components (if needed)
-
-**Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
-
----
-
-## Phase 5: User Story 3 - [Title] (Priority: P3)
-
-**Goal**: [Brief description of what this story delivers]
-
-**Independent Test**: [How to verify this story works on its own]
-
-### Tests for User Story 3 (OPTIONAL - only if tests requested) ⚠️
-
-- [ ] T024 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T025 [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
-
-### Implementation for User Story 3
-
-- [ ] T026 [P] [US3] Create [Entity] model in src/models/[entity].py
-- [ ] T027 [US3] Implement [Service] in src/services/[service].py
-- [ ] T028 [US3] Implement [endpoint/feature] in src/[location]/[file].py
-
-**Checkpoint**: All user stories should now be independently functional
-
----
-
-[Add more user story phases as needed, following the same pattern]
-
----
-
-## Phase N: Polish & Cross-Cutting Concerns
-
-**Purpose**: Improvements that affect multiple user stories
-
-- [ ] TXXX [P] Documentation updates in docs/
-- [ ] TXXX Code cleanup and refactoring
-- [ ] TXXX Performance optimization across all stories
-- [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
-- [ ] TXXX Security hardening
-- [ ] TXXX Run quickstart.md validation
-
----
-
-## Dependencies & Execution Order
+## Dependencies and Execution Order
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)**: No dependencies - can start immediately
-- **Foundational (Phase 2)**: Depends on Setup completion - BLOCKS all user stories
-- **User Stories (Phase 3+)**: All depend on Foundational phase completion
-  - User stories can then proceed in parallel (if staffed)
-  - Or sequentially in priority order (P1 → P2 → P3)
-- **Polish (Final Phase)**: Depends on all desired user stories being complete
+- Baseline/spec/plan artifacts precede implementation.
+- Backend contract and engine work precedes frontend integration when the API changes.
+- Adapter/state work precedes screen/widget browser work.
+- Integration, generated-artifact review, and the full gate follow implementation.
+- Story phases may run in parallel only when their files and contracts are independent.
 
-### User Story Dependencies
+### Within a Story
 
-- **User Story 1 (P1)**: Can start after Foundational (Phase 2) - No dependencies on other stories
-- **User Story 2 (P2)**: Can start after Foundational (Phase 2) - May integrate with US1 but should be independently testable
-- **User Story 3 (P3)**: Can start after Foundational (Phase 2) - May integrate with US1/US2 but should be independently testable
+1. Define or confirm the contract.
+2. Add/update the focused tests.
+3. Implement backend boundary and engine behavior.
+4. Implement adapter/state behavior.
+5. Implement screens/widgets and browser coverage.
+6. Verify the story independently.
 
-### Within Each User Story
+## Command Reference
 
-- Tests (if included) MUST be written and FAIL before implementation
-- Models before services
-- Services before endpoints
-- Core implementation before integration
-- Story complete before moving to next priority
-
-### Parallel Opportunities
-
-- All Setup tasks marked [P] can run in parallel
-- All Foundational tasks marked [P] can run in parallel (within Phase 2)
-- Once Foundational phase completes, all user stories can start in parallel (if team capacity allows)
-- All tests for a user story marked [P] can run in parallel
-- Models within a story marked [P] can run in parallel
-- Different user stories can be worked on in parallel by different team members
-
----
-
-## Parallel Example: User Story 1
+Use the pinned runtime installed by Maven for authoritative frontend results.
 
 ```bash
-# Launch all tests for User Story 1 together (if tests requested):
-Task: "Contract test for [endpoint] in tests/contract/test_[name].py"
-Task: "Integration test for [user journey] in tests/integration/test_[name].py"
-
-# Launch all models for User Story 1 together:
-Task: "Create [Entity1] model in src/models/[entity1].py"
-Task: "Create [Entity2] model in src/models/[entity2].py"
+mvn -Dtest=<focused-test-class> test
+npm --prefix frontend run test
+npm --prefix frontend run lint
+npm --prefix frontend run test:e2e
+npm --prefix frontend run test:e2e:live
+scripts/verify.sh
+python3 scripts/sync-agent-files.py --check
 ```
 
----
+If a browser command fails before tests execute because of restricted localhost
+binding, report it as an environment capability limitation and preserve the
+unchanged product command/result separately.
 
 ## Implementation Strategy
 
-### MVP First (User Story 1 Only)
+### MVP First
 
-1. Complete Phase 1: Setup
-2. Complete Phase 2: Foundational (CRITICAL - blocks all stories)
-3. Complete Phase 3: User Story 1
-4. **STOP and VALIDATE**: Test User Story 1 independently
-5. Deploy/demo if ready
+1. Complete the baseline and foundation tasks required by the plan.
+2. Complete the smallest P1 story across backend, frontend, and tests.
+3. Run its focused evidence and then the full gate when the slice is complete.
+4. Continue with later stories only after the P1 checkpoint is honest and green.
 
-### Incremental Delivery
+### Closeout
 
-1. Complete Setup + Foundational → Foundation ready
-2. Add User Story 1 → Test independently → Deploy/Demo (MVP!)
-3. Add User Story 2 → Test independently → Deploy/Demo
-4. Add User Story 3 → Test independently → Deploy/Demo
-5. Each story adds value without breaking previous stories
-
-### Parallel Team Strategy
-
-With multiple developers:
-
-1. Team completes Setup + Foundational together
-2. Once Foundational is done:
-   - Developer A: User Story 1
-   - Developer B: User Story 2
-   - Developer C: User Story 3
-3. Stories complete and integrate independently
-
----
-
-## Notes
-
-- [P] tasks = different files, no dependencies
-- [Story] label maps task to specific user story for traceability
-- Each user story should be independently completable and testable
-- Verify tests fail before implementing
-- Commit after each task or logical group
-- Stop at any checkpoint to validate story independently
-- Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
+The feature is ready for user integration only when the specification is
+implemented, evidence is recorded, generated artifacts are reviewed, the full
+gate is green or limitations are explicit, and the next unit is named.

@@ -1,6 +1,6 @@
 # Feature Specification: [FEATURE NAME]
 
-**Feature Branch**: `[###-feature-name]`
+**Feature Branch**: `[feature/<slug>]`
 
 **Created**: [DATE]
 
@@ -8,124 +8,132 @@
 
 **Input**: User description: "$ARGUMENTS"
 
+**Spec Kit Artifacts**: `specs/[###-feature-name]/`
+
+## Scope and Context
+
+### Problem
+
+[Describe the user or system problem in observable terms.]
+
+### In Scope
+
+- [Specific user-visible or API-visible behavior included in this feature]
+- [Affected backend/frontend surfaces, if known]
+
+### Out of Scope
+
+- [Explicitly excluded behavior]
+- [Database, authentication, external-service, or deployment changes unless explicitly required]
+
 ## User Scenarios & Testing *(mandatory)*
 
-<!--
-  IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
-  Each user story/journey must be INDEPENDENTLY TESTABLE - meaning if you implement just ONE of them,
-  you should still have a viable MVP (Minimum Viable Product) that delivers value.
-
-  Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
-  Think of each story as a standalone slice of functionality that can be:
-  - Developed independently
-  - Tested independently
-  - Deployed independently
-  - Demonstrated to users independently
--->
+User stories MUST be independently testable. Prioritize them as P1, P2, P3,
+with P1 representing the smallest valuable end-to-end slice.
 
 ### User Story 1 - [Brief Title] (Priority: P1)
 
-[Describe this user journey in plain language]
+[Describe the user journey in plain language.]
 
-**Why this priority**: [Explain the value and why it has this priority level]
+**Why this priority**: [Explain value and sequencing.]
 
-**Independent Test**: [Describe how this can be tested independently - e.g., "Can be fully tested by [specific action] and delivers [specific value]"]
+**Independent Test**: [Name the focused unit, component, mock-browser, or live-JAR test that proves this story.]
 
 **Acceptance Scenarios**:
 
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
-2. **Given** [initial state], **When** [action], **Then** [expected outcome]
-
----
+1. **Given** [initial state], **When** [action], **Then** [observable result].
+2. **Given** [initial state], **When** [action], **Then** [observable result].
 
 ### User Story 2 - [Brief Title] (Priority: P2)
 
-[Describe this user journey in plain language]
+[Describe the next independently valuable journey, or remove this section.]
 
-**Why this priority**: [Explain the value and why it has this priority level]
-
-**Independent Test**: [Describe how this can be tested independently]
+**Independent Test**: [Proof method and expected result.]
 
 **Acceptance Scenarios**:
 
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
+1. **Given** [initial state], **When** [action], **Then** [observable result].
 
----
+### Edge Cases and Failure Behavior
 
-### User Story 3 - [Brief Title] (Priority: P3)
-
-[Describe this user journey in plain language]
-
-**Why this priority**: [Explain the value and why it has this priority level]
-
-**Independent Test**: [Describe how this can be tested independently]
-
-**Acceptance Scenarios**:
-
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
-
----
-
-[Add more user stories as needed, each with an assigned priority]
-
-### Edge Cases
-
-<!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right edge cases.
--->
-
-- What happens when [boundary condition]?
-- How does system handle [error scenario]?
+- Invalid session, player, ship, edition, coordinate, or lifecycle stage:
+  [expected status/error behavior].
+- Concurrent requests against the same session: [expected serialization or
+  conflict behavior].
+- Browser refresh, navigation, reconnect, or missing browser state:
+  [expected behavior].
+- SSE unavailable, delayed, duplicated, or disconnected: [fallback behavior].
+- Packaging or generated-artifact impact: [expected evidence].
 
 ## Requirements *(mandatory)*
 
-<!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right functional requirements.
--->
-
 ### Functional Requirements
 
-- **FR-001**: System MUST [specific capability, e.g., "allow users to create accounts"]
-- **FR-002**: System MUST [specific capability, e.g., "validate email addresses"]
-- **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
-- **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
-- **FR-005**: System MUST [behavior, e.g., "log all security events"]
+- **FR-001**: The system MUST [specific capability].
+- **FR-002**: The system MUST [validation or lifecycle behavior].
+- **FR-003**: The system MUST expose [observable UI/API result].
+- **FR-004**: The system MUST preserve [existing invariant].
 
-*Example of marking unclear requirements:*
+Mark missing decisions explicitly as `[NEEDS CLARIFICATION: reason]` rather
+than assuming a new architectural dependency.
 
-- **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
-- **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
+### Backend/API Requirements
 
-### Key Entities *(include if feature involves data)*
+Complete this section when the feature affects `src/main/java`:
 
-- **[Entity 1]**: [What it represents, key attributes without implementation]
-- **[Entity 2]**: [What it represents, relationships to other entities]
+- Controller and route: [file, HTTP verb, path, request/response DTO].
+- Application API: [interface and implementation impact].
+- Engine/state: [game rule, state transition, validation, or concurrency impact].
+- Persistence: [in-memory state impact; explain if none].
+- Exceptions/status mapping: [typed exception and HTTP behavior].
+- SSE/event behavior: [event name, payload, subscription, fallback, or none].
+- OpenAPI: [whether `docs/openapi.json` must change].
+
+### Frontend Requirements
+
+Complete this section when the feature affects `frontend/src`:
+
+- Adapter contract: [method or DTO impact in `GameAdapter`].
+- HTTP/mock behavior: [changes to `HttpGameAdapter`, `MockGameAdapter`, or
+  `BackendRequestService`].
+- State/lifecycle: [hook, browser storage, routing guard, or event behavior].
+- Screens/widgets/design: [affected paths and user-visible states].
+- Localization/accessibility/responsiveness: [required labels, semantics, or
+  viewport behavior].
+- Browser tests: [mock Playwright and/or live-JAR coverage].
+
+### Contract and Boundary Requirements
+
+- Backend layer affected: `[web | api | engine | persistence | none]`.
+- Frontend layer affected: `[adapter | service | hook | screen | widget | design | none]`.
+- Allowed dependency direction: [describe the existing boundary being used].
+- New dependency: `[none | package and reason]`.
+- Persistence/auth/external-service changes: `[none | explicit decision]`.
+
+## Key Entities and State
+
+- **[Entity/state]**: [Meaning, important fields, lifecycle, and ownership.]
+- **[DTO/event]**: [Wire shape and producer/consumer, if applicable.]
 
 ## Success Criteria *(mandatory)*
 
-<!--
-  ACTION REQUIRED: Define measurable success criteria.
-  These must be technology-agnostic and measurable.
--->
+Success criteria MUST be measurable and tied to evidence.
 
-### Measurable Outcomes
+- **SC-001**: [User journey completes with the expected visible result.]
+- **SC-002**: [Focused Java/Vitest test proves the changed rule or contract.]
+- **SC-003**: [Mock or live Playwright test proves the browser journey, if applicable.]
+- **SC-004**: `scripts/verify.sh` passes, or the exact capability limitation is recorded.
+- **SC-005**: `docs/openapi.json` is unchanged or its intentional diff is reviewed when the API changes.
 
-- **SC-001**: [Measurable metric, e.g., "Users can complete account creation in under 2 minutes"]
-- **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
-- **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
-- **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+## Assumptions and Clarifications
 
-## Assumptions
+- [Assumption grounded in current source/configuration.]
+- [Assumption grounded in current product documentation.]
+- [Open question, if any, marked `[NEEDS CLARIFICATION]` with its impact.]
 
-<!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right assumptions based on reasonable defaults
-  chosen when the feature description did not specify certain details.
--->
+## Evidence and Documentation Impact
 
-- [Assumption about target users, e.g., "Users have stable internet connectivity"]
-- [Assumption about scope boundaries, e.g., "Mobile support is out of scope for v1"]
-- [Assumption about data/environment, e.g., "Existing authentication system will be reused"]
-- [Dependency on existing system/service, e.g., "Requires access to the existing user profile API"]
+- Proving tests: [exact files or commands].
+- Generated artifacts: [OpenAPI, frontend build, JAR, or none].
+- Documentation: [README, `docs/index.md`, `docs/architecture.md`, or none].
+- Feature artifacts: [updates required in `specs/[###-feature-name]/`].
