@@ -26,7 +26,7 @@ related-skills:
   - project-documentation: optional — for full written documentation (that skill is self-contained)
   - mermaid: optional — to draw a structure/architecture diagram of what was found
 install:
-  defaultLocation: .claude/skills/project-navigator/
+  defaultLocation: .agents/skills/project-navigator/
   supportsProject: true
   supportsGlobal: true
 ---
@@ -40,8 +40,8 @@ repository (or a folder containing several repositories) **without modifying any
 
 Single-module Maven project: Java 25 + Spring Boot 4.1.0 backend under
 `ua.kostenko.battleship.battleship` (REST Controller → API/Service → Engine → Persistence), Vite +
-React 19 + TypeScript frontend in `frontend/`, bundled into one JAR (see root `CLAUDE.md` for the full
-architecture map — read that first). Current, authoritative architecture and API documentation live
+React 19 + TypeScript frontend in `frontend/`, bundled into one JAR (see `docs/index.md` and
+`docs/architecture.md` for the authoritative architecture map). Current, authoritative architecture and API documentation live
 in `docs/architecture.md` and `docs/index.md` — read those first for anything beyond this quick
 orientation.
 

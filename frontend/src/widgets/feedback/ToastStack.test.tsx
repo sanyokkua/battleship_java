@@ -66,6 +66,20 @@ describe('ToastStack', () => {
         expect(screen.queryByText('Ephemeral')).not.toBeInTheDocument();
     });
 
+    it('caps the rendered stack at 3, dropping the oldest toast first', () => {
+        const {push} = renderStack();
+
+        push({variant: 'ok', title: 'First', message: 'A'});
+        push({variant: 'ok', title: 'Second', message: 'B'});
+        push({variant: 'ok', title: 'Third', message: 'C'});
+        push({variant: 'ok', title: 'Fourth', message: 'D'});
+
+        expect(screen.queryByText('First')).not.toBeInTheDocument();
+        expect(screen.getByText('Second')).toBeInTheDocument();
+        expect(screen.getByText('Third')).toBeInTheDocument();
+        expect(screen.getByText('Fourth')).toBeInTheDocument();
+    });
+
     it('does not render a container when there are no toasts', () => {
         const {container} = render(
             <ToastProvider>

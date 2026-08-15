@@ -151,4 +151,62 @@ describe("useGameplay", () => {
 
         expect(getGameStateSpy.mock.calls.length).toBe(callsAtWin);
     });
+
+    it("refresh() calls through to getGameState and applies the result like a push", async () => {
+        const adapter = new MockGameAdapter();
+        const {sessionId, p1} = await setUpInGameSession(adapter);
+
+        const {result} = renderHook(() => useGameplay(sessionId, p1), {
+            wrapper: makeWrapper(adapter)
+        });
+
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        const getGameStateSpy = vi.spyOn(adapter, "getGameState");
+
+        await act(async () => {
+            await result.current.refresh();
+        });
+
+        expect(getGameStateSpy).toHaveBeenCalledWith(sessionId, p1);
+        expect(result.current.state?.playerName).toBe("Alice");
+    });
+
+    it("ignores a refresh()-driven update once hasWinner is already true", async () => {
+        const adapter = new MockGameAdapter();
+        const {sessionId, p1, p2OccupiedCells} = await setUpInGameSession(adapter);
+
+        const {result} = renderHook(() => useGameplay(sessionId, p1), {
+            wrapper: makeWrapper(adapter)
+        });
+
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        for (const cell of p2OccupiedCells) {
+            if (result.current.state?.hasWinner) break;
+            await act(async () => {
+                await result.current.shoot(cell);
+            });
+        }
+
+        await waitFor(() => expect(result.current.state?.hasWinner).toBe(true));
+
+        const winningState = result.current.state;
+
+        // Stub a stale/contradictory snapshot (hasWinner false, a distinct alive-cell count) so
+        // if the doneRef latch were NOT respected on a refresh()-driven update, this bogus value
+        // would visibly leak into `state` — proving the latch, not just coincidental equality.
+        const getGameStateSpy = vi.spyOn(adapter, "getGameState").mockResolvedValueOnce({
+            ...winningState!,
+            hasWinner: false,
+            playerNumberOfAliveCells: 999,
+        });
+
+        await act(async () => {
+            await result.current.refresh();
+        });
+
+        expect(getGameStateSpy).toHaveBeenCalledWith(sessionId, p1);
+        expect(result.current.state).toEqual(winningState);
+    });
 });

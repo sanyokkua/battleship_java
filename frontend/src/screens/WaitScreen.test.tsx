@@ -131,6 +131,28 @@ describe('WaitScreen', () => {
         expect(screen.queryByText('Game ID copied to clipboard.')).not.toBeInTheDocument();
     });
 
+    it('shows a refresh button that re-fetches the session snapshot when clicked', async () => {
+        const adapter = new MockGameAdapter();
+        const sessionId = await adapter.createSession('UKRAINIAN');
+        const player = await adapter.createPlayer(sessionId, 'Alice');
+        saveSession(sessionId);
+        savePlayer(player);
+
+        renderWaitScreen(adapter);
+
+        await waitFor(() => expect(screen.getByText('Hello, Alice!')).toBeInTheDocument());
+
+        const getStageSpy = vi.spyOn(adapter, 'getStage');
+        const getOpponentSpy = vi.spyOn(adapter, 'getOpponent');
+
+        await act(async () => {
+            fireEvent.click(screen.getByRole('button', {name: '⟳ Refresh'}));
+        });
+
+        expect(getStageSpy).toHaveBeenCalledWith(sessionId);
+        expect(getOpponentSpy).toHaveBeenCalledWith(sessionId, player.playerId);
+    });
+
     it('navigates to /game/preparation once the opponent joins and the stage advances', async () => {
         const adapter = new MockGameAdapter();
         const sessionId = await adapter.createSession('UKRAINIAN');

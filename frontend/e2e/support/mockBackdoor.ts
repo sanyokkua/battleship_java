@@ -1,6 +1,6 @@
-import { expect, type Page } from '@playwright/test';
-import type { Coordinate, ResponseCreatedPlayerDto, ShipDto } from '../../src/logic/ApplicationTypes';
-import { coordinateLabel, coordinateLabelPattern, computeFleetLayout, type FleetPlacement } from './fleetHelpers';
+import {expect, type Page} from '@playwright/test';
+import type {Coordinate, ResponseCreatedPlayerDto, ShipDto} from '../../src/logic/ApplicationTypes';
+import {computeFleetLayout, coordinateLabel, coordinateLabelPattern, type FleetPlacement} from './fleetHelpers';
 // Note: no runtime import of './types' here on purpose - it's a pure ambient .d.ts
 // (global `Window.__e2eMockHooks` augmentation). tsconfig.e2e.json's `include: ["e2e"]`
 // already pulls it into the whole-program type-check without needing an import (which
@@ -10,7 +10,7 @@ import { coordinateLabel, coordinateLabelPattern, computeFleetLayout, type Fleet
 // computeFleetLayout / coordinateLabel / coordinateLabelPattern / FleetPlacement live in
 // ./fleetHelpers.ts (pure, adapter-agnostic — shared with e2e-live/) and are re-exported
 // here so this module's existing callers/imports keep working unchanged.
-export { computeFleetLayout, coordinateLabel, coordinateLabelPattern, type FleetPlacement };
+export {computeFleetLayout, coordinateLabel, coordinateLabelPattern, type FleetPlacement};
 
 /**
  * Shared Playwright helpers for driving the app's MockGameAdapter directly
@@ -49,116 +49,107 @@ export { computeFleetLayout, coordinateLabel, coordinateLabelPattern, type Fleet
  */
 
 export type PersistedSession = {
-  sessionId: string;
-  player: ResponseCreatedPlayerDto | null;
+    sessionId: string;
+    player: ResponseCreatedPlayerDto | null;
 };
 
 /** Reads the session/player currently persisted in localStorage by the real UI (or by seedSessionAndPlayer). */
 export async function readPersistedSession(page: Page): Promise<PersistedSession> {
-  return page.evaluate(() => {
-    const hooks = window.__e2eMockHooks;
-    if (!hooks) {
-      throw new Error('window.__e2eMockHooks is missing - is the app running with VITE_ADAPTER=mock (npm run dev:mock)?');
-    }
-    return {
-      sessionId: hooks.storage.loadSession(),
-      player: hooks.storage.loadPlayer(),
-    };
-  });
+    return page.evaluate(() => {
+        const hooks = window.__e2eMockHooks;
+        if (!hooks) {
+            throw new Error('window.__e2eMockHooks is missing - is the app running with VITE_ADAPTER=mock (npm run dev:mock)?');
+        }
+        return {
+            sessionId: hooks.storage.loadSession(),
+            player: hooks.storage.loadPlayer(),
+        };
+    });
 }
 
 /** Creates a second ("opponent") player directly on the mock adapter, bypassing the UI entirely. */
 export async function createOpponent(page: Page, sessionId: string, name: string): Promise<ResponseCreatedPlayerDto> {
-  return page.evaluate(
-    async ({ sessionId, name }) => {
-      const hooks = window.__e2eMockHooks;
-      if (!hooks) throw new Error('window.__e2eMockHooks is missing');
-      return hooks.adapter.createPlayer(sessionId, name);
-    },
-    { sessionId, name },
-  );
+    return page.evaluate(
+        async ({sessionId, name}) => {
+            const hooks = window.__e2eMockHooks;
+            if (!hooks) throw new Error('window.__e2eMockHooks is missing');
+            return hooks.adapter.createPlayer(sessionId, name);
+        },
+        {sessionId, name},
+    );
 }
 
 /** Reads a player's ship catalog straight from the mock adapter (bypassing the UI). */
 export async function fetchShipCatalog(page: Page, sessionId: string, playerId: string): Promise<ShipDto[]> {
-  return page.evaluate(
-    async ({ sessionId, playerId }) => {
-      const hooks = window.__e2eMockHooks;
-      if (!hooks) throw new Error('window.__e2eMockHooks is missing');
-      const state = await hooks.adapter.getPreparationState(sessionId, playerId);
-      return state.ships;
-    },
-    { sessionId, playerId },
-  );
+    return page.evaluate(
+        async ({sessionId, playerId}) => {
+            const hooks = window.__e2eMockHooks;
+            if (!hooks) throw new Error('window.__e2eMockHooks is missing');
+            const state = await hooks.adapter.getPreparationState(sessionId, playerId);
+            return state.ships;
+        },
+        {sessionId, playerId},
+    );
 }
 
 /** Places an entire fleet directly via the mock adapter (bypassing the UI) and marks the player ready. */
 export async function placeFullFleetAndReady(page: Page, sessionId: string, playerId: string): Promise<FleetPlacement[]> {
-  const ships = await fetchShipCatalog(page, sessionId, playerId);
-  const placements = computeFleetLayout(ships);
+    const ships = await fetchShipCatalog(page, sessionId, playerId);
+    const placements = computeFleetLayout(ships);
 
-  for (const placement of placements) {
+    for (const placement of placements) {
+        await page.evaluate(
+            async ({sessionId, playerId, shipId, at, direction}) => {
+                const hooks = window.__e2eMockHooks;
+                if (!hooks) throw new Error('window.__e2eMockHooks is missing');
+                await hooks.adapter.addShip(sessionId, playerId, shipId, at, direction);
+            },
+            {sessionId, playerId, shipId: placement.shipId, at: placement.at, direction: placement.direction},
+        );
+    }
+
     await page.evaluate(
-      async ({ sessionId, playerId, shipId, at, direction }) => {
-        const hooks = window.__e2eMockHooks;
-        if (!hooks) throw new Error('window.__e2eMockHooks is missing');
-        await hooks.adapter.addShip(sessionId, playerId, shipId, at, direction);
-      },
-      { sessionId, playerId, shipId: placement.shipId, at: placement.at, direction: placement.direction },
+        async ({sessionId, playerId}) => {
+            const hooks = window.__e2eMockHooks;
+            if (!hooks) throw new Error('window.__e2eMockHooks is missing');
+            await hooks.adapter.setReady(sessionId, playerId);
+        },
+        {sessionId, playerId},
     );
-  }
 
-  await page.evaluate(
-    async ({ sessionId, playerId }) => {
-      const hooks = window.__e2eMockHooks;
-      if (!hooks) throw new Error('window.__e2eMockHooks is missing');
-      await hooks.adapter.setReady(sessionId, playerId);
-    },
-    { sessionId, playerId },
-  );
-
-  return placements;
+    return placements;
 }
 
 /**
- * Places an entire fleet via the *real UI*, largest-ship-first (matching ShipTray's
- * own descending-size sort): for each placement, selects the next unplaced ship in
- * the tray (`button.ship-item` — the tray's own remove (✕) buttons live inside
- * *placed* ships, which render as a non-button `<div>` at the top level, so this
- * selector only ever matches selectable/unplaced ships), sets the placement direction
- * via DirectionToggle when it differs from the current one, clicks the target board
- * cell by its coordinate aria-label (e.g. "C7, water" — see BoardCell.tsx's
- * aria-label scheme), then waits for the tray's unplaced-ship count to drop by one
- * before moving on — placement is asynchronous (adapter call + refetch), so without
- * this the next iteration could re-select the same still-visible ship before the DOM
- * catches up.
+ * Places an entire fleet via the *real UI*, driving the tap-empty-cell guided
+ * placement popup: for each placement, taps the target board cell by its coordinate
+ * aria-label (e.g. "C7, water" — see BoardCell.tsx's aria-label scheme), picks the
+ * ship matching that placement's size from the popup's ship-picking step, then (for
+ * ships larger than one cell) picks the placement's direction from the popup's
+ * direction step. The popup selects by tapped cell rather than tray order, so
+ * per-ship ordering doesn't matter here.
  */
 export async function placeFullFleetViaUi(
-  page: Page,
-  placements: FleetPlacement[],
-  labels: { horizontal: RegExp; vertical: RegExp },
+    page: Page,
+    placements: FleetPlacement[],
+    labels: { horizontal: RegExp; vertical: RegExp },
 ): Promise<void> {
-  const tray = page.locator('.fleet-panel');
-  const board = page.locator('.board-panel .board');
-  const unplacedButtons = tray.locator('button.ship-item');
-  const byLargestFirst = [...placements].sort((a, b) => b.shipSize - a.shipSize);
+    const board = page.locator('.board-panel .board');
+    const dialog = page.getByRole('dialog');
 
-  let remaining = await unplacedButtons.count();
-
-  for (const placement of byLargestFirst) {
-    await unplacedButtons.first().click();
-
-    const directionButton =
-      placement.direction === 'VERTICAL'
-        ? page.getByRole('button', { name: labels.vertical })
-        : page.getByRole('button', { name: labels.horizontal });
-    await directionButton.click();
-
-    await board.getByRole('button', { name: coordinateLabelPattern(placement.at) }).click();
-
-    remaining -= 1;
-    await expect(unplacedButtons).toHaveCount(remaining);
-  }
+    for (const placement of placements) {
+        await board.getByRole('button', {name: coordinateLabelPattern(placement.at)}).click();
+        await expect(dialog).toBeVisible();
+        await dialog.locator('.ship-placement-option', {hasText: `${placement.shipSize} cell`}).click();
+        if (placement.shipSize > 1) {
+            const directionButton =
+                placement.direction === 'VERTICAL'
+                    ? dialog.getByRole('button', {name: labels.vertical})
+                    : dialog.getByRole('button', {name: labels.horizontal});
+            await directionButton.click();
+        }
+        await expect(dialog).toBeHidden();
+    }
 }
 
 /**
@@ -172,33 +163,33 @@ export async function placeFullFleetViaUi(
  * exercised - this only changes how the *very last* shot's result reaches the page.
  */
 export async function shootViaBackdoor(page: Page, sessionId: string, playerId: string, at: Coordinate): Promise<string> {
-  const result = await page.evaluate(
-    async ({ sessionId, playerId, at }) => {
-      const hooks = window.__e2eMockHooks;
-      if (!hooks) throw new Error('window.__e2eMockHooks is missing');
-      return hooks.adapter.shoot(sessionId, playerId, at);
-    },
-    { sessionId, playerId, at },
-  );
-  return result.shotResult;
+    const result = await page.evaluate(
+        async ({sessionId, playerId, at}) => {
+            const hooks = window.__e2eMockHooks;
+            if (!hooks) throw new Error('window.__e2eMockHooks is missing');
+            return hooks.adapter.shoot(sessionId, playerId, at);
+        },
+        {sessionId, playerId, at},
+    );
+    return result.shotResult;
 }
 
 /** Reads the session's current GameStage straight from the mock adapter (bypassing the UI). */
 export async function fetchStage(page: Page, sessionId: string): Promise<string> {
-  return page.evaluate((sid) => {
-    const hooks = window.__e2eMockHooks;
-    if (!hooks) throw new Error('window.__e2eMockHooks is missing');
-    return hooks.adapter.getStage(sid);
-  }, sessionId);
+    return page.evaluate((sid) => {
+        const hooks = window.__e2eMockHooks;
+        if (!hooks) throw new Error('window.__e2eMockHooks is missing');
+        return hooks.adapter.getStage(sid);
+    }, sessionId);
 }
 
 /** Persists the given GameStage to localStorage via GameBrowserStorage.saveStage, bypassing the UI. */
 export async function persistStage(page: Page, stage: string): Promise<void> {
-  await page.evaluate((s) => {
-    const hooks = window.__e2eMockHooks;
-    if (!hooks) throw new Error('window.__e2eMockHooks is missing');
-    hooks.storage.saveStage(s);
-  }, stage);
+    await page.evaluate((s) => {
+        const hooks = window.__e2eMockHooks;
+        if (!hooks) throw new Error('window.__e2eMockHooks is missing');
+        hooks.storage.saveStage(s);
+    }, stage);
 }
 
 /**
@@ -232,40 +223,40 @@ export async function persistStage(page: Page, stage: string): Promise<void> {
  * `path`, retrying if not.
  */
 export async function hardNavigate(page: Page, path: string): Promise<void> {
-  const targetUrlPattern = new RegExp(`${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+    const targetUrlPattern = new RegExp(`${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
 
-  for (let attempt = 0; attempt < 5; attempt++) {
-    await page.evaluate(() => {
-      window.history.pushState({}, '', '/join');
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    });
-    await page.evaluate((target) => {
-      window.history.pushState({}, '', target);
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    }, path);
+    for (let attempt = 0; attempt < 5; attempt++) {
+        await page.evaluate(() => {
+            window.history.pushState({}, '', '/join');
+            window.dispatchEvent(new PopStateEvent('popstate'));
+        });
+        await page.evaluate((target) => {
+            window.history.pushState({}, '', target);
+            window.dispatchEvent(new PopStateEvent('popstate'));
+        }, path);
 
-    try {
-      await page.waitForURL(targetUrlPattern, { timeout: 500 });
-    } catch {
-      continue; // Lost the race outright; retry the whole hop.
+        try {
+            await page.waitForURL(targetUrlPattern, {timeout: 500});
+        } catch {
+            continue; // Lost the race outright; retry the whole hop.
+        }
+
+        if (await urlStaysOn(page, targetUrlPattern)) {
+            return;
+        }
+        // Bumped off `path` shortly after landing there; retry the whole hop.
     }
 
-    if (await urlStaysOn(page, targetUrlPattern)) {
-      return;
-    }
-    // Bumped off `path` shortly after landing there; retry the whole hop.
-  }
-
-  throw new Error(`hardNavigate: failed to settle on ${path} after retries`);
+    throw new Error(`hardNavigate: failed to settle on ${path} after retries`);
 }
 
 /** Samples the page's URL a few more times, confirming it keeps matching `pattern` throughout. */
 async function urlStaysOn(page: Page, pattern: RegExp, samples = 4, intervalMs = 150): Promise<boolean> {
-  for (let i = 0; i < samples; i++) {
-    await page.waitForTimeout(intervalMs);
-    if (!pattern.test(page.url())) {
-      return false;
+    for (let i = 0; i < samples; i++) {
+        await page.waitForTimeout(intervalMs);
+        if (!pattern.test(page.url())) {
+            return false;
+        }
     }
-  }
-  return true;
+    return true;
 }

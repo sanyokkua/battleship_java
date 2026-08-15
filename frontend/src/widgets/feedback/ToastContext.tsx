@@ -21,6 +21,9 @@ export type ToastContextValue = {
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 
+/** Maximum number of toasts visible at once; a `push` beyond this evicts the oldest first (FIFO). */
+const MAX_TOASTS = 3;
+
 /**
  * Owns the live toast queue for its subtree.
  *
@@ -28,7 +31,8 @@ const ToastContext = createContext<ToastContextValue | undefined>(undefined);
  * in-memory, and never persisted or compared across sessions, so uniqueness within
  * a page lifetime is all that's needed). Consumers add toasts via `push` (id omitted,
  * assigned internally) and remove them via `dismiss` (by id); typically read through
- * {@link useNotify} rather than this context directly.
+ * {@link useNotify} rather than this context directly. At most {@link MAX_TOASTS} toasts
+ * are ever live at once — a `push` beyond that cap drops the oldest toast first (FIFO).
  */
 export function ToastProvider({children}: { children: ReactNode }) {
     const [toasts, setToasts] = useState<ToastData[]>([]);
@@ -36,7 +40,10 @@ export function ToastProvider({children}: { children: ReactNode }) {
 
     const push = useCallback((toast: Omit<ToastData, 'id'>) => {
         const id = String(nextId.current++);
-        setToasts((prev) => [...prev, {...toast, id}]);
+        setToasts((prev) => {
+            const next = [...prev, {...toast, id}];
+            return next.length > MAX_TOASTS ? next.slice(next.length - MAX_TOASTS) : next;
+        });
     }, []);
 
     const dismiss = useCallback((id: string) => {

@@ -10,25 +10,25 @@ function cell(overrides: Partial<CellDto> = {}): CellDto {
 
 describe('BoardCell', () => {
     it('renders water for an untouched cell with no ship', () => {
-        render(<BoardCell cell={cell()} mode="own" sunk={false} isGhost={false}/>);
+        render(<BoardCell cell={cell()} mode="own" sunk={false} isGhost={false} isHighlighted={false}/>);
         expect(screen.getByLabelText('C3, water')).toBeInTheDocument();
     });
 
     it('renders your-ship in own mode for an unshot ship cell', () => {
         const c = cell({ship: {shipId: 's1', shipSize: 2}});
-        render(<BoardCell cell={c} mode="own" sunk={false} isGhost={false}/>);
+        render(<BoardCell cell={c} mode="own" sunk={false} isGhost={false} isHighlighted={false}/>);
         expect(screen.getByLabelText('C3, your ship')).toBeInTheDocument();
     });
 
     it('suppresses ship reveal in target mode even if cell.ship is set and unshot', () => {
         const c = cell({ship: {shipId: 's1', shipSize: 2}, hasShot: false});
-        render(<BoardCell cell={c} mode="target" sunk={false} isGhost={false}/>);
+        render(<BoardCell cell={c} mode="target" sunk={false} isGhost={false} isHighlighted={false}/>);
         expect(screen.getByLabelText('C3, water')).toBeInTheDocument();
     });
 
     it('renders ghost preview in prep mode, taking precedence over everything else', () => {
         const c = cell({ship: {shipId: 's1', shipSize: 2}});
-        render(<BoardCell cell={c} mode="prep" sunk={false} isGhost={true}/>);
+        render(<BoardCell cell={c} mode="prep" sunk={false} isGhost={true} isHighlighted={false}/>);
         expect(screen.getByLabelText('C3, valid drop')).toBeInTheDocument();
     });
 
@@ -36,7 +36,7 @@ describe('BoardCell', () => {
         const user = userEvent.setup();
         const onClick = vi.fn();
         const c = cell({isAvailable: false});
-        render(<BoardCell cell={c} mode="prep" sunk={false} isGhost={false} onClick={onClick}/>);
+        render(<BoardCell cell={c} mode="prep" sunk={false} isGhost={false} isHighlighted={false} onClick={onClick}/>);
         const el = screen.getByLabelText('C3, blocked');
         // Non-interactive: should not be a button
         expect(el.tagName).toBe('DIV');
@@ -46,30 +46,30 @@ describe('BoardCell', () => {
 
     it('renders hit state for a shot cell with a ship that is not sunk', () => {
         const c = cell({ship: {shipId: 's1', shipSize: 2}, hasShot: true});
-        render(<BoardCell cell={c} mode="target" sunk={false} isGhost={false}/>);
+        render(<BoardCell cell={c} mode="target" sunk={false} isGhost={false} isHighlighted={false}/>);
         expect(screen.getByLabelText('C3, hit')).toBeInTheDocument();
     });
 
     it('renders miss state for a shot cell with no ship', () => {
         const c = cell({hasShot: true, ship: null});
-        render(<BoardCell cell={c} mode="target" sunk={false} isGhost={false}/>);
+        render(<BoardCell cell={c} mode="target" sunk={false} isGhost={false} isHighlighted={false}/>);
         expect(screen.getByLabelText('C3, miss')).toBeInTheDocument();
     });
 
     it('renders sunk state for a shot cell whose ship is fully sunk', () => {
         const c = cell({ship: {shipId: 's1', shipSize: 2}, hasShot: true});
-        render(<BoardCell cell={c} mode="target" sunk={true} isGhost={false}/>);
+        render(<BoardCell cell={c} mode="target" sunk={true} isGhost={false} isHighlighted={false}/>);
         expect(screen.getByLabelText('C3, sunk')).toBeInTheDocument();
     });
 
     it('renders a clickable cell as a real button when onClick is provided and not readonly', () => {
-        render(<BoardCell cell={cell()} mode="target" sunk={false} isGhost={false} onClick={() => {
+        render(<BoardCell cell={cell()} mode="target" sunk={false} isGhost={false} isHighlighted={false} onClick={() => {
         }}/>);
         expect(screen.getByRole('button', {name: 'C3, water'})).toBeInTheDocument();
     });
 
     it('renders a non-interactive div when readonly even if onClick is provided', () => {
-        render(<BoardCell cell={cell()} mode="target" sunk={false} isGhost={false} onClick={() => {
+        render(<BoardCell cell={cell()} mode="target" sunk={false} isGhost={false} isHighlighted={false} onClick={() => {
         }} readonly/>);
         expect(screen.queryByRole('button')).not.toBeInTheDocument();
         expect(screen.getByLabelText('C3, water')).toBeInTheDocument();
@@ -79,7 +79,7 @@ describe('BoardCell', () => {
         const user = userEvent.setup();
         const onClick = vi.fn();
         const c = cell({ship: {shipId: 's1', shipSize: 2}, hasShot: true});
-        render(<BoardCell cell={c} mode="target" sunk={false} isGhost={false} onClick={onClick}/>);
+        render(<BoardCell cell={c} mode="target" sunk={false} isGhost={false} isHighlighted={false} onClick={onClick}/>);
         const el = screen.getByLabelText('C3, hit');
         expect(el.tagName).toBe('DIV');
         await user.click(el);
@@ -90,7 +90,7 @@ describe('BoardCell', () => {
         const user = userEvent.setup();
         const onClick = vi.fn();
         const c = cell({hasShot: true, ship: null});
-        render(<BoardCell cell={c} mode="target" sunk={false} isGhost={false} onClick={onClick}/>);
+        render(<BoardCell cell={c} mode="target" sunk={false} isGhost={false} isHighlighted={false} onClick={onClick}/>);
         const el = screen.getByLabelText('C3, miss');
         expect(el.tagName).toBe('DIV');
         await user.click(el);
@@ -101,7 +101,7 @@ describe('BoardCell', () => {
         const user = userEvent.setup();
         const onClick = vi.fn();
         const c = cell({ship: {shipId: 's1', shipSize: 2}, hasShot: true});
-        render(<BoardCell cell={c} mode="target" sunk={true} isGhost={false} onClick={onClick}/>);
+        render(<BoardCell cell={c} mode="target" sunk={true} isGhost={false} isHighlighted={false} onClick={onClick}/>);
         const el = screen.getByLabelText('C3, sunk');
         expect(el.tagName).toBe('DIV');
         await user.click(el);
@@ -110,8 +110,24 @@ describe('BoardCell', () => {
 
     it('uses column letter and 1-based row number in the aria-label', () => {
         const c: CellDto = {row: 6, col: 5, ship: null, hasShot: false, isAvailable: true};
-        render(<BoardCell cell={c} mode="own" sunk={false} isGhost={false}/>);
+        render(<BoardCell cell={c} mode="own" sunk={false} isGhost={false} isHighlighted={false}/>);
         // col 5 -> 'F', row 6 -> 7
         expect(screen.getByLabelText('F7, water')).toBeInTheDocument();
+    });
+
+    it('adds the is-shot-flash class when isHighlighted, without changing the resolved state class', () => {
+        const c = cell({hasShot: true, ship: null});
+        render(<BoardCell cell={c} mode="own" sunk={false} isGhost={false} isHighlighted={true}/>);
+        const el = screen.getByLabelText('C3, miss');
+        expect(el).toHaveClass('cell-miss');
+        expect(el).toHaveClass('is-shot-flash');
+    });
+
+    it('omits the is-shot-flash class when not isHighlighted', () => {
+        const c = cell({hasShot: true, ship: null});
+        render(<BoardCell cell={c} mode="own" sunk={false} isGhost={false} isHighlighted={false}/>);
+        const el = screen.getByLabelText('C3, miss');
+        expect(el).toHaveClass('cell-miss');
+        expect(el).not.toHaveClass('is-shot-flash');
     });
 });

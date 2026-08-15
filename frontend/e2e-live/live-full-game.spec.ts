@@ -270,7 +270,7 @@ test('live full game: create -> wait -> prepare -> play -> results', async ({ br
         await expect(page.getByText('Time', { exact: true })).toHaveCount(0);
 
         // Both boards present and read-only.
-        await expect(page.locator('.board-panel .board.readonly')).toHaveCount(2);
+        await expect(page.locator('.results-board-panel .board.readonly')).toHaveCount(2);
       }
 
       // Bug 2 (opponent's un-hit ships not shown on the Results screen): this spec's
@@ -278,11 +278,11 @@ test('live full game: create -> wait -> prepare -> play -> results', async ({ br
       // a cell, so the loser here never gets an active turn (the winner keeps hitting
       // until the game ends) - meaning the winner's board stays 100% un-hit from the
       // loser's perspective by the time the game ends. That's exactly the bug's trigger
-      // scenario, so confirm the loser's result-target board (first `.board-panel`,
+      // scenario, so confirm the loser's result-target board (first `.results-board-panel`,
       // opponent's board per ResultsScreen.tsx's markup) still shows the opponent's
       // ship cells.
       const defeatPage = textA === 'Defeat' ? pageA : pageB;
-      const opponentBoardShipCells = defeatPage.locator('.board-panel').first().locator('.cell-ship');
+      const opponentBoardShipCells = defeatPage.locator('.results-board-panel').first().locator('.cell-ship');
       await expect(opponentBoardShipCells).not.toHaveCount(0);
     });
   } finally {

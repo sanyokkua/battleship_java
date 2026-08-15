@@ -17,6 +17,7 @@ export type BoardProps = {
     readonly?: boolean;
     onCellClick?: (row: number, col: number) => void;
     ghostCells?: Set<string>; // client-only valid-drop preview, keys as `${row}-${col}`, prep mode only
+    highlightedCells?: Set<string>; // client-only just-shot flash, keys as `${row}-${col}`, own board only
 };
 
 const COLUMN_LETTERS = Array.from({length: 10}, (_, i) => String.fromCharCode(65 + i));
@@ -97,7 +98,7 @@ export function computeMoatCellKeys(field: CellDto[][], shipIds: Set<string>): S
  * ghost-cell (prep-mode drop preview) lookup are computed once here and passed
  * down per cell.
  */
-export function Board({field, mode, readonly, onCellClick, ghostCells}: BoardProps) {
+export function Board({field, mode, readonly, onCellClick, ghostCells, highlightedCells}: BoardProps) {
     const sunkShipIds = computeSunkShipIds(field);
 
     return (
@@ -121,6 +122,7 @@ export function Board({field, mode, readonly, onCellClick, ghostCells}: BoardPro
                         row.map((cell, colIndex) => {
                             const sunk = cell.ship != null && sunkShipIds.has(cell.ship.shipId);
                             const isGhost = ghostCells?.has(`${rowIndex}-${colIndex}`) ?? false;
+                            const isHighlighted = highlightedCells?.has(`${rowIndex}-${colIndex}`) ?? false;
                             return (
                                 <BoardCell
                                     key={`${rowIndex}-${colIndex}`}
@@ -128,6 +130,7 @@ export function Board({field, mode, readonly, onCellClick, ghostCells}: BoardPro
                                     mode={mode}
                                     sunk={sunk}
                                     isGhost={isGhost}
+                                    isHighlighted={isHighlighted}
                                     readonly={readonly}
                                     onClick={onCellClick ? () => onCellClick(rowIndex, colIndex) : undefined}
                                 />

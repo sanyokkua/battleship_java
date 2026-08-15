@@ -1,0 +1,8 @@
+{
+  "copilot": false,
+  "gemini": false,
+  "codex": true,
+  "max_lines": 200,
+  "hard_lines": 250
+}
+

@@ -51,13 +51,13 @@
     text-transform: uppercase;
 }
 
-.boards-area {
+.results-boards-area {
     display: flex;
     flex-direction: column;
     gap: 22px;
 }
 
-.board-panel {
+.results-board-panel {
     flex: 1;
     min-width: 0;
 }
@@ -68,7 +68,7 @@
 }
 
 @media (min-width: 641px) {
-    .boards-area {
+    .results-boards-area {
         flex-direction: row;
     }
 }

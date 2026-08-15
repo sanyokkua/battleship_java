@@ -2,7 +2,7 @@ import {useCallback, useEffect, useState} from "react";
 import {useGameAdapter} from "../adapters/GameAdapterContext";
 import {GameAdapterError, isGameAdapterError} from "../adapters/AdapterErrors";
 import {useSessionEvents} from "./useSessionEvents";
-import type {CellDto, Coordinate, ShipDirection, ShipDto} from "../logic/ApplicationTypes";
+import type {CellDto, Coordinate, ResponseSessionPushDto, ShipDirection, ShipDto} from "../logic/ApplicationTypes";
 
 /**
  * Return type of {@link usePreparation}.
@@ -12,23 +12,8 @@ export type PreparationHookState = {
     ships: ShipDto[];
     /** Current player's board, as a 2D grid of cells (rows of `CellDto`). */
     field: CellDto[][];
-    /** Orientation applied to the next ship placed via `placeShip`. */
-    direction: ShipDirection;
-    /** Updates `direction` for subsequent `placeShip` calls. */
-    setDirection: (d: ShipDirection) => void;
-    /** ID of the ship currently selected for placement in the UI, or `null` if none is selected. */
-    activeShipId: string | null;
-    /** Updates `activeShipId`. */
-    setActiveShipId: (id: string | null) => void;
-    /**
-     * Places ship `shipId` at `at`, then refetches `ships`/`field`. Uses the current
-     * `direction` unless `dir` is passed explicitly — needed by callers (e.g. the tap-cell
-     * placement popup) that pick a per-placement orientation via `setDirection` and call
-     * `placeShip` in the same handler: `setDirection` only takes effect on the *next*
-     * render, so `placeShip`'s own closure would otherwise still see the previous
-     * `direction` value when called synchronously right after.
-     */
-    placeShip: (shipId: string, at: Coordinate, dir?: ShipDirection) => Promise<void>;
+    /** Places ship `shipId` at `at` with orientation `dir`, then refetches `ships`/`field`. */
+    placeShip: (shipId: string, at: Coordinate, dir: ShipDirection) => Promise<void>;
     /** Removes whichever ship occupies cell `at`, then refetches `ships`/`field`. */
     removeShipAt: (at: Coordinate) => Promise<void>;
     /** Marks the current player as ready to start the game. */
@@ -59,6 +44,9 @@ export type PreparationHookState = {
      * successful action that happens to follow another successful action.
      */
     actionTick: number;
+    /** Manually re-fetches the current session snapshot, bypassing the push channel — wired to a
+     * visible refresh affordance for when a push connection has silently died. */
+    refresh: () => Promise<void>;
 };
 
 function toAdapterError(e: unknown, context: string): GameAdapterError {
@@ -92,8 +80,6 @@ export function usePreparation(sessionId: string, playerId: string): Preparation
     const adapter = useGameAdapter();
     const [ships, setShips] = useState<ShipDto[]>([]);
     const [field, setField] = useState<CellDto[][]>([]);
-    const [direction, setDirection] = useState<ShipDirection>("HORIZONTAL");
-    const [activeShipId, setActiveShipId] = useState<string | null>(null);
     const [opponentReady, setOpponentReady] = useState<boolean>(false);
     const [stage, setStage] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
@@ -136,16 +122,29 @@ export function usePreparation(sessionId: string, playerId: string): Preparation
         };
     }, [refetch]);
 
-    useSessionEvents(sessionId, playerId, payload => {
+    const refetchPush = useCallback(async (): Promise<ResponseSessionPushDto> => {
+        const [gameStage, opponent] = await Promise.all([
+            adapter.getStage(sessionId),
+            adapter.getOpponent(sessionId, playerId).catch(e => {
+                if (isGameAdapterError(e) && e.errorCode === "OPPONENT_NOT_FOUND") {
+                    return null;
+                }
+                throw e;
+            }),
+        ]);
+        return {gameStage, lastUpdate: "", opponent, gameplayState: null};
+    }, [adapter, sessionId, playerId]);
+
+    const {refresh} = useSessionEvents(sessionId, playerId, payload => {
         if (payload.opponent) {
             setOpponentReady(payload.opponent.ready);
         }
         setStage(payload.gameStage);
-    });
+    }, refetchPush);
 
-    const placeShip = useCallback(async (shipId: string, at: Coordinate, dir?: ShipDirection) => {
+    const placeShip = useCallback(async (shipId: string, at: Coordinate, dir: ShipDirection) => {
         try {
-            await adapter.addShip(sessionId, playerId, shipId, at, dir ?? direction);
+            await adapter.addShip(sessionId, playerId, shipId, at, dir);
             await refetch();
             setError(null);
         } catch (e) {
@@ -153,7 +152,7 @@ export function usePreparation(sessionId: string, playerId: string): Preparation
         } finally {
             setActionTick(t => t + 1);
         }
-    }, [adapter, sessionId, playerId, direction, refetch]);
+    }, [adapter, sessionId, playerId, refetch]);
 
     const removeShipAt = useCallback(async (at: Coordinate) => {
         try {
@@ -181,10 +180,6 @@ export function usePreparation(sessionId: string, playerId: string): Preparation
     return {
         ships,
         field,
-        direction,
-        setDirection,
-        activeShipId,
-        setActiveShipId,
         placeShip,
         removeShipAt,
         markReady,
@@ -193,6 +188,7 @@ export function usePreparation(sessionId: string, playerId: string): Preparation
         allPlaced: computeAllPlaced(ships, field),
         loading,
         error,
-        actionTick
+        actionTick,
+        refresh
     };
 }

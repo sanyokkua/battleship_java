@@ -22,8 +22,7 @@ export type ShipActionPopupProps = {
 /**
  * Tap-placed-ship popup: Rotate (only offered when `canRotate` — the caller computes this via
  * `computeValidRotation`) and Remove. The caller owns the actual `removeShipAt`/`placeShip`
- * adapter calls, toasts, and error handling — this widget only bubbles plain callbacks up,
- * matching `ShipTray`/`DirectionToggle`'s convention.
+ * adapter calls, toasts, and error handling — this widget only bubbles plain callbacks up.
  */
 export function ShipActionPopup({
                                     open,

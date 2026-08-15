@@ -32,7 +32,7 @@ related-skills:
   - mermaid: optional — deeper diagram support (diagram rules are embedded here in references/mermaid-rules.md)
   - drawio: optional — for existing `.drawio` diagrams
 install:
-  defaultLocation: .claude/skills/project-documentation/
+  defaultLocation: .agents/skills/project-documentation/
   supportsProject: true
   supportsGlobal: true
 ---
@@ -46,8 +46,8 @@ configuration, and infrastructure — accurately and from source, never invented
 
 Single-module Maven project: Java 25 + Spring Boot 4.1.0 backend under
 `ua.kostenko.battleship.battleship` (REST Controller → API/Service → Engine → Persistence), Vite +
-React 19 + TypeScript frontend in `frontend/`, bundled into one JAR (see root `CLAUDE.md` for the full
-architecture map — read that first).
+React 19 + TypeScript frontend in `frontend/`, bundled into one JAR (see `docs/index.md` and
+`docs/architecture.md` for the authoritative architecture map).
 
 ## When to use
 

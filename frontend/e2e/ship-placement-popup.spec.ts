@@ -1,4 +1,4 @@
-import {expect, test} from '@playwright/test';
+import {expect, type Page, test} from '@playwright/test';
 import {
     coordinateLabel,
     coordinateLabelPattern,
@@ -9,13 +9,12 @@ import {
 } from './support/mockBackdoor';
 
 /**
- * Covers the tap-cell popups added alongside the existing tray-select-then-tap flow:
- * tapping an empty cell with nothing selected opens a guided ship+direction picker,
- * and tapping any cell of an already-placed ship opens a rotate/remove popup. Both
- * popups render as a `role="dialog"` (a centered modal on desktop, a bottom sheet on
- * mobile via CSS only — the underlying markup/roles are identical either way).
+ * Covers the tap-cell popups: tapping an empty cell opens a guided ship+direction
+ * picker, and tapping any cell of an already-placed ship opens a rotate/remove popup.
+ * Both popups render as a `role="dialog"` (a centered modal on desktop, a bottom sheet
+ * on mobile via CSS only — the underlying markup/roles are identical either way).
  */
-async function seedToPreparation(page: import('@playwright/test').Page, name: string) {
+async function seedToPreparation(page: Page, name: string) {
     await page.goto('/');
     await page.getByRole('button', {name: 'New Game'}).click();
     await page.getByRole('radio', {name: /Ukrainian/i}).click();
@@ -32,8 +31,34 @@ async function seedToPreparation(page: import('@playwright/test').Page, name: st
     return {sessionId, player: player!};
 }
 
+/**
+ * Places a ship via the tap-empty-cell guided popup: taps `at`, picks the ship-picking
+ * step's option matching `shipSize`, then (for ships larger than one cell) picks
+ * `direction` from the direction step.
+ */
+async function placeShipViaPopup(
+    page: Page,
+    board: ReturnType<Page['locator']>,
+    at: { row: number; column: number },
+    shipSize: number,
+    direction: 'HORIZONTAL' | 'VERTICAL' = 'HORIZONTAL',
+) {
+    await board.getByRole('button', {name: coordinateLabelPattern(at)}).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.locator('.ship-placement-option', {hasText: `${shipSize} cell`}).click();
+    if (shipSize > 1) {
+        const directionButton =
+            direction === 'VERTICAL'
+                ? dialog.getByRole('button', {name: 'Vertical'})
+                : dialog.getByRole('button', {name: 'Horizontal'});
+        await directionButton.click();
+    }
+    await expect(dialog).toBeHidden();
+}
+
 test.describe('tap-cell ship placement and rotate/remove popups', () => {
-    test('tapping an empty cell with no ship selected opens the guided popup; picking a ship and a direction places it', async ({page}) => {
+    test('tapping an empty cell opens the guided popup; picking a ship and a direction places it', async ({page}) => {
         test.setTimeout(45000);
         await seedToPreparation(page, 'Guided');
 
@@ -56,31 +81,14 @@ test.describe('tap-cell ship placement and rotate/remove popups', () => {
         );
     });
 
-    test('tapping an empty cell while a ship is selected in the tray still places directly, without opening the popup', async ({page}) => {
-        test.setTimeout(45000);
-        await seedToPreparation(page, 'FastPath');
-
-        const tray = page.locator('.fleet-panel');
-        const board = page.locator('.board-panel .board');
-        const anchor = {row: 0, column: 0};
-
-        await tray.locator('button.ship-item').first().click();
-        await board.getByRole('button', {name: coordinateLabelPattern(anchor)}).click();
-
-        await expect(page.getByRole('dialog')).toBeHidden();
-        await expect(page.getByText('1 of 10 ships placed')).toBeVisible();
-    });
-
     test('tapping a placed ship opens the action popup; Remove removes it', async ({page}) => {
         test.setTimeout(45000);
         await seedToPreparation(page, 'Remover');
 
-        const tray = page.locator('.fleet-panel');
         const board = page.locator('.board-panel .board');
         const anchor = {row: 0, column: 0};
 
-        await tray.locator('button.ship-item').first().click();
-        await board.getByRole('button', {name: coordinateLabelPattern(anchor)}).click();
+        await placeShipViaPopup(page, board, anchor, 1);
         await expect(page.getByText('1 of 10 ships placed')).toBeVisible();
 
         await board.getByRole('button', {name: coordinateLabelPattern(anchor)}).click();
@@ -97,19 +105,14 @@ test.describe('tap-cell ship placement and rotate/remove popups', () => {
 
     test('rotating a placed ship with room to rotate moves it to the other orientation', async ({page}) => {
         test.setTimeout(45000);
-        const {sessionId, player} = await seedToPreparation(page, 'Rotator');
+        await seedToPreparation(page, 'Rotator');
 
         // Place the Battleship (size 4, the only one in the Ukrainian edition) HORIZONTAL
         // at (4,4), far from every board edge in both orientations.
-        const tray = page.locator('.fleet-panel');
         const board = page.locator('.board-panel .board');
-        const battleshipButton = tray.getByRole('button', {name: /Battleship/});
-        await battleshipButton.click();
         const bow = {row: 4, column: 4};
-        await board.getByRole('button', {name: coordinateLabelPattern(bow)}).click();
+        await placeShipViaPopup(page, board, bow, 4, 'HORIZONTAL');
         await expect(page.getByText('1 of 10 ships placed')).toBeVisible();
-        void sessionId;
-        void player;
 
         await board.getByRole('button', {name: coordinateLabelPattern(bow)}).click();
         const dialog = page.getByRole('dialog');
@@ -140,13 +143,11 @@ test.describe('tap-cell ship placement and rotate/remove popups', () => {
         test.setTimeout(45000);
         await seedToPreparation(page, 'NoRotate');
 
-        const tray = page.locator('.fleet-panel');
+        // Flush against the bottom edge: rotating VERTICAL from here would go off the
+        // board, so only HORIZONTAL is offered in the popup's direction step.
         const board = page.locator('.board-panel .board');
-        const battleshipButton = tray.getByRole('button', {name: /Battleship/});
-        await battleshipButton.click();
-        // Flush against the bottom edge: rotating VERTICAL from here would go off the board.
         const bow = {row: 9, column: 0};
-        await board.getByRole('button', {name: coordinateLabelPattern(bow)}).click();
+        await placeShipViaPopup(page, board, bow, 4, 'HORIZONTAL');
         await expect(page.getByText('1 of 10 ships placed')).toBeVisible();
 
         await board.getByRole('button', {name: coordinateLabelPattern(bow)}).click();

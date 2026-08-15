@@ -13,7 +13,8 @@
     "cancel": "Cancel",
     "confirm": "Confirm",
     "copy": "Copy",
-    "back": "Back"
+    "back": "Back",
+    "refresh": "Refresh"
   },
   "toast": {
     "dismiss": "Dismiss notification"

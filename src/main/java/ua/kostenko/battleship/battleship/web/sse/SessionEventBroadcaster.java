@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import lombok.val;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import ua.kostenko.battleship.battleship.logic.api.GameControllerApi;
 import ua.kostenko.battleship.battleship.logic.api.events.GameStateChangedEvent;
@@ -45,26 +46,28 @@ public class SessionEventBroadcaster {
     /**
      * Subscribes a player to a session's push notifications, sending an immediate snapshot of the
      * current state before returning the emitter. Any failure resolving the initial snapshot (e.g.
-     * an unknown session ID) propagates to the caller synchronously, before any SSE state is
-     * registered, so it's reported the same way every other endpoint reports such failures.
+     * an unknown session ID) propagates to the caller synchronously, and no SSE subscription is
+     * left registered, so it's reported the same way every other endpoint reports such failures.
      *
      * @param sessionId the ID of the game session
      * @param playerId  the ID of the subscribing player
      * @return the emitter the caller's controller method should return to the client
      */
     public SseEmitter subscribe(final String sessionId, final String playerId) {
-        val initialPayload = buildPayload(sessionId, playerId);
-
         val emitter = new SseEmitter(0L);
-        val playerEmitters = subscribers.computeIfAbsent(sessionId, id -> new ConcurrentHashMap<>())
-                .computeIfAbsent(playerId, id -> new CopyOnWriteArrayList<>());
-        playerEmitters.add(emitter);
+        registerEmitter(sessionId, playerId, emitter);
 
         emitter.onCompletion(() -> removeEmitter(sessionId, playerId, emitter));
         emitter.onTimeout(() -> removeEmitter(sessionId, playerId, emitter));
         emitter.onError(ex -> removeEmitter(sessionId, playerId, emitter));
 
-        send(sessionId, playerId, emitter, initialPayload);
+        try {
+            val initialPayload = buildPayload(sessionId, playerId);
+            send(sessionId, playerId, emitter, initialPayload);
+        } catch (RuntimeException ex) {
+            removeEmitter(sessionId, playerId, emitter);
+            throw ex;
+        }
 
         return emitter;
     }
@@ -101,10 +104,18 @@ public class SessionEventBroadcaster {
     private void send(
             final String sessionId, final String playerId, final SseEmitter emitter,
             final ResponseSessionPushDto payload) {
+        sendEvent(sessionId, playerId, emitter, SseEmitter.event().name("state-changed").data(payload));
+    }
+
+    private void sendHeartbeat(final String sessionId, final String playerId, final SseEmitter emitter) {
+        sendEvent(sessionId, playerId, emitter, SseEmitter.event().comment("keep-alive"));
+    }
+
+    private void sendEvent(
+            final String sessionId, final String playerId, final SseEmitter emitter,
+            final SseEmitter.SseEventBuilder event) {
         try {
-            emitter.send(SseEmitter.event()
-                    .name("state-changed")
-                    .data(payload));
+            emitter.send(event);
         } catch (IOException | IllegalStateException ex) {
             log.debug("Removing dead SSE emitter for session {} player {}: {}", sessionId, playerId,
                     ex.getMessage());
@@ -137,14 +148,68 @@ public class SessionEventBroadcaster {
                 .build();
     }
 
+    /**
+     * Registers {@code emitter} under (sessionId, playerId). The get-or-create of both map levels
+     * <em>and</em> the add to the per-player emitter list all happen inside a single
+     * {@link ConcurrentHashMap#compute} remapping function on the outer {@code subscribers} map,
+     * keyed by {@code sessionId}.
+     * <p>
+     * A naive two-step version (get-or-create the per-player list via {@code computeIfAbsent},
+     * then separately call {@code list.add(emitter)}) is not enough: {@code computeIfAbsent} only
+     * guarantees the lookup/creation itself is atomic, not what the caller does with the reference
+     * afterward. A concurrent {@link #removeEmitter} could atomically decide that very list is
+     * empty and unlink it from the map <em>between</em> this method's lookup and its {@code add}
+     * call, silently orphaning the new emitter — the same class of bug {@link #removeEmitter}
+     * itself was just hardened against, one map level up.
+     * </p>
+     * <p>
+     * By doing the add inside the same remapping function passed to {@code compute}, this call is
+     * mutually atomic with {@link #removeEmitter}'s {@code computeIfPresent} on the same
+     * {@code sessionId} key (per {@link ConcurrentHashMap}'s own guarantee for same-key
+     * operations): the two calls can never interleave, so {@link #removeEmitter} either runs
+     * entirely before this registration (in which case it's registering into freshly created,
+     * empty containers) or entirely after (in which case it sees this emitter already present and
+     * won't remove the entry).
+     * </p>
+     */
+    private void registerEmitter(final String sessionId, final String playerId, final SseEmitter emitter) {
+        subscribers.compute(sessionId, (sid, existingPlayerSubscribers) -> {
+            val playerSubscribers = existingPlayerSubscribers != null
+                    ? existingPlayerSubscribers
+                    : new ConcurrentHashMap<String, CopyOnWriteArrayList<SseEmitter>>();
+            playerSubscribers.compute(playerId, (pid, existingEmitters) -> {
+                val emitters = existingEmitters != null ? existingEmitters : new CopyOnWriteArrayList<SseEmitter>();
+                emitters.add(emitter);
+                return emitters;
+            });
+            return playerSubscribers;
+        });
+    }
+
     private void removeEmitter(final String sessionId, final String playerId, final SseEmitter emitter) {
-        val playerSubscribers = subscribers.get(sessionId);
-        if (playerSubscribers == null) {
-            return;
-        }
-        val emitters = playerSubscribers.get(playerId);
-        if (emitters != null) {
-            emitters.remove(emitter);
-        }
+        // computeIfPresent guarantees the remapping function runs atomically per key, properly
+        // synchronized against any other compute/computeIfAbsent/put/remove call on that SAME key
+        // in the SAME map. This closes a TOCTOU race against registerEmitter()'s compute call for
+        // the same (sessionId, playerId): without this, a concurrent subscribe() could re-add an
+        // emitter to a list this method is about to unlink from the map, silently orphaning the
+        // newly subscribed emitter (it would never receive another broadcast or heartbeat).
+        // Returning null from the remapping function removes the key.
+        subscribers.computeIfPresent(sessionId, (sid, playerSubscribers) -> {
+            playerSubscribers.computeIfPresent(playerId, (pid, emitters) -> {
+                emitters.remove(emitter);
+                return emitters.isEmpty() ? null : emitters;
+            });
+            return playerSubscribers.isEmpty() ? null : playerSubscribers;
+        });
+    }
+
+    @Scheduled(fixedRate = 15_000)
+    public void sendHeartbeats() {
+        subscribers.forEach((sessionId, playerSubscribers) ->
+                playerSubscribers.forEach((playerId, emitters) -> {
+                    for (val emitter : List.copyOf(emitters)) {
+                        sendHeartbeat(sessionId, playerId, emitter);
+                    }
+                }));
     }
 }

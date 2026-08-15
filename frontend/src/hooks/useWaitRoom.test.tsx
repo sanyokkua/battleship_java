@@ -3,6 +3,7 @@ import {act, renderHook, waitFor} from "@testing-library/react";
 import type {ReactNode} from "react";
 import {MockGameAdapter} from "../adapters/MockGameAdapter";
 import {GameAdapterProvider} from "../adapters/GameAdapterContext";
+import {GameAdapterError} from "../adapters/AdapterErrors";
 import {useWaitRoom} from "./useWaitRoom";
 
 /**
@@ -85,5 +86,56 @@ describe("useWaitRoom", () => {
         });
 
         expect(result.current.stage).toBe("PREPARATION");
+    });
+
+    it("refresh() calls through to getStage/getOpponent and applies the result like a push", async () => {
+        const adapter = new MockGameAdapter();
+        const sessionId = await adapter.createSession("UKRAINIAN");
+        const p1 = await adapter.createPlayer(sessionId, "Alice");
+
+        const {result} = renderHook(() => useWaitRoom(sessionId, p1.playerId), {
+            wrapper: makeWrapper(adapter)
+        });
+
+        await waitFor(() => expect(result.current.loading).toBe(false));
+        expect(result.current.stage).toBe("WAITING_FOR_PLAYERS");
+
+        // Second player joins after the initial poll — refresh() should pick this up
+        // without waiting for a push/interval tick.
+        await adapter.createPlayer(sessionId, "Bob");
+
+        const getStageSpy = vi.spyOn(adapter, "getStage");
+        const getOpponentSpy = vi.spyOn(adapter, "getOpponent");
+
+        await act(async () => {
+            await result.current.refresh();
+        });
+
+        expect(getStageSpy).toHaveBeenCalledWith(sessionId);
+        expect(getOpponentSpy).toHaveBeenCalledWith(sessionId, p1.playerId);
+        expect(result.current.stage).toBe("PREPARATION");
+        expect(result.current.opponent).toEqual({playerName: "Bob", ready: false});
+    });
+
+    it("refresh() still resolves and falls back to an empty opponent when getOpponent rejects with OPPONENT_NOT_FOUND", async () => {
+        const adapter = new MockGameAdapter();
+        const sessionId = await adapter.createSession("UKRAINIAN");
+        const p1 = await adapter.createPlayer(sessionId, "Alice");
+
+        const {result} = renderHook(() => useWaitRoom(sessionId, p1.playerId), {
+            wrapper: makeWrapper(adapter)
+        });
+
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        vi.spyOn(adapter, "getOpponent").mockRejectedValueOnce(
+            new GameAdapterError("no opponent yet", {errorCode: "OPPONENT_NOT_FOUND"})
+        );
+
+        await act(async () => {
+            await result.current.refresh();
+        });
+
+        expect(result.current.opponent).toEqual({playerName: "", ready: false});
     });
 });
