@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-08-16T14:09:59Z",
+  "feature_directory": "specs/001-qr-session-sharing",
+  "source_of_truth": {
+    "constitution": ".specify/memory/constitution.md",
+    "spec": "specs/001-qr-session-sharing/spec.md",
+    "plan": "specs/001-qr-session-sharing/plan.md",
+    "tasks": "specs/001-qr-session-sharing/tasks.md"
+  },
+  "supersedes": [
+    "speckit.implement"
+  ],
+  "executor": "speckit",
+  "capabilities": [
+    "executing-plans",
+    "test-driven-development",
+    "verification-before-completion",
+    "requesting-code-review",
+    "finishing-a-development-branch"
+  ],
+  "status": "ready",
+  "blocked_reason": null,
+  "artifact_owner": "unknown",
+  "review_only_agents": [],
+  "notes": null,
+  "last_snapshot_id": "20260816T140959500Z-ready",
+  "instructions": "Use /speckit-superpowers-bridge (Claude Code) or $speckit-superpowers-bridge (Codex). The bridge orchestrates native Superpowers skills against tasks.md; do not run speckit.implement and do not invoke superpowers:writing-plans / :brainstorming for an active Spec Kit feature."
+}

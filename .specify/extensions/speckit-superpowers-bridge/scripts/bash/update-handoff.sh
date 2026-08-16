@@ -58,12 +58,27 @@ snapshot_timestamp() {
     printf '%s%sZ\n' "$base" "${nanos:0:3}"
 }
 
+resolve_path() {
+    local path="$1" parent leaf resolved_parent
+    if realpath -m "$path" 2>/dev/null; then
+        return 0
+    fi
+    if [ -d "$path" ]; then
+        (cd "$path" && pwd -P)
+        return 0
+    fi
+    parent="$(dirname "$path")"
+    leaf="$(basename "$path")"
+    resolved_parent="$(resolve_path "$parent")"
+    printf '%s/%s\n' "$resolved_parent" "$leaf"
+}
+
 project_path() {
     local path="$1"
     [ -n "$path" ] || return 0
     local full root
-    full="$(realpath -m "$path")"
-    root="$(realpath -m "$REPO_ROOT")"
+    full="$(resolve_path "$path")"
+    root="$(resolve_path "$REPO_ROOT")"
     case "$full" in
         "$root"/*) printf '%s\n' "${full#"$root"/}" ;;
         "$root") printf '.\n' ;;
@@ -108,9 +123,9 @@ feature_full=""
 feature_project=""
 if [ -n "${FEATURE_DIRECTORY//[[:space:]]/}" ]; then
     if [[ "$FEATURE_DIRECTORY" = /* ]]; then
-        feature_full="$(realpath -m "$FEATURE_DIRECTORY")"
+        feature_full="$(resolve_path "$FEATURE_DIRECTORY")"
     else
-        feature_full="$(realpath -m "$REPO_ROOT/$FEATURE_DIRECTORY")"
+        feature_full="$(resolve_path "$REPO_ROOT/$FEATURE_DIRECTORY")"
     fi
     feature_project="$(project_path "$feature_full")"
 fi
@@ -152,8 +167,8 @@ fi
 snapshot_id=""
 snapshot_path=""
 if [ -n "$snapshot_source_directory" ]; then
-    if [[ "$snapshot_source_directory" = /* ]]; then snapshot_path="$(realpath -m "$snapshot_source_directory")"
-    else snapshot_path="$(realpath -m "$REPO_ROOT/$snapshot_source_directory")"
+    if [[ "$snapshot_source_directory" = /* ]]; then snapshot_path="$(resolve_path "$snapshot_source_directory")"
+    else snapshot_path="$(resolve_path "$REPO_ROOT/$snapshot_source_directory")"
     fi
 elif [ -n "$feature_full" ]; then
     snapshot_path="$feature_full"

@@ -35,6 +35,13 @@
     color: var(--ink);
 }
 
+.share-actions {
+    display: flex;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
 .waiting-line {
     font-weight: 700;
     color: var(--navy);

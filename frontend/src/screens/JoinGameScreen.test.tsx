@@ -109,6 +109,19 @@ describe('JoinGameScreen', () => {
         expect(await screen.findByText('Valid game code')).toBeInTheDocument();
     });
 
+    it('preserves valid UUID prefill and enabled join validation for the shared destination fixture', async () => {
+        const uuidGameId = '123e4567-e89b-12d3-a456-426614174000';
+        const user = userEvent.setup();
+        renderJoinScreen(new MockGameAdapter(), `/join?id=${uuidGameId}`);
+
+        expect(screen.getByLabelText('Game ID')).toHaveValue(uuidGameId);
+        expect(await screen.findByText('Valid game code')).toBeInTheDocument();
+
+        await user.type(screen.getByLabelText('Player name'), 'Batman');
+
+        expect(screen.getByRole('button', {name: 'Join the battle'})).toBeEnabled();
+    });
+
     it('surfaces an error toast and does not navigate for a well-formed but unknown session id', async () => {
         const user = userEvent.setup();
         renderJoinScreen(new MockGameAdapter());

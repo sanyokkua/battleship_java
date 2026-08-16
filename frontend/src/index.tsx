@@ -4,6 +4,7 @@ import {BrowserRouter} from "react-router-dom";
 // Side-effect-only imports: initializes i18next (en/uk locales) so translations
 // are ready before any component renders.
 import "./i18n";
+import {APP_BASE_PATH} from "./config/appConfig";
 import App from "./App";
 // Side-effect-only imports: load the custom CSS design system (tokens, then base
 // styles that consume them) ahead of any component-level CSS.
@@ -19,7 +20,7 @@ const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement)
  */
 root.render(
     <React.StrictMode>
-        <BrowserRouter>
+        <BrowserRouter basename={APP_BASE_PATH}>
             <App/>
         </BrowserRouter>
     </React.StrictMode>

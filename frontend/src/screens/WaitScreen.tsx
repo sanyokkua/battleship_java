@@ -1,7 +1,9 @@
-import {useEffect} from 'react';
+import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useNavigate} from 'react-router-dom';
 import copy from 'copy-to-clipboard';
+import {APP_BASE_PATH} from '../config/appConfig';
+import {buildCanonicalJoinUrl} from '../config/appBasePath';
 import {useSessionGuard} from '../hooks/useSessionGuard';
 import {useWaitRoom} from '../hooks/useWaitRoom';
 import {saveStage} from '../services/GameBrowserStorage';
@@ -9,6 +11,7 @@ import {StepTracker} from '../design/components/StepTracker/StepTracker';
 import {Button} from '../design/components/Button/Button';
 import {LoadingView} from '../widgets/layout/LoadingView';
 import {useNotify} from '../widgets/feedback/useNotify';
+import {QrCodeSheet} from '../widgets/sharing/QrCodeSheet';
 import './WaitScreen.css';
 
 // Stages that mean the wait is still ongoing — anything else (PREPARATION, IN_GAME, FINISHED)
@@ -26,6 +29,7 @@ export function WaitScreen() {
     const {t} = useTranslation('screens');
     const navigate = useNavigate();
     const notify = useNotify();
+    const [qrOpen, setQrOpen] = useState(false);
 
     const {sessionId, player} = useSessionGuard();
     const {stage, loading, refresh} = useWaitRoom(sessionId ?? '', player?.playerId ?? '');
@@ -47,6 +51,9 @@ export function WaitScreen() {
         return <LoadingView title={t('screens:loading.title')} subtitle={t('screens:loading.subtitle')}/>;
     }
 
+    const canonicalJoinUrl = buildCanonicalJoinUrl(window.location.origin, APP_BASE_PATH, sessionId);
+    const qrAvailable = stage === 'WAITING_FOR_PLAYERS' && canonicalJoinUrl !== null;
+
     const steps = [
         {key: 'create', label: t('screens:steps.create')},
         {key: 'wait', label: t('screens:steps.wait')},
@@ -66,9 +73,8 @@ export function WaitScreen() {
     }
 
     async function handleCopyLink() {
-        if (!sessionId) return;
-        const link = `${window.location.origin}/join?id=${sessionId}`;
-        const ok = await copy(link);
+        if (!canonicalJoinUrl) return;
+        const ok = await copy(canonicalJoinUrl);
         if (ok) {
             notify.success('link.copied');
         }
@@ -90,9 +96,16 @@ export function WaitScreen() {
                         <Button variant="primary" size="sm" onClick={handleCopy}>
                             {t('screens:wait.copy')}
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={handleCopyLink}>
-                            {t('screens:wait.copyLink')}
-                        </Button>
+                        <div className="share-actions">
+                            <Button variant="ghost" size="sm" onClick={handleCopyLink} disabled={!canonicalJoinUrl}>
+                                {t('screens:wait.copyLink')}
+                            </Button>
+                            {qrAvailable && (
+                                <Button variant="ghost" size="sm" onClick={() => setQrOpen(true)}>
+                                    {t('screens:wait.showQr')}
+                                </Button>
+                            )}
+                        </div>
                     </div>
                     <div className="waiting-line">
                         {t('screens:wait.waiting')}
@@ -107,6 +120,9 @@ export function WaitScreen() {
                     </Button>
                 </div>
             </div>
+            {canonicalJoinUrl !== null && (
+                <QrCodeSheet open={qrOpen} url={canonicalJoinUrl} onClose={() => setQrOpen(false)}/>
+            )}
         </div>
     );
 }

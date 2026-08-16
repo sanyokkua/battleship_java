@@ -68,6 +68,15 @@ describe('i18n locale key parity', () => {
         assertParity('screens', enScreens, ukScreens);
     });
 
+    it('QR sharing screen keys exist in both locales', () => {
+        expect(enScreens.wait.showQr).toBeTruthy();
+        expect(ukScreens.wait.showQr).toBeTruthy();
+        for (const key of ['title', 'scan', 'loading', 'description', 'error', 'close']) {
+            expect(enScreens.qr[key as keyof typeof enScreens.qr]).toBeTruthy();
+            expect(ukScreens.qr[key as keyof typeof ukScreens.qr]).toBeTruthy();
+        }
+    });
+
     it('notifications namespace has identical key sets in en and uk', () => {
         assertParity('notifications', enNotifications, ukNotifications);
     });

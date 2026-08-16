@@ -79,6 +79,30 @@ describe('Sheet', () => {
         expect(dialog.contains(document.activeElement)).toBe(true);
     });
 
+    it('restores focus to the opener after Escape closes the sheet', async () => {
+        const user = userEvent.setup();
+        const trigger = document.createElement('button');
+        trigger.textContent = 'Open sheet';
+        document.body.appendChild(trigger);
+        trigger.focus();
+
+        const {rerender} = render(
+            <Sheet open={true} title="Pick a ship" onClose={vi.fn()}>
+                <button>Option</button>
+            </Sheet>,
+        );
+
+        await user.keyboard('{Escape}');
+        rerender(
+            <Sheet open={false} title="Pick a ship" onClose={vi.fn()}>
+                <button>Option</button>
+            </Sheet>,
+        );
+
+        expect(document.activeElement).toBe(trigger);
+        document.body.removeChild(trigger);
+    });
+
     it('gives two simultaneously open Sheets distinct aria-labelledby ids', () => {
         render(
             <>
