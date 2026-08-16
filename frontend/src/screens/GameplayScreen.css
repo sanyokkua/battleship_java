@@ -43,3 +43,10 @@
         transition: opacity 0.28s ease, visibility 0s linear 0.28s;
     }
 }
+
+@media (min-width: 641px) {
+    .boards-area {
+        /* Wrapped board headers must share their lower edge so equal-size grids start together. */
+        align-items: end;
+    }
+}

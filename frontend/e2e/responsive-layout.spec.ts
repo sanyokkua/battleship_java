@@ -124,4 +124,22 @@ test.describe('responsive layout: gameplay boards', () => {
         await expect(targetPanel).toBeVisible();
         await expect(fleetPanel).toBeVisible();
     });
+
+    test('landscape viewport above the side-by-side breakpoint keeps both board grids aligned when the Ukrainian target hint wraps', async ({page}) => {
+        test.setTimeout(60000);
+        await page.setViewportSize({width: 667, height: 375});
+        await seedToInGame(page);
+
+        await page.getByRole('button', {name: 'УКР'}).click();
+        await expect(page.getByText('Торкніться, щоб стріляти')).toBeVisible();
+
+        const targetBoardTop = await page.locator('.bp-target .board').evaluate((element) =>
+            Math.round(element.getBoundingClientRect().top),
+        );
+        const fleetBoardTop = await page.locator('.bp-fleet .board').evaluate((element) =>
+            Math.round(element.getBoundingClientRect().top),
+        );
+
+        expect(targetBoardTop).toBe(fleetBoardTop);
+    });
 });
