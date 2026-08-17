@@ -439,6 +439,9 @@ battleship_java/
 ├── Dockerfile                      # multi-stage build → eclipse-temurin:25-jre runtime
 ├── docker-compose.yml
 ├── .dockerignore
+├── scripts/
+│   ├── docker-build.sh              # build the local battleship image
+│   └── docker-run.sh                # run the image on localhost:8080
 ├── README.md
 ├── docs/
 │   ├── index.md                    # this file
@@ -479,7 +482,7 @@ battleship_java/
 | **Build Command** | `mvn clean install` — installs Node v24.18.0 (pinned in `pom.xml`'s plugin config; `frontend/package.json` has no `engines` field), runs `npm run build` (`tsc && vite build`) in `frontend/` during the `compile` phase, then copies `frontend/build` into `target/classes/static` |
 | **Test Command**  | `mvn test` (backend); `mvn test -Dtest=ClassName#methodName` for a single test; frontend (from `frontend/`): `npm run test` (Vitest), `npm run test:coverage`, `npm run test:e2e` (Playwright), `npm run test:e2e:live` (Playwright against a live server), `npm run lint`          |
 | **Run Command**   | `mvn spring-boot:run` → serves at `http://localhost:8080`; Swagger UI at `/swagger-ui.html`. Frontend dev loop: `npm run dev` or `npm run dev:mock` (no backend needed)                                                                                                             |
-| **Container**     | `docker compose up`, or `docker build -t battleship . && docker run -p 8080:8080 battleship`; Podman needs `--format docker` on the build command. Runtime image is `eclipse-temurin:25-jre`, runs as non-root UID 10001, with a `HEALTHCHECK` against `GET /api/v2/game/editions`. |
+| **Container**     | Recommended scripts: `./scripts/docker-build.sh` then `./scripts/docker-run.sh`; combined: `./scripts/docker-build.sh && ./scripts/docker-run.sh`. Alternatives are `docker compose up`, or `docker build -t battleship . && docker run -p 8080:8080 battleship`; Podman needs `--format docker` on the build command. Runtime image is `eclipse-temurin:25-jre`, runs as non-root UID 10001, with a `HEALTHCHECK` against `GET /api/v2/game/editions`. |
 | **CI / Pipeline** | **None** — no `.github/workflows/`, no other CI config found in the repository.                                                                                                                                                                                                     |
 | **Environments**  | Single environment; no profile-based config differences (see [§10](#10-configuration))                                                                                                                                                                                              |
 

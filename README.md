@@ -111,6 +111,26 @@ scripts/verify.sh
 
 The gate uses the Node.js runtime pinned by Maven. This checkout's pre-push hook is activated with `git config core.hooksPath .githooks`.
 
+### Docker helper scripts
+
+Build the application and create the local Docker image:
+
+```shell
+./scripts/docker-build.sh
+```
+
+Run the image in the foreground at **[localhost:8080](http://localhost:8080)**:
+
+```shell
+./scripts/docker-run.sh
+```
+
+For a clean-source build followed immediately by a run:
+
+```shell
+./scripts/docker-build.sh && ./scripts/docker-run.sh
+```
+
 ### Docker
 
 ```shell
