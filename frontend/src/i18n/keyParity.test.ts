@@ -77,6 +77,13 @@ describe('i18n locale key parity', () => {
         }
     });
 
+    it('gameplay sound control keys exist in both locales', () => {
+        for (const key of ['soundOn', 'soundOff', 'soundLabel']) {
+            expect(enScreens.gameplay[key as keyof typeof enScreens.gameplay]).toBeTruthy();
+            expect(ukScreens.gameplay[key as keyof typeof ukScreens.gameplay]).toBeTruthy();
+        }
+    });
+
     it('notifications namespace has identical key sets in en and uk', () => {
         assertParity('notifications', enNotifications, ukNotifications);
     });

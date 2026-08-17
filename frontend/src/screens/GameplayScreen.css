@@ -24,6 +24,13 @@
     grid-template-columns: 1fr 1fr;
 }
 
+.gameplay-utilities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+}
+
 @media (max-width: 640px) {
     .boards-area {
         grid-template-columns: 1fr;

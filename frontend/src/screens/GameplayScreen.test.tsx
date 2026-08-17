@@ -5,12 +5,29 @@ import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import '../i18n';
 import {MockGameAdapter} from '../adapters/MockGameAdapter';
 import {GameAdapterProvider} from '../adapters/GameAdapterContext';
+import {AudioFeedbackProvider, type AudioFeedbackPort} from '../audio/AudioFeedbackContext';
 import {ToastProvider} from '../widgets/feedback/ToastContext';
 import {ToastStack} from '../widgets/feedback/ToastStack';
-import {savePlayer, saveSession, saveStage} from '../services/GameBrowserStorage';
+import {clearGameData, savePlayer, saveSession, saveStage} from '../services/GameBrowserStorage';
+import {AUDIO_PREFERENCE_KEY} from '../services/AudioPreferences';
+import i18n from '../i18n';
 import type {CellDto} from '../logic/ApplicationTypes';
 import {formatCoordinateLabel} from '../logic/boardCoordinates';
 import {GameplayScreen} from './GameplayScreen';
+
+function createFakeAudioPort(): AudioFeedbackPort {
+    let enabled = true;
+    const play: AudioFeedbackPort['play'] = vi.fn();
+    return {
+        unlockFromUserGesture: vi.fn(),
+        play,
+        isEnabled: () => enabled,
+        setEnabled: vi.fn((next: boolean) => {
+            enabled = next;
+        }),
+        dispose: vi.fn(),
+    };
+}
 
 /**
  * Fake-timers gotcha (see WaitScreen.test.tsx / useWaitRoom.test.tsx): MockGameAdapter's
@@ -47,6 +64,28 @@ function findEmptyCell(field: CellDto[][]): { row: number; col: number } {
     throw new Error('No empty cell found');
 }
 
+function findEmptyCellExcept(field: CellDto[][], excluded: { row: number; col: number }): { row: number; col: number } {
+    for (const row of field) {
+        for (const cell of row) {
+            if (!cell.ship && (cell.row !== excluded.row || cell.col !== excluded.col)) {
+                return {row: cell.row, col: cell.col};
+            }
+        }
+    }
+    throw new Error('No second empty cell found');
+}
+
+function findOtherShipCell(field: CellDto[][], shipId: string, excluded: { row: number; col: number }): { row: number; col: number } {
+    for (const row of field) {
+        for (const cell of row) {
+            if (cell.ship?.shipId === shipId && (cell.row !== excluded.row || cell.col !== excluded.col)) {
+                return {row: cell.row, col: cell.col};
+            }
+        }
+    }
+    throw new Error(`No second cell found for ship ${shipId}`);
+}
+
 function findShipCellOfSize(field: CellDto[][], size: number): { row: number; col: number } {
     for (const row of field) {
         for (const cell of row) {
@@ -81,18 +120,20 @@ async function setUpInGameSession(adapter: MockGameAdapter, edition: string = 'U
     return {sessionId, p1: p1.playerId, p2: p2.playerId, p1Name: p1.playerName, p2Name: p2.playerName};
 }
 
-function renderGameplayScreen() {
+function renderGameplayScreen(audioPort: AudioFeedbackPort = createFakeAudioPort()) {
     return render(
         <GameAdapterProvider adapter={adapterInstance}>
-            <ToastProvider>
-                <MemoryRouter initialEntries={['/game/gameplay']}>
-                    <Routes>
-                        <Route path="/game/gameplay" element={<GameplayScreen/>}/>
-                        <Route path="/game/results" element={<div>Results route</div>}/>
-                    </Routes>
-                </MemoryRouter>
-                <ToastStack/>
-            </ToastProvider>
+            <AudioFeedbackProvider createPort={() => audioPort}>
+                <ToastProvider>
+                    <MemoryRouter initialEntries={['/game/gameplay']}>
+                        <Routes>
+                            <Route path="/game/gameplay" element={<GameplayScreen/>}/>
+                            <Route path="/game/results" element={<div>Results route</div>}/>
+                        </Routes>
+                    </MemoryRouter>
+                    <ToastStack/>
+                </ToastProvider>
+            </AudioFeedbackProvider>
         </GameAdapterProvider>,
     );
 }
@@ -170,6 +211,105 @@ describe('GameplayScreen', () => {
 
         await waitFor(() => expect(shootSpy).toHaveBeenCalledTimes(1));
         expect(shootSpy).toHaveBeenCalledWith(sessionId, p1, expect.objectContaining({row: 0, column: 0}));
+    });
+
+    it('plays each newly observed outcome once from both boards and ignores baseline/refetch duplicates', async () => {
+        const {sessionId, p1, p2, p1Name} = await setUpInGameSession(adapterInstance);
+        saveSession(sessionId);
+        savePlayer({playerId: p1, playerName: p1Name});
+        saveStage('IN_GAME');
+
+        const audio = createFakeAudioPort();
+        const playSpy = vi.mocked(audio.play);
+        const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
+        renderGameplayScreen(audio);
+        await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+        expect(playSpy).not.toHaveBeenCalled();
+
+        const p2Prep = await adapterInstance.getPreparationState(sessionId, p2);
+        const openingMiss = findEmptyCell(p2Prep.field);
+        const targetPanel = document.querySelector('.bp-target')!;
+        await user.click(within(targetPanel as HTMLElement).getAllByRole('button')[openingMiss.row * 10 + openingMiss.col]);
+        await waitFor(() => expect(playSpy).toHaveBeenCalledTimes(1));
+        // handleShot owns the shot request/toast only; the state-diff effect owns this one playback.
+        expect(playSpy).toHaveBeenLastCalledWith('MISS');
+
+        const p1Prep = await adapterInstance.getPreparationState(sessionId, p1);
+        const incomingMiss = findEmptyCell(p1Prep.field);
+        await act(async () => {
+            await adapterInstance.shoot(sessionId, p2, {row: incomingMiss.row, column: incomingMiss.col});
+        });
+        await waitFor(() => expect(playSpy).toHaveBeenCalledTimes(2));
+
+        const p2ShipCell = findShipCellOfSize(p2Prep.field, 2);
+        const p2ShipSecondCell = findOtherShipCell(p2Prep.field, p2Prep.field[p2ShipCell.row][p2ShipCell.col].ship!.shipId, p2ShipCell);
+        await act(async () => {
+            await adapterInstance.shoot(sessionId, p1, {row: p2ShipCell.row, column: p2ShipCell.col});
+        });
+        await waitFor(() => expect(playSpy).toHaveBeenCalledTimes(3));
+        await act(async () => {
+            await adapterInstance.shoot(sessionId, p1, {row: p2ShipSecondCell.row, column: p2ShipSecondCell.col});
+        });
+        await waitFor(() => expect(playSpy).toHaveBeenCalledTimes(4));
+
+        const secondOutgoingMiss = findEmptyCellExcept(p2Prep.field, openingMiss);
+        await act(async () => {
+            await adapterInstance.shoot(sessionId, p1, {row: secondOutgoingMiss.row, column: secondOutgoingMiss.col});
+        });
+        await waitFor(() => expect(playSpy).toHaveBeenCalledTimes(5));
+
+        const p1ShipCell = findShipCellOfSize(p1Prep.field, 2);
+        const p1ShipSecondCell = findOtherShipCell(p1Prep.field, p1Prep.field[p1ShipCell.row][p1ShipCell.col].ship!.shipId, p1ShipCell);
+        await act(async () => {
+            await adapterInstance.shoot(sessionId, p2, {row: p1ShipCell.row, column: p1ShipCell.col});
+        });
+        await waitFor(() => expect(playSpy).toHaveBeenCalledTimes(6));
+        await act(async () => {
+            await adapterInstance.shoot(sessionId, p2, {row: p1ShipSecondCell.row, column: p1ShipSecondCell.col});
+        });
+        await waitFor(() => expect(playSpy).toHaveBeenCalledTimes(7));
+
+        expect(playSpy.mock.calls.map(([outcome]) => outcome)).toEqual([
+            'MISS', 'MISS', 'HIT', 'DESTROYED', 'MISS', 'HIT', 'DESTROYED',
+        ]);
+
+        const countBeforeRefresh = playSpy.mock.calls.length;
+        await act(async () => {
+            fireEvent.click(screen.getByRole('button', {name: '⟳ Refresh'}));
+        });
+        expect(playSpy).toHaveBeenCalledTimes(countBeforeRefresh);
+    });
+
+    it('exposes a keyboard-accessible localized Sound toggle that persists independently of game data', async () => {
+        const {sessionId, p1, p1Name} = await setUpInGameSession(adapterInstance);
+        saveSession(sessionId);
+        savePlayer({playerId: p1, playerName: p1Name});
+        saveStage('IN_GAME');
+
+        const audio = createFakeAudioPort();
+        const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
+        const view = renderGameplayScreen(audio);
+        await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+
+        const toggle = screen.getByRole('button', {name: 'Sound on'});
+        expect(toggle).toHaveAttribute('aria-pressed', 'true');
+        toggle.focus();
+        await user.keyboard(' ');
+        expect(screen.getByRole('button', {name: 'Sound off'})).toHaveAttribute('aria-pressed', 'false');
+        expect(audio.setEnabled).toHaveBeenCalledWith(false);
+        expect(localStorage.getItem(AUDIO_PREFERENCE_KEY)).toBe('false');
+
+        view.unmount();
+        const restoredAudio = createFakeAudioPort();
+        renderGameplayScreen(restoredAudio);
+        await waitFor(() => expect(screen.getByText('Your turn — fire!')).toBeInTheDocument());
+        expect(screen.getByRole('button', {name: 'Sound off'})).toHaveAttribute('aria-pressed', 'false');
+
+        await i18n.changeLanguage('uk');
+        expect(await screen.findByRole('button', {name: 'Звук вимкнено'})).toHaveAttribute('aria-pressed', 'false');
+        await i18n.changeLanguage('en');
+        clearGameData();
+        expect(localStorage.getItem(AUDIO_PREFERENCE_KEY)).toBe('false');
     });
 
     it('tapping a target cell when NOT the player\'s turn shows the "not your turn" toast and does not call shoot', async () => {

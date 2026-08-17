@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-08-16T14:09:59Z",
-  "feature_directory": "specs/001-qr-session-sharing",
+  "updated_at": "2026-08-17T15:58:37Z",
+  "feature_directory": "specs/002-synthesized-audio-feedback",
   "source_of_truth": {
     "constitution": ".specify/memory/constitution.md",
-    "spec": "specs/001-qr-session-sharing/spec.md",
-    "plan": "specs/001-qr-session-sharing/plan.md",
-    "tasks": "specs/001-qr-session-sharing/tasks.md"
+    "spec": "specs/002-synthesized-audio-feedback/spec.md",
+    "plan": "specs/002-synthesized-audio-feedback/plan.md",
+    "tasks": "specs/002-synthesized-audio-feedback/tasks.md"
   },
   "supersedes": [
     "speckit.implement"
   ],
-  "executor": "speckit",
+  "executor": "superpowers",
   "capabilities": [
     "executing-plans",
     "test-driven-development",
@@ -19,11 +19,16 @@
     "requesting-code-review",
     "finishing-a-development-branch"
   ],
-  "status": "ready",
+  "status": "complete",
   "blocked_reason": null,
   "artifact_owner": "unknown",
   "review_only_agents": [],
   "notes": null,
-  "last_snapshot_id": "20260816T140959500Z-ready",
-  "instructions": "Use /speckit-superpowers-bridge (Claude Code) or $speckit-superpowers-bridge (Codex). The bridge orchestrates native Superpowers skills against tasks.md; do not run speckit.implement and do not invoke superpowers:writing-plans / :brainstorming for an active Spec Kit feature."
+  "last_snapshot_id": "20260817T155837235Z-complete",
+  "instructions": "Use /speckit-superpowers-bridge (Claude Code) or $speckit-superpowers-bridge (Codex). The bridge orchestrates native Superpowers skills against tasks.md; do not run speckit.implement and do not invoke superpowers:writing-plans / :brainstorming for an active Spec Kit feature.",
+  "artifacts_sha256": {
+    "spec.md": "dd3a25aa8906d422123f409e688bcc9f3010d3268deba4d06f3fc7ea4d78a310",
+    "plan.md": "65d461bdd5a206ab4723dd111e4b0ea1a3d247938e19cf0b8b10d6b93c2a9edf",
+    "tasks.md": "f3da847bc05536baf6d94b308cfa81a2decbbc9e45ecaba6bd7c28b2004a9e8a"
+  }
 }

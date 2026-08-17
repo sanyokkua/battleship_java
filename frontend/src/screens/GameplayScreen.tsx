@@ -4,11 +4,12 @@ import {useNavigate} from 'react-router-dom';
 import {useSessionGuard} from '../hooks/useSessionGuard';
 import {useGameplay} from '../hooks/useGameplay';
 import {saveStage} from '../services/GameBrowserStorage';
-import type {CellDto} from '../logic/ApplicationTypes';
+import type {ResponseGameplayStateDto} from '../logic/ApplicationTypes';
+import {classifyGameplayFeedback} from '../logic/gameplayFeedback';
 import {formatCoordinateLabel} from '../logic/boardCoordinates';
 import {Button} from '../design/components/Button/Button';
 import {LoadingView} from '../widgets/layout/LoadingView';
-import {Board, computeMoatCellKeys, computeSunkShipIds} from '../widgets/board/Board';
+import {Board} from '../widgets/board/Board';
 import {BoardTabs} from '../widgets/board/BoardTabs';
 import {Legend} from '../widgets/board/Legend';
 import {PlayerCard} from '../widgets/gameplay/PlayerCard';
@@ -17,6 +18,7 @@ import {useNotify} from '../widgets/feedback/useNotify';
 import {useToastContext} from '../widgets/feedback/ToastContext';
 import {resolveErrorMessageKey} from '../widgets/feedback/errorMapping';
 import {GameAdapterError} from '../adapters/AdapterErrors';
+import {useAudioFeedback} from '../audio/AudioFeedbackContext';
 import './GameplayScreen.css';
 
 // Every game edition has exactly 10 ships (Ukrainian sizes 1-4 / Milton Bradley
@@ -49,6 +51,7 @@ export function GameplayScreen() {
 
     const {sessionId, player} = useSessionGuard();
     const {state, shoot, loading, error, refresh} = useGameplay(sessionId ?? '', player?.playerId ?? '');
+    const audio = useAudioFeedback();
 
     // 'target' here is only a pre-any-state placeholder — it's immediately overwritten by
     // the correct tab (based on state.isPlayerActive) the moment `state` first arrives, in
@@ -100,13 +103,10 @@ export function GameplayScreen() {
     // poll refetch every 5s) — so a manual tab switch made mid-turn is never fought.
     const prevIsPlayerActiveRef = useRef<boolean | undefined>(undefined);
 
-    // Detects opponent shots by diffing `state.playerField` against the previous poll's
-    // snapshot — there's no server-pushed "last shot" event, only full-board snapshots, so
-    // this is the only way to notice one. `null` specifically (not e.g. an empty array)
-    // marks "no snapshot yet", so the very first arrival of `state` — including a page
-    // refresh mid-game with shots already on the board — only seeds the baseline and never
-    // replays pre-existing hits as new.
-    const prevPlayerFieldRef = useRef<CellDto[][] | null>(null);
+    // Full gameplay snapshots are the source of truth for both incoming and outgoing result
+    // feedback. `null` specifically marks "no snapshot yet", so a refresh or remount mid-game
+    // seeds the baseline without replaying shots that happened before this screen observed it.
+    const prevStateRef = useRef<ResponseGameplayStateDto | null>(null);
 
     // Which own-board cells are currently mid-flash (see Board.css's .is-shot-flash), keyed
     // `${row}-${col}` to match the ghostCells convention. A per-cell timer (not one shared
@@ -142,62 +142,38 @@ export function GameplayScreen() {
         setActiveTab(tab);
     }
 
-    // Merges what used to be two separate effects (turn-flip detection and shot-diff
-    // detection) into one, keyed on `[state]`: the delayed-switch decision below needs to
-    // know, in the same pass, both "did the turn just flip to the player" and "were there
-    // newly-highlighted cells in this same snapshot" — computing that across two
-    // separately-scheduled effects would introduce an off-by-one-push race.
+    // The delayed-switch decision and all visual/toast/audio result feedback share one full
+    // snapshot diff. This keeps turn changes, highlights, toasts, and playback aligned for a
+    // pushed update or a refetched state without adding a direct audio path to handleShot.
     useEffect(() => {
         if (!state) return;
-        const field = state.playerField;
-        const prevField = prevPlayerFieldRef.current;
+        const previousState = prevStateRef.current;
         const current = state.isPlayerActive;
         const prev = prevIsPlayerActiveRef.current;
 
-        if (prevField === null) {
-            prevPlayerFieldRef.current = field;
+        if (previousState === null) {
+            prevStateRef.current = state;
             prevIsPlayerActiveRef.current = current;
             return;
         }
 
-        // Destroying a ship auto-reveals its moat cells (they flip hasShot too, since no ship
-        // can ever be adjacent to another) — those are a side effect of the kill, not additional
-        // real shots, so they must not each fire their own "miss" toast. Only ships that just
-        // became sunk THIS diff matter here — an already-sunk ship's (already-revealed) moat
-        // isn't part of this update at all, since none of those cells are newly hasShot below.
-        const prevSunkShipIds = computeSunkShipIds(prevField);
-        const sunkShipIds = computeSunkShipIds(field);
-        const newlySunkShipIds = new Set(
-            [...sunkShipIds].filter(shipId => !prevSunkShipIds.has(shipId))
-        );
-        const moatCellKeys = computeMoatCellKeys(field, newlySunkShipIds);
-
+        const feedbackEvents = classifyGameplayFeedback(previousState, state);
+        feedbackEvents.forEach(event => audio.play(event.outcome));
         const newlyShotKeys = new Set<string>();
-
-        for (let row = 0; row < field.length; row++) {
-            for (let col = 0; col < field[row].length; col++) {
-                const cell = field[row][col];
-                if (prevField[row][col].hasShot || !cell.hasShot) {
-                    continue; // not a newly-revealed shot this poll
-                }
-                if (cell.ship == null && moatCellKeys.has(`${row},${col}`)) {
-                    // Auto-revealed moat cell from a kill elsewhere in this same update, not a
-                    // real shot. Edge case accepted: a genuinely separate real miss landing on
-                    // exactly this cell in the same batched update would also be swallowed —
-                    // the client has no per-shot server data to disambiguate that rare coincidence.
-                    continue;
-                }
+        feedbackEvents
+            .filter(event => event.board === 'player')
+            .forEach(event => {
+                const [row, col] = event.cellKey.split(',').map(Number);
                 newlyShotKeys.add(`${row}-${col}`);
                 const coordinate = formatCoordinateLabel(row, col);
-                if (cell.ship == null) {
+                if (event.outcome === 'MISS') {
                     notify.info('incomingShot.miss', {coordinate});
-                } else if (sunkShipIds.has(cell.ship.shipId)) {
+                } else if (event.outcome === 'DESTROYED') {
                     notify.warn('incomingShot.sunk', {coordinate});
                 } else {
                     notify.warn('incomingShot.hit', {coordinate});
                 }
-            }
-        }
+            });
 
         if (newlyShotKeys.size > 0) {
             // highlightTimersRef is the source of truth for "which cells are currently
@@ -237,14 +213,14 @@ export function GameplayScreen() {
             }
         }
 
-        prevPlayerFieldRef.current = field;
+        prevStateRef.current = state;
         prevIsPlayerActiveRef.current = current;
         // Deliberately excludes `notify` — useNotify() returns a fresh object every render,
         // and keying on it would re-run this diff on every render instead of only when
         // `state` changes; the diff itself is a no-op once `prevPlayerFieldRef` catches up
         // to the current `state`, so this stays correct either way, just noisier.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [state]);
+    }, [audio, state]);
 
     useEffect(() => {
         const highlightTimers = highlightTimersRef.current;
@@ -374,9 +350,29 @@ export function GameplayScreen() {
                     }}
                 />
 
-                <Button variant="ghost" size="sm" onClick={() => void refresh()}>
-                    ⟳ {t('common:button.refresh')}
-                </Button>
+                <div className="gameplay-utilities">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        aria-pressed={audio.isEnabled()}
+                        aria-label={t('screens:gameplay.soundLabel', {
+                            state: audio.isEnabled()
+                                ? t('screens:gameplay.soundOn')
+                                : t('screens:gameplay.soundOff'),
+                        })}
+                        onClick={() => audio.setEnabled(!audio.isEnabled())}
+                    >
+                        {t('screens:gameplay.soundLabel', {
+                            state: audio.isEnabled()
+                                ? t('screens:gameplay.soundOn')
+                                : t('screens:gameplay.soundOff'),
+                        })}
+                    </Button>
+                    <Button variant="ghost" size="sm" type="button" onClick={() => void refresh()}>
+                        ⟳ {t('common:button.refresh')}
+                    </Button>
+                </div>
             </div>
         </div>
     );

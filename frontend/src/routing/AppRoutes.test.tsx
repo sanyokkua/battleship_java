@@ -4,6 +4,7 @@ import '../i18n';
 import {AppRoutes} from './AppRoutes';
 import {GameAdapterProvider} from '../adapters/GameAdapterContext';
 import {MockGameAdapter} from '../adapters/MockGameAdapter';
+import {AudioFeedbackProvider} from '../audio/AudioFeedbackContext';
 import {ToastProvider} from '../widgets/feedback/ToastContext';
 import {ToastStack} from '../widgets/feedback/ToastStack';
 import {savePlayer, saveSession, saveStage} from '../services/GameBrowserStorage';
@@ -59,12 +60,14 @@ async function setUpFinishedSession(adapter: MockGameAdapter) {
 function renderAt(path: string, adapter: MockGameAdapter = new MockGameAdapter()) {
     return render(
         <GameAdapterProvider adapter={adapter}>
-            <ToastProvider>
-                <MemoryRouter initialEntries={[path]}>
-                    <AppRoutes/>
-                </MemoryRouter>
-                <ToastStack/>
-            </ToastProvider>
+            <AudioFeedbackProvider>
+                <ToastProvider>
+                    <MemoryRouter initialEntries={[path]}>
+                        <AppRoutes/>
+                    </MemoryRouter>
+                    <ToastStack/>
+                </ToastProvider>
+            </AudioFeedbackProvider>
         </GameAdapterProvider>,
     );
 }

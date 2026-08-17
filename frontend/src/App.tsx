@@ -3,6 +3,7 @@ import {HttpGameAdapter} from './adapters/HttpGameAdapter';
 import {MockGameAdapter} from './adapters/MockGameAdapter';
 import type {GameAdapter} from './adapters/GameAdapter';
 import {GameAdapterProvider} from './adapters/GameAdapterContext';
+import {AudioFeedbackProvider} from './audio/AudioFeedbackContext';
 import {ToastProvider} from './widgets/feedback/ToastContext';
 import {ToastStack} from './widgets/feedback/ToastStack';
 import {AppBar} from './widgets/layout/AppBar';
@@ -61,11 +62,13 @@ function App() {
 
     return (
         <GameAdapterProvider adapter={adapter}>
-            <ToastProvider>
-                <AppBar/>
-                <AppRoutes/>
-                <ToastStack/>
-            </ToastProvider>
+            <AudioFeedbackProvider>
+                <ToastProvider>
+                    <AppBar/>
+                    <AppRoutes/>
+                    <ToastStack/>
+                </ToastProvider>
+            </AudioFeedbackProvider>
         </GameAdapterProvider>
     );
 }

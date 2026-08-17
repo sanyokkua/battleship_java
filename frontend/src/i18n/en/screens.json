@@ -82,7 +82,10 @@
     "fleetLabel": "Your fleet",
     "defensiveView": "Defensive view",
     "tabTarget": "Target grid",
-    "tabFleet": "Your fleet"
+    "tabFleet": "Your fleet",
+    "soundOn": "on",
+    "soundOff": "off",
+    "soundLabel": "Sound {{state}}"
   },
   "results": {
     "win": "Victory!",

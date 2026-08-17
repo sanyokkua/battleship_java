@@ -82,7 +82,10 @@
     "fleetLabel": "Ваш флот",
     "defensiveView": "Оборонний вигляд",
     "tabTarget": "Ціль",
-    "tabFleet": "Ваш флот"
+    "tabFleet": "Ваш флот",
+    "soundOn": "увімкнено",
+    "soundOff": "вимкнено",
+    "soundLabel": "Звук {{state}}"
   },
   "results": {
     "win": "Перемога!",
