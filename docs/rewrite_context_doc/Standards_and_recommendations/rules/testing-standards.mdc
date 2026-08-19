@@ -1,0 +1,76 @@
+---
+description: "Testing standards for all test files across all languages"
+globs: ["**/*.test.ts", "**/*.spec.ts", "tests/**/*.py", "**/*Test.java", "**/*_test.go", "**/test/**/*.ts", "**/test/**/*.py"]
+alwaysApply: false
+priority: 200
+---
+
+# Testing Standards
+
+## Test Pyramid
+Target distribution for engineering effort:
+- Unit Tests: 60–70% (pure functions, domain logic)
+- Integration Tests: 20–30% (real containers, HTTP)
+- E2E Tests: 5–10% (Playwright, Cypress)
+
+## Test Naming Convention
+Test names MUST describe the scenario:
+`test_<function_name>_<scenario>_<expected_result>`
+
+Example: `test_get_user_when_user_not_found_raises_404`
+
+## Mocking Boundaries
+| Category | Rule |
+|----------|------|
+| External HTTP APIs | MUST mock at transport/network level |
+| Databases | MUST use real technology via Testcontainers — in-memory replacements (H2, SQLite) are FORBIDDEN |
+| Message Queues | MUST mock or use real broker via container |
+| File System | SHOULD use temp directories |
+| System Clock | MUST be injectable — never call `new Date()` or `System.currentTimeMillis()` directly |
+| Value Objects | MUST NOT mock — instantiate real objects |
+| Pure Functions | MUST NOT mock |
+| Standard Library | MUST NOT mock |
+
+## Real Container Mandate
+Using H2 or any in-memory database to simulate PostgreSQL/MySQL is explicitly FORBIDDEN for integration tests. The database engine, query planner, and constraint enforcement differ — tests that pass on H2 routinely fail on the real database.
+
+Use Testcontainers to run the real database in a disposable container. This is non-negotiable.
+
+## Test Execution Time Contracts
+| Test Type | Maximum Duration |
+|-----------|------------------|
+| Single unit test | < 100ms |
+| Unit test suite | < 60s |
+| Single integration test | < 30s |
+| Full integration suite | < 10m |
+| E2E smoke test | < 5m |
+
+## Flaky Test Policy
+Zero tolerance. A flaky test is worse than no test — it erodes trust in the entire suite.
+- Flaky tests MUST be quarantined (tagged `@Disabled` / `skip`) within 24 hours of detection.
+- Quarantined tests MUST be fixed or deleted within 72 hours.
+- Flakiness root causes (time dependencies, shared state, race conditions, port conflicts) must be addressed — not hidden with retries.
+
+## Test Independence
+- Tests MUST NOT depend on execution order.
+- Tests MUST NOT share mutable state.
+- Each test MUST set up its own required state and clean up after itself.
+
+## Coverage Targets
+Coverage is a heuristic, not a goal. The RECOMMENDED minimum thresholds:
+- Line coverage: ≥ 80%
+- Branch coverage: ≥ 70%
+
+Coverage MUST NOT decrease in a PR without an explicit documented justification.
+
+## Gold Standard Examples
+- TypeScript: see `examples/typescript/example_test.ts`
+- Python: see `examples/python/example_test.py`
+- Java: see `examples/java/example_test.java`
+- Go: see `examples/go/example_test.go`
+
+## What NOT to Do
+- Never use in-memory databases for integration tests (use Testcontainers)
+- Never mock value objects or pure functions
+- Never let tests depend on execution order
+- Never let coverage decrease without justification

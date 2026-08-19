@@ -1,0 +1,79 @@
+---
+description: "Coding style standards for all source files across all languages"
+globs: ["**/*.ts", "**/*.py", "**/*.java", "**/*.go", "**/*.tsx", "**/*.pyi"]
+alwaysApply: false
+priority: 300
+---
+
+# Coding Style Standards
+
+## Design Principles Behind Good Code
+All engineers MUST understand and apply these timeless principles:
+- **SOLID** — Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion.
+- **DRY** — Don't Repeat Yourself. Duplication is a maintenance liability.
+- **KISS** — Keep It Simple, Stupid. Choose the simplest solution that correctly solves the problem.
+- **YAGNI** — You Aren't Gonna Need It. Do not over-engineer for hypothetical future requirements.
+- **Fail Fast** — Surface errors as early and as loudly as possible. Silent failures cause the worst production incidents.
+- **Composition over Inheritance** — Prefer composing behavior from smaller units rather than deep class hierarchies.
+
+## Layered Architecture (Hexagonal / Clean)
+The RECOMMENDED baseline architecture for all services:
+```
+┌─────────────────────────────────────────┐
+│              API Layer                  │  HTTP handlers, serialization, routing
+├─────────────────────────────────────────┤
+│           Application Layer             │  Use cases, orchestration, transactions
+├─────────────────────────────────────────┤
+│              Domain Layer               │  Entities, value objects, domain logic
+├─────────────────────────────────────────┤
+│          Infrastructure Layer           │  DB, external APIs, message queues
+└─────────────────────────────────────────┘
+```
+
+**Dependency rule:** Outer layers depend on inner layers. Inner layers never depend on outer layers.
+
+## Language-Specific Coding Conventions
+
+### Java
+- Records over Lombok `@Data` for data-carrying classes
+- Sealed classes for modeling closed sets of subtypes
+- Pattern matching (`instanceof`, `switch`) preferred over casting
+- `Optional` is a RETURN TYPE ONLY — never a field, constructor parameter, or method parameter
+- Use `var` for local variables only when the type is obvious from the right-hand side
+- Immutability by default — make fields `final`, collections unmodifiable
+
+### Python
+- Type hints are MANDATORY for all function signatures
+- Modern syntax MUST be used: `list[str]` over `List[str]`, `str | None` over `Optional[str]`
+- Dataclasses or Pydantic models over plain dicts for structured data
+- Exception chaining MUST be used: `raise NewError("msg") from original_error`
+- f-strings are MANDATORY for string formatting
+
+### TypeScript
+- `type` over `interface` for union types, function signatures, and mapped types
+- `interface` over `type` for object shapes that may be extended
+- `enum` is BANNED — use `as const` objects instead
+- `any` is BANNED — use `unknown` and narrow appropriately
+- Branded types are RECOMMENDED for domain identity safety (`UserId`, `OrderId`)
+
+### Go
+- Accept interfaces, return structs — enables flexibility without sacrificing concreteness
+- Define interfaces at the consumer — not at the implementation
+- Named return values are ONLY acceptable for documentation purposes on short functions
+- Error handling: ALWAYS check errors. Never use `_` to discard errors silently.
+- Goroutine ownership: whoever spawns a goroutine is responsible for its lifecycle.
+- `context.Context` MUST be the first parameter of any function that performs I/O or may be cancelled.
+
+## Gold Standard Examples
+- Java: see `examples/java/` directory
+- Python: see `examples/python/` directory
+- TypeScript: see `examples/typescript/` directory
+- Go: see `examples/go/` directory
+
+## What NOT to Do
+- Never violate SOLID principles
+- Never use deep inheritance hierarchies
+- Never use `any` in TypeScript (use `unknown`)
+- Never use `enum` in TypeScript (use `as const`)
+- Never discard errors silently in Go
+- Never use Lombok `@Data` in Java (use Records)

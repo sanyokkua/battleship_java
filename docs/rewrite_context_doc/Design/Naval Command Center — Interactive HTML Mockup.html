@@ -1,0 +1,3322 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-emojis="off">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="dark light">
+    <title>Battleship — Naval Command Center Interactive Mockup</title>
+    <style>
+        /*
+         * NAVAL COMMAND CENTER DESIGN TOKENS
+         * The redesigned application can extract this section into its token layer.
+         * Component styles below consume semantic tokens only; theme switching does
+         * not require different component markup.
+         */
+        :root {
+            color-scheme: dark;
+            --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+            --radius-xs: .35rem;
+            --radius-sm: .55rem;
+            --radius-md: .8rem;
+            --radius-lg: 1rem;
+            --space-1: .25rem;
+            --space-2: .5rem;
+            --space-3: .75rem;
+            --space-4: 1rem;
+            --space-5: 1.25rem;
+            --space-6: 1.5rem;
+            --space-8: 2rem;
+            --control-h-sm: 2.25rem;
+            --control-h: 2.75rem;
+            --focus-ring: 0 0 0 .2rem color-mix(in srgb, var(--accent) 34%, transparent);
+            --motion-fast: 140ms;
+            --motion-normal: 220ms;
+
+            --page: #101326;
+            --surface-0: #15182c;
+            --surface-1: #1b2036;
+            --surface-2: #202a3d;
+            --surface-3: #27354a;
+            --surface-raised: #20263b;
+            --overlay: rgb(0 7 14 / 74%);
+            --text-1: #f1f5fa;
+            --text-2: #b7c5d3;
+            --text-3: #8798aa;
+            --border: #344056;
+            --border-strong: #4b5c73;
+            --accent: #3becb0;
+            --accent-strong: #a8f3d8;
+            --accent-soft: rgb(59 236 176 / 13%);
+            --accent-contrast: #08271c;
+            --danger: #e54855;
+            --danger-strong: #ff9299;
+            --danger-soft: rgb(229 72 85 / 14%);
+            --warning: #f0b85b;
+            --warning-soft: rgb(240 184 91 / 15%);
+            --info: #84a2c9;
+            --info-soft: rgb(132 162 201 / 14%);
+            --success: #54d7a0;
+            --success-soft: rgb(84 215 160 / 13%);
+            --sea-deep: #1c1d37;
+            --sea-cell: #1b3a4b;
+            --sea-cell-hover: #0b525b;
+            --sea-line: #356779;
+            --sea-glint: #84a2c9;
+            --sea-foam: #d6e0ea;
+            --coord: #d6e0ea;
+            --ship: #2d6385;
+            --ship-edge: #84a2c9;
+            --miss: #677486;
+            --hit: #e54855;
+            --sunk: #9f2033;
+            --shadow-sm: 0 .25rem .75rem rgb(0 0 0 / 18%);
+            --shadow-lg: 0 1rem 3rem rgb(0 0 0 / 35%);
+        }
+
+        html[data-theme="light"] {
+            color-scheme: light;
+            --page: #e7e3dc;
+            --surface-0: #f3f7fa;
+            --surface-1: #ffffff;
+            --surface-2: #e8f0f6;
+            --surface-3: #d9e6ef;
+            --surface-raised: #ffffff;
+            --overlay: rgb(18 34 50 / 42%);
+            --text-1: #1c1d37;
+            --text-2: #4a5e6d;
+            --text-3: #71808a;
+            --border: #c1d0dc;
+            --border-strong: #8eacbf;
+            --accent: #1d7fa8;
+            --accent-strong: #175a7b;
+            --accent-soft: rgb(29 127 168 / 11%);
+            --accent-contrast: #ffffff;
+            --danger: #ee5752;
+            --danger-strong: #c93632;
+            --danger-soft: rgb(238 87 82 / 11%);
+            --warning: #a96c12;
+            --warning-soft: rgb(185 119 20 / 12%);
+            --info: #527c9f;
+            --info-soft: rgb(82 124 159 / 10%);
+            --success: #19865e;
+            --success-soft: rgb(25 134 94 / 11%);
+            --sea-deep: #7faec7;
+            --sea-cell: #b8dcea;
+            --sea-cell-hover: #d0edf5;
+            --sea-line: #6f9fb8;
+            --sea-glint: #f4fbff;
+            --sea-foam: #ffffff;
+            --coord: #32556d;
+            --ship: #1b3a4b;
+            --ship-edge: #0b525b;
+            --miss: #8d9aa4;
+            --hit: #e34850;
+            --sunk: #a91f32;
+            --shadow-sm: 0 .25rem .75rem rgb(42 67 89 / 10%);
+            --shadow-lg: 0 1rem 3rem rgb(29 53 74 / 20%);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        .ui-emoji,
+        .cell-emoji {
+            display: none;
+        }
+
+        html[data-emojis="on"] .ui-emoji {
+            display: inline-block;
+            margin-right: .22em;
+        }
+
+        .emoji-sample {
+            display: inline-flex;
+            gap: .2rem;
+            margin-top: .25rem;
+            font-size: 1.05rem;
+            letter-spacing: .04em;
+        }
+
+        html {
+            min-width: 20rem;
+            background: var(--page);
+            font-family: var(--font-sans);
+            color: var(--text-1);
+        }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+            background:
+                radial-gradient(ellipse at 20% -10%, color-mix(in srgb, var(--sea-glint) 18%, transparent), transparent 35rem),
+                radial-gradient(ellipse at 85% 5%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 30rem),
+                var(--page);
+        }
+
+        button, input, select, textarea {
+            font: inherit;
+        }
+
+        button, select {
+            touch-action: manipulation;
+        }
+
+        button {
+            color: inherit;
+        }
+
+        a {
+            color: var(--accent-strong);
+        }
+
+        :focus-visible {
+            outline: .125rem solid var(--accent-strong);
+            outline-offset: .15rem;
+            box-shadow: var(--focus-ring);
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .muted {
+            color: var(--text-2);
+        }
+
+        .mono {
+            font-family: var(--font-mono);
+        }
+
+        .eyebrow {
+            margin: 0 0 var(--space-2);
+            color: var(--accent-strong);
+            font-size: .72rem;
+            font-weight: 800;
+            letter-spacing: .13em;
+            text-transform: uppercase;
+        }
+
+        h1, h2, h3, p {
+            margin-top: 0;
+        }
+
+        h1, h2, h3 {
+            line-height: 1.15;
+        }
+
+        h1 {
+            font-size: clamp(2rem, 5vw, 4.25rem);
+            letter-spacing: -.045em;
+        }
+
+        h2 {
+            font-size: clamp(1.35rem, 2.5vw, 2rem);
+            letter-spacing: -.025em;
+        }
+
+        h3 {
+            font-size: 1rem;
+        }
+
+        .mockup-shell {
+            min-height: 100vh;
+        }
+
+        .mockup-toolbar {
+            position: sticky;
+            z-index: 100;
+            top: 0;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: var(--space-3);
+            min-height: 3.5rem;
+            padding: .55rem max(.75rem, env(safe-area-inset-left));
+            border-bottom: 1px solid var(--border);
+            background: color-mix(in srgb, var(--surface-0) 94%, transparent);
+            backdrop-filter: blur(1rem);
+        }
+
+        .mockup-toolbar .input {
+            width: auto;
+            max-width: 15rem;
+            min-height: 2.35rem;
+            padding-block: .4rem;
+        }
+
+        .mockup-toolbar strong {
+            white-space: nowrap;
+        }
+
+        .toolbar-spacer {
+            flex: 1;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .toolbar-label {
+            color: var(--text-3);
+            font-size: .75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .preview-stage {
+            display: grid;
+            justify-items: center;
+            gap: var(--space-3);
+            min-height: calc(100vh - 3.5rem);
+            padding: clamp(.75rem, 2vw, 2rem);
+            overflow: auto;
+        }
+
+        .preview-caption {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-2);
+            color: var(--text-3);
+            font-size: .78rem;
+        }
+
+        .preview-caption b {
+            color: var(--text-2);
+        }
+
+        #preview {
+            display: grid;
+            justify-items: center;
+            width: 100%;
+            transition: width var(--motion-normal) ease;
+        }
+
+        #preview[data-device="responsive"] .app-frame {
+            width: min(100%, 90rem);
+            min-height: calc(100dvh - 7.5rem);
+        }
+
+        #preview[data-device="laptop"] .app-frame {
+            width: 80rem;
+            min-height: 50rem;
+        }
+
+        #preview[data-device="iphone"] .app-frame {
+            width: 24.375rem;
+            min-height: 52.75rem;
+            border-radius: 1.65rem;
+        }
+
+        #preview[data-device="android"] .app-frame {
+            width: 25.75rem;
+            min-height: 57.1875rem;
+            border-radius: 1.35rem;
+        }
+
+        #preview[data-device="phone-landscape"] .app-frame {
+            width: 52.75rem;
+            height: 24.375rem;
+            min-height: 24.375rem;
+            overflow: auto;
+            border-radius: 1.25rem;
+        }
+
+        .app-frame {
+            position: relative;
+            container-name: app;
+            container-type: inline-size;
+            isolation: isolate;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background:
+                radial-gradient(ellipse at 20% 0%, color-mix(in srgb, var(--sea-glint) 8%, transparent), transparent 28rem),
+                linear-gradient(160deg, color-mix(in srgb, var(--accent) 3%, transparent), transparent 28rem),
+                var(--surface-0);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .app-bar {
+            position: sticky;
+            z-index: 20;
+            top: 0;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: var(--space-4);
+            min-height: 3.5rem;
+            padding: .55rem clamp(.8rem, 2.4cqw, 2rem);
+            border-bottom: 1px solid var(--border);
+            background: color-mix(in srgb, var(--surface-0) 94%, transparent);
+            backdrop-filter: blur(.9rem);
+        }
+
+        .wordmark {
+            justify-self: start;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            color: var(--text-1);
+            font-size: 1.02rem;
+            font-weight: 900;
+            letter-spacing: .14em;
+        }
+
+        .app-meta {
+            color: var(--text-2);
+            font-size: .82rem;
+            white-space: nowrap;
+        }
+
+        .app-meta:empty {
+            display: none;
+        }
+
+        .app-actions {
+            display: flex;
+            grid-column: 3;
+            justify-self: end;
+            align-items: center;
+            gap: var(--space-1);
+        }
+
+        .app-actions .btn-text::before {
+            display: none;
+            content: attr(data-short);
+        }
+
+        .app-main {
+            min-height: calc(100% - 3.5rem);
+        }
+
+        .app-screen {
+            display: none;
+            min-height: calc(100% - 3.5rem);
+            padding: clamp(1rem, 2.4cqw, 2rem);
+        }
+
+        .app-screen.is-active {
+            display: block;
+        }
+
+        .screen-narrow {
+            width: min(100%, 42rem);
+            margin-inline: auto;
+        }
+
+        .screen-medium {
+            width: min(100%, 62rem);
+            margin-inline: auto;
+        }
+
+        .section-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: var(--space-4);
+            margin-bottom: var(--space-5);
+        }
+
+        .section-head h2 {
+            margin-bottom: var(--space-1);
+        }
+
+        .card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--surface-1);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .card-pad {
+            padding: clamp(1rem, 2.5cqw, 1.5rem);
+        }
+
+        .stack {
+            display: grid;
+            gap: var(--space-4);
+        }
+
+        .cluster {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .split {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-3);
+        }
+
+        .btn {
+            display: inline-flex;
+            min-height: var(--control-h);
+            align-items: center;
+            justify-content: center;
+            gap: .45rem;
+            padding: .55rem 1rem;
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--text-1);
+            font-weight: 750;
+            line-height: 1.1;
+            cursor: pointer;
+            transition:
+                background var(--motion-fast) ease,
+                border-color var(--motion-fast) ease,
+                transform var(--motion-fast) ease;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            cursor: not-allowed;
+            opacity: .48;
+        }
+
+        .btn-sm {
+            min-height: var(--control-h-sm);
+            padding: .4rem .7rem;
+            font-size: .82rem;
+        }
+
+        .btn-primary {
+            border-color: var(--accent);
+            background: var(--accent);
+            color: var(--accent-contrast);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--accent-strong);
+        }
+
+        .btn-secondary {
+            border-color: var(--border-strong);
+            background: var(--surface-2);
+        }
+
+        .btn-ghost {
+            border-color: var(--border);
+            background: transparent;
+        }
+
+        .btn-danger {
+            border-color: color-mix(in srgb, var(--danger) 70%, var(--border));
+            background: var(--danger-soft);
+            color: var(--danger-strong);
+        }
+
+        .btn-text {
+            min-height: var(--control-h-sm);
+            padding-inline: .65rem;
+            color: var(--text-2);
+        }
+
+        .btn-icon {
+            width: var(--control-h-sm);
+            min-height: var(--control-h-sm);
+            padding: 0;
+            border-color: var(--border);
+            border-radius: 50%;
+        }
+
+        .field {
+            display: grid;
+            gap: .4rem;
+        }
+
+        .field label,
+        .field-label {
+            color: var(--text-2);
+            font-size: .82rem;
+            font-weight: 750;
+        }
+
+        .input,
+        select.input,
+        textarea.input {
+            width: 100%;
+            min-height: var(--control-h);
+            padding: .65rem .8rem;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--surface-0);
+            color: var(--text-1);
+        }
+
+        textarea.input {
+            min-height: 6rem;
+            resize: vertical;
+        }
+
+        .input[aria-invalid="true"] {
+            border-color: var(--danger);
+        }
+
+        .field-help,
+        .field-error,
+        .field-valid {
+            font-size: .78rem;
+        }
+
+        .field-help {
+            color: var(--text-3);
+        }
+
+        .field-error {
+            color: var(--danger-strong);
+        }
+
+        .field-valid {
+            color: var(--success);
+        }
+
+        .pill {
+            display: inline-flex;
+            min-height: 1.8rem;
+            align-items: center;
+            gap: .35rem;
+            padding: .25rem .65rem;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--surface-2);
+            color: var(--text-2);
+            font-size: .75rem;
+            font-weight: 750;
+        }
+
+        .pill-accent {
+            border-color: color-mix(in srgb, var(--accent) 70%, var(--border));
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+        }
+
+        .pill-danger {
+            border-color: color-mix(in srgb, var(--danger) 60%, var(--border));
+            background: var(--danger-soft);
+            color: var(--danger-strong);
+        }
+
+        .status-dot {
+            width: .55rem;
+            height: .55rem;
+            flex: 0 0 auto;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 0 .18rem var(--success-soft);
+        }
+
+        .status-dot.warning {
+            background: var(--warning);
+            box-shadow: 0 0 0 .18rem var(--warning-soft);
+        }
+
+        .status-dot.danger {
+            background: var(--danger);
+            box-shadow: 0 0 0 .18rem var(--danger-soft);
+        }
+
+        .notice {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-3);
+            padding: .75rem .9rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--surface-2);
+            color: var(--text-2);
+            font-size: .84rem;
+        }
+
+        .notice strong {
+            color: var(--text-1);
+        }
+
+        .notice-info {
+            border-color: color-mix(in srgb, var(--info) 45%, var(--border));
+            background: var(--info-soft);
+        }
+
+        .notice-warning {
+            border-color: color-mix(in srgb, var(--warning) 50%, var(--border));
+            background: var(--warning-soft);
+        }
+
+        .notice-danger {
+            border-color: color-mix(in srgb, var(--danger) 50%, var(--border));
+            background: var(--danger-soft);
+        }
+
+        .notice-success {
+            border-color: color-mix(in srgb, var(--success) 45%, var(--border));
+            background: var(--success-soft);
+        }
+
+        .hero {
+            display: grid;
+            align-content: center;
+            min-height: clamp(17rem, 50cqh, 28rem);
+            padding-block: clamp(2rem, 7cqw, 6rem);
+        }
+
+        .hero p {
+            max-width: 42rem;
+            color: var(--text-2);
+            font-size: clamp(1rem, 1.8cqw, 1.25rem);
+            line-height: 1.65;
+        }
+
+        .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-3);
+            margin-top: var(--space-4);
+        }
+
+        .hero-facts {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: var(--space-3);
+            margin-top: var(--space-8);
+        }
+
+        .fact {
+            padding: var(--space-4);
+            border-top: 1px solid var(--border);
+            color: var(--text-2);
+            font-size: .85rem;
+        }
+
+        .fact b {
+            display: block;
+            margin-bottom: .3rem;
+            color: var(--text-1);
+        }
+
+        .ruleset-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: var(--space-3);
+        }
+
+        .ruleset-option {
+            position: relative;
+            display: grid;
+            gap: var(--space-2);
+            padding: var(--space-4);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--surface-0);
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .ruleset-option[aria-checked="true"] {
+            border-color: var(--accent);
+            background: var(--accent-soft);
+            box-shadow: var(--focus-ring);
+        }
+
+        .ruleset-option:disabled {
+            cursor: not-allowed;
+            opacity: .55;
+        }
+
+        .ruleset-option strong {
+            font-size: 1rem;
+        }
+
+        .ruleset-meta {
+            color: var(--text-2);
+            font-size: .78rem;
+            line-height: 1.45;
+        }
+
+        .fleet-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .28rem;
+            min-height: 1rem;
+            align-items: end;
+        }
+
+        .fleet-preview span {
+            display: inline-block;
+            height: .55rem;
+            border-radius: .2rem;
+            background: var(--accent);
+        }
+
+        .fleet-preview .s1 { width: .55rem; }
+        .fleet-preview .s2 { width: 1.1rem; }
+        .fleet-preview .s3 { width: 1.65rem; }
+        .fleet-preview .s4 { width: 2.2rem; }
+        .fleet-preview .s5 { width: 2.75rem; }
+
+        .invite-preview {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: var(--space-4);
+            align-items: center;
+        }
+
+        .invite-code {
+            padding: .75rem;
+            border: 1px dashed var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--surface-0);
+            color: var(--text-2);
+            overflow-wrap: anywhere;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: var(--space-1);
+            margin-bottom: var(--space-6);
+        }
+
+        .step {
+            position: relative;
+            padding-top: 1.8rem;
+            color: var(--text-3);
+            font-size: .72rem;
+            text-align: center;
+        }
+
+        .step::before {
+            position: absolute;
+            top: .3rem;
+            left: 50%;
+            width: .7rem;
+            height: .7rem;
+            border: .18rem solid var(--surface-0);
+            border-radius: 50%;
+            background: var(--border-strong);
+            box-shadow: 0 0 0 1px var(--border);
+            content: "";
+            transform: translateX(-50%);
+        }
+
+        .step:not(:last-child)::after {
+            position: absolute;
+            top: .62rem;
+            left: calc(50% + .5rem);
+            width: calc(100% - 1rem);
+            height: 1px;
+            background: var(--border);
+            content: "";
+        }
+
+        .step.done,
+        .step.current {
+            color: var(--text-1);
+        }
+
+        .step.done::before,
+        .step.current::before {
+            background: var(--accent);
+        }
+
+        .share-panel {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: var(--space-4);
+            align-items: end;
+        }
+
+        .share-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-2);
+        }
+
+        .expiry-meter {
+            display: grid;
+            gap: .4rem;
+        }
+
+        .meter {
+            height: .35rem;
+            overflow: hidden;
+            border-radius: 999px;
+            background: var(--surface-3);
+        }
+
+        .meter > span {
+            display: block;
+            width: var(--meter, 70%);
+            height: 100%;
+            border-radius: inherit;
+            background: var(--accent);
+        }
+
+        .match-status {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+            align-items: center;
+            gap: var(--space-4);
+            min-height: 3.15rem;
+            margin-bottom: var(--space-3);
+            padding: .4rem .65rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .player-inline {
+            display: grid;
+            grid-template-columns: auto auto minmax(4rem, 1fr);
+            align-items: center;
+            gap: var(--space-2);
+            min-width: 0;
+        }
+
+        .player-inline.opponent {
+            grid-template-columns: minmax(4rem, 1fr) auto auto;
+            text-align: right;
+        }
+
+        .player-inline strong {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .turn-pill {
+            min-width: 16rem;
+            padding: .55rem 1rem;
+            border: 1px solid var(--accent);
+            border-radius: var(--radius-sm);
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+            font-size: .82rem;
+            font-weight: 800;
+            text-align: center;
+        }
+
+        .health {
+            height: .35rem;
+            overflow: hidden;
+            border-radius: 999px;
+            background: var(--surface-3);
+        }
+
+        .health span {
+            display: block;
+            height: 100%;
+            border-radius: inherit;
+            background: var(--accent);
+        }
+
+        .opponent .health span {
+            background: var(--danger);
+        }
+
+        .board-tabs {
+            display: none;
+            grid-template-columns: 1fr 1fr;
+            margin-bottom: var(--space-3);
+            padding: .2rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--surface-1);
+        }
+
+        .board-tab {
+            min-height: var(--control-h-sm);
+            border: 0;
+            border-radius: calc(var(--radius-sm) - .15rem);
+            background: transparent;
+            color: var(--text-2);
+            font-weight: 750;
+        }
+
+        .board-tab[aria-selected="true"] {
+            background: var(--surface-3);
+            color: var(--text-1);
+        }
+
+        .gameplay-boards,
+        .results-boards {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: clamp(.65rem, 1.5cqw, 1.25rem);
+        }
+
+        .board-panel {
+            min-width: 0;
+            padding: 0;
+        }
+
+        .board-head {
+            display: flex;
+            min-height: 1.8rem;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-2);
+            margin-bottom: .25rem;
+        }
+
+        .board-head h3 {
+            margin: 0;
+            color: var(--accent-strong);
+            font-size: .88rem;
+            letter-spacing: .05em;
+        }
+
+        .board-panel[data-board-role="target"] .board-head h3 {
+            color: var(--danger-strong);
+        }
+
+        .board-grid {
+            display: grid;
+            grid-template-columns: 1.15rem repeat(10, minmax(0, 1fr));
+            grid-template-rows: 1.15rem repeat(10, minmax(0, 1fr));
+            gap: clamp(.12rem, .28cqw, .25rem);
+            width: min(100%, 36rem);
+            aspect-ratio: 1 / 1;
+            margin-inline: auto;
+            padding: 0;
+            border: 0;
+            background: transparent;
+        }
+
+        .coord {
+            display: grid;
+            place-items: center;
+            color: var(--coord);
+            font-family: var(--font-mono);
+            font-size: clamp(.58rem, 1cqw, .75rem);
+            user-select: none;
+        }
+
+        .board-cell {
+            position: relative;
+            container-type: size;
+            min-width: 0;
+            min-height: 0;
+            padding: 0;
+            overflow: hidden;
+            aspect-ratio: 1;
+            border: 1px solid var(--sea-line);
+            border-radius: clamp(.18rem, .45cqw, .35rem);
+            background:
+                linear-gradient(145deg, color-mix(in srgb, var(--sea-glint) 5%, transparent), transparent 55%),
+                var(--sea-cell);
+            cursor: pointer;
+        }
+
+        html[data-emojis="on"] .cell-emoji:not(:empty) {
+            position: absolute;
+            z-index: 3;
+            inset: -1px;
+            display: grid;
+            width: calc(100% + 2px);
+            height: calc(100% + 2px);
+            place-items: center;
+            pointer-events: none;
+            font-size: 86cqi;
+            line-height: 1;
+            filter: drop-shadow(0 .08rem .1rem rgb(0 0 0 / 35%));
+        }
+
+        html[data-emojis="on"] .board-cell.is-projectile .cell-emoji {
+            inset: -1px;
+            width: calc(100% + 2px);
+            height: calc(100% + 2px);
+            place-items: center;
+            font-size: 90cqi;
+            animation: projectile-pulse 420ms ease both;
+        }
+
+        @keyframes projectile-pulse {
+            0% { opacity: 0; transform: translate(-24%, 18%) scale(.65); }
+            55% { opacity: 1; transform: translate(0, 0) scale(1.12); }
+            100% { opacity: 1; transform: translate(0, 0) scale(1); }
+        }
+
+        .board-cell:hover:not(:disabled) {
+            border-color: var(--accent);
+            background: var(--sea-cell-hover);
+        }
+
+        .board-cell:disabled {
+            cursor: default;
+        }
+
+        .board-cell[data-state="ship"] {
+            border-color: var(--ship-edge);
+            background:
+                linear-gradient(145deg, color-mix(in srgb, var(--ship) 86%, white 9%), var(--ship));
+        }
+
+        .board-cell[data-state="miss"] {
+            border-color: color-mix(in srgb, var(--miss) 66%, var(--sea-line));
+            background: color-mix(in srgb, var(--sea-deep) 72%, var(--miss));
+            cursor: not-allowed;
+            filter: saturate(.55);
+            opacity: .62;
+        }
+
+        .board-cell[data-state="miss"]::after {
+            position: absolute;
+            inset: 40%;
+            border-radius: 50%;
+            background: var(--sea-foam);
+            content: "";
+        }
+
+        .board-cell[data-state="hit"]::after,
+        .board-cell[data-state="sunk"]::after,
+        .board-cell[data-state="ship-hit"]::after {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            color: #ffffff;
+            content: "×";
+            font-size: clamp(.65rem, 1.6cqw, 1.2rem);
+            font-weight: 900;
+        }
+
+        .board-cell[data-state="hit"] {
+            border-color: color-mix(in srgb, var(--hit) 75%, white);
+            background: var(--hit);
+        }
+
+        .board-cell[data-state="ship-hit"] {
+            border-color: color-mix(in srgb, var(--hit) 72%, white);
+            background: linear-gradient(145deg, color-mix(in srgb, var(--hit) 84%, white 5%), var(--hit));
+        }
+
+        .board-cell[data-state="sunk"] {
+            border-color: color-mix(in srgb, var(--sunk) 75%, white);
+            background: var(--sunk);
+        }
+
+        .board-cell.is-drag-target {
+            border-color: var(--accent-strong);
+            background: var(--sea-cell-hover);
+            box-shadow: inset 0 0 0 .15rem var(--accent);
+        }
+
+        .board-cell[data-state="blocked"] {
+            background:
+                repeating-linear-gradient(135deg, transparent 0 .2rem, color-mix(in srgb, var(--text-3) 16%, transparent) .2rem .3rem),
+                var(--sea-cell);
+            cursor: not-allowed;
+            opacity: .68;
+        }
+
+        .fleet-segments {
+            display: flex;
+            gap: .18rem;
+            justify-content: center;
+        }
+
+        .fleet-segments i {
+            display: block;
+            width: clamp(.65rem, 1.6cqw, 1.2rem);
+            height: .62rem;
+            border: 1px solid var(--accent);
+            border-radius: .18rem;
+            background: var(--accent-soft);
+        }
+
+        .connection-banner {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-3);
+            margin-bottom: var(--space-3);
+        }
+
+        .app-frame[data-connection="reconnecting"] .connection-banner.reconnecting,
+        .app-frame[data-connection="stale"] .connection-banner.stale {
+            display: flex;
+        }
+
+        .result-summary {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: var(--space-5);
+            align-items: center;
+            margin-bottom: var(--space-4);
+            padding: clamp(1rem, 2cqw, 1.5rem);
+            border: 1px solid var(--border);
+            border-left: .28rem solid var(--success);
+            border-radius: var(--radius-md);
+            background: var(--surface-1);
+        }
+
+        .result-summary.is-loss {
+            border-left-color: var(--danger);
+        }
+
+        .result-summary .result-title {
+            margin-bottom: .35rem;
+            color: var(--success);
+        }
+
+        .result-summary.is-loss .result-title {
+            color: var(--danger-strong);
+        }
+
+        .result-stat {
+            min-width: 8rem;
+            text-align: center;
+        }
+
+        .result-stat strong {
+            display: block;
+            font-size: 2rem;
+        }
+
+        .system-state {
+            display: grid;
+            min-height: min(60cqh, 30rem);
+            place-items: center;
+            text-align: center;
+        }
+
+        .system-state > div {
+            max-width: 36rem;
+        }
+
+        .system-code {
+            display: inline-grid;
+            min-width: 5rem;
+            min-height: 5rem;
+            place-items: center;
+            margin-bottom: var(--space-4);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            background: var(--surface-2);
+            color: var(--danger-strong);
+            font-family: var(--font-mono);
+            font-size: 1.25rem;
+            font-weight: 900;
+        }
+
+        .home-menu-simple {
+            display: grid;
+            width: min(100%, 28rem);
+            min-height: min(68cqh, 34rem);
+            align-content: center;
+            gap: var(--space-4);
+            margin-inline: auto;
+        }
+
+        .home-menu-simple h1 {
+            margin: 0;
+            font-size: clamp(2rem, 4cqw, 3rem);
+            text-align: center;
+        }
+
+        .home-menu-actions {
+            display: grid;
+            gap: var(--space-3);
+        }
+
+        .home-menu-actions .btn {
+            width: 100%;
+        }
+
+        .ruleset-facts {
+            display: grid;
+            gap: .35rem;
+            margin: 0;
+        }
+
+        .rule-fact {
+            display: grid;
+            grid-template-columns: minmax(7rem, .8fr) minmax(0, 1.4fr);
+            gap: var(--space-3);
+            padding-block: .45rem;
+            border-top: 1px solid var(--border);
+            font-size: .8rem;
+        }
+
+        .rule-fact dt {
+            color: var(--text-3);
+            font-weight: 750;
+        }
+
+        .rule-fact dd {
+            margin: 0;
+            color: var(--text-1);
+        }
+
+        .fleet-composition {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .25rem .55rem;
+        }
+
+        .fleet-composition span {
+            white-space: nowrap;
+        }
+
+        .share-inline {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto auto;
+            gap: var(--space-2);
+            align-items: stretch;
+        }
+
+        .share-inline .btn {
+            min-height: var(--control-h);
+            white-space: nowrap;
+        }
+
+        .token-copy-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-2);
+        }
+
+        .match-player {
+            display: grid;
+            gap: .38rem;
+            min-width: 0;
+            padding: .55rem .65rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--surface-1);
+        }
+
+        .match-player.opponent {
+            text-align: right;
+        }
+
+        .match-player-head {
+            display: flex;
+            justify-content: space-between;
+            gap: var(--space-2);
+            font-size: .8rem;
+        }
+
+        .match-player.opponent .match-player-head {
+            flex-direction: row-reverse;
+        }
+
+        .player-metrics {
+            display: grid;
+            gap: .3rem;
+        }
+
+        .metric-line {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: .45rem;
+            color: var(--text-3);
+            font-size: .66rem;
+        }
+
+        .match-player.opponent .metric-line {
+            grid-template-columns: auto 1fr auto;
+        }
+
+        .metric-line .health {
+            min-width: 3.5rem;
+        }
+
+        .health.cells span {
+            background: var(--sea-glint);
+        }
+
+        .match-player.opponent .metric-line:first-child .health span {
+            background: var(--danger);
+        }
+
+        .gameplay-foot {
+            margin-top: .55rem;
+            font-size: .7rem;
+        }
+
+        .fleet-inventory {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: .4rem;
+            width: min(100%, 42rem);
+            margin: 0 auto var(--space-3);
+        }
+
+        .inventory-ship {
+            display: grid;
+            justify-items: center;
+            gap: .2rem;
+            min-width: 0;
+            padding: .3rem .25rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--surface-1);
+            color: var(--text-2);
+            cursor: grab;
+            font-size: .64rem;
+        }
+
+        .inventory-ship:active {
+            cursor: grabbing;
+        }
+
+        .inventory-ship.is-dragging {
+            border-color: var(--accent);
+            opacity: .6;
+        }
+
+        .inventory-ship b {
+            color: var(--text-1);
+        }
+
+        .inventory-ship .fleet-segments i {
+            width: .7rem;
+            height: .48rem;
+        }
+
+        .inventory-ship:not(button) {
+            cursor: default;
+        }
+
+        .inventory-ship.is-empty {
+            opacity: .45;
+            cursor: default;
+        }
+
+        .placement-stage {
+            display: grid;
+            justify-items: center;
+            gap: var(--space-3);
+        }
+
+        .placement-stage .board-panel {
+            width: min(100%, 42rem);
+        }
+
+        .placement-status {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-2);
+            width: min(100%, 42rem);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: var(--space-3);
+            margin-bottom: var(--space-4);
+        }
+
+        .stat-card {
+            padding: var(--space-4);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--surface-1);
+        }
+
+        .stat-card h3 {
+            margin-bottom: var(--space-3);
+            color: var(--accent-strong);
+        }
+
+        .stat-list {
+            display: grid;
+            gap: .55rem;
+            margin: 0;
+        }
+
+        .stat-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: var(--space-2);
+            padding-bottom: .4rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stat-row:last-child {
+            padding-bottom: 0;
+            border-bottom: 0;
+        }
+
+        .stat-row dt {
+            color: var(--text-3);
+            font-size: .75rem;
+        }
+
+        .stat-row dd {
+            margin: 0;
+            color: var(--text-1);
+            font-family: var(--font-mono);
+            font-weight: 800;
+        }
+
+        .fleet-outcome {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-2);
+            margin-top: var(--space-3);
+        }
+
+        .fleet-outcome > .field-label {
+            grid-column: 1 / -1;
+            color: var(--text-2);
+            text-align: left;
+        }
+
+        .fleet-outcome div {
+            padding: .7rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--surface-0);
+            text-align: center;
+        }
+
+        .fleet-outcome b {
+            display: block;
+            margin-bottom: .15rem;
+            font-size: 1.35rem;
+        }
+
+        .fleet-outcome > div > span {
+            color: var(--text-3);
+            font-size: .68rem;
+        }
+
+        .compact-control {
+            gap: var(--space-3);
+            padding-top: .6rem;
+            border-top: 1px solid var(--border);
+        }
+
+        #shipActionDialog {
+            width: min(calc(100% - 2rem), 23rem);
+        }
+
+        #shipActionDialog .dialog-head,
+        #shipActionDialog .dialog-actions {
+            padding: .65rem .75rem;
+        }
+
+        #shipActionDialog .dialog-body {
+            gap: .65rem;
+            padding: .75rem;
+        }
+
+        #shipActionDialog .compact-control {
+            padding-top: .5rem;
+        }
+
+        .component-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: var(--space-3);
+        }
+
+        .component-card {
+            display: grid;
+            align-content: start;
+            gap: var(--space-3);
+            min-height: 12rem;
+            padding: var(--space-4);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--surface-1);
+        }
+
+        .component-card h3 {
+            margin: 0;
+        }
+
+        dialog {
+            width: min(calc(100% - 2rem), 31rem);
+            max-height: min(88dvh, 48rem);
+            padding: 0;
+            overflow: auto;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-lg);
+            background: var(--surface-raised);
+            color: var(--text-1);
+            box-shadow: var(--shadow-lg);
+        }
+
+        dialog::backdrop {
+            background: var(--overlay);
+            backdrop-filter: blur(.2rem);
+        }
+
+        dialog[data-sheet] {
+            width: min(calc(100% - 2rem), 38rem);
+        }
+
+        html[data-preview-device="iphone"] dialog,
+        html[data-preview-device="android"] dialog {
+            width: min(calc(100% - 2rem), 22.5rem);
+            max-height: min(48rem, calc(100dvh - 2rem));
+        }
+
+        html[data-preview-device="iphone"] dialog[data-sheet],
+        html[data-preview-device="android"] dialog[data-sheet] {
+            width: min(calc(100% - 2rem), 23.25rem);
+        }
+
+        html[data-preview-device="phone-landscape"] dialog {
+            width: min(calc(100% - 2rem), 31rem);
+            max-height: min(21rem, calc(100dvh - 1rem));
+        }
+
+        .dialog-head {
+            position: sticky;
+            z-index: 1;
+            top: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-3);
+            padding: 1rem 1.1rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface-raised);
+        }
+
+        .dialog-head h2 {
+            margin: 0;
+            font-size: 1.15rem;
+        }
+
+        .dialog-body {
+            display: grid;
+            gap: var(--space-4);
+            padding: 1.1rem;
+        }
+
+        .dialog-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: var(--space-2);
+            padding: 1rem 1.1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .qr-placeholder {
+            display: grid;
+            width: min(16rem, 72vw);
+            aspect-ratio: 1;
+            place-items: center;
+            margin-inline: auto;
+            border: .75rem solid white;
+            border-radius: var(--radius-sm);
+            background:
+                repeating-conic-gradient(#09233c 0 25%, white 0 50%) 0 / 1.2rem 1.2rem;
+            color: #09233c;
+            box-shadow: inset 0 0 0 .2rem white;
+        }
+
+        .qr-placeholder span {
+            padding: .45rem .65rem;
+            border-radius: .25rem;
+            background: white;
+            font-weight: 900;
+        }
+
+        [popover] {
+            width: min(22rem, calc(100vw - 2rem));
+            padding: var(--space-3);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-md);
+            background: var(--surface-raised);
+            color: var(--text-1);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .toast-region {
+            position: absolute;
+            z-index: 80;
+            top: 4.25rem;
+            right: 1rem;
+            display: grid;
+            width: min(22rem, calc(100% - 2rem));
+            gap: .6rem;
+            pointer-events: none;
+        }
+
+        .toast {
+            display: grid;
+            grid-template-columns: .6rem 1fr auto;
+            gap: var(--space-3);
+            align-items: start;
+            padding: .8rem;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--surface-raised);
+            box-shadow: var(--shadow-lg);
+            pointer-events: auto;
+            animation: toast-in var(--motion-normal) ease both;
+        }
+
+        .toast-mark {
+            width: .55rem;
+            height: 100%;
+            min-height: 2.3rem;
+            border-radius: 999px;
+            background: var(--info);
+        }
+
+        .toast.success .toast-mark { background: var(--success); }
+        .toast.warning .toast-mark { background: var(--warning); }
+        .toast.error .toast-mark { background: var(--danger); }
+
+        .toast strong {
+            display: block;
+            margin-bottom: .15rem;
+            font-size: .85rem;
+        }
+
+        .toast p {
+            margin: 0;
+            color: var(--text-2);
+            font-size: .78rem;
+            line-height: 1.4;
+        }
+
+        .toast button {
+            width: 1.8rem;
+            height: 1.8rem;
+            border: 0;
+            background: transparent;
+            color: var(--text-2);
+            cursor: pointer;
+        }
+
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateY(-.5rem); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @container app (max-width: 47.5rem) {
+            .app-bar {
+                grid-template-columns: 1fr auto;
+                min-height: 3.25rem;
+            }
+
+            .app-meta {
+                display: none;
+            }
+
+            .app-actions .btn-text span {
+                display: none;
+            }
+
+            .app-actions {
+                grid-column: 2;
+            }
+
+            .app-actions .btn-text {
+                width: var(--control-h-sm);
+                padding: 0;
+            }
+
+            .app-actions .btn-text::before {
+                display: inline;
+                font-size: .75rem;
+                font-weight: 900;
+            }
+
+            .app-screen {
+                padding: .85rem;
+            }
+
+            .hero {
+                min-height: 29rem;
+                padding-block: 2rem;
+            }
+
+            .hero-facts,
+            .ruleset-grid,
+            .invite-preview,
+            .share-panel,
+            .placement-layout,
+            .component-grid,
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .share-inline {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-actions .btn {
+                width: 100%;
+            }
+
+            .steps {
+                margin-bottom: var(--space-4);
+            }
+
+            .step {
+                font-size: .62rem;
+            }
+
+            .section-head {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .match-status {
+                grid-template-columns: 1fr 1fr;
+                gap: .6rem;
+                padding: .45rem 0;
+            }
+
+            .turn-pill {
+                grid-column: 1 / -1;
+                grid-row: 1;
+                min-width: 0;
+            }
+
+            .match-player {
+                grid-row: 2;
+            }
+
+            .match-player.opponent {
+                text-align: left;
+            }
+
+            .match-player.opponent .match-player-head {
+                flex-direction: row;
+            }
+
+            .player-inline,
+            .player-inline.opponent {
+                grid-template-columns: minmax(0, 1fr) auto;
+                font-size: .78rem;
+                text-align: left;
+            }
+
+            .player-inline .health {
+                grid-column: 1 / -1;
+            }
+
+            .player-inline.opponent .health {
+                grid-column: 1 / -1;
+                grid-row: 2;
+            }
+
+            .player-inline.opponent strong {
+                grid-column: 1;
+                grid-row: 1;
+            }
+
+            .player-inline.opponent > span {
+                grid-column: 2;
+                grid-row: 1;
+            }
+
+            .board-tabs {
+                display: grid;
+            }
+
+            .gameplay-boards,
+            .results-boards {
+                grid-template-columns: 1fr;
+            }
+
+            .gameplay-boards .board-panel {
+                display: none;
+            }
+
+            .app-frame[data-board-view="target"] .gameplay-boards .board-panel[data-board-role="target"],
+            .app-frame[data-board-view="own"] .gameplay-boards .board-panel[data-board-role="own"] {
+                display: block;
+            }
+
+            .results-boards .board-panel {
+                display: block;
+            }
+
+            .fleet-inventory {
+                grid-template-columns: repeat(5, minmax(5.2rem, 1fr));
+                overflow-x: auto;
+                padding-bottom: .25rem;
+            }
+
+            .result-summary {
+                grid-template-columns: 1fr;
+            }
+
+            .fleet-outcome {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .mockup-toolbar {
+                overflow-x: auto;
+            }
+        }
+
+        #preview[data-device="phone-landscape"] .app-bar {
+            position: static;
+            min-height: 2.85rem;
+        }
+
+        #preview[data-device="phone-landscape"] .app-screen {
+            padding: .6rem;
+        }
+
+        #preview[data-device="phone-landscape"] .screen-gameplay .board-tabs {
+            display: none;
+        }
+
+        #preview[data-device="phone-landscape"] .screen-gameplay .gameplay-boards {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            height: auto;
+        }
+
+        #preview[data-device="phone-landscape"] .screen-gameplay .board-panel[data-board-role="own"] {
+            display: block;
+        }
+
+        #preview[data-device="phone-landscape"] .screen-gameplay .board-panel[data-board-role="target"] {
+            display: block;
+            overflow: hidden;
+        }
+
+        #preview[data-device="phone-landscape"] .screen-gameplay .board-grid {
+            width: min(100%, 17rem);
+        }
+
+        #preview[data-device="phone-landscape"] .screen-gameplay .match-status {
+            grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+            gap: .4rem;
+            margin-bottom: .4rem;
+            padding: .25rem 0;
+        }
+
+        #preview[data-device="phone-landscape"] .screen-gameplay .match-player {
+            grid-row: auto;
+            padding: .35rem .45rem;
+        }
+
+        #preview[data-device="phone-landscape"] .screen-gameplay .turn-pill {
+            grid-column: auto;
+            grid-row: auto;
+            min-width: 7rem;
+            padding: .4rem .55rem;
+        }
+
+        #preview[data-device="phone-landscape"] .screen-gameplay .metric-line {
+            font-size: .58rem;
+        }
+
+        #preview[data-device="phone-landscape"] .screen-placement .placement-layout {
+            grid-template-columns: minmax(22rem, 1fr) 18rem;
+        }
+
+        #preview[data-device="phone-landscape"] .screen-placement .board-grid {
+            width: min(100%, 19rem);
+        }
+
+        @media (max-height: 31.25rem) and (orientation: landscape) {
+            #preview[data-device="responsive"] .app-bar {
+                position: static;
+            }
+        }
+
+        @media (forced-colors: active) {
+            .board-cell,
+            .btn,
+            .card,
+            .board-panel,
+            dialog {
+                forced-color-adjust: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="mockup-shell">
+    <header class="mockup-toolbar" aria-label="Mockup controls">
+        <strong>Interactive mockup</strong>
+        <div class="toolbar-group">
+            <label class="toolbar-label" for="screenSelect">Screen</label>
+            <select class="input" id="screenSelect">
+                <option value="home">Home</option>
+                <option value="create">Create game</option>
+                <option value="join">Join invitation</option>
+                <option value="waiting">Waiting room</option>
+                <option value="placement">Fleet placement</option>
+                <option value="gameplay">Gameplay</option>
+                <option value="results">Results</option>
+                <option value="unavailable">Session unavailable</option>
+                <option value="components">UI states and overlays</option>
+            </select>
+        </div>
+        <div class="toolbar-group">
+            <label class="toolbar-label" for="deviceSelect">Viewport</label>
+            <select class="input" id="deviceSelect">
+                <option value="responsive">Responsive browser</option>
+                <option value="laptop">Laptop · 1280 wide</option>
+                <option value="iphone">Generic iPhone · 390×844</option>
+                <option value="android">Generic Android · 412×915</option>
+                <option value="phone-landscape">Phone landscape · 844×390</option>
+            </select>
+        </div>
+        <div class="toolbar-group">
+            <label class="toolbar-label" for="connectionSelect">Network</label>
+            <select class="input" id="connectionSelect">
+                <option value="connected">Connected</option>
+                <option value="reconnecting">Reconnecting</option>
+                <option value="stale">Offline / stale</option>
+                <option value="checking">Checking command</option>
+            </select>
+        </div>
+        <span class="toolbar-spacer"></span>
+        <button class="btn btn-secondary btn-sm" id="themeToggle" type="button">Light theme</button>
+        <button class="btn btn-ghost btn-sm" type="button" data-go="components">All overlays</button>
+    </header>
+
+    <main class="preview-stage">
+        <div class="preview-caption" aria-live="polite">
+            <b id="previewName">Responsive browser</b>
+            <span>•</span>
+            <span>Container-query preview</span>
+            <span>•</span>
+            <span>No external assets</span>
+        </div>
+
+        <div id="preview" data-device="responsive">
+            <div class="app-frame" id="appFrame" data-board-view="target" data-connection="connected">
+                <header class="app-bar">
+                    <button class="wordmark" type="button" data-go="home">⚓ BATTLESHIP</button>
+                    <div class="app-meta" id="appMeta"></div>
+                    <nav class="app-actions" aria-label="Application utilities">
+                        <button class="btn btn-text btn-sm" type="button" data-short="↻" id="refreshSession" aria-label="Refresh session">
+                            <span>↻ Refresh</span>
+                        </button>
+                        <button class="btn btn-text btn-sm" type="button" data-short="⚙" data-dialog="settingsDialog" aria-label="Settings">
+                            <span>⚙ Settings</span>
+                        </button>
+                    </nav>
+                </header>
+
+                <main class="app-main" id="appMain">
+                    <!-- HOME -->
+                    <section class="app-screen is-active screen-home" data-screen="home" aria-labelledby="homeTitle">
+                        <div class="home-menu-simple">
+                            <h1 id="homeTitle">⚓ Battleship</h1>
+                            <div class="home-menu-actions">
+                                <button class="btn btn-primary" type="button" data-go="create">New game</button>
+                                <button class="btn btn-secondary" type="button" data-go="join">Join game</button>
+                                <button class="btn btn-ghost" type="button" data-dialog="rulesDialog">Game rules</button>
+                                <button class="btn btn-ghost" type="button" data-dialog="settingsDialog">Settings</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- CREATE -->
+                    <section class="app-screen screen-create" data-screen="create" aria-labelledby="createTitle">
+                        <div class="screen-medium">
+                            <div class="section-head">
+                                <div>
+                                    <p class="eyebrow">New game</p>
+                                    <h2 id="createTitle">Create game</h2>
+                                    <p class="muted">Select a ruleset and enter your name.</p>
+                                </div>
+                            </div>
+                            <form class="card card-pad stack" id="createForm">
+                                <fieldset class="stack" style="border:0;padding:0;margin:0">
+                                    <legend class="field-label">Ruleset</legend>
+                                    <div class="ruleset-grid" role="radiogroup" aria-label="Choose ruleset">
+                                        <div class="ruleset-option" role="radio" tabindex="0" aria-checked="true" data-ruleset="sea">
+                                            <strong>Sea Battle</strong>
+                                            <dl class="ruleset-facts">
+                                                <div class="rule-fact"><dt>Field</dt><dd>10 × 10</dd></div>
+                                                <div class="rule-fact"><dt>Fleet</dt><dd class="fleet-composition"><span>1× Battleship (4)</span><span>2× Cruiser (3)</span><span>3× Destroyer (2)</span><span>4× Patrol (1)</span></dd></div>
+                                                <div class="rule-fact"><dt>Ship contact</dt><dd>Not allowed</dd></div>
+                                                <div class="rule-fact"><dt>Turn</dt><dd>Hit or sink continues turn</dd></div>
+                                            </dl>
+                                        </div>
+                                        <div class="ruleset-option" role="radio" tabindex="0" aria-checked="false" data-ruleset="classic">
+                                            <strong>Battleship Classic 2002</strong>
+                                            <dl class="ruleset-facts">
+                                                <div class="rule-fact"><dt>Field</dt><dd>10 × 10</dd></div>
+                                                <div class="rule-fact"><dt>Fleet</dt><dd class="fleet-composition"><span>1× Carrier (5)</span><span>1× Battleship (4)</span><span>1× Cruiser (3)</span><span>1× Submarine (3)</span><span>1× Patrol (2)</span></dd></div>
+                                                <div class="rule-fact"><dt>Ship contact</dt><dd>Allowed</dd></div>
+                                                <div class="rule-fact"><dt>Turn</dt><dd>One shot, then turn changes</dd></div>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </fieldset>
+                                <div class="field">
+                                    <label for="captainName">Captain name</label>
+                                    <input class="input" id="captainName" name="captainName" value="Captain Nemo" maxlength="32" autocomplete="nickname">
+                                    <span class="field-help">2–32 characters.</span>
+                                </div>
+                                <div class="split">
+                                    <button class="btn btn-ghost" type="button" data-go="home">Back</button>
+                                    <div class="cluster">
+                                        <button class="btn btn-ghost" type="button" data-dialog="rulesDialog">View details</button>
+                                        <button class="btn btn-primary" type="submit">Create game</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </section>
+
+                    <!-- JOIN -->
+                    <section class="app-screen screen-join" data-screen="join" aria-labelledby="joinTitle">
+                        <div class="screen-narrow">
+                            <div class="section-head">
+                                <div>
+                                    <p class="eyebrow">Join game</p>
+                                    <h2 id="joinTitle">Enter invitation</h2>
+                                    <p class="muted">Paste a shared token, or use the value filled from a QR code or link.</p>
+                                </div>
+                                <button class="btn btn-ghost btn-sm" type="button" data-go="home">Back</button>
+                            </div>
+                            <form class="card card-pad stack" id="joinForm">
+                                <div class="field">
+                                    <label for="joinToken">Invitation token</label>
+                                    <input class="input mono" id="joinToken" value="J7KF-1047-X9P2" autocomplete="off" spellcheck="false">
+                                    <span class="field-valid">✓ Token detected from the opened link</span>
+                                </div>
+                                <div class="field">
+                                    <label for="guestName">Captain name</label>
+                                    <input class="input" id="guestName" value="Long John Silver" maxlength="32" autocomplete="nickname">
+                                    <span class="field-help">Only your name is needed when the token came from a QR code or link.</span>
+                                </div>
+                                <button class="btn btn-primary" type="submit">Join game</button>
+                                <button class="btn btn-text" type="button" data-dialog="expiredDialog">Invalid or expired token example</button>
+                            </form>
+                        </div>
+                    </section>
+
+                    <!-- WAITING -->
+                    <section class="app-screen screen-waiting" data-screen="waiting" aria-labelledby="waitingTitle">
+                        <div class="screen-medium">
+                            <div class="steps" aria-label="Game progress">
+                                <div class="step done">Created</div>
+                                <div class="step current" aria-current="step">Waiting</div>
+                                <div class="step">Placement</div>
+                                <div class="step">Battle</div>
+                            </div>
+                            <div class="section-head">
+                                <div>
+                                    <p class="eyebrow">Waiting room</p>
+                                    <h2 id="waitingTitle"><span class="ui-emoji" aria-hidden="true">🛰️</span>Waiting for opponent</h2>
+                                    <p class="muted">Share the invitation by link, QR code, or token.</p>
+                                </div>
+                                <span class="pill pill-accent"><span class="status-dot"></span> Connected</span>
+                            </div>
+                            <div class="card card-pad stack">
+                                <div class="field">
+                                    <label for="inviteLink">Invitation link</label>
+                                    <div class="share-inline">
+                                        <input class="input mono" id="inviteLink" readonly value="https://app.example/join/J7KF-1047#invite=••••••••">
+                                        <button class="btn btn-primary" type="button" data-copy="#inviteLink">Copy link</button>
+                                        <button class="btn btn-secondary" type="button" data-dialog="qrDialog">Show QR</button>
+                                    </div>
+                                    <div class="token-copy-row">
+                                        <span class="field-help">Token: <span class="mono" id="inviteToken">J7KF-1047-X9P2</span></span>
+                                        <button class="btn btn-ghost btn-sm" type="button" data-copy="#inviteToken">Copy token</button>
+                                    </div>
+                                </div>
+                                <div class="expiry-meter">
+                                    <div class="split"><span class="field-label">Invitation lifetime</span><span class="muted mono">12:48</span></div>
+                                    <div class="meter" aria-label="Invitation lifetime remaining"><span style="--meter:85%"></span></div>
+                                </div>
+                                <div class="notice notice-info">
+                                    <span class="status-dot" aria-hidden="true"></span>
+                                    <div><strong>Waiting for an opponent.</strong> This page updates automatically. Sharing the public game code alone does not grant access.</div>
+                                </div>
+                                <div class="split">
+                                    <button class="btn btn-ghost" type="button" data-dialog="rotateInviteDialog">Replace invitation</button>
+                                    <button class="btn btn-danger" type="button" data-dialog="leaveDialog">Leave game</button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- PLACEMENT -->
+                    <section class="app-screen screen-placement" data-screen="placement" aria-labelledby="placementTitle">
+                        <div class="section-head">
+                            <div>
+                                <p class="eyebrow">Fleet placement</p>
+                                <h2 id="placementTitle"><span class="ui-emoji" aria-hidden="true">🎖️</span>Place your fleet</h2>
+                                <p class="muted">Tap a cell to place or edit a ship. Dragging is available with mouse or touch.</p>
+                            </div>
+                            <span class="pill pill-accent">Opponent placing ships</span>
+                        </div>
+                        <div class="fleet-inventory" aria-label="Ships remaining to place">
+                            <button class="inventory-ship is-empty" type="button" disabled aria-label="Four-cell ships, none remaining">
+                                <span>4 cells</span><span class="fleet-segments"><i></i><i></i><i></i><i></i></span><b>0 ships</b>
+                            </button>
+                            <button class="inventory-ship is-empty" type="button" disabled aria-label="Three-cell ships, none remaining">
+                                <span>3 cells</span><span class="fleet-segments"><i></i><i></i><i></i></span><b>0 ships</b>
+                            </button>
+                            <button class="inventory-ship" type="button" draggable="true" data-ship-size="2" data-ship-name="2-cell ship" aria-label="Two-cell ships, one remaining">
+                                <span>2 cells</span><span class="fleet-segments"><i></i><i></i></span><b>1 ship</b>
+                            </button>
+                            <button class="inventory-ship" type="button" draggable="true" data-ship-size="1" data-ship-name="1-cell ship" aria-label="One-cell ships, two remaining">
+                                <span>1 cell</span><span class="fleet-segments"><i></i></span><b>2 ships</b>
+                            </button>
+                            <div class="inventory-ship" aria-label="Placement progress">
+                                <span>Fleet progress</span><b>7 / 10</b><span class="muted">3 remaining</span>
+                            </div>
+                        </div>
+                        <div class="placement-stage">
+                            <div class="board-panel">
+                                <div class="board-head">
+                                    <h3><span class="ui-emoji" aria-hidden="true">🌊</span>YOUR SEA</h3>
+                                </div>
+                                <div class="board-grid" data-board-kind="placement" data-board-label="Fleet placement grid"></div>
+                            </div>
+                            <div class="placement-status">
+                                <span class="muted">Ships cannot touch, including diagonally.</span>
+                                <button class="btn btn-primary" type="button" disabled aria-disabled="true">Place 3 remaining ships</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- GAMEPLAY -->
+                    <section class="app-screen screen-gameplay" data-screen="gameplay" aria-labelledby="gameplayTitle">
+                        <h2 class="sr-only" id="gameplayTitle">Gameplay</h2>
+                        <div class="connection-banner reconnecting notice notice-warning" role="status">
+                            <span>Reconnecting. Last-known boards remain visible; commands are paused.</span>
+                            <button class="btn btn-ghost btn-sm" type="button" data-toast="info">Refresh now</button>
+                        </div>
+                        <div class="connection-banner stale notice notice-danger" role="alert">
+                            <span>Connection unavailable. This board may be stale; firing is disabled.</span>
+                            <button class="btn btn-ghost btn-sm" type="button" data-dialog="checkingDialog">View recovery</button>
+                        </div>
+                        <div class="match-status">
+                            <div class="match-player">
+                                <div class="match-player-head"><strong>Captain Nemo</strong></div>
+                                <div class="player-metrics">
+                                    <div class="metric-line"><span>Ships</span><div class="health"><span style="width:80%"></span></div><b>8/10</b></div>
+                                    <div class="metric-line"><span><span class="ui-emoji" aria-hidden="true">💧</span>Cells</span><div class="health cells"><span style="width:64%"></span></div><b>64/100</b></div>
+                                </div>
+                            </div>
+                            <div class="turn-pill"><span class="ui-emoji" aria-hidden="true">🛰️</span>YOUR TURN · Tap enemy cell</div>
+                            <div class="match-player opponent">
+                                <div class="match-player-head"><strong>Long John Silver</strong></div>
+                                <div class="player-metrics">
+                                    <div class="metric-line"><span>Ships</span><div class="health"><span style="width:60%"></span></div><b>6/10</b></div>
+                                    <div class="metric-line"><span><span class="ui-emoji" aria-hidden="true">💧</span>Cells</span><div class="health cells"><span style="width:52%"></span></div><b>52/100</b></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="board-tabs" role="tablist" aria-label="Choose board">
+                            <button class="board-tab" type="button" role="tab" aria-selected="true" data-board-switch="target">Enemy waters</button>
+                            <button class="board-tab" type="button" role="tab" aria-selected="false" data-board-switch="own">Your fleet</button>
+                        </div>
+                        <div class="gameplay-boards">
+                            <div class="board-panel" data-board-role="own">
+                                <div class="board-head"><h3><span class="ui-emoji" aria-hidden="true">🌊</span>YOUR SEA</h3></div>
+                                <div class="board-grid" data-board-kind="own" data-board-label="Your fleet grid"></div>
+                            </div>
+                            <div class="board-panel" data-board-role="target">
+                                <div class="board-head"><h3><span class="ui-emoji" aria-hidden="true">🌊</span>ENEMY SEA</h3></div>
+                                <div class="board-grid" data-board-kind="target" data-board-label="Enemy targeting grid"></div>
+                            </div>
+                        </div>
+                        <div class="split gameplay-foot">
+                            <span class="muted">Authoritative snapshot v18 · realtime connected</span>
+                            <span class="muted">Session expires in 13:42</span>
+                        </div>
+                    </section>
+
+                    <!-- RESULTS -->
+                    <section class="app-screen screen-results" data-screen="results" aria-labelledby="resultsTitle">
+                        <div class="result-summary" id="resultSummary">
+                            <div>
+                                <p class="eyebrow">Match complete · 18:42</p>
+                                <h2 class="result-title" id="resultsTitle"><span class="ui-emoji result-emoji" aria-hidden="true">🏆</span><span class="result-title-text">Victory</span></h2>
+                                <p class="muted result-copy">Captain Nemo sank the final enemy ship.</p>
+                                <button class="btn btn-secondary btn-sm" type="button" id="resultToggle">Preview defeat</button>
+                            </div>
+                            <div class="fleet-outcome" id="fleetOutcome">
+                                <span class="field-label">Your fleet after victory</span>
+                                <div><b>4</b><span>untouched</span></div>
+                                <div><b>3</b><span>damaged</span></div>
+                                <div><b>3</b><span>destroyed</span></div>
+                            </div>
+                        </div>
+                        <div class="stats-grid" aria-label="Match statistics">
+                            <article class="stat-card">
+                                <h3>⏱ Match time</h3>
+                                <dl class="stat-list">
+                                    <div class="stat-row"><dt>Total match</dt><dd>18:42</dd></div>
+                                    <div class="stat-row"><dt>Placement phase</dt><dd>2:43</dd></div>
+                                    <div class="stat-row"><dt>Your placement</dt><dd>2:16</dd></div>
+                                    <div class="stat-row"><dt>Opponent placement</dt><dd>2:43</dd></div>
+                                    <div class="stat-row"><dt>Gameplay</dt><dd>15:59</dd></div>
+                                </dl>
+                            </article>
+                            <article class="stat-card">
+                                <h3>🎯 Turns & accuracy</h3>
+                                <dl class="stat-list">
+                                    <div class="stat-row"><dt>Your turns</dt><dd>24</dd></div>
+                                    <div class="stat-row"><dt>Opponent turns</dt><dd>22</dd></div>
+                                    <div class="stat-row"><dt>Your hits / shots</dt><dd>22 / 46</dd></div>
+                                    <div class="stat-row"><dt>Your accuracy</dt><dd>47.8%</dd></div>
+                                </dl>
+                            </article>
+                            <article class="stat-card">
+                                <h3>⌛ Turn timing</h3>
+                                <dl class="stat-list">
+                                    <div class="stat-row"><dt>Your total clock</dt><dd>4:34</dd></div>
+                                    <div class="stat-row"><dt>Opponent total clock</dt><dd>4:50</dd></div>
+                                    <div class="stat-row"><dt>Your average</dt><dd>11.4s</dd></div>
+                                    <div class="stat-row"><dt>Opponent average</dt><dd>13.2s</dd></div>
+                                    <div class="stat-row"><dt>Your fastest</dt><dd>2.1s</dd></div>
+                                    <div class="stat-row"><dt>Your slowest</dt><dd>31.8s</dd></div>
+                                </dl>
+                            </article>
+                        </div>
+                        <div class="results-boards">
+                            <div class="board-panel">
+                                <div class="board-head"><h3>ENEMY WATERS · REVEALED</h3></div>
+                                <div class="board-grid" data-board-kind="result-target" data-board-label="Final enemy grid"></div>
+                            </div>
+                            <div class="board-panel">
+                                <div class="board-head"><h3>YOUR SEA</h3></div>
+                                <div class="board-grid" data-board-kind="result-own" data-board-label="Final own fleet grid"></div>
+                            </div>
+                        </div>
+                        <div class="split" style="margin-top:1rem">
+                            <span class="muted">This result remains available for approximately 5 minutes.</span>
+                            <div class="cluster">
+                                <button class="btn btn-secondary" type="button" data-go="create">Create another game</button>
+                                <button class="btn btn-primary" type="button" data-go="home">Return home</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- UNAVAILABLE -->
+                    <section class="app-screen screen-unavailable" data-screen="unavailable" aria-labelledby="unavailableTitle">
+                        <div class="system-state">
+                            <div>
+                                <div class="system-code">410</div>
+                                <p class="eyebrow">Session ended</p>
+                                <h2 id="unavailableTitle">This temporary game has expired</h2>
+                                <p class="muted">The server confirmed that the game exceeded its idle lifetime. The board and invitation are no longer available.</p>
+                                <div class="cluster" style="justify-content:center;margin-top:1rem">
+                                    <button class="btn btn-primary" type="button" data-go="create">Create new game</button>
+                                    <button class="btn btn-secondary" type="button" data-go="home">Return home</button>
+                                    <button class="btn btn-ghost" type="button" data-dialog="restartDialog">Preview server restart</button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- COMPONENTS / OVERLAYS -->
+                    <section class="app-screen screen-components" data-screen="components" aria-labelledby="componentsTitle">
+                        <div class="section-head">
+                            <div>
+                                <p class="eyebrow">Reference inventory</p>
+                                <h2 id="componentsTitle">UI states, overlays, and feedback</h2>
+                                <p class="muted">Every surface below can be opened and inspected in both themes and every device preview.</p>
+                            </div>
+                            <button class="btn btn-ghost btn-sm" type="button" data-go="home">Home</button>
+                        </div>
+                        <div class="component-grid">
+                            <article class="component-card">
+                                <h3>Settings dialog</h3>
+                                <p class="muted">Theme, emoji overlays, language, feedback, refresh, and match actions.</p>
+                                <button class="btn btn-secondary" type="button" data-dialog="settingsDialog">Open settings</button>
+                            </article>
+                            <article class="component-card">
+                                <h3>Rules dialog</h3>
+                                <p class="muted">The same concise facts for every available ruleset.</p>
+                                <button class="btn btn-secondary" type="button" data-dialog="rulesDialog">Open rules</button>
+                            </article>
+                            <article class="component-card">
+                                <h3>QR sharing sheet</h3>
+                                <p class="muted">CSS-only placeholder for the generated QR canvas.</p>
+                                <button class="btn btn-secondary" type="button" data-dialog="qrDialog">Open QR sheet</button>
+                            </article>
+                            <article class="component-card">
+                                <h3>Ship placement sheet</h3>
+                                <p class="muted">Place an available ship or rotate/remove an existing one.</p>
+                                <button class="btn btn-secondary" type="button" data-dialog="shipActionDialog">Open ship actions</button>
+                            </article>
+                            <article class="component-card">
+                                <h3>Confirmations</h3>
+                                <div class="cluster">
+                                    <button class="btn btn-secondary btn-sm" type="button" data-dialog="readyDialog">Ready</button>
+                                    <button class="btn btn-secondary btn-sm" type="button" data-dialog="rotateInviteDialog">Invite</button>
+                                    <button class="btn btn-danger btn-sm" type="button" data-dialog="resignDialog">Resign</button>
+                                </div>
+                            </article>
+                            <article class="component-card">
+                                <h3>Recovery states</h3>
+                                <div class="cluster">
+                                    <button class="btn btn-secondary btn-sm" type="button" data-dialog="checkingDialog">Checking result</button>
+                                    <button class="btn btn-secondary btn-sm" type="button" data-dialog="expiredDialog">Expired invite</button>
+                                    <button class="btn btn-secondary btn-sm" type="button" data-dialog="restartDialog">Restart</button>
+                                </div>
+                            </article>
+                            <article class="component-card">
+                                <h3>Nonmodal share menu</h3>
+                                <p class="muted">Uses the platform popover surface where available.</p>
+                                <button class="btn btn-secondary" type="button" popovertarget="sharePopover">Open popover</button>
+                            </article>
+                            <article class="component-card">
+                                <h3>Toast variants</h3>
+                                <div class="cluster">
+                                    <button class="btn btn-ghost btn-sm" type="button" data-toast="success">Success</button>
+                                    <button class="btn btn-ghost btn-sm" type="button" data-toast="info">Info</button>
+                                    <button class="btn btn-ghost btn-sm" type="button" data-toast="warning">Warning</button>
+                                    <button class="btn btn-ghost btn-sm" type="button" data-toast="error">Error</button>
+                                </div>
+                            </article>
+                            <article class="component-card">
+                                <h3>Inline state surfaces</h3>
+                                <div class="notice notice-success">Connected and synchronized.</div>
+                                <div class="notice notice-warning">Reconnecting; actions paused.</div>
+                                <div class="notice notice-danger">Session unavailable.</div>
+                            </article>
+                        </div>
+                    </section>
+                </main>
+
+                <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="false"></div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div id="sharePopover" popover>
+    <div class="stack">
+        <strong>Share one-time invitation</strong>
+        <p class="muted" style="margin:0">Only the first successful redemption can claim the guest seat.</p>
+        <button class="btn btn-primary btn-sm" type="button" data-copy="#inviteLink">Copy invitation</button>
+        <button class="btn btn-secondary btn-sm" type="button" data-dialog="qrDialog">Show QR</button>
+    </div>
+</div>
+
+<!-- Native dialogs are intentionally used for true modal surfaces. -->
+<dialog id="settingsDialog" aria-labelledby="settingsTitle">
+    <div class="dialog-head">
+        <h2 id="settingsTitle">Settings</h2>
+        <button class="btn btn-icon" type="button" data-close aria-label="Close settings">×</button>
+    </div>
+    <div class="dialog-body">
+        <fieldset class="stack" style="border:0;padding:0;margin:0">
+            <legend class="field-label">Theme</legend>
+            <div class="cluster">
+                <button class="btn btn-secondary" type="button" data-set-theme="dark">Dark</button>
+                <button class="btn btn-secondary" type="button" data-set-theme="light">Light</button>
+                <button class="btn btn-ghost" type="button" data-toast="info">Use system</button>
+            </div>
+        </fieldset>
+        <label class="split" for="emojiModeToggle">
+            <span><b>Emoji overlays</b><br><span class="muted">Adds decorative shot and status symbols above the existing colors and markers.</span><br><span class="emoji-sample" aria-hidden="true">💦 🔥 ☠️ 🏆 🛰️</span></span>
+            <input type="checkbox" id="emojiModeToggle">
+        </label>
+        <div class="field">
+            <label for="languageSelect">Language</label>
+            <select class="input" id="languageSelect">
+                <option value="en">English</option>
+                <option value="uk">Українська · expansion preview</option>
+            </select>
+            <span class="field-help">Production messages use complete translations and update the document language.</span>
+        </div>
+        <label class="split"><span><b>Sound feedback</b><br><span class="muted">Synthesized locally after interaction</span></span><input type="checkbox" checked></label>
+        <label class="split"><span><b>Haptic feedback</b><br><span class="muted">When supported by the device</span></span><input type="checkbox"></label>
+        <div class="card card-pad stack">
+            <span class="field-label">Current session</span>
+            <button class="btn btn-secondary" type="button" data-refresh-session>↻ Refresh session</button>
+            <button class="btn btn-danger" type="button" data-settings-resign>Resign match</button>
+        </div>
+    </div>
+    <div class="dialog-actions">
+        <button class="btn btn-primary" type="button" data-close>Done</button>
+    </div>
+</dialog>
+
+<dialog id="rulesDialog" aria-labelledby="rulesTitle">
+    <div class="dialog-head">
+        <h2 id="rulesTitle">Game rules</h2>
+        <button class="btn btn-icon" type="button" data-close aria-label="Close rules">×</button>
+    </div>
+    <div class="dialog-body">
+        <div class="card card-pad stack">
+            <div class="split"><h3>Sea Battle</h3><span class="pill pill-accent">sea-battle.v1</span></div>
+            <dl class="ruleset-facts">
+                <div class="rule-fact"><dt>Field</dt><dd>10 × 10</dd></div>
+                <div class="rule-fact"><dt>Fleet</dt><dd class="fleet-composition"><span>1× Battleship (4)</span><span>2× Cruiser (3)</span><span>3× Destroyer (2)</span><span>4× Patrol (1)</span></dd></div>
+                <div class="rule-fact"><dt>Ship contact</dt><dd>Not allowed, including diagonals</dd></div>
+                <div class="rule-fact"><dt>Turn</dt><dd>Hit or sink continues turn</dd></div>
+                <div class="rule-fact"><dt>Orientation</dt><dd>Horizontal or vertical</dd></div>
+                <div class="rule-fact"><dt>Win</dt><dd>Destroy all opponent ships</dd></div>
+            </dl>
+        </div>
+        <div class="card card-pad stack">
+            <div class="split"><h3>Battleship Classic 2002</h3><span class="pill">classic-2002.v1</span></div>
+            <dl class="ruleset-facts">
+                <div class="rule-fact"><dt>Field</dt><dd>10 × 10</dd></div>
+                <div class="rule-fact"><dt>Fleet</dt><dd class="fleet-composition"><span>1× Carrier (5)</span><span>1× Battleship (4)</span><span>1× Cruiser (3)</span><span>1× Submarine (3)</span><span>1× Patrol (2)</span></dd></div>
+                <div class="rule-fact"><dt>Ship contact</dt><dd>Allowed, overlap forbidden</dd></div>
+                <div class="rule-fact"><dt>Turn</dt><dd>One shot, then turn changes</dd></div>
+                <div class="rule-fact"><dt>Orientation</dt><dd>Horizontal or vertical</dd></div>
+                <div class="rule-fact"><dt>Win</dt><dd>Destroy all opponent ships</dd></div>
+            </dl>
+        </div>
+    </div>
+    <div class="dialog-actions">
+        <button class="btn btn-primary" type="button" data-close>Close</button>
+    </div>
+</dialog>
+
+<dialog id="qrDialog" data-sheet aria-labelledby="qrTitle">
+    <div class="dialog-head">
+        <h2 id="qrTitle">Scan to join</h2>
+        <button class="btn btn-icon" type="button" data-close aria-label="Close QR sheet">×</button>
+    </div>
+    <div class="dialog-body">
+        <div class="qr-placeholder" role="img" aria-label="Mock QR code placeholder"><span>QR</span></div>
+        <p class="muted" style="text-align:center">This CSS-only pattern represents the generated QR canvas. The actual code contains the same one-time invitation as “Copy link.”</p>
+        <div class="notice notice-warning">Do not post this invitation publicly. The first successful redemption claims the guest seat.</div>
+    </div>
+    <div class="dialog-actions">
+        <button class="btn btn-secondary" type="button" data-copy="#inviteLink">Copy link</button>
+        <button class="btn btn-primary" type="button" data-close>Close</button>
+    </div>
+</dialog>
+
+<dialog id="shipActionDialog" data-sheet aria-labelledby="shipActionTitle">
+    <div class="dialog-head">
+        <h2 id="shipActionTitle">Place ship at E6</h2>
+        <button class="btn btn-icon" type="button" data-close aria-label="Close ship actions">×</button>
+    </div>
+    <div class="dialog-body">
+        <div id="placeShipMode" class="stack">
+            <div class="cluster">
+                <button class="btn btn-secondary btn-sm" type="button" data-place-ship="2-cell ship" data-ship-size="2">2 cells · 1 ship</button>
+                <button class="btn btn-secondary btn-sm" type="button" data-place-ship="1-cell ship" data-ship-size="1">1 cell · 2 ships</button>
+            </div>
+            <div class="split compact-control">
+                <span class="field-label">Direction</span>
+                <div class="cluster">
+                    <button class="btn btn-primary btn-sm" type="button" data-orientation="horizontal">↔ Horizontal</button>
+                    <button class="btn btn-secondary btn-sm" type="button" data-orientation="vertical">↕ Vertical</button>
+                </div>
+            </div>
+        </div>
+        <div id="editShipMode" class="stack" hidden>
+            <div class="cluster">
+                <button class="btn btn-secondary" type="button" data-rotate-ship>↻ Rotate</button>
+                <button class="btn btn-danger" type="button" data-remove-ship>Remove</button>
+            </div>
+        </div>
+    </div>
+    <div class="dialog-actions" id="placeShipActions">
+        <button class="btn btn-ghost" type="button" data-close>Cancel</button>
+        <button class="btn btn-primary" type="button" data-close data-confirm-placement>Apply</button>
+    </div>
+</dialog>
+
+<dialog id="readyDialog" aria-labelledby="readyTitle">
+    <div class="dialog-head"><h2 id="readyTitle">Commit this fleet?</h2></div>
+    <div class="dialog-body">
+        <p>Your fleet is valid and all ships are placed. In the first release, readiness is irreversible.</p>
+        <div class="notice notice-warning">After confirming, you cannot move, rotate, or remove ships.</div>
+    </div>
+    <div class="dialog-actions">
+        <button class="btn btn-ghost" type="button" data-close>Review fleet</button>
+        <button class="btn btn-primary" type="button" data-close data-go="gameplay" data-toast="success">Commit and wait</button>
+    </div>
+</dialog>
+
+<dialog id="rotateInviteDialog" aria-labelledby="rotateInviteTitle">
+    <div class="dialog-head"><h2 id="rotateInviteTitle">Replace invitation?</h2></div>
+    <div class="dialog-body">
+        <p>The current unused invitation will stop working immediately. The public game code remains unchanged.</p>
+        <div class="notice notice-warning">Anyone opening the previous link afterward will see an invalid-invitation message.</div>
+    </div>
+    <div class="dialog-actions">
+        <button class="btn btn-ghost" type="button" data-close>Keep current link</button>
+        <button class="btn btn-danger" type="button" data-close data-toast="success">Replace invitation</button>
+    </div>
+</dialog>
+
+<dialog id="leaveDialog" aria-labelledby="leaveTitle">
+    <div class="dialog-head"><h2 id="leaveTitle">Leave this game?</h2></div>
+    <div class="dialog-body">
+        <p>Your anonymous membership on this device will end. There is no account recovery.</p>
+    </div>
+    <div class="dialog-actions">
+        <button class="btn btn-ghost" type="button" data-close>Stay</button>
+        <button class="btn btn-danger" type="button" data-close data-go="home">Leave game</button>
+    </div>
+</dialog>
+
+<dialog id="resignDialog" aria-labelledby="resignTitle">
+    <div class="dialog-head"><h2 id="resignTitle">Resign the match?</h2></div>
+    <div class="dialog-body">
+        <p>Resigning immediately finishes the game and awards victory to Long John Silver.</p>
+        <div class="notice notice-danger">This command cannot be undone.</div>
+    </div>
+    <div class="dialog-actions">
+        <button class="btn btn-ghost" type="button" data-close>Continue playing</button>
+        <button class="btn btn-danger" type="button" data-close data-go="results">Resign match</button>
+    </div>
+</dialog>
+
+<dialog id="checkingDialog" aria-labelledby="checkingTitle">
+    <div class="dialog-head"><h2 id="checkingTitle">Checking command result</h2></div>
+    <div class="dialog-body">
+        <div class="notice notice-info" role="status"><span class="status-dot warning"></span><div><strong>Your shot was sent.</strong> The connection closed before the authoritative response arrived.</div></div>
+        <p class="muted">Commands remain paused while the same command ID is reconciled with a fresh snapshot. Do not fire again.</p>
+    </div>
+    <div class="dialog-actions">
+        <button class="btn btn-ghost" type="button" data-close>Keep waiting</button>
+        <button class="btn btn-primary" type="button" data-close data-toast="success">Fetch latest snapshot</button>
+    </div>
+</dialog>
+
+<dialog id="expiredDialog" aria-labelledby="expiredTitle">
+    <div class="dialog-head"><h2 id="expiredTitle">Invitation unavailable</h2></div>
+    <div class="dialog-body">
+        <p>This invitation was already used, replaced, or expired. No guest seat was claimed by opening this page.</p>
+        <div class="notice notice-info">Ask the owner for a new one-time invitation.</div>
+    </div>
+    <div class="dialog-actions">
+        <button class="btn btn-secondary" type="button" data-close data-go="home">Return home</button>
+        <button class="btn btn-primary" type="button" data-close data-go="join">Try another invitation</button>
+    </div>
+</dialog>
+
+<dialog id="restartDialog" aria-labelledby="restartTitle">
+    <div class="dialog-head"><h2 id="restartTitle">The game server restarted</h2></div>
+    <div class="dialog-body">
+        <p>The server identity changed while this tab was open. Because games are stored only in memory, this match cannot be recovered.</p>
+        <div class="notice notice-warning">This is expected for the free demo and can also occur during deployment or host replacement.</div>
+    </div>
+    <div class="dialog-actions">
+        <button class="btn btn-secondary" type="button" data-close data-go="home">Return home</button>
+        <button class="btn btn-primary" type="button" data-close data-go="create">Create new game</button>
+    </div>
+</dialog>
+
+<script>
+    (function () {
+        "use strict";
+
+        var root = document.documentElement;
+        var preview = document.getElementById("preview");
+        var appFrame = document.getElementById("appFrame");
+        var screenSelect = document.getElementById("screenSelect");
+        var deviceSelect = document.getElementById("deviceSelect");
+        var connectionSelect = document.getElementById("connectionSelect");
+        var previewName = document.getElementById("previewName");
+        var toastRegion = document.getElementById("toastRegion");
+        var appMeta = document.getElementById("appMeta");
+        var themeToggle = document.getElementById("themeToggle");
+        var refreshSession = document.getElementById("refreshSession");
+        var emojiModeToggle = document.getElementById("emojiModeToggle");
+
+        var deviceNames = {
+            responsive: "Responsive browser",
+            laptop: "Laptop · 1280 wide",
+            iphone: "Generic iPhone · 390×844",
+            android: "Generic Android · 412×915",
+            "phone-landscape": "Phone landscape · 844×390"
+        };
+
+        var screenMeta = {
+            home: "",
+            create: "New game",
+            join: "Join game",
+            waiting: "Game #1047 · Waiting",
+            placement: "Game #1047 · Sea Battle",
+            gameplay: "Game #1047 · Sea Battle · v18",
+            results: "Game #1047 · Complete",
+            unavailable: "Session unavailable",
+            components: "UI inventory"
+        };
+
+        var ownShips = [
+            "A1", "B1", "C1", "D1", "G1", "H1",
+            "B3", "B4", "E4", "F4", "G4",
+            "A6", "B6", "G6", "J8", "J9"
+        ];
+        var ownHits = ["A5", "J5", "E7", "D9"];
+        var ownMisses = ["F2", "J2", "A7", "B8", "C10"];
+        var targetHits = ["A1", "C3", "G3", "D5", "F8", "H9"];
+        var targetMisses = ["B1", "C2", "I2", "F4", "J4", "B6", "J5"];
+        var sunkTarget = ["C7", "D7", "E7", "F7"];
+        var placementShips = [
+            "A1", "B1", "C1", "D1", "G1", "H1",
+            "B3", "B4", "E4", "F4", "G4",
+            "A6", "B6"
+        ];
+        var placementBlocked = [
+            "A2", "B2", "C2", "D2", "E2", "F1", "F2", "G2", "H2", "I1", "I2",
+            "A3", "C3", "D3", "E3", "F3", "G3", "H3",
+            "A4", "C4", "D4", "H4",
+            "A5", "B5", "C5", "D5", "E5", "F5", "G5", "H5",
+            "C6", "D6"
+        ];
+        var pendingPlacement = {name: "2-cell ship", size: 2, orientation: "horizontal"};
+        var resultTargetSunk = [
+            "A1", "B1", "C1", "D1",
+            "C3", "D3", "E3",
+            "A5", "B5", "C5",
+            "D7", "E7",
+            "G8", "H8",
+            "J9"
+        ];
+
+        function includes(list, coordinate) {
+            return list.indexOf(coordinate) !== -1;
+        }
+
+        function stateFor(kind, coordinate) {
+            if (kind === "placement") {
+                if (includes(placementShips, coordinate)) return "ship";
+                if (includes(placementBlocked, coordinate)) return "blocked";
+                return "water";
+            }
+            if (kind === "target") {
+                if (includes(sunkTarget, coordinate)) return "sunk";
+                if (includes(targetHits, coordinate)) return "hit";
+                if (includes(targetMisses, coordinate)) return "miss";
+                return "water";
+            }
+            if (kind === "result-target") {
+                if (includes(resultTargetSunk, coordinate)) return "sunk";
+                if (includes(targetHits, coordinate)) return "hit";
+                if (includes(targetMisses.concat(["E2", "I5", "A8", "C9", "F10"]), coordinate)) return "miss";
+                return "water";
+            }
+            if (kind === "result-own") {
+                if (includes(ownHits, coordinate)) return "ship-hit";
+                if (includes(ownShips, coordinate)) return "ship";
+                if (includes(ownMisses, coordinate)) return "miss";
+                return "water";
+            }
+            if (includes(ownHits, coordinate)) return "ship-hit";
+            if (includes(ownShips, coordinate)) return "ship";
+            if (includes(ownMisses, coordinate)) return "miss";
+            return "water";
+        }
+
+        function stateLabel(state) {
+            var labels = {
+                water: "unknown water",
+                ship: "your ship",
+                miss: "miss",
+                hit: "hit",
+                sunk: "sunk ship",
+                "ship-hit": "your ship was hit",
+                blocked: "unavailable for placement"
+            };
+            return labels[state] || state;
+        }
+
+        function emojiForState(state, coordinate) {
+            if (state === "miss") return "💦";
+            if (state === "sunk") return "☠️";
+            if (state === "hit" || state === "ship-hit") {
+                return coordinate.charCodeAt(0) % 2 === 0 ? "🔥" : "💥";
+            }
+            return "";
+        }
+
+        function updateCellEmoji(cell, state) {
+            var emoji = cell.querySelector(".cell-emoji");
+            if (emoji) emoji.textContent = emojiForState(state, cell.getAttribute("data-coordinate"));
+        }
+
+        function renderBoard(grid) {
+            var kind = grid.getAttribute("data-board-kind") || "target";
+            var boardLabel = grid.getAttribute("data-board-label") || "Battleship grid";
+            var columns = "ABCDEFGHIJ".split("");
+            grid.setAttribute("role", "grid");
+            grid.setAttribute("aria-label", boardLabel);
+            grid.innerHTML = "";
+
+            var corner = document.createElement("span");
+            corner.className = "coord";
+            corner.setAttribute("aria-hidden", "true");
+            grid.appendChild(corner);
+
+            columns.forEach(function (column) {
+                var header = document.createElement("span");
+                header.className = "coord";
+                header.textContent = column;
+                header.setAttribute("aria-hidden", "true");
+                grid.appendChild(header);
+            });
+
+            for (var row = 1; row <= 10; row += 1) {
+                var rowHeader = document.createElement("span");
+                rowHeader.className = "coord";
+                rowHeader.textContent = String(row);
+                rowHeader.setAttribute("aria-hidden", "true");
+                grid.appendChild(rowHeader);
+
+                columns.forEach(function (column, columnIndex) {
+                    var coordinate = column + row;
+                    var state = stateFor(kind, coordinate);
+                    var cell = document.createElement("button");
+                    cell.type = "button";
+                    cell.className = "board-cell";
+                    cell.setAttribute("role", "gridcell");
+                    cell.setAttribute("data-coordinate", coordinate);
+                    cell.setAttribute("data-state", state);
+                    cell.setAttribute("aria-label", coordinate + ", " + stateLabel(state));
+                    cell.setAttribute("title", coordinate + " · " + stateLabel(state));
+                    cell.tabIndex = row === 1 && columnIndex === 0 ? 0 : -1;
+                    var emoji = document.createElement("span");
+                    emoji.className = "cell-emoji";
+                    emoji.setAttribute("aria-hidden", "true");
+                    emoji.textContent = emojiForState(state, coordinate);
+                    cell.appendChild(emoji);
+                    if (kind === "own" || kind.indexOf("result") === 0) {
+                        cell.setAttribute("aria-readonly", "true");
+                    }
+                    if (kind === "target" && ["hit", "miss", "sunk"].indexOf(state) !== -1) {
+                        cell.disabled = true;
+                        cell.setAttribute("aria-disabled", "true");
+                    }
+                    grid.appendChild(cell);
+                });
+            }
+
+            grid.addEventListener("keydown", handleBoardKeys);
+            grid.addEventListener("click", handleBoardClick);
+            if (kind === "placement") {
+                grid.addEventListener("dragover", handlePlacementDragOver);
+                grid.addEventListener("dragleave", handlePlacementDragLeave);
+                grid.addEventListener("drop", handlePlacementDrop);
+            }
+        }
+
+        function updateCellState(cell, state) {
+            var coordinate = cell.getAttribute("data-coordinate");
+            cell.setAttribute("data-state", state);
+            cell.setAttribute("aria-label", coordinate + ", " + stateLabel(state));
+            cell.setAttribute("title", coordinate + " · " + stateLabel(state));
+            updateCellEmoji(cell, state);
+        }
+
+        function placePendingShip(cell) {
+            if (!cell || cell.getAttribute("data-state") !== "water") {
+                showToast("warning", "Cannot place here", "Choose an open cell outside another ship's safety area.");
+                return false;
+            }
+            var grid = cell.closest(".board-grid");
+            var coordinate = cell.getAttribute("data-coordinate");
+            var column = coordinate.charCodeAt(0) - 65;
+            var row = Number(coordinate.slice(1));
+            var cells = [];
+            for (var index = 0; index < pendingPlacement.size; index += 1) {
+                var nextColumn = pendingPlacement.orientation === "horizontal" ? column + index : column;
+                var nextRow = pendingPlacement.orientation === "vertical" ? row + index : row;
+                var nextCoordinate = String.fromCharCode(65 + nextColumn) + nextRow;
+                var nextCell = grid.querySelector('[data-coordinate="' + nextCoordinate + '"]');
+                if (!nextCell || nextCell.getAttribute("data-state") !== "water") {
+                    showToast("warning", "Ship does not fit", "Rotate it or choose another starting cell.");
+                    return false;
+                }
+                cells.push(nextCell);
+            }
+            cells.forEach(function (candidate) {
+                updateCellState(candidate, "ship");
+                if (!includes(placementShips, candidate.getAttribute("data-coordinate"))) {
+                    placementShips.push(candidate.getAttribute("data-coordinate"));
+                }
+            });
+            showToast("success", pendingPlacement.name + " placed", "Tap the ship to rotate or remove it.");
+            return true;
+        }
+
+        function handlePlacementDragOver(event) {
+            var cell = event.target.closest('.board-cell[data-state="water"]');
+            if (!cell) return;
+            event.preventDefault();
+            this.querySelectorAll(".is-drag-target").forEach(function (candidate) { candidate.classList.remove("is-drag-target"); });
+            cell.classList.add("is-drag-target");
+        }
+
+        function handlePlacementDragLeave(event) {
+            var cell = event.target.closest(".board-cell");
+            if (cell) cell.classList.remove("is-drag-target");
+        }
+
+        function handlePlacementDrop(event) {
+            event.preventDefault();
+            var cell = event.target.closest(".board-cell");
+            this.querySelectorAll(".is-drag-target").forEach(function (candidate) { candidate.classList.remove("is-drag-target"); });
+            if (placePendingShip(cell)) closeContainingDialog(cell);
+        }
+
+        function handleBoardKeys(event) {
+            var cell = event.target.closest(".board-cell");
+            if (!cell) return;
+            var cells = Array.prototype.slice.call(event.currentTarget.querySelectorAll(".board-cell"));
+            var index = cells.indexOf(cell);
+            var next = index;
+            if (event.key === "ArrowRight") next = Math.min(index + 1, cells.length - 1);
+            if (event.key === "ArrowLeft") next = Math.max(index - 1, 0);
+            if (event.key === "ArrowDown") next = Math.min(index + 10, cells.length - 1);
+            if (event.key === "ArrowUp") next = Math.max(index - 10, 0);
+            if (event.key === "Home") next = Math.floor(index / 10) * 10;
+            if (event.key === "End") next = Math.floor(index / 10) * 10 + 9;
+            if (next !== index) {
+                event.preventDefault();
+                cells.forEach(function (candidate) { candidate.tabIndex = -1; });
+                cells[next].tabIndex = 0;
+                cells[next].focus();
+            }
+        }
+
+        function handleBoardClick(event) {
+            var cell = event.target.closest(".board-cell");
+            if (!cell) return;
+            var grid = event.currentTarget;
+            var kind = grid.getAttribute("data-board-kind");
+            var coordinate = cell.getAttribute("data-coordinate");
+            var currentState = cell.getAttribute("data-state");
+
+            if (kind === "placement") {
+                var title = document.getElementById("shipActionTitle");
+                var placeMode = document.getElementById("placeShipMode");
+                var editMode = document.getElementById("editShipMode");
+                var placeActions = document.getElementById("placeShipActions");
+                if (currentState === "blocked") {
+                    showToast("warning", "Cell unavailable", "Ships cannot touch, including diagonally.");
+                    return;
+                }
+                var editing = currentState === "ship";
+                title.textContent = editing ? "Edit ship at " + coordinate : "Place ship at " + coordinate;
+                placeMode.hidden = editing;
+                editMode.hidden = !editing;
+                placeActions.hidden = editing;
+                document.getElementById("shipActionDialog").setAttribute("data-coordinate", coordinate);
+                openDialog("shipActionDialog");
+                return;
+            }
+
+            if (kind === "target") {
+                if (appFrame.getAttribute("data-connection") !== "connected") {
+                    showToast("warning", "Fire paused", "Refresh the session or wait for the connection to recover.");
+                    return;
+                }
+                if (["hit", "miss", "sunk"].indexOf(currentState) !== -1) return;
+                var rowNumber = Number(coordinate.slice(1));
+                var isHit = (coordinate.charCodeAt(0) + rowNumber) % 4 === 0;
+                var resultState = isHit ? "hit" : "miss";
+                cell.disabled = true;
+                cell.setAttribute("aria-disabled", "true");
+                var resolveShot = function () {
+                    cell.classList.remove("is-projectile");
+                    updateCellState(cell, resultState);
+                    showToast(isHit ? "success" : "info", isHit ? "Hit at " + coordinate : "Miss at " + coordinate,
+                        isHit ? "Your turn continues." : "Waiting for the opponent's turn.");
+                };
+                if (root.getAttribute("data-emojis") === "on") {
+                    var projectile = cell.querySelector(".cell-emoji");
+                    projectile.textContent = coordinate.charCodeAt(0) % 2 === 0 ? "🚀" : "💣";
+                    cell.classList.add("is-projectile");
+                    cell.setAttribute("aria-label", coordinate + ", shot in progress");
+                    window.setTimeout(resolveShot, 520);
+                } else {
+                    resolveShot();
+                }
+                return;
+            }
+        }
+
+        function setScreen(name) {
+            var target = document.querySelector('.app-screen[data-screen="' + name + '"]');
+            if (!target) return;
+            document.querySelectorAll(".app-screen").forEach(function (screen) {
+                var active = screen === target;
+                screen.classList.toggle("is-active", active);
+                screen.setAttribute("aria-hidden", active ? "false" : "true");
+            });
+            screenSelect.value = name;
+            appMeta.textContent = screenMeta[name] || "";
+            appFrame.scrollTop = 0;
+            if (name === "gameplay") setBoardView("target");
+            var heading = target.querySelector("h1, h2");
+            if (heading) {
+                window.setTimeout(function () {
+                    heading.setAttribute("tabindex", "-1");
+                    heading.focus({preventScroll: true});
+                }, 0);
+            }
+        }
+
+        function setBoardView(view) {
+            appFrame.setAttribute("data-board-view", view);
+            document.querySelectorAll("[data-board-switch]").forEach(function (button) {
+                var active = button.getAttribute("data-board-switch") === view;
+                button.setAttribute("aria-selected", active ? "true" : "false");
+            });
+        }
+
+        function setTheme(theme) {
+            root.setAttribute("data-theme", theme);
+            try {
+                localStorage.setItem("battleship-mockup-theme", theme);
+            } catch (ignore) {
+                // The mockup still works when local storage is unavailable.
+            }
+            var next = theme === "dark" ? "Light theme" : "Dark theme";
+            themeToggle.textContent = next;
+        }
+
+        function toggleTheme() {
+            setTheme(root.getAttribute("data-theme") === "dark" ? "light" : "dark");
+        }
+
+        function setEmojiMode(enabled) {
+            root.setAttribute("data-emojis", enabled ? "on" : "off");
+            emojiModeToggle.checked = enabled;
+            try {
+                localStorage.setItem("battleship-mockup-emojis", enabled ? "on" : "off");
+            } catch (ignore) {
+                // The mockup still works when local storage is unavailable.
+            }
+        }
+
+        function openDialog(id) {
+            var dialog = document.getElementById(id);
+            if (!dialog || typeof dialog.showModal !== "function") return;
+            if (!dialog.open) dialog.showModal();
+        }
+
+        function closeContainingDialog(element) {
+            var dialog = element.closest("dialog");
+            if (dialog && dialog.open) dialog.close();
+        }
+
+        var toastCopy = {
+            success: ["Action confirmed", "The authoritative state was updated."],
+            info: ["Status refreshed", "The latest available snapshot is visible."],
+            warning: ["Attention required", "Review this state before continuing."],
+            error: ["Request unavailable", "The service rejected or could not complete the request."]
+        };
+
+        function showToast(type, title, message) {
+            var copy = toastCopy[type] || toastCopy.info;
+            var toast = document.createElement("div");
+            toast.className = "toast " + type;
+            toast.setAttribute("role", type === "error" ? "alert" : "status");
+
+            var mark = document.createElement("span");
+            mark.className = "toast-mark";
+            mark.setAttribute("aria-hidden", "true");
+
+            var content = document.createElement("div");
+            var strong = document.createElement("strong");
+            strong.textContent = title || copy[0];
+            var paragraph = document.createElement("p");
+            paragraph.textContent = message || copy[1];
+            content.appendChild(strong);
+            content.appendChild(paragraph);
+
+            var close = document.createElement("button");
+            close.type = "button";
+            close.textContent = "×";
+            close.setAttribute("aria-label", "Dismiss notification");
+            close.addEventListener("click", function () { toast.remove(); });
+
+            toast.appendChild(mark);
+            toast.appendChild(content);
+            toast.appendChild(close);
+            toastRegion.appendChild(toast);
+            window.setTimeout(function () {
+                if (toast.isConnected) toast.remove();
+            }, 6500);
+        }
+
+        function copyFromSelector(selector) {
+            var source = document.querySelector(selector);
+            var text = source && "value" in source ? source.value : source ? source.textContent : "";
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).catch(function () {});
+            }
+            showToast("success", selector === "#inviteToken" ? "Token copied" : "Invitation copied",
+                "Share it privately; it can be redeemed once.");
+        }
+
+        function refreshCurrentSession() {
+            connectionSelect.value = "connected";
+            appFrame.setAttribute("data-connection", "connected");
+            showToast("success", "Session refreshed", "The latest snapshot was loaded and realtime updates were reconnected.");
+        }
+
+        document.querySelectorAll(".board-grid").forEach(renderBoard);
+
+        document.querySelectorAll(".inventory-ship[draggable]").forEach(function (ship) {
+            function selectShip() {
+                pendingPlacement.name = ship.getAttribute("data-ship-name");
+                pendingPlacement.size = Number(ship.getAttribute("data-ship-size"));
+            }
+            ship.addEventListener("click", function () {
+                selectShip();
+                showToast("info", pendingPlacement.name + " selected", "Tap a starting cell or drag the ship onto the sea.");
+            });
+            ship.addEventListener("dragstart", function (event) {
+                selectShip();
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData("text/plain", pendingPlacement.name);
+                ship.classList.add("is-dragging");
+            });
+            ship.addEventListener("dragend", function () { ship.classList.remove("is-dragging"); });
+            ship.addEventListener("pointerdown", function (event) {
+                if (event.pointerType === "touch" || event.pointerType === "pen") selectShip();
+            });
+        });
+
+        document.addEventListener("pointerup", function (event) {
+            if (event.pointerType !== "touch" && event.pointerType !== "pen") return;
+            var touched = document.elementFromPoint(event.clientX, event.clientY);
+            var cell = touched && touched.closest('.board-grid[data-board-kind="placement"] .board-cell');
+            if (cell && event.target.closest(".inventory-ship[draggable]")) placePendingShip(cell);
+        });
+
+        document.addEventListener("click", function (event) {
+            var go = event.target.closest("[data-go]");
+            if (go) {
+                event.preventDefault();
+                closeContainingDialog(go);
+                setScreen(go.getAttribute("data-go"));
+            }
+
+            var opener = event.target.closest("[data-dialog]");
+            if (opener) {
+                event.preventDefault();
+                var popover = opener.closest("[popover]");
+                if (popover && typeof popover.hidePopover === "function") popover.hidePopover();
+                if (opener.getAttribute("data-dialog") === "shipActionDialog") {
+                    document.getElementById("shipActionTitle").textContent = "Place ship";
+                    document.getElementById("placeShipMode").hidden = false;
+                    document.getElementById("editShipMode").hidden = true;
+                    document.getElementById("placeShipActions").hidden = false;
+                }
+                openDialog(opener.getAttribute("data-dialog"));
+            }
+
+            var closer = event.target.closest("[data-close]");
+            if (closer) {
+                event.preventDefault();
+                closeContainingDialog(closer);
+            }
+
+            var toastButton = event.target.closest("[data-toast]");
+            if (toastButton) {
+                showToast(toastButton.getAttribute("data-toast"));
+            }
+
+            var copyButton = event.target.closest("[data-copy]");
+            if (copyButton) {
+                event.preventDefault();
+                copyFromSelector(copyButton.getAttribute("data-copy"));
+            }
+
+            var themeButton = event.target.closest("[data-set-theme]");
+            if (themeButton) {
+                setTheme(themeButton.getAttribute("data-set-theme"));
+                showToast("success", "Theme changed", "All components now use the selected token set.");
+            }
+
+            var boardSwitch = event.target.closest("[data-board-switch]");
+            if (boardSwitch) {
+                setBoardView(boardSwitch.getAttribute("data-board-switch"));
+            }
+
+            var ruleset = event.target.closest("[data-ruleset]");
+            if (ruleset) {
+                document.querySelectorAll("[data-ruleset]").forEach(function (option) {
+                    option.setAttribute("aria-checked", option === ruleset ? "true" : "false");
+                });
+            }
+
+            var placeShip = event.target.closest("[data-place-ship]");
+            if (placeShip) {
+                pendingPlacement.name = placeShip.getAttribute("data-place-ship");
+                pendingPlacement.size = Number(placeShip.getAttribute("data-ship-size"));
+                document.querySelectorAll("[data-place-ship]").forEach(function (button) {
+                    button.classList.toggle("btn-primary", button === placeShip);
+                    button.classList.toggle("btn-secondary", button !== placeShip);
+                });
+            }
+
+            var orientation = event.target.closest("[data-orientation]");
+            if (orientation) {
+                pendingPlacement.orientation = orientation.getAttribute("data-orientation");
+                document.querySelectorAll("[data-orientation]").forEach(function (button) {
+                    button.classList.toggle("btn-primary", button === orientation);
+                    button.classList.toggle("btn-secondary", button !== orientation);
+                });
+            }
+
+            if (event.target.closest("[data-confirm-placement]")) {
+                var placementDialog = document.getElementById("shipActionDialog");
+                var placementGrid = document.querySelector('.board-grid[data-board-kind="placement"]');
+                var placementCell = placementGrid.querySelector('[data-coordinate="' + placementDialog.getAttribute("data-coordinate") + '"]');
+                placePendingShip(placementCell);
+            }
+
+            if (event.target.closest("[data-rotate-ship]")) {
+                showToast("success", "Ship rotated", "The new orientation is valid.");
+                closeContainingDialog(event.target);
+            }
+
+            if (event.target.closest("[data-remove-ship]")) {
+                var editDialog = document.getElementById("shipActionDialog");
+                var editGrid = document.querySelector('.board-grid[data-board-kind="placement"]');
+                var editCell = editGrid.querySelector('[data-coordinate="' + editDialog.getAttribute("data-coordinate") + '"]');
+                if (editCell) {
+                    updateCellState(editCell, "water");
+                    placementShips = placementShips.filter(function (item) { return item !== editCell.getAttribute("data-coordinate"); });
+                }
+                closeContainingDialog(event.target);
+                showToast("success", "Ship removed", "Select it above the field to place it again.");
+            }
+
+            if (event.target.closest("[data-refresh-session]")) {
+                closeContainingDialog(event.target);
+                refreshCurrentSession();
+            }
+
+            if (event.target.closest("[data-settings-resign]")) {
+                closeContainingDialog(event.target);
+                window.setTimeout(function () { openDialog("resignDialog"); }, 0);
+            }
+        });
+
+        document.addEventListener("keydown", function (event) {
+            var ruleset = event.target.closest && event.target.closest("[data-ruleset]");
+            if (ruleset && (event.key === "Enter" || event.key === " ")) {
+                event.preventDefault();
+                ruleset.click();
+            }
+        });
+
+        document.querySelectorAll("dialog").forEach(function (dialog) {
+            dialog.addEventListener("click", function (event) {
+                if (event.target === dialog) dialog.close();
+            });
+        });
+
+        screenSelect.addEventListener("change", function () {
+            setScreen(screenSelect.value);
+        });
+
+        deviceSelect.addEventListener("change", function () {
+            preview.setAttribute("data-device", deviceSelect.value);
+            root.setAttribute("data-preview-device", deviceSelect.value);
+            previewName.textContent = deviceNames[deviceSelect.value];
+            appFrame.scrollTop = 0;
+        });
+
+        connectionSelect.addEventListener("change", function () {
+            if (connectionSelect.value === "checking") {
+                appFrame.setAttribute("data-connection", "connected");
+                openDialog("checkingDialog");
+                return;
+            }
+            appFrame.setAttribute("data-connection", connectionSelect.value);
+        });
+
+        themeToggle.addEventListener("click", toggleTheme);
+        refreshSession.addEventListener("click", refreshCurrentSession);
+        emojiModeToggle.addEventListener("change", function () {
+            setEmojiMode(emojiModeToggle.checked);
+            showToast("success", emojiModeToggle.checked ? "Emoji overlays enabled" : "Emoji overlays disabled",
+                emojiModeToggle.checked
+                    ? "Board colors and markers remain visible beneath the decorative symbols."
+                    : "The standard board styling remains active.");
+        });
+
+        document.getElementById("createForm").addEventListener("submit", function (event) {
+            event.preventDefault();
+            showToast("success", "Game created", "The invitation is ready to share.");
+            setScreen("waiting");
+        });
+
+        document.getElementById("joinForm").addEventListener("submit", function (event) {
+            event.preventDefault();
+            showToast("success", "Guest seat claimed", "The invitation was consumed exactly once.");
+            setScreen("placement");
+        });
+
+        document.getElementById("resultToggle").addEventListener("click", function (event) {
+            var summary = document.getElementById("resultSummary");
+            var loss = summary.classList.toggle("is-loss");
+            summary.querySelector(".result-title-text").textContent = loss ? "Defeat" : "Victory";
+            summary.querySelector(".result-emoji").textContent = loss ? "🤡" : "🏆";
+            summary.querySelector(".result-copy").textContent = loss
+                ? "Long John Silver sank the final ship."
+                : "Captain Nemo sank the final enemy ship.";
+            var outcome = document.getElementById("fleetOutcome");
+            outcome.innerHTML = loss
+                ? '<span class="field-label">Damage you dealt to the opponent</span><div><b>7</b><span>destroyed</span></div><div><b>2</b><span>damaged</span></div><div><b>1</b><span>untouched</span></div>'
+                : '<span class="field-label">Your fleet after victory</span><div><b>4</b><span>untouched</span></div><div><b>3</b><span>damaged</span></div><div><b>3</b><span>destroyed</span></div>';
+            event.currentTarget.textContent = loss ? "Preview victory" : "Preview defeat";
+        });
+
+        document.getElementById("languageSelect").addEventListener("change", function (event) {
+            root.lang = event.target.value;
+            showToast("info", "Language preview changed", event.target.value === "uk"
+                ? "The document language is now Ukrainian for assistive technology."
+                : "The document language is now English.");
+        });
+
+        try {
+            var savedTheme = localStorage.getItem("battleship-mockup-theme");
+            if (savedTheme === "light" || savedTheme === "dark") setTheme(savedTheme);
+            else setTheme("dark");
+        } catch (ignore) {
+            setTheme("dark");
+        }
+        try {
+            setEmojiMode(localStorage.getItem("battleship-mockup-emojis") === "on");
+        } catch (ignore) {
+            setEmojiMode(false);
+        }
+        root.setAttribute("data-preview-device", deviceSelect.value);
+    }());
+</script>
+</body>
+</html>

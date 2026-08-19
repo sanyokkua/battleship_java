@@ -1,0 +1,76 @@
+---
+description: "Security standards for all code — always applied for security-critical code"
+globs: ["**/*"]
+alwaysApply: true
+priority: 100
+---
+
+# Security Standards (DevSecOps)
+
+## Shift-Left Security Principles
+Security checks MUST occur at the earliest possible point:
+| Stage | Security Control |
+|-------|------------------|
+| Local development | Pre-commit secret scanning (Gitleaks) |
+| Pull Request | SAST scan, dependency vulnerability check |
+| Build | Container image scanning |
+| Deploy | DAST scan against staging |
+| Runtime | Anomaly detection, audit logging |
+
+## OWASP Top 10 (2021+) — Critical Items
+All developers MUST understand and design against:
+- A01: Broken Access Control — Enforce authorization at every layer; never trust client-supplied roles.
+- A02: Cryptographic Failures — Never implement cryptography yourself; use vetted libraries. TLS everywhere.
+- A03: Injection — Parameterized queries always. Never string-concatenate SQL, shell commands, or LDAP queries.
+- A05: Security Misconfiguration — Default credentials MUST be changed; debug endpoints MUST be disabled in production.
+- A06: Vulnerable Components — Automated dependency scanning in every CI pipeline.
+- A07: Auth Failures — Use established auth libraries; never implement JWT validation manually.
+
+## Secrets Management Rules
+- Secrets MUST NOT be hardcoded anywhere — not in code, configs, comments, or documentation.
+- `.env` files are acceptable for local development ONLY and MUST be in `.gitignore`.
+- Production secrets MUST come from: HashiCorp Vault, AWS Secrets Manager, Azure Key Vault, or equivalent.
+- All service-to-service authentication MUST use short-lived tokens, not long-lived API keys.
+
+## Dependency Vulnerability Policy
+- Dependency scanning MUST run on every CI pipeline.
+- CRITICAL severity vulnerabilities MUST block deployment.
+- HIGH severity vulnerabilities MUST be resolved within 7 days.
+- MEDIUM severity vulnerabilities MUST be tracked and resolved within 30 days.
+
+## Sensitive Data Prohibition (Logging)
+The following MUST NEVER appear in logs under any circumstances:
+- Passwords and authentication credentials
+- Credit card numbers, bank account numbers
+- Social Security Numbers, national IDs
+- Personal Health Information (PHI)
+- API keys, tokens, secrets
+- Full street addresses of private individuals
+
+Where partial data is required for debugging, use masking:
+```json
+{
+  "card_number": "****-****-****-4242",
+  "email": "j***@example.com"
+}
+```
+
+## Pre-Commit Secret Scanning
+Pre-commit hooks with Gitleaks or TruffleHog are REQUIRED.
+Repositories MUST be scanned on every CI run.
+
+## Incident Response
+If secrets are accidentally committed:
+1. Force-push to remove from history
+2. Rotate ALL exposed credentials immediately
+3. Audit access logs for unauthorized access
+
+## Gold Standard Examples
+- See `examples/` directory for secure coding patterns in each language
+
+## What NOT to Do
+- Never hardcode secrets in code or config files
+- Never log sensitive data (passwords, tokens, card numbers)
+- Never commit `.env` files to version control
+- Never use long-lived API keys for service-to-service auth
+- Never skip dependency vulnerability scans in CI

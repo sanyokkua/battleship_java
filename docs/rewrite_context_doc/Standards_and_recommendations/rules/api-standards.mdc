@@ -1,0 +1,74 @@
+---
+description: "API endpoint standards for all REST services across all languages"
+globs: ["**/routes/**", "**/controllers/**", "**/handlers/**", "**/api/**", "**/api/**/*.ts", "**/api/**/*.py", "**/api/**/*.java", "**/api/**/*.go"]
+alwaysApply: false
+priority: 200
+---
+
+# API Design Standards
+
+## URL Design
+- MUST follow resource-oriented design: `GET /users`, `GET /users/{id}`, `POST /users`
+- MUST use plural nouns for collections
+- MUST NOT exceed 2 levels of nesting (e.g., `/users/{id}/orders` — not deeper)
+- MUST NOT use verbs in URLs — actions are expressed through HTTP methods
+- MUST use kebab-case for multi-word path segments (`/payment-methods`)
+- MUST use snake_case for query parameters (`?sort_by=created_at`)
+
+## HTTP Method Semantics
+| Method | Semantics | Idempotent? |
+|--------|-----------|-------------|
+| GET | Retrieve resource | Yes |
+| POST | Create new resource | No |
+| PUT | Replace entire resource | Yes |
+| PATCH | Partial update | No |
+| DELETE | Remove resource | Yes |
+
+## Critical Status Codes
+- 200: Successful GET, PUT, PATCH
+- 201: Successful POST (resource created)
+- 204: Successful DELETE (no content)
+- 400: Client error — malformed request
+- 401: Authentication required
+- 403: Authenticated but not authorized
+- 404: Resource not found
+- 409: Conflict (e.g., duplicate resource)
+- 422: Validation failure
+- 429: Rate limit exceeded
+- 500: Unexpected server error
+- 503: Service unavailable
+
+## Standard Error Response Envelope
+MUST follow RFC 9457 Problem Details schema:
+```json
+{
+  "type": "https://errors.example.com/user-not-found",
+  "title": "User Not Found",
+  "status": 404,
+  "detail": "No user with id '42' exists in this system.",
+  "instance": "/users/42",
+  "correlation_id": "req_a1b2c3d4"
+}
+```
+
+## Health Check Endpoints
+ALL services MUST expose:
+- `GET /health/live` → 200 if process is alive
+- `GET /health/ready` → 200 if service can accept traffic (dependencies healthy)
+
+## API Versioning
+- MUST use URL path versioning (`/v1/users`, `/v2/users`)
+- MUST NOT make breaking changes to published endpoints
+- MUST use `Deprecation` and `Sunset` HTTP headers for deprecated endpoints
+
+## Gold Standard Examples
+- TypeScript: see `examples/typescript/example_controller.ts`
+- Python: see `examples/python/example_handler.py`
+- Java: see `examples/java/example_controller.java`
+- Go: see `examples/go/example_handler.go`
+
+## What NOT to Do
+- Never use verbs in URLs (`/createUser`, `/deleteUser`)
+- Never nest deeper than 2 levels (`/users/{id}/orders/{id}/items/{id}` is forbidden)
+- Never return 500 for client errors (use 4xx codes)
+- Never expose stack traces in production error responses

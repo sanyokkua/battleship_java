@@ -1,0 +1,83 @@
+---
+description: "Logging standards for all application code across all languages"
+globs: ["**/*.ts", "**/*.py", "**/*.java", "**/*.go", "**/*.tsx", "**/*.pyi"]
+alwaysApply: false
+priority: 300
+---
+
+# Logging Standards
+
+## The Three Pillars of Observability
+Every production service MUST implement all three:
+| Pillar | Purpose | Standard |
+|--------|---------|----------|
+| Logs | Event records | Structured JSON, defined schema |
+| Metrics | Quantitative measurements | Prometheus-compatible |
+| Traces | Request lifecycle across services | OpenTelemetry |
+
+## Log Level Hierarchy
+| Level | When to Use |
+|-------|-------------|
+| FATAL | Process cannot continue. Imminent shutdown. |
+| ERROR | Unexpected failure requiring immediate human intervention. An alert fires. |
+| WARN | Unexpected state that was handled. No immediate action, but monitor trends. |
+| INFO | Normal business events (request received, payment processed, user logged in). |
+| DEBUG | Diagnostic information for development and troubleshooting. Disabled in production. |
+| TRACE | High-frequency, low-level detail (loop iterations, internal state). Never in production. |
+
+**Critical Rule:** A failed login attempt is `WARN`. A login service that cannot reach the database is `ERROR`. Do not conflate business outcomes with technical failures.
+
+## Structured Logging Mandate
+ALL production logs MUST be in JSON format. No exceptions.
+
+Minimum required fields for every log entry:
+```json
+{
+  "timestamp": "2026-03-14T10:23:45.123Z",
+  "level": "INFO",
+  "service": "payment-service",
+  "version": "2.3.1",
+  "environment": "production",
+  "message": "Payment processed successfully",
+  "correlation_id": "req_a1b2c3d4",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "span_id": "00f067aa0ba902b7"
+}
+```
+
+## Correlation ID Propagation
+- Every inbound request MUST have a `correlation_id`.
+- If not present in the request, generate one at the entry point.
+- The correlation ID MUST be passed to every downstream call via HTTP header (`X-Request-ID` or `X-Correlation-ID`).
+- Every log entry for a given request MUST include the correlation ID.
+
+## Language-Specific Logger Instantiation
+- **Java:** SLF4J 2.x + Logback + Logstash Logback Encoder
+- **Python:** `logging` + `structlog`
+- **TypeScript:** `pino`
+- **Go:** `log/slog` (stdlib, Go 1.21+)
+
+## Log-and-Rethrow Anti-Pattern
+The log-and-rethrow anti-pattern is BANNED. Choose one:
+- Log OR rethrow, not both.
+- If you log, handle the error.
+- If you rethrow, let the caller handle it.
+
+## Silent Exception Swallowing
+Silent exception swallowing is BANNED. Every caught exception must be:
+- Logged with appropriate level
+- Handled appropriately
+- Or rethrown with proper wrapping
+
+## Gold Standard Examples
+- Java: see `examples/java/example_service.java`
+- Python: see `examples/python/example_service.py`
+- TypeScript: see `examples/typescript/example_service.ts`
+- Go: see `examples/go/example_service.go`
+
+## What NOT to Do
+- Never use `print()` for logging in production code
+- Never log sensitive data (passwords, tokens, PII)
+- Never use log-and-rethrow pattern (choose one)
+- Never swallow exceptions silently
+- Never log without correlation ID in production

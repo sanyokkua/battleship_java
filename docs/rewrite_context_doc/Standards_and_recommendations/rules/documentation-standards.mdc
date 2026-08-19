@@ -1,0 +1,94 @@
+---
+description: "Code documentation standards for all source files across all languages"
+globs: ["**/*.ts", "**/*.py", "**/*.java", "**/*.go", "**/*.tsx", "**/*.pyi"]
+alwaysApply: false
+priority: 300
+---
+
+# Code Documentation Standards
+
+## The "Why, Not How" Principle
+Code explains how something works. Documentation explains:
+- Why a decision was made.
+- What contract a public API guarantees.
+- What trade-offs were accepted.
+
+Comments that restate what the code already clearly shows are noise and MUST be removed.
+
+```java
+// BAD: What does this comment add?
+// Increment counter by 1
+counter++;
+
+// GOOD: Explains non-obvious reasoning
+// Use AtomicInteger here even though this is single-threaded;
+// this service will be made multi-tenant in Q3 (see ADR-012).
+counter.incrementAndGet();
+```
+
+## Documentation as Code
+- Documentation MUST live in the same repository as the code.
+- Documentation updates MUST be part of the same commit/PR as the code change.
+- Documentation review is a MANDATORY part of the code review checklist.
+- Outdated documentation is a defect — treat it as one.
+
+## README Standard
+Every repository MUST have a `README.md` containing:
+- Project name and one-sentence description
+- Prerequisites — runtime versions, required tools
+- Setup / Installation — numbered steps, runnable as-is
+- Running Locally — how to start the service
+- Running Tests — how to execute the test suite
+- Environment Variables — table of all env vars, their purpose, and whether required
+- Architecture Overview — brief description or link to ADR index
+- Contributing — PR process, branch conventions
+- License
+
+## Architecture Decision Records (ADRs)
+Any architectural decision with significant consequences MUST be recorded using the ADR format:
+```markdown
+# ADR-{number}: {Title}
+
+**Status:** Proposed | Accepted | Deprecated | Superseded by ADR-{N}
+**Date:** YYYY-MM-DD
+**Deciders:** {list of people involved}
+
+## Context
+What is the issue that motivates this decision?
+
+## Decision
+What is the change being proposed or accepted?
+
+## Consequences
+What becomes easier or harder as a result of this decision?
+```
+
+ADRs are immutable once accepted — never edit; supersede with a new ADR.
+
+## Language-Specific Documentation Formats
+- **Java:** Javadoc (`/** */`) — `@param`, `@return`, `@throws` mandatory for public APIs
+- **Python:** Google-style docstrings — `Args`, `Returns`, `Raises` sections
+- **TypeScript:** TSDoc (`/** */`) — `@param`, `@returns`, `@throws`
+- **Go:** godoc comments (`//`) — must start with identifier name
+
+## Public API Documentation Obligation
+All public APIs MUST document:
+- Parameters (with constraints)
+- Return values (for both success and failure)
+- Raised errors (with trigger conditions)
+- Side effects
+- Copy-pasteable examples
+
+## Anti-Duplication Rules
+- NO paraphrasing external tool documentation — link instead of copy-pasting
+- Single source of truth for all documentation
+- Do NOT document what the code signature already makes obvious
+
+## Gold Standard Examples
+- See `examples/` directory for documentation patterns in each language
+
+## What NOT to Do
+- Never leave outdated documentation in place (delete immediately)
+- Never document what the signature already expresses
+- Never commit commented-out code (use git history instead)
+- Never copy-paste external documentation (link instead)
