@@ -8,7 +8,7 @@ import, or a generated artifact. `--check` proves it and exits non-zero on drift
 Usage:
     python3 scripts/sync-agent-files.py            # report only (default)
     python3 scripts/sync-agent-files.py --apply    # create links, regenerate mirrors
-    python3 scripts/sync-agent-files.py --check    # assert; exit 1 on any drift  [pre-push]
+    python3 scripts/sync-agent-files.py --check    # assert; exit 1 on any drift  [CI / pre-push]
     python3 scripts/sync-agent-files.py --migrate  # one-time: move .claude/skills -> .agents/skills
 
 Optional config at repo root, .agentsync.json — all keys optional:
@@ -377,7 +377,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Keep every agent harness reading the same bytes.")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--apply", action="store_true", help="create links and regenerate mirrors")
-    mode.add_argument("--check", action="store_true", help="assert only; exit 1 on drift (pre-push)")
+    mode.add_argument("--check", action="store_true", help="assert only; exit 1 on drift (CI / pre-push)")
     mode.add_argument("--migrate", action="store_true", help="one-time: move .claude/skills -> .agents/skills")
     parser.add_argument("--root", type=Path, default=None, help="repo root (default: nearest .git or AGENTS.md)")
     args = parser.parse_args()

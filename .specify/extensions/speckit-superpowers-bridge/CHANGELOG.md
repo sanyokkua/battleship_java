@@ -8,6 +8,87 @@ This project adheres to [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-18
+
+This release accepts and hardens PR #14's implement-hook composition, fixes
+Issue #13's macOS handoff failure, and advances the maintained upstream
+baselines to Spec Kit 0.16.4 and Superpowers 6.3.0. The bridge remains a thin
+instruction-and-script layer: command count (3), registered hook count (5),
+handoff v1 schema, guard rules, actor semantics, stable-alias download URL, and
+the `>=0.8.10` Spec Kit runtime floor are unchanged.
+
+### Added
+
+- The `execute` command (and both per-agent `SKILL.md` peers) now dispatch the
+  same `before_implement` / `after_implement` extension hooks that
+  `speckit.implement` fires, mirroring Spec Kit's own `implement` command
+  (markdown-driven, no new script): read `.specify/extensions.yml`, filter
+  `enabled: false` and non-empty `condition` hooks, and fire each remaining hook
+  via its command (`speckit.git.commit` → `$speckit-git-commit` / `/speckit-git-commit`).
+- The dispatch **skips the bridge's own `before_implement` guard hook** (any hook
+  whose `extension` is `speckit-superpowers-bridge`), whose purpose is to block
+  `speckit.implement` while Superpowers owns execution — firing it from the
+  bridge would block the bridge itself.
+- Mandatory hooks now emit Spec Kit 0.16.4's `EXECUTE_COMMAND:` directive,
+  actually invoke the rendered agent command, and wait for its result. Optional
+  hooks remain confirmation-controlled.
+- `before_implement` fires before the handoff transitions to `executing`.
+  `after_implement` fires before the transition to `complete`, so a failing
+  mandatory post-hook cannot leave a false-success handoff.
+- New smoke test `tests/test-implement-hooks-dispatch.sh` asserts filtering,
+  directive, invocation/wait, skip-own-guard, and lifecycle-ordering contracts
+  across `execute.md` and both project-owned SKILL peers.
+- New `tests/test-update-handoff-portability.sh` reproduces macOS/BSD path-tool
+  behavior, covers missing components and repository-external symlink targets,
+  and rejects any reintroduction of GNU-only missing-path flags.
+
+### Fixed
+
+- Replaced six GNU-only `realpath -m` calls in the bash handoff writer with a
+  bounded, component-wise, symlink-aware Bash canonicalizer using portable
+  `readlink`. macOS users can now create and update handoffs without installing
+  GNU coreutils or a new runtime dependency (Issue #13).
+
+### Changed
+
+- Bridge version bumped `1.1.0` → `1.2.0` (MINOR: new plug-and-play hook-dispatch
+  behavior; no new command, hook, script, or state file — the dispatch is
+  instruction-only, per constitution Principle VI).
+- Refreshed the tracked Spec Kit bootstrap state to 0.16.4: current templates,
+  managed `.specify/.gitignore`, generated-skill ignore policy, and bundled
+  `git` / `agent-context` extension sources. Project-owned template gates and
+  short bridge skill peers remain preserved.
+- Advanced the verified Superpowers baseline `6.0.0` → `6.3.0` after confirming
+  all six invoked skill names and the Spec Kit `tasks.md` consumption boundary
+  remain compatible.
+- Added a macOS-hosted release gate. Publication now waits for Linux bash,
+  native Windows PowerShell, and macOS bash jobs.
+- Made the deterministic ZIP builder and package smoke use Python's standard
+  SHA256 implementation instead of GNU `sha256sum`, so the full source suite
+  runs on standard macOS tooling without GNU coreutils.
+- Expanded the bash source suite from 7 to 8 tests.
+
+### Upstream alignment notes
+
+- Spec Kit 0.11.1 through 0.16.4 adds native runtime events, Python script
+  flavors, managed local-state ignore policy, agent-context hardening, branch
+  templates, and Conventional Commit support. These improve repository
+  bootstrap and development behavior but do not supersede the bridge's
+  instruction-driven core-command hook composition or require a runtime-floor
+  increase.
+- Superpowers 6.1.0 through 6.3.0 changes execution discipline and harness
+  internals without renaming the skills this bridge invokes. No bridge runner,
+  schema, or compatibility shim was added.
+
+### Verification
+
+- Spec Kit CLI `0.16.4` from official tag commit
+  `d1f50fcbe684a4222059c4ba7f2d7eabcca87402`.
+- Superpowers `6.3.0` from official tag commit
+  `b36e0829c6d0140e93cfef2ca599b1b07d4a7797`.
+- Release evidence, platform results, and the published ZIP SHA256 are recorded
+  in `specs/018-release-0-16-4-hardening/verification.md`.
+
 ## [1.1.0] - 2026-06-17
 
 Superpowers **6.0.0** compatibility-alignment + evidence refresh. The verified

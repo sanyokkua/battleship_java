@@ -1,95 +1,156 @@
-# battleship_java — how to work here
+# Battleship Rewrite — how to work here
 
 ## Where this stands
 
-This is an educational two-player Battleship web service: a Spring Boot REST/MVC backend and a React/Vite frontend bundled into one runnable JAR.
+This repository is a greenfield Battleship rewrite. Build the new application from approved specifications, not from the
+implementation that currently lives on `master`. Branch `rewrite_prod_ready` must be considered as main development
+branch.
 
-**Stack.** Java 25, Spring Boot 4.1.0, Maven, React 19, TypeScript, Vite, Vitest, Playwright.
+**Stack.** Target modules are API, backend, and frontend, but their concrete technologies, boundaries, and verification
+commands are defined by the approved spec and technical plan for the active feature.
 
-**State.** The application is running and feature work is active. Use the current branch, source, tests, and generated artifacts as the live state; do not infer completion from older documentation.
+**State.** Current workflow state lives in the active Spec Kit feature artifacts and the prerequisite checker. Do not
+assume an application module, build, test, lint, or local-run command exists until the approved plan introduces it.
 
-**Authority.** Runtime behavior is defined by source, configuration, and tests. Human-facing architecture and API context are in `README.md`, `docs/index.md`, and `docs/architecture.md`. New behavior needs a written spec in `specs/<###-feature>/spec.md`.
+**The spec is the authority.** `.specify/memory/constitution.md` is project governance. For implementation, use the
+active feature's `spec.md`, `plan.md`, and `tasks.md`; if the spec is silent on a behavior that matters, stop and ask
+with a recommended default.
 
 ## The loop
 
-Six phases. No feature code before PLAN is complete.
+Use this common feature path; skip only explicitly optional steps. No feature code is written before
+`$speckit-plan` completes.
 
-| Phase | Exit condition | Command or artifact |
-|---|---|---|
-| ORIENT | Current state and unit of work are named | Read this file, `README.md`, relevant docs/source, and `git status --short --branch` |
-| SPEC | Acceptance criteria and edge cases are written | `specs/<###-feature>/spec.md` |
-| PLAN | Ordered tasks exist; one task = one branch = one commit | `specs/<###-feature>/plan.md` and `tasks.md` |
-| BUILD | Each task is implemented and individually checked | Work on the task branch |
-| VERIFY | The gate is green and behavior matches the spec | `scripts/verify.sh` |
-| CLOSE | Evidence is recorded, docs are current, and the next unit is named | Update the feature artifacts and relevant docs; leave final merge to the user |
+**Common feature loop:** `orient -> specify -> clarify -> checklist? -> plan (Phase 0/1) -> tasks -> analyze
+-> handoff -> guard -> bridge/implement -> converge -> implement again if needed -> cleanup? -> verify -> close`
 
-Advance through phases without asking. Stop only for an ambiguous spec, the same gate failure twice, an irreversible/out-of-repo action, a costly architectural decision, or information contradicting the approved spec.
+1. **Orient.** For a registered feature, run `bash .specify/scripts/bash/check-prerequisites.sh --json
+   --require-tasks --include-tasks` and identify the active feature.
+2. **Governance and memory.** Run `$speckit-constitution` only when governance is missing or changing. The
+   standalone `$speckit-memory-loader-load` is optional; configured mandatory hooks run
+   `speckit.memory-loader.load` before `specify`, `clarify`, `checklist`, `plan`, `tasks`, `analyze`, and
+   `implement`.
+3. **Specify and clarify.** Run `$speckit-specify`, then `$speckit-clarify`; clarification is completed before
+   planning.
+4. **Requirements quality (optional).** Run `$speckit-checklist` after specification/clarification and before
+   planning or task generation as appropriate. It evaluates requirements writing, not implementation behavior.
+5. **Plan and task.** Run `$speckit-plan` through Phase 0 research and Phase 1 design/contracts, then run
+   `$speckit-tasks` to create the dependency-ordered implementation list.
+6. **Analyze.** Run `$speckit-analyze` after tasks and before implementation. It is read-only; resolve material
+   cross-artifact issues before building.
+7. **Handoff and implement.** After tasks, the configured hooks optionally generate
+   `speckit.diagram.dependencies` and mandatorily create the
+   `speckit.speckit-superpowers-bridge.handoff`. Explicit bridge skills are
+   `$speckit-speckit-superpowers-bridge-handoff` and
+   `$speckit-speckit-superpowers-bridge-guard`; with bridge ownership, run the guard and one of
+   `$speckit-speckit-superpowers-bridge-execute` or `$speckit-superpowers-bridge`; these are aliases, not
+   sequential steps. Use `$speckit-implement` directly only when the bridge is not used. The configured
+   `speckit.speckit-superpowers-bridge.guard` also runs before clarification, planning, tasks, and implementation.
+8. **Converge and repeat.** Run `$speckit-converge` only after an implementation pass. If it appends remaining
+   tasks, rerun the selected bridge or direct implementation path; do not use converge as initial planning.
+9. **Clean, verify, close.** After implementation, the optional `speckit.cleanup.run` hook can run
+   `$speckit-cleanup-run` (or the equivalent `$speckit-cleanup` entry point; use one). Then run the verification
+   commands named in the approved plan, update durable docs/status, and hand off with evidence and the next step.
+
+**Optional extensions.** Use `$speckit-diagram-workflow` for the full SDD flow, `$speckit-diagram-dependencies`
+for the task DAG, `$speckit-diagram-status` for progress, and `$speckit-taskstoissues` when tasks must become
+GitHub issues. Diagrams are steering/reporting aids, not mandatory gates.
+
+Advance without asking when the next phase is clear from the approved artifacts. Stop only to resolve an ambiguous or
+silent spec, report a repeated verification failure with the same cause, raise a costly architecture decision, or
+request approval for an irreversible action outside normal repo edits.
+
+Spec Kit plans may include Mermaid diagrams when they clarify behavior, interactions, or boundaries. Diagrams are
+optional and should never be decorative.
 
 ## Definition of Done
 
-**Gate:** `scripts/verify.sh`. It runs Maven verification, the pinned frontend runtime, frontend tests/lint, mock-browser E2E, and live packaged-JAR E2E. Its normal duration is about 70 seconds here; a hang is a failure.
+**Gate.** There is no single repository-wide product gate at this `HEAD` yet. Before BUILD starts, the approved
+technical plan must name the build, test, lint, and local-run commands for the affected module or feature.
 
-A unit is done only when the gate is green and the implementation matches the spec.
+For a registered feature, start by proving the feature artifacts exist:
 
-- Capture the baseline before work; distinguish existing findings from new ones.
-- `mvn verify` may regenerate tracked `docs/openapi.json`; inspect and record that diff when the API changes.
-- Report evidence: acceptance criterion → proving test, gate result, generated-artifact changes, and remaining limitations.
+`bash .specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
+
+Work is done only when the approved tasks are complete, the required verification from the plan has run cleanly, and the
+delivered behavior still matches the governing spec. Do not borrow commands, tests, or success criteria from `master`.
+
+Capture evidence, not just conclusions. If no product verification command exists yet, say that plainly and leave the
+work in a not-fully-verified state.
 
 ## Git protocol
 
-```
-master                         protected; do not develop or commit directly
-  └── feature/<slug>           one parent branch per unit of work
-        └── feature/<slug>--<task>  one task branch per plan task
-```
+`master` is historical context for the old application, not the base for new implementation work.
 
-Use an existing suitable feature branch; do not stack another parent branch. Commit only on task branches, keep one task per commit, and verify before committing. Never merge the parent into `master`; final integration belongs to the user. Never use `--no-verify` or force-push; fix the check instead.
+Work from a feature branch with `feature/` names unless the user asks for a different branch strategy. Keep unrelated
+staged or unstaged changes intact.
+
+Make small, focused commits with concise imperative subjects. The exact naming and formatting standard can be formalized
+later; until then, stay internally consistent within the active task.
+
+Do not rewrite history, force-push, or use destructive git cleanup unless the user explicitly asks. Final merges to the
+default branch remain a user-approved step.
 
 ## Delegation
 
-The main Codex session owns the plan, decisions, conversation, and judgment of completion. Delegate read-only mapping, broad searches, implementation task groups, test writing, or independent conformance review when useful.
+The main agent is the orchestrator. Keep the main context for task framing, decisions, coordination, synthesis, and
+integration.
 
-Brief each delegated task with its objective, output format, files to inspect, and boundaries. Ask for a condensed summary, not a transcript. Never delegate the decision about the next step or whether the spec is satisfied.
+Substantive repository work such as inspection, implementation, debugging, research, verification, and review must go to
+focused sub-agents when that tooling is available. Brief them with the objective, expected output, files or paths to
+inspect, and what must not be touched.
+
+If delegation tooling is unavailable, say so and continue locally instead of pretending the repository rule does not
+exist.
+
+Never delegate the final judgment about whether the implementation satisfies the approved spec or what the next step
+should be.
 
 ## Non-negotiables
 
-| Rule | Enforced by |
-|---|---|
-| Gate green before claiming done | `scripts/verify.sh`, pre-push hook |
-| Agent entry points and skill mirrors stay synchronized | `scripts/sync-agent-files.py --check`, pre-push |
-| `.agents/skills` is the only real project-skill tree | synchronizer check |
-| API changes regenerate and review `docs/openapi.json` | Maven verify plus closing evidence |
-| No feature code before SPEC and PLAN | — (advisory) |
-| Preserve unrelated worktree changes | — (advisory) |
-| Do not bypass hooks or force-push | — (advisory) |
+- Treat the new Battleship application as greenfield work; never use the current `master` implementation as the
+  foundation. Enforced by `AGENTS.md` and approved specs — (advisory)
+- `.specify/memory/constitution.md` plus the active feature's `spec.md`, `plan.md`, and `tasks.md` are the
+  implementation authority. Enforced by review discipline — (advisory)
+- Do not invent module boundaries, technologies, commands, or standards that the approved artifacts have not established
+  yet. Enforced by plan-first workflow — (advisory)
+- Preserve unrelated staged and unstaged changes. Enforced by task scope and git discipline — (advisory)
+- Use orchestrator-plus-focused-sub-agent execution for substantive repo work when the tooling exists; if it does not,
+  state that limitation. Enforced by `AGENTS.md` — (advisory)
+- Add Mermaid diagrams to Spec Kit technical plans only when they materially clarify the design. Enforced by plan
+  review — (advisory)
+- Update `AGENTS.md` when a change establishes durable repository-wide knowledge such as module boundaries,
+  architecture, commands, verification, security, deployment, or workflow decisions. Enforced by repository maintenance
+  discipline — (advisory)
 
 ## End every turn with Next step
 
-Every turn that advances work ends with this block:
+Every work turn should end with a compact `Next step` handoff block that states the real state, the exact next command
+when one exists, and a self-contained prompt for the next session.
 
-```markdown
-## Next step
+Be precise about verification status. Checked boxes are not proof; evidence is. If the next step is a decision, say that
+directly instead of inventing a command.
 
-**State:** <where the work actually is, citing evidence>
-**Command:** <exact command> — or "none — decision needed"
-**Prompt:**
-> <complete, copy-pasteable prompt naming the unit, artifacts to read, and the constraint most likely to be violated>
-```
-
-Be honest: written is not verified, and a red or unrun gate is unverified. Give one next step, not a plan.
+The block should be short enough to scan quickly and complete enough to survive a fresh session.
 
 ## What will bite you
 
-- **Wrong Node runtime.** The shell may expose Node 26, while Maven installs Node 24.18.0 in `frontend/node`. Running Vitest with the wrong runtime can make `localStorage` undefined and produce a cascade of unrelated-looking failures. The verification gate must prepend `frontend/node` to `PATH`.
-- **Restricted localhost binding.** Playwright may fail before any test with `listen EPERM ... ::1:5173`. Treat that as an environment capability failure and retry with scoped host access; do not call it a product regression.
-- **Generated OpenAPI drift.** Maven's integration-test phase starts the application and regenerates `docs/openapi.json`. A successful build can still leave a meaningful tracked diff.
-- **Live E2E needs the packaged JAR.** The live suite starts `target/battleship-0.0.1-SNAPSHOT.jar` on port 8080 and uses in-memory state; build it before diagnosing browser failures.
-- **Frontend commands are scoped.** Direct npm commands run from `frontend/`; the repository gate uses `npm --prefix frontend ...` after Maven installs dependencies.
+- The old Battleship app on `master` is not the rewrite baseline. Reusing its commands, tests, or architecture
+  assumptions will send work down the wrong path even when those artifacts still exist in git history.
+- This `HEAD` may have no product modules or gate yet. Treat that as real project state, not as permission to import
+  conventions from `master` or invent missing commands.
+- The Spec Kit prerequisite checker is about feature artifacts, not implementation health. If it fails because tasks or
+  a registered feature are missing, fix the workflow state instead of papering over the error.
+- Hand-maintained mirror trees drift. `.agents/skills` is the canonical skills directory after migration; edit mirrors
+  by rerunning `python3 scripts/sync-agent-files.py`, not by hand.
+- Repository-wide standards are intentionally incomplete right now. When a naming rule, test framework, or architecture
+  boundary has not been approved, keep the work consistent with the current slice and record the durable decision once
+  it is made.
 
 ## Where things live
 
-- Behavior and API context: `README.md`, `docs/index.md`, `docs/architecture.md`, `docs/openapi.json`
-- Spec Kit feature artifacts: `specs/<###-feature>/` (`spec.md`, `plan.md`, `tasks.md`, and optional research/design artifacts)
-- Canonical agent skills: `.agents/skills/`
-- Claude bridge/runtime: `CLAUDE.md`, `.claude/`; generated Codex mirror: `.codex/`
-- Synchronizer and verification gate: `scripts/sync-agent-files.py`, `scripts/verify.sh`
+- Rewrite context and historical planning inputs: `docs/rewrite_context_doc/`
+- Project governance: `.specify/memory/constitution.md`
+- Spec Kit workflows, templates, and prerequisite scripts: `.specify/`
+- Active feature authority: `specs/<feature-id>/spec.md`, `plan.md`, and `tasks.md`
+- Agent mirror sync script: `scripts/sync-agent-files.py`

@@ -1,18 +1,19 @@
 installed:
-- brownfield
+- cleanup
+- diagram
 - memory-loader
 - speckit-superpowers-bridge
 settings:
   auto_execute_hooks: true
 hooks:
-  after_init:
-  - extension: brownfield
-    command: speckit.brownfield.scan
+  after_implement:
+  - extension: cleanup
+    command: speckit.cleanup.run
     enabled: true
     optional: true
     priority: 10
-    prompt: Scan this existing project to customize spec-kit configuration?
-    description: Auto-scan project after spec-kit init to detect tech stack and conventions
+    prompt: Run cleanup to review implementation changes and identify tech debt?
+    description: Post-implementation quality gate
     condition: null
   before_specify:
   - extension: memory-loader
@@ -113,6 +114,14 @@ hooks:
     description: Load project memory files before analysis
     condition: null
   after_tasks:
+  - extension: diagram
+    command: speckit.diagram.dependencies
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Generate task dependency diagram after task breakdown?
+    description: Auto-generate dependency DAG after tasks are created
+    condition: null
   - extension: speckit-superpowers-bridge
     command: speckit.speckit-superpowers-bridge.handoff
     enabled: true

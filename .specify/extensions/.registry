@@ -1,22 +1,20 @@
 {
   "schema_version": "1.0",
   "extensions": {
-    "brownfield": {
+    "cleanup": {
       "version": "1.0.0",
       "source": "local",
-      "manifest_hash": "sha256:671babc47c752bf18868d0aeeef66f0fc4f37c6cf52622cfa07e8715fb5ac4a6",
+      "manifest_hash": "sha256:b15a5e3b4e5b43f867c093d962492f502b01503d0ec174611d0797854b017578",
       "enabled": true,
       "priority": 10,
       "registered_commands": {
-        "codex": [
-          "speckit.brownfield.scan",
-          "speckit.brownfield.bootstrap",
-          "speckit.brownfield.validate",
-          "speckit.brownfield.migrate"
+        "claude": [
+          "speckit.cleanup.run",
+          "speckit.cleanup"
         ]
       },
       "registered_skills": [],
-      "installed_at": "2026-08-15T21:06:21.952994+00:00"
+      "installed_at": "2026-08-19T19:42:51.774699+00:00"
     },
     "memory-loader": {
       "version": "1.0.0",
@@ -25,21 +23,37 @@
       "enabled": true,
       "priority": 10,
       "registered_commands": {
-        "codex": [
+        "claude": [
           "speckit.memory-loader.load"
         ]
       },
       "registered_skills": [],
-      "installed_at": "2026-08-15T21:14:52.307579+00:00"
+      "installed_at": "2026-08-19T19:43:27.771943+00:00"
     },
-    "speckit-superpowers-bridge": {
-      "version": "1.1.0",
+    "diagram": {
+      "version": "1.0.0",
       "source": "local",
-      "manifest_hash": "sha256:f83ce1777a458c2ef9f019fec92065ba5621382f89d6d4db4282ad550772329f",
+      "manifest_hash": "sha256:a2ab4ddf44a45c8bfd7f0a0a75e3aa2075d0135e1e288c6d70974f8b37d0621d",
       "enabled": true,
       "priority": 10,
       "registered_commands": {
-        "codex": [
+        "claude": [
+          "speckit.diagram.workflow",
+          "speckit.diagram.status",
+          "speckit.diagram.dependencies"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-08-19T19:44:33.872485+00:00"
+    },
+    "speckit-superpowers-bridge": {
+      "version": "1.2.0",
+      "source": "local",
+      "manifest_hash": "sha256:fe7c8d353c87f90f48763c424f24c09bd02e572479b9313900ee341b5a858e89",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
           "speckit.speckit-superpowers-bridge.handoff",
           "speckit.speckit-superpowers-bridge.guard",
           "speckit.speckit-superpowers-bridge.execute",
@@ -47,7 +61,7 @@
         ]
       },
       "registered_skills": [],
-      "installed_at": "2026-08-15T21:26:35.088349+00:00"
+      "installed_at": "2026-08-19T19:44:52.557892+00:00"
     }
   }
 }

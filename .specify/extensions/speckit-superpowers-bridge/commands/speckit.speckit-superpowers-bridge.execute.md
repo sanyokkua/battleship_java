@@ -47,6 +47,79 @@ bash .specify/extensions/speckit-superpowers-bridge/scripts/bash/guard-command.s
 
 Do not invoke Superpowers `brainstorming` or `writing-plans` for this active feature. Spec Kit artifacts are the only design and execution contract.
 
+## Extension hooks (before_implement / after_implement)
+
+This command replaces `speckit.implement`, so it MUST fire the same
+`before_implement` and `after_implement` extension hooks that `speckit.implement`
+would fire, so user and third-party hooks stay plug-and-play. This mirrors
+Spec Kit's own `implement` command (the "Pre-Execution Checks" and "Mandatory
+Post-Execution Hooks" sections) and adds one bridge-specific rule.
+
+### Before implementation (`before_implement`)
+
+Fire these BEFORE transitioning the handoff to `executing`:
+
+1. Check `.specify/extensions.yml`. If it does not exist, or has no
+   `hooks.before_implement`, skip silently.
+2. For each hook under `hooks.before_implement`:
+   - **Skip any hook whose `extension` is `speckit-superpowers-bridge`.** The
+     bridge's own `before_implement` hook is its guard, whose purpose is to
+     block `speckit.implement` while Superpowers owns execution; firing it from
+     the bridge would block the bridge itself.
+   - Skip hooks where `enabled` is explicitly `false` (a hook without an
+     `enabled` field is enabled by default).
+   - Skip hooks with a non-empty `condition` (leave condition evaluation to the
+     upstream HookExecutor).
+3. Fire each remaining hook via its `command`, rendered per agent:
+   `speckit.git.commit` → `/speckit-git-commit` (Claude Code) or
+   `$speckit-git-commit` (Codex).
+   - **Mandatory hook** (`optional: false`): execute it and wait for its result
+     before proceeding.
+   - **Optional hook** (`optional: true`): surface the hook's `prompt` and
+     execute if the user confirms.
+
+### After implementation (`after_implement`)
+
+Dispatch `after_implement` before transitioning the handoff to `complete`:
+
+1. Check `.specify/extensions.yml` for `hooks.after_implement`. If absent, skip.
+2. Apply the same filters as above (`enabled: false` → skip, non-empty
+   `condition` → skip, and `extension` is `speckit-superpowers-bridge` → skip —
+   the bridge registers no `after_implement` hook today, but the rule keeps the
+   dispatch uniform).
+3. Fire each remaining hook via its `command` with the same per-agent rendering
+   and the same mandatory/optional handling.
+
+### Hook invocation contract
+
+For every mandatory hook, emit Spec Kit's phase-appropriate automatic-hook
+block before invocation:
+
+```text
+## Extension Hooks
+
+**Automatic Pre-Hook**: <extension>   # before_implement
+**Automatic Hook**: <extension>       # after_implement
+Executing: `/<dotted-command-id>`
+EXECUTE_COMMAND: <dotted-command-id>
+```
+
+Emit only the phase-appropriate automatic label, not both labels in one live
+block. The dotted ID remains in the directive; the actual invocation uses the
+active agent's rendered command form.
+
+Actually invoke the rendered agent command and wait for its result. Printing
+the directive or invocation name without calling the command is not success.
+If any mandatory hook fails, stop the lifecycle and surface the failure.
+
+`before_implement` fires before the handoff transitions to `executing`.
+Dispatch `after_implement` before transitioning the handoff to `complete`.
+If a mandatory `after_implement` hook fails, do not transition the handoff to `complete`;
+leave the non-complete state visible for recovery. Optional hooks still run
+only after surfacing the extension, command, description, prompt, and
+agent-native invocation and receiving user confirmation. Declining one does not
+fail implementation.
+
 ## Required Superpowers Discipline
 
 Use Superpowers execution skills only against Spec Kit `tasks.md`:
