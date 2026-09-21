@@ -1,5 +1,7 @@
 # Frontend high-level solution design and plan input
 
+> **Superseded where it describes the API.** `contracts/openapi.yaml` is the authoritative contract; see `contracts/README.md` § *Supersedes planning inputs* for what changed (no `If-Match`/`expectedVersion`, one `version`, caller-relative snapshot, body-less leave, renamed paths, same origin, standard CSRF names).
+
 ## Architecture
 
 Deliver `frontend/` as a standalone static React application. Pin Node 24.19.0 LTS with its npm, React and React DOM 19.2.8, Vite 8.2.1, TypeScript 6.0.3, Vite React Plugin 6.0.5, OpenAPI TypeScript 7.13.0, OpenAPI Fetch 0.17.0, Zod 4.4.3, TanStack Query 5.101.4, Vitest 4.1.10, React Testing Library 16.3.2, DOM Testing Library 10.4.1, User Event 14.6.3, jsdom 30.0.1, Playwright 1.62.1, `vite-plugin-pwa` 1.3.0, and the dependency-free `qr` 0.6.0 library. Use ESLint 9.39.5 with TypeScript ESLint 8.67.0, React Hooks ESLint 7.1.1, and JSX A11y ESLint 6.10.2 for correctness; use Prettier 3.9.6 as the only formatter. TypeScript 7 and ESLint 10 are deliberately deferred because the selected stable lint plugins do not yet support those peer ranges. Write exact versions without ranges and commit the npm lockfile. Prove the matrix through install, typecheck, lint, format check, build, service-worker, component, and browser checks; do not silently substitute or auto-upgrade a selection.

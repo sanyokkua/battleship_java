@@ -1,0 +1,2106 @@
+openapi: 3.1.1
+info:
+  title: Battleship API
+  version: 1.0.0
+  summary: Anonymous two-player Battleship. The server owns the game; the client only displays it.
+  license:
+    name: GNU General Public License v3.0 or later
+    identifier: GPL-3.0-or-later
+  description: |
+    ## How to use this API
+
+    The backend is the model, the client is a view. Every player action is sent to the server, and
+    every successful game operation answers with the same caller-relative `GameSnapshot`. A client
+    renders that snapshot, enables exactly the actions listed in `allowedActions`, and keeps no game
+    state or game rules of its own.
+
+    1. `GET /api/v1/meta` once at start-up (server time, limits, CSRF cookie) and `GET /api/v1/rulesets`.
+    2. Host: `POST /api/v1/games`, then share `invitationUrl` from the snapshot.
+    3. Guest: open the invitation link, choose a name, `POST /api/v1/games/{gameId}/join`.
+    4. Both: open `GET /api/v1/games/{gameId}/events` and send actions to
+       `POST /api/v1/games/{gameId}/commands`.
+    5. After a reload: `GET /api/v1/games/{gameId}` returns everything needed to continue.
+
+    ## Client rules
+
+    - **Ordering.** `version` grows whenever anything in either player's snapshot changes. Display a
+      received snapshot only when its `version` is greater than the one on screen. Snapshots arrive
+      from HTTP responses and from the event stream; this one rule orders both.
+    - **One command at a time.** Wait for the answer to a command before sending the next one for the
+      same game. When an answer is lost, resend the identical body (same `commandId`); the server does
+      not apply it twice.
+    - **Conflicts.** On any `409` from a game you play, fetch `GET /api/v1/games/{gameId}` and display
+      the result.
+    - **Gone.** `401`, `404` and `410` on a game all mean it cannot be continued from this browser
+      (after a server restart every game and session is gone).
+
+    ## Privacy
+
+    A player never receives the opponent's ship placement, except cells that were hit or sunk, water
+    the ruleset reveals around a sunk ship, and the full board after the game is `FINISHED`. An
+    `ABANDONED` or expired game never reveals a board. Anyone who is not a player of a game gets `404`.
+
+    ## Security
+
+    - **Identity** is an anonymous browser session in the `HttpOnly` cookie
+      `__Host-battleship_session` (`Secure`, `SameSite=Strict`, `Path=/`). It is issued by create and
+      join and reused for every game of that browser. `gameId` only locates a game and grants nothing.
+    - **CSRF.** Every `POST` must echo the readable `XSRF-TOKEN` cookie (set by `GET /api/v1/meta`) in
+      the `X-XSRF-TOKEN` header.
+    - **Same origin.** The API is served from the same origin as the user interface (bundled, or
+      behind one reverse proxy; a dev-server proxy during development), so CORS is not part of this
+      contract. The server additionally rejects unsafe requests whose `Origin` or Fetch Metadata
+      headers show a cross-site source. Browsers set those headers; clients never do.
+    - Every response carries `Cache-Control: no-store`.
+
+    ## Errors
+
+    Every failure of an operation listed here is an RFC 9457 `application/problem+json` document
+    with a stable machine-readable `code`; only `GET /api/v1/health` answers `503` with its own
+    `Health` body. Clients localize by `code`; `title` and `detail` are English developer text and
+    are never shown to players. A status not listed on an operation (for example `413`, `415`,
+    `500`, `503`) uses the same document.
+
+    ## Compatibility
+
+    Within `/api/v1`, operations and optional headers may be added, responses may gain optional
+    fields, requests may gain optional fields and command types, and the open lists (`ProblemCode`,
+    `Action`, `Violation.rule`, `Outcome.reason`, `Health.reason`, `StreamClosed.reason`) may gain
+    values. Clients ignore unknown fields and unknown `allowedActions` entries, act on the HTTP
+    status when `code` is unknown or the body is not a problem document, and show any other unknown
+    value generically. Requests reject unknown fields. Anything else (removing or renaming a field,
+    a new required request field, a new value in any other response enum, a changed meaning) is
+    published as `/api/v2`.
+servers:
+  - url: /
+    description: Same origin as the user interface.
+tags:
+  - name: service
+    description: Public service information. No session needed.
+  - name: games
+    description: Creating, joining, playing and leaving a game.
+paths:
+  /api/v1/meta:
+    get:
+      operationId: getMeta
+      tags: [service]
+      summary: Service information and CSRF cookie
+      description: >-
+        Call once when the client starts and again whenever a `POST` is rejected with
+        `request-security-rejected`. Sets or refreshes the readable `XSRF-TOKEN` cookie. Use
+        `serverTime` to correct the local clock when showing countdowns to `expiresAt`.
+      security: []
+      responses:
+        '200':
+          description: Service information.
+          headers:
+            Set-Cookie:
+              description: '`XSRF-TOKEN=<value>; Path=/; Secure; SameSite=Strict` (readable by scripts).'
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meta'
+              examples:
+                meta:
+                  $ref: '#/components/examples/Meta'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v1/rulesets:
+    get:
+      operationId: listRulesets
+      tags: [service]
+      summary: Rulesets a game can be created with
+      description: >-
+        Use it to present the choice of rules before creating a game and to label boards and fleets.
+        Rulesets never change once published; a corrected ruleset gets a new `id`.
+      security: []
+      responses:
+        '200':
+          description: All published rulesets.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RulesetList'
+              examples:
+                rulesets:
+                  $ref: '#/components/examples/Rulesets'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v1/health:
+    get:
+      operationId: getHealth
+      tags: [service]
+      summary: Liveness and readiness
+      description: >-
+        For hosting platforms and monitors. `200` when the process accepts work, `503` while it is
+        starting or shutting down. A full server (no room for new games) is still ready.
+      security: []
+      responses:
+        '200':
+          description: Live and ready.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+              examples:
+                ready:
+                  value: { live: true, ready: true }
+        '503':
+          description: Live but not ready.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+              examples:
+                starting:
+                  value: { live: true, ready: false, reason: STARTING }
+  /api/v1/games:
+    post:
+      operationId: createGame
+      tags: [games]
+      summary: Create a game and become its host
+      description: >-
+        Creates a game in phase `WAITING` with the caller as host and issues the session cookie when
+        the browser has none. The snapshot contains `invitationUrl`; share exactly that URL. Not safe
+        to repeat automatically: when the answer is lost, ask the player before creating another game
+        (the unused one expires by itself). Rate limited per client address (default 5 per minute).
+      security:
+        - csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGameRequest'
+            examples:
+              create:
+                value: { rulesetId: sea-battle-10-ship.v1, displayName: Captain }
+      responses:
+        '201':
+          description: Game created.
+          headers:
+            Location:
+              description: '`/api/v1/games/{gameId}`'
+              schema:
+                type: string
+            Set-Cookie:
+              description: Session cookie, when the browser presented no valid one.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameSnapshot'
+              examples:
+                waiting:
+                  $ref: '#/components/examples/SnapshotWaiting'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v1/games/{gameId}:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+    get:
+      operationId: getGame
+      tags: [games]
+      summary: Current snapshot of a game
+      description: >-
+        Use it after a page reload, after a `409` from a game you play, after the event stream fails,
+        and as a slow polling fallback (every few seconds) when the event stream cannot be kept open.
+        Reading does not keep a game alive.
+      security:
+        - session: []
+      responses:
+        '200':
+          description: The caller's current view of the game.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameSnapshot'
+              examples:
+                waiting:
+                  $ref: '#/components/examples/SnapshotWaiting'
+                placementStart:
+                  $ref: '#/components/examples/SnapshotPlacementStart'
+                placementInProgress:
+                  $ref: '#/components/examples/SnapshotPlacementInProgress'
+                playingAfterHit:
+                  $ref: '#/components/examples/SnapshotPlayingAfterHit'
+                playingAfterSunk:
+                  $ref: '#/components/examples/SnapshotPlayingAfterSunk'
+                playingClassic:
+                  $ref: '#/components/examples/SnapshotPlayingClassic'
+                finishedByVictory:
+                  $ref: '#/components/examples/SnapshotFinishedByVictory'
+                finishedByResignation:
+                  $ref: '#/components/examples/SnapshotFinishedByResignation'
+                abandoned:
+                  $ref: '#/components/examples/SnapshotAbandoned'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v1/games/{gameId}/join:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+    post:
+      operationId: joinGame
+      tags: [games]
+      summary: Join a game with an invitation
+      description: >-
+        The invitation link is `{site}/join/{gameId}#invite={invitationSecret}`. Opening the link must
+        not call this operation: read the secret from the URL fragment, remove the fragment from the
+        address bar, keep the secret in memory only, and call join when the visitor confirms a name.
+        Success moves the game to `PLACEMENT` and issues the session cookie when the browser has none.
+        A caller who already is this game's guest gets `200` with the current snapshot, so a repeated
+        join is harmless. Every other refusal (unknown game, wrong, used, replaced or expired secret,
+        seat taken, caller is the host) is the same `409 invitation-unavailable`, so the answer reveals
+        nothing about the game. Rate limited per client address (default 20 per minute).
+      security:
+        - csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinGameRequest'
+            examples:
+              join:
+                value: { invitationSecret: REDACTEDREDACTEDREDACTEDREDACTEDREDACTED000, displayName: Rival }
+      responses:
+        '200':
+          description: Joined (or already the guest).
+          headers:
+            Set-Cookie:
+              description: Session cookie, when the browser presented no valid one.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameSnapshot'
+              examples:
+                placementStart:
+                  $ref: '#/components/examples/SnapshotPlacementStart'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v1/games/{gameId}/commands:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+    post:
+      operationId: sendCommand
+      tags: [games]
+      summary: Perform one game action
+      description: >-
+        The only way to change a board or the course of a game. Send a command only when its type is
+        in `allowedActions`; otherwise the answer is `409 action-not-allowed`. The server validates,
+        applies the action atomically and answers with the resulting snapshot, which is also pushed to
+        both players' event streams. An accepted command keeps the game alive (see `expiresAt`).
+        A recently accepted `commandId` returns the current snapshot without applying anything again;
+        only `commandId` is compared, not the rest of the body. A coordinate outside the ruleset board
+        or an unknown `shipId` is `422` (`OUT_OF_RANGE`, `UNKNOWN_VALUE`); `placement-out-of-bounds`
+        is only for a ship that would extend past the edge. Rate limited per session (default 60 per
+        minute).
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandRequest'
+            examples:
+              placeShip:
+                summary: Place, move or rotate a ship
+                value:
+                  commandId: 5b0c8e0e-3f4a-4c59-9d53-0a1f6f1c2a01
+                  command: { type: PLACE_SHIP, shipId: s01, anchor: { rowIndex: 0, columnIndex: 0 }, orientation: HORIZONTAL }
+              removeShip:
+                value:
+                  commandId: 5b0c8e0e-3f4a-4c59-9d53-0a1f6f1c2a02
+                  command: { type: REMOVE_SHIP, shipId: s01 }
+              placeFleetRandomly:
+                value:
+                  commandId: 5b0c8e0e-3f4a-4c59-9d53-0a1f6f1c2a03
+                  command: { type: PLACE_FLEET_RANDOMLY }
+              ready:
+                value:
+                  commandId: 5b0c8e0e-3f4a-4c59-9d53-0a1f6f1c2a04
+                  command: { type: READY }
+              fire:
+                value:
+                  commandId: 5b0c8e0e-3f4a-4c59-9d53-0a1f6f1c2a05
+                  command: { type: FIRE, target: { rowIndex: 9, columnIndex: 1 } }
+              resign:
+                value:
+                  commandId: 5b0c8e0e-3f4a-4c59-9d53-0a1f6f1c2a06
+                  command: { type: RESIGN }
+      responses:
+        '200':
+          description: The action was applied (or had already been applied); the resulting snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameSnapshot'
+              examples:
+                placementInProgress:
+                  $ref: '#/components/examples/SnapshotPlacementInProgress'
+                playingAfterHit:
+                  $ref: '#/components/examples/SnapshotPlayingAfterHit'
+                playingAfterSunk:
+                  $ref: '#/components/examples/SnapshotPlayingAfterSunk'
+                finishedByVictory:
+                  $ref: '#/components/examples/SnapshotFinishedByVictory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v1/games/{gameId}/events:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+    get:
+      operationId: streamGameEvents
+      tags: [games]
+      summary: Live snapshots (Server-Sent Events)
+      description: |
+        Keep one stream open per game while it is on screen (browser `EventSource`, cookies included).
+
+        - Event `snapshot`: `id` is the snapshot `version`, `data` is one complete `GameSnapshot` JSON
+          document. The first event is always the current snapshot, so connecting or reconnecting
+          needs no other call. A snapshot is pushed whenever the caller's view changes.
+        - Event `closed`: `data` is a `StreamClosed` JSON document and the server then ends the stream.
+          Do **not** reconnect: call `EventSource.close()`, or the browser reconnects by itself.
+          `REPLACED` means this browser opened a newer stream for the same game (another tab);
+          `GAME_UNAVAILABLE` is sent only when the game stops existing for this browser (expired,
+          removed, or the player left) - call `GET /api/v1/games/{gameId}` once to show why.
+          `FINISHED` and `ABANDONED` arrive as ordinary snapshots and keep the stream open.
+        - Comment lines (`: keep-alive`) arrive every `heartbeatSeconds` and carry no meaning.
+        - A stream that ends without `closed` (network loss, server limit) is reconnected by the
+          browser automatically. `EventSource` gives up for good when a reconnect is refused with any
+          status, even a passing `429` or `503`, and does not expose it: on `error` with `readyState`
+          `CLOSED`, call `GET /api/v1/games/{gameId}` and open a new stream if that succeeds.
+
+        Only one stream per player and game is kept; a newer one replaces the older one. An open
+        stream marks the player as `connected` but does not keep the game alive.
+      security:
+        - session: []
+      responses:
+        '200':
+          description: Event stream.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: '`snapshot` events carry `GameSnapshot`; `closed` events carry `StreamClosed`.'
+              examples:
+                stream:
+                  $ref: '#/components/examples/EventStream'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v1/games/{gameId}/invitation:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+    post:
+      operationId: replaceInvitation
+      tags: [games]
+      summary: Replace the invitation link
+      description: >-
+        For the host while `NEW_INVITATION` is in `allowedActions` (phase `WAITING`): when the link
+        expired or was sent to the wrong person. The previous link stops working immediately and the
+        snapshot carries the new `invitationUrl`. Never call it automatically, because it invalidates
+        a link the host may already have shared. Does not keep the game alive.
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '200':
+          description: Snapshot with the new invitation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameSnapshot'
+              examples:
+                waiting:
+                  $ref: '#/components/examples/SnapshotWaiting'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v1/games/{gameId}/presence:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+    post:
+      operationId: sendPresence
+      tags: [games]
+      summary: Tell the server the player is still looking at the game
+      description: >-
+        While `SEND_PRESENCE` is in `allowedActions` and the page is visible, call it every
+        `limits.presenceIntervalSeconds`. It moves `expiresAt` forward so a game is not removed while
+        a player is thinking or waiting for a guest; calls that come more often change nothing. Never
+        call it from a hidden tab.
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '200':
+          description: Current snapshot (with the possibly later `expiresAt`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameSnapshot'
+              examples:
+                waiting:
+                  $ref: '#/components/examples/SnapshotWaiting'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v1/games/{gameId}/leave:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+    post:
+      operationId: leaveGame
+      tags: [games]
+      summary: Leave a game for good
+      description: >-
+        Allowed while `LEAVE` is in `allowedActions`. Before play starts it ends the game for both
+        players (`ABANDONED`; a game nobody else joined is simply removed) and no board is revealed.
+        During `PLAYING` it is refused with `409 action-not-allowed`; send the `RESIGN` command first.
+        After `FINISHED` or `ABANDONED` it only removes the caller's access to the result. Afterwards
+        this browser gets `404` for the game, also for a repeated leave, so treat `404` as already left.
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '204':
+          description: The caller is no longer a player of this game.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        default:
+          $ref: '#/components/responses/Problem'
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: __Host-battleship_session
+      description: >-
+        Anonymous browser session: `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/`, no `Domain`, no
+        expiry attribute. Random, at least 256 bits. Never appears in a URL, a body or script-readable
+        storage. A missing, unknown or malformed cookie on a protected operation answers
+        `401 session-required` and clears the cookie. Create and join never answer `401`: they issue a
+        new session when the cookie is missing, unknown or malformed.
+    csrf:
+      type: apiKey
+      in: header
+      name: X-XSRF-TOKEN
+      description: >-
+        Value of the readable `XSRF-TOKEN` cookie set by `GET /api/v1/meta`. Required on every `POST`.
+        A missing or wrong value answers `403 request-security-rejected`; call `GET /api/v1/meta` and
+        try once more.
+  parameters:
+    GameId:
+      name: gameId
+      in: path
+      required: true
+      description: Public locator of a game. Knowing it grants nothing.
+      schema:
+        $ref: '#/components/schemas/GameId'
+  responses:
+    BadRequest:
+      description: The body is not valid JSON. Code `malformed-request`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            malformedRequest:
+              value: { title: Malformed request, status: 400, code: malformed-request, correlationId: 9f2c1d7a4b6e4c1e }
+    Unauthorized:
+      description: No valid session cookie. Code `session-required`. A presented invalid cookie is cleared.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            sessionRequired:
+              value: { title: Session required, status: 401, code: session-required, correlationId: 9f2c1d7a4b6e4c1e }
+    Forbidden:
+      description: CSRF token, `Origin` or Fetch Metadata check failed. Code `request-security-rejected`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            requestSecurityRejected:
+              value: { title: Request rejected, status: 403, code: request-security-rejected, correlationId: 9f2c1d7a4b6e4c1e }
+    NotFound:
+      description: >-
+        No such game for this browser: it never existed, was removed, or the caller is not one of its
+        players. Code `game-unavailable`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            gameUnavailable:
+              value: { title: Game unavailable, status: 404, code: game-unavailable, correlationId: 9f2c1d7a4b6e4c1e }
+    Conflict:
+      description: >-
+        The request is well formed but the game does not allow it now. Codes: `invitation-unavailable`
+        (join), `action-not-allowed` (not in `allowedActions`: wrong phase, not your turn, already
+        ready, fleet incomplete, not the host), `placement-out-of-bounds`, `placement-overlap`,
+        `placement-touching`, `target-already-fired`. Nothing changed; except for
+        `invitation-unavailable`, fetch the snapshot.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            invitationUnavailable:
+              value: { title: Invitation unavailable, status: 409, code: invitation-unavailable, correlationId: 9f2c1d7a4b6e4c1e }
+            actionNotAllowed:
+              value: { title: Action not allowed, status: 409, code: action-not-allowed, correlationId: 9f2c1d7a4b6e4c1e }
+            placementTouching:
+              value: { title: Ships may not touch, status: 409, code: placement-touching, correlationId: 9f2c1d7a4b6e4c1e }
+            targetAlreadyFired:
+              value: { title: Target already fired, status: 409, code: target-already-fired, correlationId: 9f2c1d7a4b6e4c1e }
+    Gone:
+      description: >-
+        The game expired and the server still remembers that it did. Code `game-expired`. Once the
+        server forgets the game the answer becomes `404`; clients treat both as gone.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            gameExpired:
+              value: { title: Game expired, status: 410, code: game-expired, correlationId: 9f2c1d7a4b6e4c1e }
+    Unprocessable:
+      description: A field is missing, unknown or has an invalid value. Code `validation-failed` with `violations`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            validationFailed:
+              value:
+                title: Validation failed
+                status: 422
+                code: validation-failed
+                correlationId: 9f2c1d7a4b6e4c1e
+                violations:
+                  - { field: /displayName, rule: TOO_LONG }
+    TooManyRequests:
+      description: Rate limit reached. Code `rate-limit-exceeded`. Wait `retryAfterSeconds`.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            rateLimitExceeded:
+              value: { title: Too many requests, status: 429, code: rate-limit-exceeded, correlationId: 9f2c1d7a4b6e4c1e, retryAfterSeconds: 12 }
+    ServiceUnavailable:
+      description: >-
+        The server is full, starting or shutting down. Code `service-unavailable`. Running games are
+        never removed to make room.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            serviceUnavailable:
+              value: { title: Service unavailable, status: 503, code: service-unavailable, correlationId: 9f2c1d7a4b6e4c1e, retryAfterSeconds: 30 }
+    Problem:
+      description: Any other failure (for example `413`, `415`, `500`, `503`) uses the same document.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            internalError:
+              value: { title: Internal error, status: 500, code: internal-error, correlationId: 9f2c1d7a4b6e4c1e }
+  headers:
+    RetryAfter:
+      description: Seconds to wait; equals `retryAfterSeconds` in the body.
+      schema:
+        type: integer
+        minimum: 1
+  schemas:
+    GameId:
+      type: string
+      pattern: '^[A-Za-z0-9_-]{22}$'
+      description: Random 128-bit value, base64url.
+      examples: [Zk3vQ1hYc0a7Tn2LwR9sXg]
+    DisplayName:
+      type: string
+      minLength: 1
+      maxLength: 32
+      description: >-
+        Name shown to both players. The server trims surrounding whitespace, normalizes to Unicode NFC
+        and rejects control characters; length is counted in code points after that. It is plain
+        text, need not be unique, cannot be changed and proves nothing about who the player is.
+        Always display it as text, never as markup.
+    Instant:
+      type: string
+      format: date-time
+      description: UTC timestamp, RFC 3339.
+      examples: ['2026-09-20T12:00:00.000Z']
+    Coordinate:
+      type: object
+      description: One board cell, zero-based; `rowIndex` 0 is the top row and `columnIndex` 0 the left column.
+      required: [rowIndex, columnIndex]
+      additionalProperties: false
+      properties:
+        rowIndex:
+          type: integer
+          minimum: 0
+          maximum: 99
+        columnIndex:
+          type: integer
+          minimum: 0
+          maximum: 99
+    Orientation:
+      type: string
+      enum: [HORIZONTAL, VERTICAL]
+      description: '`HORIZONTAL` extends from the anchor to the right, `VERTICAL` extends downwards.'
+    Side:
+      type: string
+      enum: [YOU, OPPONENT]
+      description: A player, named from the point of view of the caller who receives the snapshot.
+    Phase:
+      type: string
+      enum: [WAITING, PLACEMENT, PLAYING, FINISHED, ABANDONED]
+      description: |
+        - `WAITING`: the host waits for a guest.
+        - `PLACEMENT`: both players arrange their fleets privately and declare `READY`.
+        - `PLAYING`: players fire in turns; starts when both are ready. Who fires first is chosen
+          randomly by the server and first visible as `turn`.
+        - `FINISHED`: a fleet was destroyed or a player resigned. Both boards and `statistics` are shown.
+        - `ABANDONED`: a player left before play started. Nothing is revealed.
+    Action:
+      type: string
+      enum:
+        - PLACE_SHIP
+        - REMOVE_SHIP
+        - PLACE_FLEET_RANDOMLY
+        - CLEAR_FLEET
+        - READY
+        - FIRE
+        - RESIGN
+        - NEW_INVITATION
+        - SEND_PRESENCE
+        - LEAVE
+      description: >-
+        Something the caller may do right now. The first seven are command types for
+        `POST .../commands`; `NEW_INVITATION`, `SEND_PRESENCE` and `LEAVE` are the operations
+        `POST .../invitation`, `POST .../presence` and `POST .../leave`.
+    CellState:
+      type: string
+      enum: [UNKNOWN, WATER, SHIP, MISS, HIT, SUNK, REVEALED_WATER]
+      description: |
+        - `UNKNOWN`: not disclosed (opponent board only).
+        - `WATER`: empty cell that was not fired at.
+        - `SHIP`: ship cell that was not hit.
+        - `MISS`: fired at, empty.
+        - `HIT`: fired at, part of a ship that is still afloat.
+        - `SUNK`: part of a sunk ship.
+        - `REVEALED_WATER`: empty cell next to a sunk ship, disclosed by the ruleset without a shot.
+    ShipStatus:
+      type: string
+      enum: [INTACT, DAMAGED, SUNK]
+    Ship:
+      type: object
+      required: [shipId, shipTypeId, length, cells, status]
+      properties:
+        shipId:
+          type: string
+          pattern: '^[A-Za-z0-9_-]{1,32}$'
+          description: Identifies this ship within the game; created by the server. Use it in ship commands.
+        shipTypeId:
+          type: string
+          description: Fleet entry of the ruleset this ship belongs to.
+        length:
+          type: integer
+          minimum: 1
+        cells:
+          type: array
+          description: Cells the ship occupies, from the anchor onwards. Empty while the ship is not placed.
+          items:
+            $ref: '#/components/schemas/Coordinate'
+        anchor:
+          allOf:
+            - $ref: '#/components/schemas/Coordinate'
+          description: Top-left cell of the ship. Absent while the ship is not placed.
+        orientation:
+          allOf:
+            - $ref: '#/components/schemas/Orientation'
+          description: Absent while the ship is not placed.
+        status:
+          $ref: '#/components/schemas/ShipStatus'
+    Board:
+      type: object
+      required: [grid, ships]
+      properties:
+        grid:
+          type: array
+          description: >-
+            Every cell of the board: `grid[rowIndex][columnIndex]`. Always complete, so it can be
+            drawn as is.
+          items:
+            type: array
+            items:
+              $ref: '#/components/schemas/CellState'
+        ships:
+          type: array
+          description: Ships the caller is allowed to know on this board.
+          items:
+            $ref: '#/components/schemas/Ship'
+    Player:
+      type: object
+      required: [displayName, ready, connected, shipsRemaining]
+      properties:
+        displayName:
+          $ref: '#/components/schemas/DisplayName'
+        ready:
+          type: boolean
+          description: The player declared the fleet ready. Cannot be undone.
+        connected:
+          type: boolean
+          description: The player currently has an open event stream.
+        shipsRemaining:
+          type: integer
+          minimum: 0
+          description: Ships of the player's fleet that are not sunk (fleet size minus sunk ships).
+    Shot:
+      type: object
+      required: [by, target, result]
+      description: >-
+        The most recent accepted `FIRE`, for feedback such as animation and sound. Absent until the
+        first shot. Later snapshots repeat it unchanged, so play feedback once per `by` + `target`.
+      properties:
+        by:
+          $ref: '#/components/schemas/Side'
+        target:
+          $ref: '#/components/schemas/Coordinate'
+        result:
+          type: string
+          enum: [MISS, HIT, SUNK]
+        sunkShipId:
+          type: string
+          description: >-
+            Present when `result` is `SUNK`: the ship in `opponentBoard.ships` (shot by `YOU`) or in
+            `yourBoard.ships` (shot by `OPPONENT`).
+    Outcome:
+      type: object
+      required: [winner, reason]
+      properties:
+        winner:
+          $ref: '#/components/schemas/Side'
+        reason:
+          type: string
+          enum: [FLEET_DESTROYED, RESIGNATION]
+    DurationAggregate:
+      type: object
+      required: [count, totalMs]
+      description: Durations measured by the server clock. The last three fields are absent when `count` is 0.
+      properties:
+        count:
+          type: integer
+          minimum: 0
+        totalMs:
+          type: integer
+          minimum: 0
+        averageMs:
+          type: integer
+          minimum: 0
+          description: Rounded to the nearest millisecond.
+        fastestMs:
+          type: integer
+          minimum: 0
+        slowestMs:
+          type: integer
+          minimum: 0
+    FleetSummary:
+      type: object
+      required: [total, intact, damaged, sunk]
+      description: '`intact + damaged + sunk = total`.'
+      properties:
+        total:
+          type: integer
+          minimum: 0
+        intact:
+          type: integer
+          minimum: 0
+        damaged:
+          type: integer
+          minimum: 0
+        sunk:
+          type: integer
+          minimum: 0
+    PlayerStatistics:
+      type: object
+      required: [placementDurationMs, shots, hits, turns, shotDecisions, fleet]
+      properties:
+        placementDurationMs:
+          type: integer
+          minimum: 0
+          description: From the guest joining until this player's `READY`.
+        shots:
+          type: integer
+          minimum: 0
+          description: Accepted `FIRE` commands.
+        hits:
+          type: integer
+          minimum: 0
+          description: Shots that hit or sank a ship.
+        accuracy:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: '`hits / shots` rounded to four decimals. Absent when `shots` is 0.'
+        turns:
+          allOf:
+            - $ref: '#/components/schemas/DurationAggregate'
+          description: >-
+            One sample per turn: from receiving the right to fire until it passes to the opponent or
+            the game ends. Both players' `turns.totalMs` add up to `match.gameplayDurationMs`.
+        shotDecisions:
+          allOf:
+            - $ref: '#/components/schemas/DurationAggregate'
+          description: >-
+            One sample per accepted `FIRE`: from being able to fire until the shot. `count` equals
+            `shots`. Differs from `turns` when a hit grants another shot.
+        fleet:
+          $ref: '#/components/schemas/FleetSummary'
+    MatchStatistics:
+      type: object
+      required: [totalDurationMs, placementDurationMs, gameplayDurationMs]
+      description: '`totalDurationMs = placementDurationMs + gameplayDurationMs`.'
+      properties:
+        totalDurationMs:
+          type: integer
+          minimum: 0
+          description: From the guest joining until the game finished.
+        placementDurationMs:
+          type: integer
+          minimum: 0
+          description: From the guest joining until both players were ready.
+        gameplayDurationMs:
+          type: integer
+          minimum: 0
+          description: From both players being ready until the game finished.
+    GameStatistics:
+      type: object
+      required: [match, you, opponent]
+      description: Calculated by the server. Clients format these values and never recompute them.
+      properties:
+        match:
+          $ref: '#/components/schemas/MatchStatistics'
+        you:
+          $ref: '#/components/schemas/PlayerStatistics'
+        opponent:
+          $ref: '#/components/schemas/PlayerStatistics'
+    GameSnapshot:
+      type: object
+      description: >-
+        Everything one player may see of a game at one moment, from that player's point of view. The
+        same document is returned by every game operation and pushed on the event stream.
+      required:
+        - gameId
+        - version
+        - serverTime
+        - rulesetId
+        - phase
+        - you
+        - allowedActions
+        - expiresAt
+        - yourBoard
+        - opponentBoard
+      properties:
+        gameId:
+          $ref: '#/components/schemas/GameId'
+        version:
+          type: integer
+          minimum: 0
+          description: >-
+            Grows whenever anything in either player's snapshot changes. Only for ordering: display a
+            snapshot when its version is greater than the displayed one. Numbers may skip.
+        serverTime:
+          allOf:
+            - $ref: '#/components/schemas/Instant'
+          description: Server clock when this snapshot was produced.
+        rulesetId:
+          type: string
+          description: '`id` of a ruleset from `GET /api/v1/rulesets`.'
+        phase:
+          $ref: '#/components/schemas/Phase'
+        you:
+          $ref: '#/components/schemas/Player'
+        opponent:
+          allOf:
+            - $ref: '#/components/schemas/Player'
+          description: Absent while no guest has joined.
+        turn:
+          allOf:
+            - $ref: '#/components/schemas/Side'
+          description: Who may fire. Present only in `PLAYING`.
+        allowedActions:
+          type: array
+          uniqueItems: true
+          description: >-
+            Exactly what the caller may do now. Enable these controls and no others; never derive
+            permissions from `phase` or `turn`. During placement the four fleet-editing actions stay
+            available until `READY`; `READY` itself appears once the whole fleet is placed.
+          items:
+            $ref: '#/components/schemas/Action'
+        expiresAt:
+          allOf:
+            - $ref: '#/components/schemas/Instant'
+          description: >-
+            When the server removes the game unless something keeps it alive. Before the end of a game
+            it is `limits.idleTimeoutSeconds` after the latest of creation, join, accepted command or
+            presence, and never later than `limits.maxGameDurationSeconds` after creation. After
+            `FINISHED` or `ABANDONED` it is `limits.resultRetentionSeconds` later.
+        invitationUrl:
+          type: string
+          format: uri
+          description: >-
+            Host only, phase `WAITING`: the link to share, exactly as given. Shape
+            `{site}/join/{gameId}#invite={invitationSecret}`.
+        invitationExpiresAt:
+          allOf:
+            - $ref: '#/components/schemas/Instant'
+          description: Host only, phase `WAITING`. After it, replace the invitation.
+        yourBoard:
+          allOf:
+            - $ref: '#/components/schemas/Board'
+          description: >-
+            The caller's own board. `grid` never contains `UNKNOWN`. From `PLACEMENT` on, `ships` lists
+            the whole fleet, including ships that are not placed yet.
+        opponentBoard:
+          allOf:
+            - $ref: '#/components/schemas/Board'
+          description: >-
+            What the caller may know about the opponent's board. Until `FINISHED`, `grid` contains only
+            `UNKNOWN`, `MISS`, `HIT`, `SUNK` and `REVEALED_WATER`, and `ships` lists only sunk ships.
+            In `FINISHED` the whole board and fleet are shown. In `ABANDONED` nothing is ever revealed.
+        lastShot:
+          $ref: '#/components/schemas/Shot'
+        outcome:
+          allOf:
+            - $ref: '#/components/schemas/Outcome'
+          description: Present only in `FINISHED`.
+        statistics:
+          allOf:
+            - $ref: '#/components/schemas/GameStatistics'
+          description: Present only in `FINISHED`.
+    FleetEntry:
+      type: object
+      required: [shipTypeId, length, count]
+      properties:
+        shipTypeId:
+          type: string
+          pattern: '^[a-z0-9-]{2,32}$'
+        length:
+          type: integer
+          minimum: 1
+        count:
+          type: integer
+          minimum: 1
+    Ruleset:
+      type: object
+      required: [id, board, fleet, shipsMayTouch, extraTurnOnHit, revealWaterAroundSunk]
+      description: Ships are straight, horizontal or vertical, never overlap, and one cell is fired per shot.
+      properties:
+        id:
+          type: string
+          pattern: '^[a-z0-9-]+\.v[0-9]+$'
+        board:
+          type: object
+          required: [rows, columns]
+          properties:
+            rows:
+              type: integer
+              minimum: 1
+              maximum: 100
+            columns:
+              type: integer
+              minimum: 1
+              maximum: 100
+        fleet:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/FleetEntry'
+        shipsMayTouch:
+          type: boolean
+          description: When false, ships may not be adjacent, not even diagonally.
+        extraTurnOnHit:
+          type: boolean
+          description: When true, a player who hits or sinks fires again.
+        revealWaterAroundSunk:
+          type: boolean
+          description: >-
+            When true, the up to eight neighbours of every cell of a sunk ship that are still
+            `UNKNOWN` become `REVEALED_WATER`.
+    RulesetList:
+      type: object
+      required: [rulesets]
+      properties:
+        rulesets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ruleset'
+    Limits:
+      type: object
+      required:
+        - idleTimeoutSeconds
+        - maxGameDurationSeconds
+        - resultRetentionSeconds
+        - invitationLifetimeSeconds
+        - presenceIntervalSeconds
+        - heartbeatSeconds
+      properties:
+        idleTimeoutSeconds:
+          type: integer
+          minimum: 1
+        maxGameDurationSeconds:
+          type: integer
+          minimum: 1
+        resultRetentionSeconds:
+          type: integer
+          minimum: 1
+        invitationLifetimeSeconds:
+          type: integer
+          minimum: 1
+        presenceIntervalSeconds:
+          type: integer
+          minimum: 1
+        heartbeatSeconds:
+          type: integer
+          minimum: 1
+    Meta:
+      type: object
+      required: [apiVersion, serverTime, limits]
+      properties:
+        apiVersion:
+          type: string
+          pattern: '^1\.[0-9]+\.[0-9]+$'
+          description: Version of this contract implemented by the server.
+        serverTime:
+          $ref: '#/components/schemas/Instant'
+        limits:
+          $ref: '#/components/schemas/Limits'
+    Health:
+      type: object
+      required: [live, ready]
+      properties:
+        live:
+          type: boolean
+        ready:
+          type: boolean
+        reason:
+          type: string
+          enum: [STARTING, DRAINING]
+          description: Present when `ready` is false.
+    CreateGameRequest:
+      type: object
+      required: [rulesetId, displayName]
+      additionalProperties: false
+      properties:
+        rulesetId:
+          type: string
+          maxLength: 64
+        displayName:
+          $ref: '#/components/schemas/DisplayName'
+    JoinGameRequest:
+      type: object
+      required: [invitationSecret, displayName]
+      additionalProperties: false
+      properties:
+        invitationSecret:
+          type: string
+          pattern: '^[A-Za-z0-9_-]{43}$'
+          description: Random 256-bit value from the invitation link fragment. Never store or log it.
+        displayName:
+          $ref: '#/components/schemas/DisplayName'
+    PlaceShipCommand:
+      type: object
+      required: [type, shipId, anchor, orientation]
+      additionalProperties: false
+      description: >-
+        Puts a ship on the board. For a ship that is already placed it is an atomic move and/or
+        rotation. Placing a ship exactly where it is changes nothing and succeeds.
+      properties:
+        type:
+          type: string
+          const: PLACE_SHIP
+        shipId:
+          type: string
+          maxLength: 32
+        anchor:
+          $ref: '#/components/schemas/Coordinate'
+        orientation:
+          $ref: '#/components/schemas/Orientation'
+    RemoveShipCommand:
+      type: object
+      required: [type, shipId]
+      additionalProperties: false
+      description: Takes a ship off the board. Removing a ship that is not placed changes nothing and succeeds.
+      properties:
+        type:
+          type: string
+          const: REMOVE_SHIP
+        shipId:
+          type: string
+          maxLength: 32
+    FireCommand:
+      type: object
+      required: [type, target]
+      additionalProperties: false
+      description: >-
+        Fires at one cell of the opponent's board. A cell that is not `UNKNOWN` answers
+        `409 target-already-fired` and costs nothing.
+      properties:
+        type:
+          type: string
+          const: FIRE
+        target:
+          $ref: '#/components/schemas/Coordinate'
+    SimpleCommand:
+      type: object
+      required: [type]
+      additionalProperties: false
+      description: |
+        Commands without further fields.
+        - `PLACE_FLEET_RANDOMLY`: the server arranges the whole fleet legally at random, replacing the
+          current arrangement. Clients need no placement rules of their own.
+        - `CLEAR_FLEET`: takes every ship off the board.
+        - `READY`: locks the fleet. Cannot be undone. Play starts when both players are ready.
+        - `RESIGN`: ends a game in `PLAYING`; the opponent wins and both boards are shown.
+      properties:
+        type:
+          type: string
+          enum: [PLACE_FLEET_RANDOMLY, CLEAR_FLEET, READY, RESIGN]
+    Command:
+      oneOf:
+        - $ref: '#/components/schemas/PlaceShipCommand'
+        - $ref: '#/components/schemas/RemoveShipCommand'
+        - $ref: '#/components/schemas/FireCommand'
+        - $ref: '#/components/schemas/SimpleCommand'
+      discriminator:
+        propertyName: type
+        mapping:
+          PLACE_SHIP: '#/components/schemas/PlaceShipCommand'
+          REMOVE_SHIP: '#/components/schemas/RemoveShipCommand'
+          FIRE: '#/components/schemas/FireCommand'
+          PLACE_FLEET_RANDOMLY: '#/components/schemas/SimpleCommand'
+          CLEAR_FLEET: '#/components/schemas/SimpleCommand'
+          READY: '#/components/schemas/SimpleCommand'
+          RESIGN: '#/components/schemas/SimpleCommand'
+    CommandRequest:
+      type: object
+      required: [commandId, command]
+      additionalProperties: false
+      properties:
+        commandId:
+          type: string
+          format: uuid
+          description: >-
+            New random UUID for every new action; the same value when resending after a lost answer.
+            The server remembers at least the last 16 accepted values per player and game.
+        command:
+          $ref: '#/components/schemas/Command'
+    StreamClosed:
+      type: object
+      required: [reason]
+      description: Data of the `closed` event on the event stream.
+      properties:
+        reason:
+          type: string
+          enum: [REPLACED, GAME_UNAVAILABLE]
+    Violation:
+      type: object
+      required: [field, rule]
+      properties:
+        field:
+          type: string
+          description: JSON Pointer to the offending request field, for example `/command/anchor/rowIndex`.
+        rule:
+          type: string
+          enum: [REQUIRED, UNKNOWN_FIELD, INVALID_TYPE, INVALID_FORMAT, TOO_SHORT, TOO_LONG, OUT_OF_RANGE, UNKNOWN_VALUE]
+    ProblemCode:
+      type: string
+      enum:
+        - malformed-request
+        - session-required
+        - request-security-rejected
+        - game-unavailable
+        - invitation-unavailable
+        - action-not-allowed
+        - placement-out-of-bounds
+        - placement-overlap
+        - placement-touching
+        - target-already-fired
+        - game-expired
+        - payload-too-large
+        - unsupported-media-type
+        - validation-failed
+        - rate-limit-exceeded
+        - internal-error
+        - service-unavailable
+    Problem:
+      type: object
+      required: [title, status, code]
+      description: >-
+        RFC 9457 problem document. Never contains secrets, cookies, board data, request bodies, stack
+        traces or exception text.
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          description: Optional RFC 9457 type; `about:blank` when absent. Clients use `code`.
+        title:
+          type: string
+          description: Short English text for developers and logs. Not shown to players.
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        code:
+          $ref: '#/components/schemas/ProblemCode'
+        detail:
+          type: string
+          description: Optional English explanation for developers.
+        correlationId:
+          type: string
+          maxLength: 64
+          description: Identifies the request in server logs.
+        violations:
+          type: array
+          description: Present with `validation-failed`.
+          items:
+            $ref: '#/components/schemas/Violation'
+        retryAfterSeconds:
+          type: integer
+          minimum: 1
+          description: Present with `rate-limit-exceeded` and `service-unavailable`.
+  examples:
+    Meta:
+      value:
+        apiVersion: 1.0.0
+        serverTime: '2026-09-20T12:00:00.000Z'
+        limits:
+          idleTimeoutSeconds: 900
+          maxGameDurationSeconds: 7200
+          resultRetentionSeconds: 300
+          invitationLifetimeSeconds: 900
+          presenceIntervalSeconds: 300
+          heartbeatSeconds: 15
+    Rulesets:
+      value:
+        rulesets:
+          - id: sea-battle-10-ship.v1
+            board: { rows: 10, columns: 10 }
+            fleet:
+              - { shipTypeId: ship-4, length: 4, count: 1 }
+              - { shipTypeId: ship-3, length: 3, count: 2 }
+              - { shipTypeId: ship-2, length: 2, count: 3 }
+              - { shipTypeId: ship-1, length: 1, count: 4 }
+            shipsMayTouch: false
+            extraTurnOnHit: true
+            revealWaterAroundSunk: true
+          - id: hasbro-classic-2002.v1
+            board: { rows: 10, columns: 10 }
+            fleet:
+              - { shipTypeId: carrier, length: 5, count: 1 }
+              - { shipTypeId: battleship, length: 4, count: 1 }
+              - { shipTypeId: destroyer, length: 3, count: 1 }
+              - { shipTypeId: submarine, length: 3, count: 1 }
+              - { shipTypeId: patrol-boat, length: 2, count: 1 }
+            shipsMayTouch: true
+            extraTurnOnHit: false
+            revealWaterAroundSunk: false
+    SnapshotWaiting:
+      summary: Host waits for a guest
+      value:
+        gameId: Zk3vQ1hYc0a7Tn2LwR9sXg
+        version: 0
+        serverTime: '2026-09-20T12:00:00.000Z'
+        rulesetId: sea-battle-10-ship.v1
+        phase: WAITING
+        you: { displayName: Captain, ready: false, connected: false, shipsRemaining: 10 }
+        allowedActions: [NEW_INVITATION, SEND_PRESENCE, LEAVE]
+        expiresAt: '2026-09-20T12:15:00.000Z'
+        invitationUrl: 'https://battleship.example/join/Zk3vQ1hYc0a7Tn2LwR9sXg#invite=REDACTEDREDACTEDREDACTEDREDACTEDREDACTED000'
+        invitationExpiresAt: '2026-09-20T12:15:00.000Z'
+        yourBoard:
+          grid:
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+          ships: []
+        opponentBoard:
+          grid:
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+          ships: []
+    SnapshotPlacementStart:
+      summary: Guest has just joined; the whole fleet is listed, nothing is placed
+      value:
+        gameId: Zk3vQ1hYc0a7Tn2LwR9sXg
+        version: 2
+        serverTime: '2026-09-20T12:02:00.000Z'
+        rulesetId: sea-battle-10-ship.v1
+        phase: PLACEMENT
+        you: { displayName: Rival, ready: false, connected: false, shipsRemaining: 10 }
+        opponent: { displayName: Captain, ready: false, connected: true, shipsRemaining: 10 }
+        allowedActions: [PLACE_SHIP, REMOVE_SHIP, PLACE_FLEET_RANDOMLY, CLEAR_FLEET, SEND_PRESENCE, LEAVE]
+        expiresAt: '2026-09-20T12:17:00.000Z'
+        yourBoard:
+          grid:
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+          ships:
+            - { shipId: s01, shipTypeId: ship-4, length: 4,
+                cells: [],
+                status: INTACT }
+            - { shipId: s02, shipTypeId: ship-3, length: 3,
+                cells: [],
+                status: INTACT }
+            - { shipId: s03, shipTypeId: ship-3, length: 3,
+                cells: [],
+                status: INTACT }
+            - { shipId: s04, shipTypeId: ship-2, length: 2,
+                cells: [],
+                status: INTACT }
+            - { shipId: s05, shipTypeId: ship-2, length: 2,
+                cells: [],
+                status: INTACT }
+            - { shipId: s06, shipTypeId: ship-2, length: 2,
+                cells: [],
+                status: INTACT }
+            - { shipId: s07, shipTypeId: ship-1, length: 1,
+                cells: [],
+                status: INTACT }
+            - { shipId: s08, shipTypeId: ship-1, length: 1,
+                cells: [],
+                status: INTACT }
+            - { shipId: s09, shipTypeId: ship-1, length: 1,
+                cells: [],
+                status: INTACT }
+            - { shipId: s10, shipTypeId: ship-1, length: 1,
+                cells: [],
+                status: INTACT }
+        opponentBoard:
+          grid:
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+          ships: []
+    SnapshotPlacementInProgress:
+      summary: Three ships placed; READY is not offered until the fleet is complete
+      value:
+        gameId: Zk3vQ1hYc0a7Tn2LwR9sXg
+        version: 8
+        serverTime: '2026-09-20T12:03:10.000Z'
+        rulesetId: sea-battle-10-ship.v1
+        phase: PLACEMENT
+        you: { displayName: Captain, ready: false, connected: true, shipsRemaining: 10 }
+        opponent: { displayName: Rival, ready: true, connected: true, shipsRemaining: 10 }
+        allowedActions: [PLACE_SHIP, REMOVE_SHIP, PLACE_FLEET_RANDOMLY, CLEAR_FLEET, SEND_PRESENCE, LEAVE]
+        expiresAt: '2026-09-20T12:18:10.000Z'
+        yourBoard:
+          grid:
+            - [SHIP, SHIP, SHIP, SHIP, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [SHIP, SHIP, SHIP, WATER, SHIP, SHIP, SHIP, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+          ships:
+            - { shipId: s01, shipTypeId: ship-4, length: 4,
+                cells: [{rowIndex: 0, columnIndex: 0}, {rowIndex: 0, columnIndex: 1}, {rowIndex: 0, columnIndex: 2}, {rowIndex: 0, columnIndex: 3}],
+                anchor: {rowIndex: 0, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s02, shipTypeId: ship-3, length: 3,
+                cells: [{rowIndex: 2, columnIndex: 0}, {rowIndex: 2, columnIndex: 1}, {rowIndex: 2, columnIndex: 2}],
+                anchor: {rowIndex: 2, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s03, shipTypeId: ship-3, length: 3,
+                cells: [{rowIndex: 2, columnIndex: 4}, {rowIndex: 2, columnIndex: 5}, {rowIndex: 2, columnIndex: 6}],
+                anchor: {rowIndex: 2, columnIndex: 4}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s04, shipTypeId: ship-2, length: 2,
+                cells: [],
+                status: INTACT }
+            - { shipId: s05, shipTypeId: ship-2, length: 2,
+                cells: [],
+                status: INTACT }
+            - { shipId: s06, shipTypeId: ship-2, length: 2,
+                cells: [],
+                status: INTACT }
+            - { shipId: s07, shipTypeId: ship-1, length: 1,
+                cells: [],
+                status: INTACT }
+            - { shipId: s08, shipTypeId: ship-1, length: 1,
+                cells: [],
+                status: INTACT }
+            - { shipId: s09, shipTypeId: ship-1, length: 1,
+                cells: [],
+                status: INTACT }
+            - { shipId: s10, shipTypeId: ship-1, length: 1,
+                cells: [],
+                status: INTACT }
+        opponentBoard:
+          grid:
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+          ships: []
+    SnapshotPlayingAfterHit:
+      summary: You hit; under sea-battle rules you fire again
+      value:
+        gameId: Zk3vQ1hYc0a7Tn2LwR9sXg
+        version: 24
+        serverTime: '2026-09-20T12:03:48.100Z'
+        rulesetId: sea-battle-10-ship.v1
+        phase: PLAYING
+        you: { displayName: Captain, ready: true, connected: true, shipsRemaining: 10 }
+        opponent: { displayName: Rival, ready: true, connected: true, shipsRemaining: 10 }
+        turn: YOU
+        allowedActions: [FIRE, RESIGN, SEND_PRESENCE]
+        expiresAt: '2026-09-20T12:18:48.100Z'
+        yourBoard:
+          grid:
+            - [HIT, SHIP, SHIP, SHIP, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, MISS, WATER, WATER, WATER, WATER]
+            - [SHIP, SHIP, SHIP, WATER, SHIP, SHIP, SHIP, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [SHIP, SHIP, WATER, SHIP, SHIP, WATER, SHIP, SHIP, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [SHIP, WATER, SHIP, WATER, SHIP, WATER, SHIP, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+          ships:
+            - { shipId: s01, shipTypeId: ship-4, length: 4,
+                cells: [{rowIndex: 0, columnIndex: 0}, {rowIndex: 0, columnIndex: 1}, {rowIndex: 0, columnIndex: 2}, {rowIndex: 0, columnIndex: 3}],
+                anchor: {rowIndex: 0, columnIndex: 0}, orientation: HORIZONTAL, status: DAMAGED }
+            - { shipId: s02, shipTypeId: ship-3, length: 3,
+                cells: [{rowIndex: 2, columnIndex: 0}, {rowIndex: 2, columnIndex: 1}, {rowIndex: 2, columnIndex: 2}],
+                anchor: {rowIndex: 2, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s03, shipTypeId: ship-3, length: 3,
+                cells: [{rowIndex: 2, columnIndex: 4}, {rowIndex: 2, columnIndex: 5}, {rowIndex: 2, columnIndex: 6}],
+                anchor: {rowIndex: 2, columnIndex: 4}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s04, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 4, columnIndex: 0}, {rowIndex: 4, columnIndex: 1}],
+                anchor: {rowIndex: 4, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s05, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 4, columnIndex: 3}, {rowIndex: 4, columnIndex: 4}],
+                anchor: {rowIndex: 4, columnIndex: 3}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s06, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 4, columnIndex: 6}, {rowIndex: 4, columnIndex: 7}],
+                anchor: {rowIndex: 4, columnIndex: 6}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s07, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 6, columnIndex: 0}],
+                anchor: {rowIndex: 6, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s08, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 6, columnIndex: 2}],
+                anchor: {rowIndex: 6, columnIndex: 2}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s09, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 6, columnIndex: 4}],
+                anchor: {rowIndex: 6, columnIndex: 4}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s10, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 6, columnIndex: 6}],
+                anchor: {rowIndex: 6, columnIndex: 6}, orientation: HORIZONTAL, status: INTACT }
+        opponentBoard:
+          grid:
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, MISS, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, HIT, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+          ships: []
+        lastShot: { by: YOU, target: {rowIndex: 9, columnIndex: 1}, result: HIT }
+    SnapshotPlayingAfterSunk:
+      summary: You sank a ship; the ruleset reveals the water around it
+      value:
+        gameId: Zk3vQ1hYc0a7Tn2LwR9sXg
+        version: 26
+        serverTime: '2026-09-20T12:03:52.600Z'
+        rulesetId: sea-battle-10-ship.v1
+        phase: PLAYING
+        you: { displayName: Captain, ready: true, connected: true, shipsRemaining: 10 }
+        opponent: { displayName: Rival, ready: true, connected: true, shipsRemaining: 9 }
+        turn: YOU
+        allowedActions: [FIRE, RESIGN, SEND_PRESENCE]
+        expiresAt: '2026-09-20T12:18:52.600Z'
+        yourBoard:
+          grid:
+            - [HIT, SHIP, SHIP, SHIP, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, MISS, WATER, WATER, WATER, WATER]
+            - [SHIP, SHIP, SHIP, WATER, SHIP, SHIP, SHIP, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [SHIP, SHIP, WATER, SHIP, SHIP, WATER, SHIP, SHIP, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [SHIP, WATER, SHIP, WATER, SHIP, WATER, SHIP, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+          ships:
+            - { shipId: s01, shipTypeId: ship-4, length: 4,
+                cells: [{rowIndex: 0, columnIndex: 0}, {rowIndex: 0, columnIndex: 1}, {rowIndex: 0, columnIndex: 2}, {rowIndex: 0, columnIndex: 3}],
+                anchor: {rowIndex: 0, columnIndex: 0}, orientation: HORIZONTAL, status: DAMAGED }
+            - { shipId: s02, shipTypeId: ship-3, length: 3,
+                cells: [{rowIndex: 2, columnIndex: 0}, {rowIndex: 2, columnIndex: 1}, {rowIndex: 2, columnIndex: 2}],
+                anchor: {rowIndex: 2, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s03, shipTypeId: ship-3, length: 3,
+                cells: [{rowIndex: 2, columnIndex: 4}, {rowIndex: 2, columnIndex: 5}, {rowIndex: 2, columnIndex: 6}],
+                anchor: {rowIndex: 2, columnIndex: 4}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s04, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 4, columnIndex: 0}, {rowIndex: 4, columnIndex: 1}],
+                anchor: {rowIndex: 4, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s05, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 4, columnIndex: 3}, {rowIndex: 4, columnIndex: 4}],
+                anchor: {rowIndex: 4, columnIndex: 3}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s06, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 4, columnIndex: 6}, {rowIndex: 4, columnIndex: 7}],
+                anchor: {rowIndex: 4, columnIndex: 6}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s07, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 6, columnIndex: 0}],
+                anchor: {rowIndex: 6, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s08, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 6, columnIndex: 2}],
+                anchor: {rowIndex: 6, columnIndex: 2}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s09, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 6, columnIndex: 4}],
+                anchor: {rowIndex: 6, columnIndex: 4}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s10, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 6, columnIndex: 6}],
+                anchor: {rowIndex: 6, columnIndex: 6}, orientation: HORIZONTAL, status: INTACT }
+        opponentBoard:
+          grid:
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, MISS, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [SUNK, SUNK, SUNK, REVEALED_WATER, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+          ships:
+            - { shipId: s02, shipTypeId: ship-3, length: 3,
+                cells: [{rowIndex: 9, columnIndex: 0}, {rowIndex: 9, columnIndex: 1}, {rowIndex: 9, columnIndex: 2}],
+                anchor: {rowIndex: 9, columnIndex: 0}, orientation: HORIZONTAL, status: SUNK }
+        lastShot: { by: YOU, target: {rowIndex: 9, columnIndex: 2}, result: SUNK, sunkShipId: s02 }
+    SnapshotPlayingClassic:
+      summary: 'Classic rules: the opponent sank your patrol boat and the turn passed to you'
+      value:
+        gameId: Zk3vQ1hYc0a7Tn2LwR9sXg
+        version: 19
+        serverTime: '2026-09-20T13:10:00.000Z'
+        rulesetId: hasbro-classic-2002.v1
+        phase: PLAYING
+        you: { displayName: Captain, ready: true, connected: true, shipsRemaining: 4 }
+        opponent: { displayName: Rival, ready: true, connected: true, shipsRemaining: 4 }
+        turn: YOU
+        allowedActions: [FIRE, RESIGN, SEND_PRESENCE]
+        expiresAt: '2026-09-20T13:25:00.000Z'
+        yourBoard:
+          grid:
+            - [SHIP, SHIP, SHIP, SHIP, SHIP, WATER, WATER, WATER, WATER, WATER]
+            - [SHIP, SHIP, SHIP, SHIP, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [SHIP, SHIP, SHIP, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [SHIP, SHIP, SHIP, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [SUNK, SUNK, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+          ships:
+            - { shipId: s01, shipTypeId: carrier, length: 5,
+                cells: [{rowIndex: 0, columnIndex: 0}, {rowIndex: 0, columnIndex: 1}, {rowIndex: 0, columnIndex: 2}, {rowIndex: 0, columnIndex: 3}, {rowIndex: 0, columnIndex: 4}],
+                anchor: {rowIndex: 0, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s02, shipTypeId: battleship, length: 4,
+                cells: [{rowIndex: 1, columnIndex: 0}, {rowIndex: 1, columnIndex: 1}, {rowIndex: 1, columnIndex: 2}, {rowIndex: 1, columnIndex: 3}],
+                anchor: {rowIndex: 1, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s03, shipTypeId: destroyer, length: 3,
+                cells: [{rowIndex: 2, columnIndex: 0}, {rowIndex: 2, columnIndex: 1}, {rowIndex: 2, columnIndex: 2}],
+                anchor: {rowIndex: 2, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s04, shipTypeId: submarine, length: 3,
+                cells: [{rowIndex: 3, columnIndex: 0}, {rowIndex: 3, columnIndex: 1}, {rowIndex: 3, columnIndex: 2}],
+                anchor: {rowIndex: 3, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s05, shipTypeId: patrol-boat, length: 2,
+                cells: [{rowIndex: 4, columnIndex: 0}, {rowIndex: 4, columnIndex: 1}],
+                anchor: {rowIndex: 4, columnIndex: 0}, orientation: HORIZONTAL, status: SUNK }
+        opponentBoard:
+          grid:
+            - [UNKNOWN, UNKNOWN, SUNK, SUNK, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+          ships:
+            - { shipId: s05, shipTypeId: patrol-boat, length: 2,
+                cells: [{rowIndex: 0, columnIndex: 2}, {rowIndex: 0, columnIndex: 3}],
+                anchor: {rowIndex: 0, columnIndex: 2}, orientation: HORIZONTAL, status: SUNK }
+        lastShot: { by: OPPONENT, target: {rowIndex: 4, columnIndex: 1}, result: SUNK, sunkShipId: s05 }
+    SnapshotFinishedByVictory:
+      summary: You destroyed the fleet; the opponent's board is fully shown and statistics are present
+      value:
+        gameId: Zk3vQ1hYc0a7Tn2LwR9sXg
+        version: 58
+        serverTime: '2026-09-20T12:04:52.400Z'
+        rulesetId: sea-battle-10-ship.v1
+        phase: FINISHED
+        you: { displayName: Captain, ready: true, connected: true, shipsRemaining: 10 }
+        opponent: { displayName: Rival, ready: true, connected: true, shipsRemaining: 0 }
+        allowedActions: [LEAVE]
+        expiresAt: '2026-09-20T12:09:52.400Z'
+        yourBoard:
+          grid:
+            - [HIT, HIT, HIT, SHIP, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, MISS, WATER, WATER, WATER, WATER]
+            - [SHIP, SHIP, SHIP, WATER, SHIP, SHIP, SHIP, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, MISS, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [SHIP, SHIP, WATER, SHIP, SHIP, WATER, SHIP, SHIP, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [SHIP, WATER, SHIP, WATER, SHIP, WATER, SHIP, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, MISS, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+          ships:
+            - { shipId: s01, shipTypeId: ship-4, length: 4,
+                cells: [{rowIndex: 0, columnIndex: 0}, {rowIndex: 0, columnIndex: 1}, {rowIndex: 0, columnIndex: 2}, {rowIndex: 0, columnIndex: 3}],
+                anchor: {rowIndex: 0, columnIndex: 0}, orientation: HORIZONTAL, status: DAMAGED }
+            - { shipId: s02, shipTypeId: ship-3, length: 3,
+                cells: [{rowIndex: 2, columnIndex: 0}, {rowIndex: 2, columnIndex: 1}, {rowIndex: 2, columnIndex: 2}],
+                anchor: {rowIndex: 2, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s03, shipTypeId: ship-3, length: 3,
+                cells: [{rowIndex: 2, columnIndex: 4}, {rowIndex: 2, columnIndex: 5}, {rowIndex: 2, columnIndex: 6}],
+                anchor: {rowIndex: 2, columnIndex: 4}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s04, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 4, columnIndex: 0}, {rowIndex: 4, columnIndex: 1}],
+                anchor: {rowIndex: 4, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s05, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 4, columnIndex: 3}, {rowIndex: 4, columnIndex: 4}],
+                anchor: {rowIndex: 4, columnIndex: 3}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s06, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 4, columnIndex: 6}, {rowIndex: 4, columnIndex: 7}],
+                anchor: {rowIndex: 4, columnIndex: 6}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s07, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 6, columnIndex: 0}],
+                anchor: {rowIndex: 6, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s08, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 6, columnIndex: 2}],
+                anchor: {rowIndex: 6, columnIndex: 2}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s09, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 6, columnIndex: 4}],
+                anchor: {rowIndex: 6, columnIndex: 4}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s10, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 6, columnIndex: 6}],
+                anchor: {rowIndex: 6, columnIndex: 6}, orientation: HORIZONTAL, status: INTACT }
+        opponentBoard:
+          grid:
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, REVEALED_WATER, SUNK]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, REVEALED_WATER, SUNK]
+            - [WATER, WATER, MISS, WATER, WATER, WATER, WATER, WATER, REVEALED_WATER, SUNK]
+            - [WATER, WATER, WATER, MISS, WATER, MISS, WATER, WATER, REVEALED_WATER, SUNK]
+            - [REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER]
+            - [SUNK, REVEALED_WATER, SUNK, REVEALED_WATER, SUNK, REVEALED_WATER, SUNK, REVEALED_WATER, WATER, WATER]
+            - [REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, WATER]
+            - [SUNK, SUNK, REVEALED_WATER, SUNK, SUNK, REVEALED_WATER, SUNK, SUNK, REVEALED_WATER, WATER]
+            - [REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, WATER]
+            - [SUNK, SUNK, SUNK, REVEALED_WATER, SUNK, SUNK, SUNK, REVEALED_WATER, WATER, WATER]
+          ships:
+            - { shipId: s01, shipTypeId: ship-4, length: 4,
+                cells: [{rowIndex: 0, columnIndex: 9}, {rowIndex: 1, columnIndex: 9}, {rowIndex: 2, columnIndex: 9}, {rowIndex: 3, columnIndex: 9}],
+                anchor: {rowIndex: 0, columnIndex: 9}, orientation: VERTICAL, status: SUNK }
+            - { shipId: s02, shipTypeId: ship-3, length: 3,
+                cells: [{rowIndex: 9, columnIndex: 0}, {rowIndex: 9, columnIndex: 1}, {rowIndex: 9, columnIndex: 2}],
+                anchor: {rowIndex: 9, columnIndex: 0}, orientation: HORIZONTAL, status: SUNK }
+            - { shipId: s03, shipTypeId: ship-3, length: 3,
+                cells: [{rowIndex: 9, columnIndex: 4}, {rowIndex: 9, columnIndex: 5}, {rowIndex: 9, columnIndex: 6}],
+                anchor: {rowIndex: 9, columnIndex: 4}, orientation: HORIZONTAL, status: SUNK }
+            - { shipId: s04, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 7, columnIndex: 0}, {rowIndex: 7, columnIndex: 1}],
+                anchor: {rowIndex: 7, columnIndex: 0}, orientation: HORIZONTAL, status: SUNK }
+            - { shipId: s05, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 7, columnIndex: 3}, {rowIndex: 7, columnIndex: 4}],
+                anchor: {rowIndex: 7, columnIndex: 3}, orientation: HORIZONTAL, status: SUNK }
+            - { shipId: s06, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 7, columnIndex: 6}, {rowIndex: 7, columnIndex: 7}],
+                anchor: {rowIndex: 7, columnIndex: 6}, orientation: HORIZONTAL, status: SUNK }
+            - { shipId: s07, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 5, columnIndex: 0}],
+                anchor: {rowIndex: 5, columnIndex: 0}, orientation: HORIZONTAL, status: SUNK }
+            - { shipId: s08, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 5, columnIndex: 2}],
+                anchor: {rowIndex: 5, columnIndex: 2}, orientation: HORIZONTAL, status: SUNK }
+            - { shipId: s09, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 5, columnIndex: 4}],
+                anchor: {rowIndex: 5, columnIndex: 4}, orientation: HORIZONTAL, status: SUNK }
+            - { shipId: s10, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 5, columnIndex: 6}],
+                anchor: {rowIndex: 5, columnIndex: 6}, orientation: HORIZONTAL, status: SUNK }
+        lastShot: { by: YOU, target: {rowIndex: 5, columnIndex: 6}, result: SUNK, sunkShipId: s10 }
+        outcome: { winner: YOU, reason: FLEET_DESTROYED }
+        statistics:
+          match: { totalDurationMs: 172400, placementDurationMs: 95000, gameplayDurationMs: 77400 }
+          you:
+            placementDurationMs: 95000
+            shots: 23
+            hits: 20
+            accuracy: 0.8696
+            turns: { count: 4, totalMs: 56400, averageMs: 14100, fastestMs: 4100, slowestMs: 22300 }
+            shotDecisions: { count: 23, totalMs: 56400, averageMs: 2452, fastestMs: 1200, slowestMs: 6100 }
+            fleet: { total: 10, intact: 9, damaged: 1, sunk: 0 }
+          opponent:
+            placementDurationMs: 65000
+            shots: 6
+            hits: 3
+            accuracy: 0.5
+            turns: { count: 3, totalMs: 21000, averageMs: 7000, fastestMs: 5100, slowestMs: 9200 }
+            shotDecisions: { count: 6, totalMs: 21000, averageMs: 3500, fastestMs: 2100, slowestMs: 5100 }
+            fleet: { total: 10, intact: 0, damaged: 0, sunk: 10 }
+    SnapshotFinishedByResignation:
+      summary: You resigned on your turn; both boards are shown to both players
+      value:
+        gameId: Zk3vQ1hYc0a7Tn2LwR9sXg
+        version: 27
+        serverTime: '2026-09-20T12:04:01.600Z'
+        rulesetId: sea-battle-10-ship.v1
+        phase: FINISHED
+        you: { displayName: Captain, ready: true, connected: true, shipsRemaining: 10 }
+        opponent: { displayName: Rival, ready: true, connected: true, shipsRemaining: 9 }
+        allowedActions: [LEAVE]
+        expiresAt: '2026-09-20T12:09:01.600Z'
+        yourBoard:
+          grid:
+            - [HIT, SHIP, SHIP, SHIP, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, MISS, WATER, WATER, WATER, WATER]
+            - [SHIP, SHIP, SHIP, WATER, SHIP, SHIP, SHIP, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [SHIP, SHIP, WATER, SHIP, SHIP, WATER, SHIP, SHIP, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [SHIP, WATER, SHIP, WATER, SHIP, WATER, SHIP, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+          ships:
+            - { shipId: s01, shipTypeId: ship-4, length: 4,
+                cells: [{rowIndex: 0, columnIndex: 0}, {rowIndex: 0, columnIndex: 1}, {rowIndex: 0, columnIndex: 2}, {rowIndex: 0, columnIndex: 3}],
+                anchor: {rowIndex: 0, columnIndex: 0}, orientation: HORIZONTAL, status: DAMAGED }
+            - { shipId: s02, shipTypeId: ship-3, length: 3,
+                cells: [{rowIndex: 2, columnIndex: 0}, {rowIndex: 2, columnIndex: 1}, {rowIndex: 2, columnIndex: 2}],
+                anchor: {rowIndex: 2, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s03, shipTypeId: ship-3, length: 3,
+                cells: [{rowIndex: 2, columnIndex: 4}, {rowIndex: 2, columnIndex: 5}, {rowIndex: 2, columnIndex: 6}],
+                anchor: {rowIndex: 2, columnIndex: 4}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s04, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 4, columnIndex: 0}, {rowIndex: 4, columnIndex: 1}],
+                anchor: {rowIndex: 4, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s05, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 4, columnIndex: 3}, {rowIndex: 4, columnIndex: 4}],
+                anchor: {rowIndex: 4, columnIndex: 3}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s06, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 4, columnIndex: 6}, {rowIndex: 4, columnIndex: 7}],
+                anchor: {rowIndex: 4, columnIndex: 6}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s07, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 6, columnIndex: 0}],
+                anchor: {rowIndex: 6, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s08, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 6, columnIndex: 2}],
+                anchor: {rowIndex: 6, columnIndex: 2}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s09, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 6, columnIndex: 4}],
+                anchor: {rowIndex: 6, columnIndex: 4}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s10, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 6, columnIndex: 6}],
+                anchor: {rowIndex: 6, columnIndex: 6}, orientation: HORIZONTAL, status: INTACT }
+        opponentBoard:
+          grid:
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, SHIP]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, SHIP]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, SHIP]
+            - [WATER, WATER, WATER, MISS, WATER, WATER, WATER, WATER, WATER, SHIP]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [SHIP, WATER, SHIP, WATER, SHIP, WATER, SHIP, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [SHIP, SHIP, WATER, SHIP, SHIP, WATER, SHIP, SHIP, WATER, WATER]
+            - [REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, REVEALED_WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [SUNK, SUNK, SUNK, REVEALED_WATER, SHIP, SHIP, SHIP, WATER, WATER, WATER]
+          ships:
+            - { shipId: s01, shipTypeId: ship-4, length: 4,
+                cells: [{rowIndex: 0, columnIndex: 9}, {rowIndex: 1, columnIndex: 9}, {rowIndex: 2, columnIndex: 9}, {rowIndex: 3, columnIndex: 9}],
+                anchor: {rowIndex: 0, columnIndex: 9}, orientation: VERTICAL, status: INTACT }
+            - { shipId: s02, shipTypeId: ship-3, length: 3,
+                cells: [{rowIndex: 9, columnIndex: 0}, {rowIndex: 9, columnIndex: 1}, {rowIndex: 9, columnIndex: 2}],
+                anchor: {rowIndex: 9, columnIndex: 0}, orientation: HORIZONTAL, status: SUNK }
+            - { shipId: s03, shipTypeId: ship-3, length: 3,
+                cells: [{rowIndex: 9, columnIndex: 4}, {rowIndex: 9, columnIndex: 5}, {rowIndex: 9, columnIndex: 6}],
+                anchor: {rowIndex: 9, columnIndex: 4}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s04, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 7, columnIndex: 0}, {rowIndex: 7, columnIndex: 1}],
+                anchor: {rowIndex: 7, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s05, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 7, columnIndex: 3}, {rowIndex: 7, columnIndex: 4}],
+                anchor: {rowIndex: 7, columnIndex: 3}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s06, shipTypeId: ship-2, length: 2,
+                cells: [{rowIndex: 7, columnIndex: 6}, {rowIndex: 7, columnIndex: 7}],
+                anchor: {rowIndex: 7, columnIndex: 6}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s07, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 5, columnIndex: 0}],
+                anchor: {rowIndex: 5, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s08, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 5, columnIndex: 2}],
+                anchor: {rowIndex: 5, columnIndex: 2}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s09, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 5, columnIndex: 4}],
+                anchor: {rowIndex: 5, columnIndex: 4}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s10, shipTypeId: ship-1, length: 1,
+                cells: [{rowIndex: 5, columnIndex: 6}],
+                anchor: {rowIndex: 5, columnIndex: 6}, orientation: HORIZONTAL, status: INTACT }
+        lastShot: { by: YOU, target: {rowIndex: 9, columnIndex: 2}, result: SUNK, sunkShipId: s02 }
+        outcome: { winner: OPPONENT, reason: RESIGNATION }
+        statistics:
+          match: { totalDurationMs: 121600, placementDurationMs: 95000, gameplayDurationMs: 26600 }
+          you:
+            placementDurationMs: 95000
+            shots: 4
+            hits: 3
+            accuracy: 0.75
+            turns: { count: 2, totalMs: 19900, averageMs: 9950, fastestMs: 4100, slowestMs: 15800 }
+            shotDecisions: { count: 4, totalMs: 10900, averageMs: 2725, fastestMs: 1900, slowestMs: 4100 }
+            fleet: { total: 10, intact: 9, damaged: 1, sunk: 0 }
+          opponent:
+            placementDurationMs: 65000
+            shots: 2
+            hits: 1
+            accuracy: 0.5
+            turns: { count: 1, totalMs: 6700, averageMs: 6700, fastestMs: 6700, slowestMs: 6700 }
+            shotDecisions: { count: 2, totalMs: 6700, averageMs: 3350, fastestMs: 2900, slowestMs: 3800 }
+            fleet: { total: 10, intact: 9, damaged: 0, sunk: 1 }
+    SnapshotAbandoned:
+      summary: The opponent left during placement; nothing about their board is revealed
+      value:
+        gameId: Zk3vQ1hYc0a7Tn2LwR9sXg
+        version: 9
+        serverTime: '2026-09-20T12:03:20.000Z'
+        rulesetId: sea-battle-10-ship.v1
+        phase: ABANDONED
+        you: { displayName: Captain, ready: false, connected: true, shipsRemaining: 10 }
+        opponent: { displayName: Rival, ready: true, connected: false, shipsRemaining: 10 }
+        allowedActions: [LEAVE]
+        expiresAt: '2026-09-20T12:08:20.000Z'
+        yourBoard:
+          grid:
+            - [SHIP, SHIP, SHIP, SHIP, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [SHIP, SHIP, SHIP, WATER, SHIP, SHIP, SHIP, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+            - [WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER, WATER]
+          ships:
+            - { shipId: s01, shipTypeId: ship-4, length: 4,
+                cells: [{rowIndex: 0, columnIndex: 0}, {rowIndex: 0, columnIndex: 1}, {rowIndex: 0, columnIndex: 2}, {rowIndex: 0, columnIndex: 3}],
+                anchor: {rowIndex: 0, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s02, shipTypeId: ship-3, length: 3,
+                cells: [{rowIndex: 2, columnIndex: 0}, {rowIndex: 2, columnIndex: 1}, {rowIndex: 2, columnIndex: 2}],
+                anchor: {rowIndex: 2, columnIndex: 0}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s03, shipTypeId: ship-3, length: 3,
+                cells: [{rowIndex: 2, columnIndex: 4}, {rowIndex: 2, columnIndex: 5}, {rowIndex: 2, columnIndex: 6}],
+                anchor: {rowIndex: 2, columnIndex: 4}, orientation: HORIZONTAL, status: INTACT }
+            - { shipId: s04, shipTypeId: ship-2, length: 2,
+                cells: [],
+                status: INTACT }
+            - { shipId: s05, shipTypeId: ship-2, length: 2,
+                cells: [],
+                status: INTACT }
+            - { shipId: s06, shipTypeId: ship-2, length: 2,
+                cells: [],
+                status: INTACT }
+            - { shipId: s07, shipTypeId: ship-1, length: 1,
+                cells: [],
+                status: INTACT }
+            - { shipId: s08, shipTypeId: ship-1, length: 1,
+                cells: [],
+                status: INTACT }
+            - { shipId: s09, shipTypeId: ship-1, length: 1,
+                cells: [],
+                status: INTACT }
+            - { shipId: s10, shipTypeId: ship-1, length: 1,
+                cells: [],
+                status: INTACT }
+        opponentBoard:
+          grid:
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+            - [UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN]
+          ships: []
+    EventStream:
+      summary: First event is the current snapshot; later the stream is replaced by another tab
+      value: |
+        event: snapshot
+        id: 24
+        data: {"gameId":"Zk3vQ1hYc0a7Tn2LwR9sXg","version":24,"serverTime":"2026-09-20T12:03:48.100Z","rulesetId":"sea-battle-10-ship.v1","phase":"PLAYING","you":{"displayName":"Captain","ready":true,"connected":true,"shipsRemaining":10},"opponent":{"displayName":"Rival","ready":true,"connected":true,"shipsRemaining":10},"turn":"YOU","allowedActions":["FIRE","RESIGN","SEND_PRESENCE"],"expiresAt":"2026-09-20T12:18:48.100Z","yourBoard":{"grid":[["HIT","SHIP","SHIP","SHIP","WATER","WATER","WATER","WATER","WATER","WATER"],["WATER","WATER","WATER","WATER","WATER","MISS","WATER","WATER","WATER","WATER"],["SHIP","SHIP","SHIP","WATER","SHIP","SHIP","SHIP","WATER","WATER","WATER"],["WATER","WATER","WATER","WATER","WATER","WATER","WATER","WATER","WATER","WATER"],["SHIP","SHIP","WATER","SHIP","SHIP","WATER","SHIP","SHIP","WATER","WATER"],["WATER","WATER","WATER","WATER","WATER","WATER","WATER","WATER","WATER","WATER"],["SHIP","WATER","SHIP","WATER","SHIP","WATER","SHIP","WATER","WATER","WATER"],["WATER","WATER","WATER","WATER","WATER","WATER","WATER","WATER","WATER","WATER"],["WATER","WATER","WATER","WATER","WATER","WATER","WATER","WATER","WATER","WATER"],["WATER","WATER","WATER","WATER","WATER","WATER","WATER","WATER","WATER","WATER"]],"ships":[{"shipId":"s01","shipTypeId":"ship-4","length":4,"cells":[{"rowIndex":0,"columnIndex":0},{"rowIndex":0,"columnIndex":1},{"rowIndex":0,"columnIndex":2},{"rowIndex":0,"columnIndex":3}],"anchor":{"rowIndex":0,"columnIndex":0},"orientation":"HORIZONTAL","status":"DAMAGED"},{"shipId":"s02","shipTypeId":"ship-3","length":3,"cells":[{"rowIndex":2,"columnIndex":0},{"rowIndex":2,"columnIndex":1},{"rowIndex":2,"columnIndex":2}],"anchor":{"rowIndex":2,"columnIndex":0},"orientation":"HORIZONTAL","status":"INTACT"},{"shipId":"s03","shipTypeId":"ship-3","length":3,"cells":[{"rowIndex":2,"columnIndex":4},{"rowIndex":2,"columnIndex":5},{"rowIndex":2,"columnIndex":6}],"anchor":{"rowIndex":2,"columnIndex":4},"orientation":"HORIZONTAL","status":"INTACT"},{"shipId":"s04","shipTypeId":"ship-2","length":2,"cells":[{"rowIndex":4,"columnIndex":0},{"rowIndex":4,"columnIndex":1}],"anchor":{"rowIndex":4,"columnIndex":0},"orientation":"HORIZONTAL","status":"INTACT"},{"shipId":"s05","shipTypeId":"ship-2","length":2,"cells":[{"rowIndex":4,"columnIndex":3},{"rowIndex":4,"columnIndex":4}],"anchor":{"rowIndex":4,"columnIndex":3},"orientation":"HORIZONTAL","status":"INTACT"},{"shipId":"s06","shipTypeId":"ship-2","length":2,"cells":[{"rowIndex":4,"columnIndex":6},{"rowIndex":4,"columnIndex":7}],"anchor":{"rowIndex":4,"columnIndex":6},"orientation":"HORIZONTAL","status":"INTACT"},{"shipId":"s07","shipTypeId":"ship-1","length":1,"cells":[{"rowIndex":6,"columnIndex":0}],"anchor":{"rowIndex":6,"columnIndex":0},"orientation":"HORIZONTAL","status":"INTACT"},{"shipId":"s08","shipTypeId":"ship-1","length":1,"cells":[{"rowIndex":6,"columnIndex":2}],"anchor":{"rowIndex":6,"columnIndex":2},"orientation":"HORIZONTAL","status":"INTACT"},{"shipId":"s09","shipTypeId":"ship-1","length":1,"cells":[{"rowIndex":6,"columnIndex":4}],"anchor":{"rowIndex":6,"columnIndex":4},"orientation":"HORIZONTAL","status":"INTACT"},{"shipId":"s10","shipTypeId":"ship-1","length":1,"cells":[{"rowIndex":6,"columnIndex":6}],"anchor":{"rowIndex":6,"columnIndex":6},"orientation":"HORIZONTAL","status":"INTACT"}]},"opponentBoard":{"grid":[["UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN"],["UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN"],["UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN"],["UNKNOWN","UNKNOWN","UNKNOWN","MISS","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN"],["UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN"],["UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN"],["UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN"],["UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN"],["UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN"],["UNKNOWN","HIT","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN"]],"ships":[]},"lastShot":{"by":"YOU","target":{"rowIndex":9,"columnIndex":1},"result":"HIT"}}
+
+        : keep-alive
+
+        event: closed
+        data: {"reason":"REPLACED"}
+

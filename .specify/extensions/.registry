@@ -1,21 +1,6 @@
 {
   "schema_version": "1.0",
   "extensions": {
-    "cleanup": {
-      "version": "1.0.0",
-      "source": "local",
-      "manifest_hash": "sha256:b15a5e3b4e5b43f867c093d962492f502b01503d0ec174611d0797854b017578",
-      "enabled": true,
-      "priority": 10,
-      "registered_commands": {
-        "claude": [
-          "speckit.cleanup.run",
-          "speckit.cleanup"
-        ]
-      },
-      "registered_skills": [],
-      "installed_at": "2026-08-19T19:42:51.774699+00:00"
-    },
     "memory-loader": {
       "version": "1.0.0",
       "source": "local",
@@ -28,23 +13,7 @@
         ]
       },
       "registered_skills": [],
-      "installed_at": "2026-08-19T19:43:27.771943+00:00"
-    },
-    "diagram": {
-      "version": "1.0.0",
-      "source": "local",
-      "manifest_hash": "sha256:a2ab4ddf44a45c8bfd7f0a0a75e3aa2075d0135e1e288c6d70974f8b37d0621d",
-      "enabled": true,
-      "priority": 10,
-      "registered_commands": {
-        "claude": [
-          "speckit.diagram.workflow",
-          "speckit.diagram.status",
-          "speckit.diagram.dependencies"
-        ]
-      },
-      "registered_skills": [],
-      "installed_at": "2026-08-19T19:44:33.872485+00:00"
+      "installed_at": "2026-09-20T16:41:25.074776+00:00"
     },
     "speckit-superpowers-bridge": {
       "version": "1.2.0",
@@ -61,7 +30,7 @@
         ]
       },
       "registered_skills": [],
-      "installed_at": "2026-08-19T19:44:52.557892+00:00"
+      "installed_at": "2026-09-20T16:47:01.479736+00:00"
     }
   }
 }

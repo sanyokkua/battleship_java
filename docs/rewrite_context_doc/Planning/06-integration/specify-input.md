@@ -1,5 +1,7 @@
 # Local integration launch specification input
 
+> **Superseded where it describes the API.** `contracts/openapi.yaml` is the authoritative contract; see `contracts/README.md` § *Supersedes planning inputs* for what changed (no `If-Match`/`expectedVersion`, one `version`, caller-relative snapshot, body-less leave, renamed paths, same origin, standard CSRF names).
+
 ## Purpose
 
 Provide one root-owned local developer and verification experience for the separately built anonymous Battleship backend, static frontend, and published contract. It proves that the products integrate through their contract rather than through shared source, preserves invitation privacy, and makes restart and expiry limits explicit.

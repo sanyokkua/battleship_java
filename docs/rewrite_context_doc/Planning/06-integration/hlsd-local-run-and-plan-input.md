@@ -1,5 +1,7 @@
 # Local integration high-level solution design and plan input
 
+> **Superseded where it describes the API.** `contracts/openapi.yaml` is the authoritative contract; see `contracts/README.md` § *Supersedes planning inputs* for what changed (no `If-Match`/`expectedVersion`, one `version`, caller-relative snapshot, body-less leave, renamed paths, same origin, standard CSRF names).
+
 ## Local topology and artifacts
 
 Maintain three separately produced artifacts:

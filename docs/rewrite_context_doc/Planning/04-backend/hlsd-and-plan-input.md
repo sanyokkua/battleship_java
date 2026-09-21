@@ -1,5 +1,7 @@
 # Copy-paste input: backend plan
 
+> **Superseded where it describes the API.** `contracts/openapi.yaml` is the authoritative contract; see `contracts/README.md` § *Supersedes planning inputs* for what changed (no `If-Match`/`expectedVersion`, one `version`, caller-relative snapshot, body-less leave, renamed paths, same origin, standard CSRF names).
+
 Read `specs/002-backend/spec.md` and the published `001-api-contract` bundle first. Plan the backend implementation only. It must conform to that contract as written and must not create frontend code, modify contract semantics, or introduce persistence.
 
 ## Module and dependency design

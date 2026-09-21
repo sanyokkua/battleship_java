@@ -1,5 +1,7 @@
 # Frontend launch specification input
 
+> **Superseded where it describes the API.** `contracts/openapi.yaml` is the authoritative contract; see `contracts/README.md` § *Supersedes planning inputs* for what changed (no `If-Match`/`expectedVersion`, one `version`, caller-relative snapshot, body-less leave, renamed paths, same origin, standard CSRF names).
+
 ## Purpose
 
 Build a standalone browser client for anonymous two-player Battleship. It gives a host and a guest a clear, private, accessible path from invitation through fleet placement, live play, and results. The server is the only authority for rules, identity, session state, command outcomes, expiry, and recovery.

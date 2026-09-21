@@ -1,0 +1,21 @@
+{
+  "name": "@battleship/contracts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "lint": "redocly lint openapi.yaml --config redocly.yaml",
+    "types": "openapi-typescript openapi.yaml --output .tmp/api.d.ts",
+    "docs": "redocly build-docs openapi.yaml --config redocly.yaml --output dist/index.html",
+    "check": "npm run lint && npm run types",
+    "cleanup": "rm -rf dist .tmp"
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.45.0",
+    "openapi-typescript": "7.13.0",
+    "typescript": "6.0.3"
+  }
+}

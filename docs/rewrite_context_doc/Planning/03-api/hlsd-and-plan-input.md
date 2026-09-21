@@ -1,5 +1,7 @@
 # Copy-paste input: API contract plan
 
+> **Superseded where it describes the API.** `contracts/openapi.yaml` is the authoritative contract; see `contracts/README.md` § *Supersedes planning inputs* for what changed (no `If-Match`/`expectedVersion`, one `version`, caller-relative snapshot, body-less leave, renamed paths, same origin, standard CSRF names).
+
 Read `specs/001-api-contract/spec.md` first. Plan the implementation of that feature only. Preserve its user-visible policy; do not add backend controllers, a web client, an executable application, or a database.
 
 ## Architecture and ownership

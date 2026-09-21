@@ -7,6 +7,8 @@ scope: anonymous production-ready local Battleship rewrite
 
 # Rewrite decisions and evidence
 
+> **Superseded where it describes the API.** `contracts/openapi.yaml` is the authoritative contract; see `contracts/README.md` § *Supersedes planning inputs* for what changed (no `If-Match`/`expectedVersion`, one `version`, caller-relative snapshot, body-less leave, renamed paths, same origin, standard CSRF names).
+
 This record turns the rewrite context into one set of implementation decisions.
 It exists so later SpecKit features do not choose different rules, security
 models, or ownership boundaries.

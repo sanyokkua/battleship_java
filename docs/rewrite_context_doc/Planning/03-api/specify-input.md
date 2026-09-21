@@ -1,5 +1,7 @@
 # Copy-paste input: API contract
 
+> **Superseded where it describes the API.** `contracts/openapi.yaml` is the authoritative contract; see `contracts/README.md` § *Supersedes planning inputs* for what changed (no `If-Match`/`expectedVersion`, one `version`, caller-relative snapshot, body-less leave, renamed paths, same origin, standard CSRF names).
+
 Create feature `001-api-contract` for the production-ready anonymous Battleship rewrite. This feature publishes a language-neutral API contract. It does not implement a backend, controllers, browser screens, persistence, or an OpenAPI-serving application.
 
 ## Purpose and users

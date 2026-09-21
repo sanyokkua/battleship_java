@@ -1,5 +1,7 @@
 # Copy-paste input: anonymous Battleship backend
 
+> **Superseded where it describes the API.** `contracts/openapi.yaml` is the authoritative contract; see `contracts/README.md` § *Supersedes planning inputs* for what changed (no `If-Match`/`expectedVersion`, one `version`, caller-relative snapshot, body-less leave, renamed paths, same origin, standard CSRF names).
+
 Create feature `002-backend` for the production-ready anonymous Battleship rewrite. Implement one server-authoritative, ephemeral backend that conforms to the published `001-api-contract` contract. The backend has no database, no durable state, no frontend assets, and no alternate public API.
 
 ## Purpose and scope
