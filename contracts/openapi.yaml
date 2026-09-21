@@ -721,7 +721,7 @@ components:
       type: string
       pattern: '^[A-Za-z0-9_-]{22}$'
       description: Random 128-bit value, base64url.
-      examples: [Zk3vQ1hYc0a7Tn2LwR9sXg]
+      example: Zk3vQ1hYc0a7Tn2LwR9sXg
     DisplayName:
       type: string
       minLength: 1
@@ -735,7 +735,7 @@ components:
       type: string
       format: date-time
       description: UTC timestamp, RFC 3339.
-      examples: ['2026-09-20T12:00:00.000Z']
+      example: '2026-09-20T12:00:00.000Z'
     Coordinate:
       type: object
       description: One board cell, zero-based; `rowIndex` 0 is the top row and `columnIndex` 0 the left column.
@@ -764,8 +764,9 @@ components:
       description: |
         - `WAITING`: the host waits for a guest.
         - `PLACEMENT`: both players arrange their fleets privately and declare `READY`.
-        - `PLAYING`: players fire in turns; starts when both are ready. Who fires first is chosen
-          randomly by the server and first visible as `turn`.
+        - `PLAYING`: players fire in turns; starts when both are ready. The server decides who fires
+          first — the player who declared `READY` first, an exact tie broken randomly — and the choice
+          is first visible as `turn`.
         - `FINISHED`: a fleet was destroyed or a player resigned. Both boards and `statistics` are shown.
         - `ABANDONED`: a player left before play started. Nothing is revealed.
     Action:
@@ -1014,8 +1015,9 @@ components:
           type: integer
           minimum: 0
           description: >-
-            Grows whenever anything in either player's snapshot changes. Only for ordering: display a
-            snapshot when its version is greater than the displayed one. Numbers may skip.
+            Grows when either player's **view** changes — that player's snapshot excluding `serverTime`
+            and `expiresAt`, both of which are always current. Only for ordering: display a snapshot
+            when its version is greater than the displayed one. Numbers may skip.
         serverTime:
           allOf:
             - $ref: '#/components/schemas/Instant'
@@ -1225,7 +1227,7 @@ components:
       properties:
         type:
           type: string
-          const: PLACE_SHIP
+          enum: [PLACE_SHIP]
         shipId:
           type: string
           maxLength: 32
@@ -1241,7 +1243,7 @@ components:
       properties:
         type:
           type: string
-          const: REMOVE_SHIP
+          enum: [REMOVE_SHIP]
         shipId:
           type: string
           maxLength: 32
@@ -1255,7 +1257,7 @@ components:
       properties:
         type:
           type: string
-          const: FIRE
+          enum: [FIRE]
         target:
           $ref: '#/components/schemas/Coordinate'
     SimpleCommand:

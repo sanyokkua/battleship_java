@@ -91,6 +91,12 @@ user tires. These seven rules are the missing counterweight. They bind the agent
 **Gate.** There is no single repository-wide product gate at this `HEAD` yet. Before BUILD starts, the approved
 technical plan must name the build, test, lint, and local-run commands for the affected module or feature.
 
+**Generation path.** `002-backend` generates the wire DTOs from `contracts/openapi.yaml` into
+`backend/app/target/generated-sources/openapi` (package `ua.kostenko.battleship.app.web.dto`) during
+`generate-sources`; those sources are build output — never committed, never hand-edited, not formatted by
+Spotless, and changed only by amending the contract and regenerating (constitution § *Scope and Technical
+Baseline*, Principle VI).
+
 For a registered feature, start by proving the feature artifacts exist:
 
 `bash .specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
