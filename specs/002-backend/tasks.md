@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.2.1 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001, T002, T003 and T004 are complete; T005 is next.
+**Status**: in progress. T001, T002, T003, T004 and T005 are complete; T006 is next.
 **Contract amendments**: the three changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -145,13 +145,13 @@ code and a command to prove it.
   - **Mutation** Collapse the indentation of one `domain` file; `spotless:check` must fail naming that file. `spotless:apply` restores it. Then, to make the exclusion's proof capable of failing: temporarily include `**/target/generated-sources/openapi/**/*.java` (the module-relative pattern matching `app/target/...` from the reactor root) **with the exclusion still in place**, mis-indent a file there, and confirm `spotless:check` stays **clean** — then remove the exclusion and confirm the same run now fails. Restore both. (Spotless's default Java target is `src/{main,test}/java`, so mis-editing a generated file without widening `includes` first leaves `spotless:check` clean whether the exclusion exists or not — an assertion that cannot fail.) **Observed:** malformed `domain/package-info.java` made `./mvnw -q spotless:check` exit 1 and report `src/main/java/ua/kostenko/battleship/domain/package-info.java`. With generated Java included and normalized, malformed `Coordinate.java` passed while excluded and failed when the exclusion was removed, reporting `target/generated-sources/openapi/src/main/java/ua/kostenko/battleship/app/web/dto/Coordinate.java`. The generated source files were restored byte-for-byte.
   - **Depends on** T001, T002
 
-- [ ] T005 Bootstrap the Spring Boot application in `backend/app/src/main/java/ua/kostenko/battleship/app/BattleshipApplication.java`
+- [X] T005 Bootstrap the Spring Boot application in `backend/app/src/main/java/ua/kostenko/battleship/app/BattleshipApplication.java`
   - **Delivers** The `@SpringBootApplication` entry point, `spring.threads.virtual.enabled=true` in `backend/app/src/main/resources/application.yaml`, and `@EnableScheduling` for the sweeper and heartbeat schedulers that T020 and T031 attach to. Server port 8080 (default). No controller, no security configuration yet.
   - **Covers** R57 (the runnable artifact) · plan.md § *Realtime* (virtual thread per stream) · research.md D6
   - **Read first** plan.md § *Realtime* first paragraph · research.md D6, D7 (why `ReentrantLock`, never `synchronized` — virtual threads pin) · quickstart.md § *Commands*
   - **Files** `backend/app/src/main/java/.../BattleshipApplication.java`, `backend/app/src/main/resources/application.yaml`
   - **Proof** `ApplicationContextTest` (`@SpringBootTest`) — the context loads, and `Environment.getProperty("spring.threads.virtual.enabled")` is `true`.
-  - **Verify** `cd backend && ./mvnw -q -pl app -am test -Dtest=ApplicationContextTest` — then `./mvnw -pl app -am spring-boot:run` prints `Started BattleshipApplication`
+  - **Verify** `cd backend && ./mvnw -q -pl app -am test -Dtest=ApplicationContextTest -Dsurefire.failIfNoSpecifiedTests=false -Dfailsafe.failIfNoSpecifiedTests=false` — then `./mvnw -q -DskipTests package && java -jar app/target/battleship-app-1.0.0-SNAPSHOT.jar` reaches `Started BattleshipApplication` as a startup smoke check (R57 readiness and no-UI proofs remain in T037)
   - **Mutation** Set `spring.threads.virtual.enabled=false`; `ApplicationContextTest` must fail.
   - **Depends on** T001
 
@@ -985,7 +985,6 @@ None of these exist yet; they are created by this feature (plan.md § *Gate*).
 |---|---|---|
 | `backend/` | `./mvnw -q verify` | DTO generation from `contracts/openapi.yaml`, compile, Enforcer, Spotless check, Surefire units, ArchUnit, Failsafe integration tests |
 | `backend/` | `./mvnw spotless:apply` | formatting fix-up (`spotless:check` runs inside `verify`) |
-| `backend/` | `./mvnw -pl app -am spring-boot:run` | local run with default configuration |
 | `backend/` | `java -jar app/target/battleship-app-1.0.0-SNAPSHOT.jar` | packaged artifact starts and reports ready (R57, S10) |
 | `contracts/` | `npm ci && npm run check` | the contract's own gate, unchanged and still owned by `001-api-contract` |
 
@@ -1008,6 +1007,7 @@ environment-blocked checks (Constitution VI; AGENTS.md § *Scope control* rule 5
 |---|---|---|---|---|
 | T002 | 2026-09-29 | `cd backend && ./mvnw -q -pl app -am clean && ./mvnw -q -pl app -am test -Dtest=GeneratedModelSpikeTest -Dsurefire.failIfNoSpecifiedTests=false -Dfailsafe.failIfNoSpecifiedTests=false` | PASS — 5 tests, 0 failures, 0 errors, 0 skipped; generated 29 object models, 7 enums, and the three whitelisted helpers; no `ApiClient` or generated endpoint APIs | PASS — renamed `Coordinate` to `Coord` in a scratch contract copy and reran the focused Maven test; `testCompile` failed because `Coordinate` could not be resolved |
 | T003 | 2026-09-29 | `cd backend && ./mvnw -q verify` | PASS — Enforcer validated the three modules; `ArchitectureTest`: 4 tests, 0 failures, 0 errors, 0 skipped; reactor verify exited 0 | PASS — (a) temporary compile dependency `org.springframework.boot:spring-boot-starter` in domain failed Enforcer at `validate`, including its transitive Spring/Jakarta dependencies; (b) with `-Denforcer.skip=true` and that dependency present, a domain `@Component` annotation failed `domainDoesNotDependOnFrameworkOrIoTypes`; all mutations restored |
+| T005 | 2026-09-29 | `cd backend && ./mvnw -q -pl app -am test -Dtest=ApplicationContextTest -Dsurefire.failIfNoSpecifiedTests=false -Dfailsafe.failIfNoSpecifiedTests=false`; `./mvnw -q verify`; `./mvnw -q -DskipTests package && java -jar app/target/battleship-app-1.0.0-SNAPSHOT.jar` | PASS — context test 1/1; aggregate verify exited 0; packaged application reached `Started BattleshipApplication` on port 8080 and shut down cleanly (local socket permission granted for this runtime smoke check) | PASS — set `spring.threads.virtual.enabled=false`; focused test failed as expected (`expected true, was false`); restored true and focused test passed |
 
 ## Known limitations
 
@@ -1015,8 +1015,9 @@ environment-blocked checks (Constitution VI; AGENTS.md § *Scope control* rule 5
 
 - T003 has four enumerated bytecode rules. The task also describes `application` APIs without concrete maps and `app` without game rules, a second projection or UI assets; the four rules do not prove those content constraints. No such types or assets exist in the current T003 source set.
 - T002 generated models use Jackson 2 while Spring Boot 4's default HTTP converter uses Jackson 3. The app must route generated DTOs through a Jackson 2 mapper when controller adapters are implemented; the focused T002 test validates generated model behavior, not MVC converter wiring.
+- The former `spring-boot:run` command with `-am` invoked the goal on the parent aggregator and failed before reaching `app` (`Unable to find a suitable main class`). The existing executable package-and-run command now serves as the local startup smoke check; readiness and no-UI behavior remain owned by T037.
 
 ## Next unit
 
 `$speckit-analyze` has run across this package and its findings are applied (`AGENTS.md` § *The loop*
-step 6). T001, T002 and T003 are complete; start with **T004**.
+step 6). T001, T002, T003, T004 and T005 are complete; start with **T006**.

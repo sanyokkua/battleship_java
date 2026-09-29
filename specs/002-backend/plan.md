@@ -412,7 +412,6 @@ None of these exist yet; they are created by this feature.
 |---|---|
 | `./mvnw -q verify` | DTO generation from `contracts/openapi.yaml`, compile, Enforcer, Spotless check, Surefire units, ArchUnit, Failsafe integration tests |
 | `./mvnw spotless:apply` | formatting fix-up (`spotless:check` runs inside `verify`) |
-| `./mvnw -pl app -am spring-boot:run` | local run with default configuration |
 | `java -jar app/target/battleship-app-1.0.0-SNAPSHOT.jar` | packaged artifact starts and reports ready (R57, S10) |
 
 From `contracts/`: `npm ci && npm run check` stays the contract's own gate.

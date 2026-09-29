@@ -22,7 +22,6 @@ tree and `openapi-generator-maven-plugin` 7.25.0. Subsequent runs use the local 
 | `contracts/` | `npm ci && npm run check` | `Your API description is valid` and `openapi.yaml → .tmp/api.d.ts` |
 | `backend/` | `./mvnw -q verify` | `BUILD SUCCESS`; Surefire and Failsafe both report `Failures: 0, Errors: 0, Skipped: 0` |
 | `backend/` | `./mvnw spotless:check` | no violations (also runs inside `verify`); `spotless:apply` fixes |
-| `backend/` | `./mvnw -pl app -am spring-boot:run` | `Started BattleshipApplication` on port 8080 |
 | `backend/` | `./mvnw -q -DskipTests package && java -jar app/target/battleship-app-1.0.0-SNAPSHOT.jar` | same, from the packaged artifact (R57, S10) |
 
 `-am` ("also make") is not optional on any `-pl` invocation: `domain` and `application` are
