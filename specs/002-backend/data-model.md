@@ -12,8 +12,12 @@ the generated `GameSnapshot`.
 ## Domain (`backend/domain`, no framework)
 
 All types are records and deeply immutable — collections stored with `List.copyOf` / `Map.copyOf`.
-`GameRules.apply(GameState, GameCommand, Instant now, RandomSource random)` is the only transition and
-returns `Transition`. It reads no clock and creates no randomness of its own.
+`GameRules.apply(GameState, Seat actor, GameCommand, Instant now, RandomSource random)` is the final
+transition signature and returns `Transition`. T009 introduces the actor and time parameters; T010
+adds `RandomSource` when it introduces that domain port. It reads no clock and creates no randomness
+of its own.
+The application layer resolves `actor` from the authenticated session before calling the domain; the
+command body never supplies a trusted seat.
 
 | Type | Fields |
 |---|---|
