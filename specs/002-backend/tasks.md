@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.3.0 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001 through T011 are complete; T012 is next.
+**Status**: in progress. T001 through T012 are complete; T013 is next.
 **Contract amendments**: the three changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -264,7 +264,7 @@ both rulesets, with no Spring, no clock and no I/O anywhere in `domain`.
     The attached build failure was reproduced as eight pre-existing Spotless violations; a separate formatting-only repair restored the baseline gate before READY implementation. Task and independent final reviews found no Blocking/Important issues. Existing Java/tooling warnings remain; no feature-wide HTTP/gameplay readiness is claimed.
     Task branch `feature/002-backend--t011` records parent `feature/002-backend` at `b08397d`; implementation commits are `acb2c70` (formatting repair) and `3d3a686` (READY).
 
-- [ ] T012 [US4] Implement `FIRE`, `RESIGN` and both endings in `backend/domain/src/main/java/ua/kostenko/battleship/domain/rules/GameRules.java`
+- [X] T012 [US4] Implement `FIRE`, `RESIGN` and both endings in `backend/domain/src/main/java/ua/kostenko/battleship/domain/rules/GameRules.java`
   - **Delivers** The `Fire(target)` and `Resign` command variants, and the whole of play.
     `FIRE` names one cell of the **opponent's** board. A coordinate outside the ruleset's board is a `validation-failed` (422) with rule `OUT_OF_RANGE` (R10). A cell already disclosed is refused `target-already-fired`: it **costs nothing and does not pass the turn** (data-model.md § *Rule details*). Otherwise the shot resolves to `MISS`, `HIT` or `SUNK`, records `lastShot` (with `sunkShipId` present only when `SUNK`), appends to `shotsFired`, and grows `incomingShots`.
     **Turn**: under `extraTurnOnHit=true` a hit or a sink keeps the turn; otherwise every shot passes it (R07).
@@ -285,6 +285,7 @@ both rulesets, with no Spring, no clock and no I/O anywhere in `domain`.
     8. Timeline: `turns.count` equals the number of turns actually taken, `shotDecisions.count` equals the number of accepted `FIRE`s, and a refused `FIRE` does not reset the shot-decision clock.
   - **Verify** `cd backend && ./mvnw -q -pl domain test -Dtest=RulesetRulesTest`
   - **Mutation** Reveal water unconditionally (ignore `revealWaterAroundSunk`); assertion (5)'s ruleset-2 case must fail. Consume the turn on `target-already-fired`; assertion (7) must fail.
+  - **Verified (2026-09-29)** `RulesetRulesTest`: 14 passed; initial behavioral RED: 10 assertion failures, 0 errors. Final review found independently truncated turn intervals could lose a millisecond; fractional-instant pass/resignation and final-sink regressions gave RED: 2 assertion failures, 0 errors, then passed after relative play-start boundaries were used for turn samples (shot-decision semantics unchanged). Named mutations (unconditional revealed water; duplicate target consumes turn): each 1 assertion failure, 0 errors; both restored and focused proof passed. `cd backend && ./mvnw -q verify`: 80 tests, 0 failures/errors/skips (59 domain, 10 app unit, 11 app integration); Spotless, skill sync and `git diff --check` passed. Existing Jansi/Mockito/development-security warnings and AGENTS length warning remain; invalid-configuration tests intentionally log startup errors. Domain-only behavior is verified; HTTP gameplay/runtime adapters remain later tasks. Task branch `feature/002-backend--t012` records parent `feature/002-backend` at `dfae5419209ae685355a9ad76685aad411b7613e`; implementation commit `8b2a6d3c0478e1158cb1770f12c2f10d03612ac8`.
   - **Depends on** T011
 
 - [ ] T013 [US3] [US4] [US6] Compute and enforce the allowed-action table in `backend/domain/src/main/java/ua/kostenko/battleship/domain/rules/AllowedActions.java`

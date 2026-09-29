@@ -9,7 +9,9 @@ public sealed interface GameCommand
                 GameCommand.RemoveShip,
                 GameCommand.PlaceFleetRandomly,
                 GameCommand.ClearFleet,
-                GameCommand.Ready {
+                GameCommand.Ready,
+                GameCommand.Fire,
+                GameCommand.Resign {
     record PlaceShip(String shipId, Coordinate anchor, Orientation orientation) implements GameCommand {
         public PlaceShip {
             Objects.requireNonNull(shipId, "shipId");
@@ -23,6 +25,14 @@ public sealed interface GameCommand
             if (attemptLimit < 1) throw new IllegalArgumentException("attemptLimit must be positive");
         }
     }
+
+    record Fire(Coordinate target) implements GameCommand {
+        public Fire {
+            Objects.requireNonNull(target, "target");
+        }
+    }
+
+    record Resign() implements GameCommand {}
 
     record Ready() implements GameCommand {}
 

@@ -3,6 +3,7 @@ package ua.kostenko.battleship.domain.rules;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -12,10 +13,13 @@ import ua.kostenko.battleship.domain.model.Board;
 import ua.kostenko.battleship.domain.model.Coordinate;
 import ua.kostenko.battleship.domain.model.GameState;
 import ua.kostenko.battleship.domain.model.Orientation;
+import ua.kostenko.battleship.domain.model.Outcome;
 import ua.kostenko.battleship.domain.model.Phase;
 import ua.kostenko.battleship.domain.model.PlayerState;
 import ua.kostenko.battleship.domain.model.Seat;
 import ua.kostenko.battleship.domain.model.Ship;
+import ua.kostenko.battleship.domain.model.Shot;
+import ua.kostenko.battleship.domain.model.ShotResult;
 import ua.kostenko.battleship.domain.model.Timeline;
 import ua.kostenko.battleship.domain.transition.Rejection;
 import ua.kostenko.battleship.domain.transition.Rejection.ProblemCode;
@@ -31,7 +35,10 @@ public final class GameRules {
         Objects.requireNonNull(now, "now");
         Objects.requireNonNull(random, "random");
         PlayerState actorState = player(state, actor);
-        if (actorState != null && actorState.ready()) {
+        if (actorState != null
+                && actorState.ready()
+                && !(command instanceof GameCommand.Fire)
+                && !(command instanceof GameCommand.Resign)) {
             return refused(state, Rejection.problem(ProblemCode.ACTION_NOT_ALLOWED));
         }
         return switch (command) {
@@ -40,7 +47,109 @@ public final class GameRules {
             case GameCommand.PlaceFleetRandomly arrange -> placeFleetRandomly(state, actor, arrange, random);
             case GameCommand.ClearFleet ignored -> clearFleet(state, actor);
             case GameCommand.Ready ignored -> ready(state, actor, now, random);
+            case GameCommand.Fire fire -> fire(state, actor, fire, now);
+            case GameCommand.Resign ignored -> resign(state, actor, now);
         };
+    }
+
+    private static Seat other(Seat seat) {
+        return seat == Seat.HOST ? Seat.GUEST : Seat.HOST;
+    }
+
+    private static Transition fire(GameState state, Seat actor, GameCommand.Fire command, Instant now) {
+        if (state.phase() != Phase.PLAYING || state.turn() != actor) {
+            return refused(state, Rejection.problem(ProblemCode.ACTION_NOT_ALLOWED));
+        }
+        Ruleset ruleset = Rulesets.byId(state.rulesetId()).orElseThrow();
+        Coordinate target = command.target();
+        if (target.rowIndex() >= ruleset.rows()) {
+            return refused(state, Rejection.validation("/command/target/rowIndex", "OUT_OF_RANGE"));
+        }
+        if (target.columnIndex() >= ruleset.columns()) {
+            return refused(state, Rejection.validation("/command/target/columnIndex", "OUT_OF_RANGE"));
+        }
+        PlayerState defender = player(state, other(actor));
+        Board board = defender.board();
+        if (board.incomingShots().contains(target) || board.revealedWater().contains(target)) {
+            return refused(state, Rejection.problem(ProblemCode.TARGET_ALREADY_FIRED));
+        }
+        List<Ship> fleet = new ArrayList<>(board.fleet());
+        Set<Coordinate> incoming = new HashSet<>(board.incomingShots());
+        incoming.add(target);
+        Set<Coordinate> water = new HashSet<>(board.revealedWater());
+        ShotResult result = ShotResult.MISS;
+        String sunkId = null;
+        for (int index = 0; index < fleet.size(); index++) {
+            Ship ship = fleet.get(index);
+            if (!ship.cells().contains(target)) continue;
+            Set<Coordinate> hits = new HashSet<>(ship.hits());
+            hits.add(target);
+            Ship hit =
+                    new Ship(ship.shipId(), ship.shipTypeId(), ship.length(), ship.anchor(), ship.orientation(), hits);
+            fleet.set(index, hit);
+            boolean sunk = hit.status() == Ship.ShipStatus.SUNK;
+            result = sunk ? ShotResult.SUNK : ShotResult.HIT;
+            if (sunk) {
+                sunkId = ship.shipId();
+                if (ruleset.revealWaterAroundSunk()) revealWater(ruleset, board, incoming, water, hit);
+            }
+            break;
+        }
+        Shot shot = new Shot(actor, target, result, sunkId);
+        PlayerState attacker = player(state, actor);
+        List<Shot> history = new ArrayList<>(attacker.shotsFired());
+        history.add(shot);
+        PlayerState updatedAttacker =
+                new PlayerState(attacker.displayName(), attacker.ready(), attacker.board(), history);
+        PlayerState updatedDefender = new PlayerState(
+                defender.displayName(), defender.ready(), new Board(fleet, incoming, water), defender.shotsFired());
+        boolean finished = fleet.stream().allMatch(ship -> ship.status() == Ship.ShipStatus.SUNK);
+        Seat nextTurn = ruleset.extraTurnOnHit() && result != ShotResult.MISS ? actor : other(actor);
+        Timeline timeline = state.timeline().withFire(actor, nextTurn, now, finished);
+        GameState next = new GameState(
+                state.rulesetId(),
+                finished ? Phase.FINISHED : Phase.PLAYING,
+                state.version() + 1,
+                actor == Seat.HOST ? updatedAttacker : updatedDefender,
+                actor == Seat.GUEST ? updatedAttacker : updatedDefender,
+                finished ? null : nextTurn,
+                shot,
+                finished ? new Outcome(actor, Outcome.Reason.FLEET_DESTROYED) : null,
+                timeline);
+        return new Transition(next, true, Set.of(Seat.HOST, Seat.GUEST), null);
+    }
+
+    private static void revealWater(
+            Ruleset ruleset, Board board, Set<Coordinate> incoming, Set<Coordinate> water, Ship sunk) {
+        Set<Coordinate> occupied = new HashSet<>();
+        board.fleet().forEach(ship -> occupied.addAll(ship.cells()));
+        for (Coordinate cell : sunk.cells()) {
+            for (int row = Math.max(0, cell.rowIndex() - 1);
+                    row <= Math.min(ruleset.rows() - 1, cell.rowIndex() + 1);
+                    row++) {
+                for (int column = Math.max(0, cell.columnIndex() - 1);
+                        column <= Math.min(ruleset.columns() - 1, cell.columnIndex() + 1);
+                        column++) {
+                    Coordinate neighbour = new Coordinate(row, column);
+                    if (!occupied.contains(neighbour) && !incoming.contains(neighbour)) water.add(neighbour);
+                }
+            }
+        }
+    }
+
+    private static Transition resign(GameState state, Seat actor, Instant now) {
+        if (state.phase() != Phase.PLAYING) return refused(state, Rejection.problem(ProblemCode.ACTION_NOT_ALLOWED));
+        GameState next = new GameState(
+                state.rulesetId(),
+                Phase.FINISHED,
+                state.version() + 1,
+                state.host(),
+                state.guest(),
+                null,
+                state.lastShot(),
+                new Outcome(other(actor), Outcome.Reason.RESIGNATION),
+                state.timeline().withFinishedAt(now, state.turn()));
+        return new Transition(next, true, Set.of(Seat.HOST, Seat.GUEST), null);
     }
 
     private static Transition ready(GameState state, Seat actor, Instant now, RandomSource random) {
