@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.2.1 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001 and T002 are complete; T003 is next.
+**Status**: in progress. T001, T002 and T003 are complete; T004 is next.
 **Contract amendments**: the three changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -125,12 +125,12 @@ code and a command to prove it.
   - **⚠ Abort condition** If a numbered assertion cannot be made to pass on JDK 25, **stop and record the outcome here as a decision** — the named fallback is models-only for the schemas that do generate plus hand-written records for the rest, *not* a silent retreat to research.md D1's rejected alternative. Nothing after this task assumes the spike succeeded; the assembler of T025 is the only consumer of the generated shapes.
   - **Note** This is plan.md's "Task 1". It is T002 only because a Maven plugin cannot run without the pom that T001 creates. Nothing between them depends on generated types.
 
-- [ ] T003 [P] Enforce module direction with Maven Enforcer and ArchUnit in `backend/pom.xml` and `backend/app/src/test/java/ua/kostenko/battleship/app/ArchitectureTest.java`
+- [x] T003 [P] Enforce module direction with Maven Enforcer and ArchUnit in `backend/pom.xml` and `backend/app/src/test/java/ua/kostenko/battleship/app/ArchitectureTest.java`
   - **Delivers** Maven Enforcer **3.6.3** `bannedDependencies` per module, plus one ArchUnit test in `app` that proves the direction in bytecode. `domain` may reference the JDK only — no Spring, Jackson, servlet, clock, random, logging or I/O type. `application` may reference `domain` and the JDK — no controller, cookie, emitter, concrete map in its API, or framework type. `app` may reference both and must contain no game rule, no second projection and no UI asset.
   - **Covers** plan.md § *Layout* (the module table) · Constitution III (*Simple, Replaceable Boundaries*) · research.md D22 · plan.md § *Validation* row "Module dependency direction"
   - **Read first** plan.md § *Layout* module table · Constitution III · research.md D22, D31 (why the projector returns `SnapshotView` and not a DTO)
   - **Files** `backend/pom.xml` (enforcer executions), `backend/app/pom.xml` (ArchUnit test-scope dependency), `backend/app/src/test/java/.../ArchitectureTest.java`
-  - **Proof** `ArchitectureTest` — four rules, over an importer scoped to the three modules' **main** classes only (`ImportOption.DoNotIncludeTests`, plus a location filter that excludes the `test-jar` artifacts T001 puts on this module's test classpath — the shared doubles are test code and rules 1 and 2 do not govern them): (1) no class under `..domain..` depends on `org.springframework..`, `com.fasterxml..`, `jakarta..`, `java.time.Clock`, `java.util.Random` or `java.io..`; (2) no class under `..application..` depends on `org.springframework..`, `com.fasterxml..` or `jakarta..`; (3) `..domain..` does not depend on `..application..` or `..app..`; (4) `..application..` does not depend on `..app..`.
+  - **Proof** `ArchitectureTest` — four rules, over an importer scoped to the three modules' **main** classes only (`ImportOption.DoNotIncludeTests`, plus a location filter that excludes the `test-jar` artifacts T001 puts on this module's test classpath — the shared doubles are test code and rules 1 and 2 do not govern them): (1) no class under `..domain..` depends on `org.springframework..`, `com.fasterxml..`, `jakarta..`, `org.slf4j..`, `ch.qos.logback..`, `java.util.logging..`, `java.time.Clock`, `java.util.Random` or `java.io..`; (2) no class under `..application..` depends on `org.springframework..`, `com.fasterxml..` or `jakarta..`; (3) `..domain..` does not depend on `..application..` or `..app..`; (4) `..application..` does not depend on `..app..`.
   - **Verify** `cd backend && ./mvnw -q verify` (Enforcer runs at `validate`, ArchUnit under Surefire in `app`)
   - **Mutation** Two steps, because the two guards react to different things and neither substitutes for the other. **(a)** Add `spring-boot-starter` as a compile dependency of `domain/pom.xml`; Enforcer's `bannedDependencies` must fail the build at `validate`. Restore. **(b)** With the ban temporarily lifted and that dependency still present, add `import org.springframework.stereotype.Component;` and the annotation to a `domain` class; `ArchitectureTest` must fail. Restore both. A bare import with no dependency declared is a **compile** error, not an Enforcer failure — which is why (a) exists.
   - **Depends on** T001
@@ -1007,14 +1007,16 @@ environment-blocked checks (Constitution VI; AGENTS.md § *Scope control* rule 5
 | Task | Date | Command | Result | Mutation proof |
 |---|---|---|---|---|
 | T002 | 2026-09-29 | `cd backend && ./mvnw -q -pl app -am clean && ./mvnw -q -pl app -am test -Dtest=GeneratedModelSpikeTest -Dsurefire.failIfNoSpecifiedTests=false -Dfailsafe.failIfNoSpecifiedTests=false` | PASS — 5 tests, 0 failures, 0 errors, 0 skipped; generated 29 object models, 7 enums, and the three whitelisted helpers; no `ApiClient` or generated endpoint APIs | PASS — renamed `Coordinate` to `Coord` in a scratch contract copy and reran the focused Maven test; `testCompile` failed because `Coordinate` could not be resolved |
+| T003 | 2026-09-29 | `cd backend && ./mvnw -q verify` | PASS — Enforcer validated the three modules; `ArchitectureTest`: 4 tests, 0 failures, 0 errors, 0 skipped; reactor verify exited 0 | PASS — (a) temporary compile dependency `org.springframework.boot:spring-boot-starter` in domain failed Enforcer at `validate`, including its transitive Spring/Jakarta dependencies; (b) with `-Denforcer.skip=true` and that dependency present, a domain `@Component` annotation failed `domainDoesNotDependOnFrameworkOrIoTypes`; all mutations restored |
 
 ## Known limitations
 
 *Filled in during implementation.*
 
+- T003 has four enumerated bytecode rules. The task also describes `application` APIs without concrete maps and `app` without game rules, a second projection or UI assets; the four rules do not prove those content constraints. No such types or assets exist in the current T003 source set.
 - T002 generated models use Jackson 2 while Spring Boot 4's default HTTP converter uses Jackson 3. The app must route generated DTOs through a Jackson 2 mapper when controller adapters are implemented; the focused T002 test validates generated model behavior, not MVC converter wiring.
 
 ## Next unit
 
 `$speckit-analyze` has run across this package and its findings are applied (`AGENTS.md` § *The loop*
-step 6). T001 and T002 are complete; start with **T003**.
+step 6). T001, T002 and T003 are complete; start with **T004**.
