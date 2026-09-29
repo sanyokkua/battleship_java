@@ -190,7 +190,7 @@ only in the projector (T015).
 **Checkpoint**: a whole game can be played end to end as a sequence of `GameRules.apply` calls, under
 both rulesets, with no Spring, no clock and no I/O anywhere in `domain`.
 
-- [ ] T007 [US3] Publish the two rulesets and the board primitives in `backend/domain/src/main/java/ua/kostenko/battleship/domain/`
+- [x] T007 [US3] Publish the two rulesets and the board primitives in `backend/domain/src/main/java/ua/kostenko/battleship/domain/`
   - **Delivers** `model/Coordinate` (`int rowIndex`, `int columnIndex`, zero-based; row 0 is the top row, column 0 the left), `model/Orientation` (`HORIZONTAL` extends from the anchor to the right, `VERTICAL` extends downwards), `model/Seat` (`HOST`, `GUEST`), `model/Phase` (`WAITING`, `PLACEMENT`, `PLAYING`, `FINISHED`, `ABANDONED`); `rules/FleetEntry` (`shipTypeId`, `int length`, `int count`), `rules/Ruleset` (`id`, `int rows`, `int columns`, `List<FleetEntry> fleet`, `boolean shipsMayTouch`, `boolean extraTurnOnHit`, `boolean revealWaterAroundSunk`), and `rules/Rulesets` holding the two immutable constants of spec R05 with a lookup by id. A corrected ruleset is published under a **new** id, never edited (R03).
   - **Covers** R03, R05 · data-model.md § *Rulesets* · proof area 1 (the data half)
   - **Read first** spec.md R05 (the table is the single source of this product data) · data-model.md § *Rulesets* · `contracts/openapi.yaml` `Ruleset` (L1103: `id` pattern `^[a-z0-9-]+\.v[0-9]+$`, `board.rows`/`columns` `integer, minimum: 1, maximum: 100`), `FleetEntry` (L1090: `shipTypeId` pattern `^[a-z0-9-]{2,32}$`, `length` `minimum: 1`, `count` `minimum: 1`)
