@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.3.0 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001 through T013 are complete; T014 is next.
+**Status**: in progress. T001 through T014 are complete; T015 is next.
 **Contract amendments**: the three changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -329,7 +329,7 @@ still framework-free. `application` may reference `domain` and the JDK only.
 seeded `RandomSource`, with privacy, idempotency, linearization and every deadline proven — and still
 no HTTP anywhere.
 
-- [ ] T014 [P] Declare the time and secret ports in `backend/application/src/main/java/ua/kostenko/battleship/application/port/`
+- [x] T014 [P] Declare the time and secret ports in `backend/application/src/main/java/ua/kostenko/battleship/application/port/`
   - **Delivers** `TimeSource.now()` returning `Instant` and `SecretGenerator`, plus their production implementations in `app/config` and their test doubles. `SystemTimeSource` wraps `Clock.systemUTC()`. `SecureRandomSecretGenerator` uses `SecureRandom` and produces: **128-bit base64url game ids** matching `^[A-Za-z0-9_-]{22}$`; **256-bit session values**; **256-bit invitation secrets** matching `^[A-Za-z0-9_-]{43}$`. Test doubles: `MutableTimeSource` (a settable `Instant`, advanced by the test — **no test in this feature ever sleeps or depends on real elapsed time**, R60) and `FixedSecretGenerator`. `SeededRandomSource` (T010) already implements `domain.RandomSource`; it is reused, not re-declared.
     Each port has a real second implementation, which is what justifies the interface at all (Constitution IX; plan.md § *Ports*).
   - **Covers** R32 (high-entropy session from a cryptographically secure source), R34 (invitation secret), R60 · research.md D12, D14
@@ -340,6 +340,7 @@ no HTTP anywhere.
   - **Verify** `cd backend && ./mvnw -q -pl application,app -am test -Dtest='SecretGeneratorTest,MutableTimeSourceTest'`
   - **Mutation** Generate game ids from `java.util.Random` seeded with a constant; assertion (4) must fail.
   - **Depends on** T005, T010
+  - **Evidence (2026-09-29)** Implementation and independent review passed on task branch `feature/002-backend--t014`, parent `feature/002-backend` (base `f24d1ff`), code commit `9cec6df`. RED: `MutableTimeSourceTest` had 4 assertion failures; `SecretGeneratorTest` had 7 assertion failures before adapters were implemented. Fresh `cd backend && ./mvnw -q -pl application,app -am clean test -Dtest='SecretGeneratorTest,MutableTimeSourceTest,ApplicationContextTest' -Dsurefire.failIfNoSpecifiedTests=false -Dfailsafe.failIfNoSpecifiedTests=false` exited 0: 14 tests, no failures/errors/skips; app tests consumed both shared application doubles from clean reactor output. Named mutation: replacing `SecureRandom` with `new java.util.Random(0)` and running `SecretGeneratorTest#independentlyConstructedGeneratorsProduceDifferentGameIdStreams` with the same reactor/flags exited 1: 1 test, 1 failure, no errors/skips, `expected: not equal but was: <YLQguzhR2dR6y5M9vnA5mw>`. Source restored; focused tests passed again. `cd backend && ./mvnw -q verify` exited 0: domain 67, application 4, app unit 19, app integration 11 — 101 tests, no failures/errors/skips; includes formatting and architecture checks. `python3 scripts/sync-agent-files.py --check` exited 0: 15 mirrored skills, 0 problems (existing AGENTS length warning). Fresh independent review found no compliance or quality findings. Existing tool/development-security warnings and intentional invalid-configuration logs remain; no packaged runtime readiness claim is made for this task.
 
 - [ ] T015 [US1] [US2] [US3] [US4] Build the projector — the one place that decides disclosure — in `backend/application/src/main/java/ua/kostenko/battleship/application/projection/`
   - **Delivers** `SnapshotProjector.project(GameState, Seat, SnapshotContext)` and the framework-free view records it returns: `SnapshotView`, `BoardView`, `PlayerView`, `ShotView` (and `StatisticsView` in T016). They are deeply immutable, take no decision of their own, and **never leave the server**; `SnapshotDtoAssembler` (T025) copies them into the generated `GameSnapshot`. Their fields are those of the contract schema each is copied into.
