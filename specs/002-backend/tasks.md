@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.3.0 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001 through T016 are complete; T017 is next.
+**Status**: in progress. T001 through T017 are complete; T018 is next.
 **Contract amendments**: the three changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -408,7 +408,7 @@ no HTTP anywhere.
   - **Depends on** T015
   - **Evidence (2026-09-29)** Task branch `feature/002-backend--t016` from `feature/002-backend` at `68ee9aa`. `StatisticsTest` first failed to compile because the statistics view was absent. A real-transition sub-millisecond test then failed because independently truncated match intervals broke `total = placement + gameplay`; projecting the sum of the displayed parts made it pass. The named earlier-start mutation failed three `StatisticsTest` assertions and was restored. Fresh focused `cd backend && ./mvnw -q -pl application -am test -Dtest=StatisticsTest -Dsurefire.failIfNoSpecifiedTests=false` and aggregate `cd backend && ./mvnw -q verify` exited 0; reactor reports show 119 tests, zero failures/errors/skips. `git diff --check` and `python3 scripts/sync-agent-files.py --check` exited 0 (the latter retains an existing `AGENTS.md` length warning). Independent review found no remaining Critical or Important issue. Wire assembly and end-to-end delivery remain later tasks.
 
-- [ ] T017 Build the registry behind a port in `backend/application/src/main/java/ua/kostenko/battleship/application/port/GameSlotStore.java` and `backend/app/src/main/java/ua/kostenko/battleship/app/registry/`
+- [x] T017 Build the registry behind a port in `backend/application/src/main/java/ua/kostenko/battleship/application/port/GameSlotStore.java` and `backend/app/src/main/java/ua/kostenko/battleship/app/registry/`
   - **Delivers** **Decision A1** (see § *Decisions this task list settles*). `GameSlotStore` in `application/port` — `<T> T withSlot(GameId, Function<Slot,T>)`, `insert`, `remove` — is how `application` use cases reach state that lives in `app`. `GameRegistry` in `app/registry` implements it; `InMemoryGameSlotStore` is the test double. `plan.md` § *Ports* already lists five and states why (Decision A1 is applied, not pending).
     **`Slot` is part of this port and is delivered here** — the interface, also in `application/port`, that `withSlot` hands its function. It is the only shape an `application` use case ever sees of a game's mutable state; its members are [data-model.md](data-model.md) § *Registry state*, the `Slot` row. Those are: `GameState state()` and `replace(GameState)`; `Set<UUID> acceptedCommandIds()`; the four deadlines and `Map<Seat, Instant> presenceNotBefore()`; the session and invitation digests, `unusedInvitationSecret?()` and the setters T018–T021 need; and **`SnapshotContext contextFor(Seat, Instant now)`**, which is how an `application` use case obtains the projector's context without naming an `app` type. `GameSlot` implements `Slot`; `SnapshotContextFactory` (T025) is `GameSlot`'s implementation of `contextFor`, so research.md D27 still holds — the projector never sees `GameSlot`. Because `GameState` and `SnapshotContext` are both immutable records, a use case captures the pair inside `withSlot` and projects **after** the lock is released (plan.md § *Command path*, § *Ports*).
     `GameRegistry` holds `ConcurrentHashMap<GameId, GameSlot>` plus **two `Semaphore`s** sized from `max-concurrent-games` and `max-concurrent-streams`. A permit is acquired **before** insertion and released **exactly once** on removal; `map.size()` is never admission control (research.md D8). Over a ceiling the answer is a refusal carrying a retry hint; **nothing running is evicted** and readiness stays true (R39).
@@ -423,6 +423,7 @@ no HTTP anywhere.
   - **Verify** `cd backend && ./mvnw -q -pl app -am test -Dtest=GameRegistryTest`
   - **Mutation** Replace the semaphore with `map.size() < limit`; assertion (2)'s concurrent variant must fail. Store the session value instead of its digest; assertion (5) must fail. Declare one `app/registry` method `synchronized`; assertion (8) must fail.
   - **Depends on** T006, T014
+  - **Evidence (2026-09-29)** Task branch `feature/002-backend--t017` from `feature/002-backend` at `691a0a2`. The focused `GameRegistryTest` suite passed 15/15 after RED tests for missing registry types, atomic session ownership, removal locking and a private digest-only registration API. Named mutations failed as required and were restored: map-size admission admitted two games in round 62 (`expected: 1 but was: 2`); raw session-value retention failed `sessionRegistryStoresDigestAndDropsLeastRecentlySeen`; a `synchronized` registry method failed `registryMethodsAreNotSynchronized` (ArchUnit). Removing the slot lock also failed the removal-waits test with the expected timeout assertion. Fresh `cd backend && ./mvnw -q verify` exited 0; Surefire/Failsafe XML reports total 134 tests, zero failures/errors/skips. `git diff --check` and `python3 scripts/sync-agent-files.py --check` exited 0; the sync checker retains an existing AGENTS.md length warning. Independent review found two Important race/test gaps, fixed with failing proofs before this gate. Session use-case and HTTP wiring remain T018+ work.
 
 - [ ] T018 [US1] [US2] Create, join and re-invite in `backend/application/src/main/java/ua/kostenko/battleship/application/usecase/`
   - **Delivers** Three use cases, each complete.
@@ -1039,6 +1040,6 @@ environment-blocked checks (Constitution VI; AGENTS.md § *Scope control* rule 5
 ## Next unit
 
 `$speckit-analyze` has run across this package and its findings are applied (`AGENTS.md` § *The loop*
-step 6). T001 through T016 are complete; start with **T017**. T016's focused statistics proof,
+step 6). T001 through T017 are complete; start with **T018**. T017's registry proof,
 mutation checks and aggregate backend gate pass; proof areas 1–3 and T016's statistics portion of area 6
 are implemented. Later feature tasks remain pending.
