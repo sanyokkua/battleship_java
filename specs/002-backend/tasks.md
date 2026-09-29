@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.3.0 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001 through T012 are complete; T013 is next.
+**Status**: in progress. T001 through T013 are complete; T014 is next.
 **Contract amendments**: the three changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -288,7 +288,7 @@ both rulesets, with no Spring, no clock and no I/O anywhere in `domain`.
   - **Verified (2026-09-29)** `RulesetRulesTest`: 14 passed; initial behavioral RED: 10 assertion failures, 0 errors. Final review found independently truncated turn intervals could lose a millisecond; fractional-instant pass/resignation and final-sink regressions gave RED: 2 assertion failures, 0 errors, then passed after relative play-start boundaries were used for turn samples (shot-decision semantics unchanged). Named mutations (unconditional revealed water; duplicate target consumes turn): each 1 assertion failure, 0 errors; both restored and focused proof passed. `cd backend && ./mvnw -q verify`: 80 tests, 0 failures/errors/skips (59 domain, 10 app unit, 11 app integration); Spotless, skill sync and `git diff --check` passed. Existing Jansi/Mockito/development-security warnings and AGENTS length warning remain; invalid-configuration tests intentionally log startup errors. Domain-only behavior is verified; HTTP gameplay/runtime adapters remain later tasks. Task branch `feature/002-backend--t012` records parent `feature/002-backend` at `dfae5419209ae685355a9ad76685aad411b7613e`; implementation commit `8b2a6d3c0478e1158cb1770f12c2f10d03612ac8`.
   - **Depends on** T011
 
-- [ ] T013 [US3] [US4] [US6] Compute and enforce the allowed-action table in `backend/domain/src/main/java/ua/kostenko/battleship/domain/rules/AllowedActions.java`
+- [x] T013 [US3] [US4] [US6] Compute and enforce the allowed-action table in `backend/domain/src/main/java/ua/kostenko/battleship/domain/rules/AllowedActions.java`
   - **Delivers** `AllowedActions.of(GameState, Seat)` returning the exact set spec R13's table prescribes, and the enforcement in `GameRules.apply`: a command whose action is **not** in that seat's offered set at that moment is refused `action-not-allowed`, with the state returned by identity and the version untouched. Nothing outside the table is ever offered; a client never derives permission from the phase, the turn or anything else.
     The table, verbatim from R13:
 
@@ -1022,6 +1022,8 @@ environment-blocked checks (Constitution VI; AGENTS.md § *Scope control* rule 5
 
 | T010 | 2026-09-29 | `cd backend && ./mvnw -q -pl domain test -Dtest=RandomArrangementTest`; `./mvnw -q -pl domain test`; scoped domain/app-test Spotless; `cd contracts && npm ci && npm run check`; focused `GeneratedModelSpikeTest` with reactor no-match targeting flags; `python3 scripts/sync-agent-files.py --check`; `cd backend && ./mvnw -q verify` | PASS — RandomArrangementTest 10/10; domain suite 29/29; GeneratedModelSpikeTest 5/5; contract examples/type generation, changed-file formatting, agent sync and independent review passed. Aggregate verify FAILED on eight pre-existing, unchanged domain formatting files (listed below); it is not a passing feature gate | PASS — removed failed-candidate bound; `RandomArrangementTest#exhaustedCollisionBudgetRefusesOriginalArrangedStateAtomically` failed with “execution timed out after 1000 ms” (1 test, 1 failure). Restored GameRules byte-for-byte; focused and domain suites passed. New problem-code round-trip first failed with `Unexpected value random-arrangement-failed`, then passed after contract regeneration |
 
+| T013 | 2026-09-29 | `cd backend && ./mvnw -q -pl domain test -Dtest='AllowedActionsTest,RefusedCommandStabilityTest'`; `./mvnw -q -pl domain test`; `./mvnw -q verify`; scoped domain Spotless; `python3 scripts/sync-agent-files.py --check`; `git diff --check` | PASS — focused 8/8, domain 67/67, reactor 88/88 (67 domain + 10 app units + 11 ITs), zero failures/errors/skips; exact seven-row table and 180 forbidden command attempts; independent Astra review found no actionable issues | PASS — added `LEAVE` to both `PLAYING` rows; focused run failed with 4 assertions (2 in each new class), 0 errors/skips. Restored byte-for-byte and reran focused/domain/reactor checks successfully. Initial refusal RED returned `VALIDATION_FAILED` instead of `ACTION_NOT_ALLOWED`; table scaffold RED had 8 assertion failures |
+
 ## Known limitations
 
 *Filled in during implementation.*
@@ -1029,10 +1031,9 @@ environment-blocked checks (Constitution VI; AGENTS.md § *Scope control* rule 5
 - T003 has four enumerated bytecode rules. The task also describes `application` APIs without concrete maps and `app` without game rules, a second projection or UI assets; the four rules do not prove those content constraints. No such types or assets exist in the current T003 source set.
 - T002 generated models use Jackson 2 while Spring Boot 4's default HTTP converter uses Jackson 3. The app must route generated DTOs through a Jackson 2 mapper when controller adapters are implemented; the focused T002 test validates generated model behavior, not MVC converter wiring.
 - The former `spring-boot:run` command with `-am` invoked the goal on the parent aggregator and failed before reaching `app` (`Unable to find a suitable main class`). The existing executable package-and-run command now serves as the local startup smoke check; readiness and no-UI behavior remain owned by T037.
-- T010 fresh aggregate `cd backend && ./mvnw -q verify` also fails at Spotless on the same eight files below; each file was verified byte-for-byte unchanged from T010 base `24f9d5e`. This prevents a full feature-gate success claim.
-- The unscoped `cd backend && ./mvnw -q spotless:check` fails on unchanged domain files (`RulesetCatalogTest`, `Orientation`, `Phase`, `Seat`, `Coordinate`, `Rulesets`, `FleetEntry`, `Ruleset`). The nine T008 Java files pass the scoped Spotless check; those existing files were not changed.
+- Historical T008/T010 formatting debt (`RulesetCatalogTest`, `Orientation`, `Phase`, `Seat`, `Coordinate`, `Rulesets`, `FleetEntry`, `Ruleset`) was corrected by T011. Fresh T013 aggregate `cd backend && ./mvnw -q verify` passes, including Spotless; the older failed evidence remains historical.
 
 ## Next unit
 
 `$speckit-analyze` has run across this package and its findings are applied (`AGENTS.md` § *The loop*
-step 6). T001 through T010 are complete; start with **T011**. T010 focused proofs pass; the aggregate backend gate remains failed on the existing formatting debt recorded above.
+step 6). T001 through T013 are complete; start with **T014**. T013 focused, domain and aggregate backend gates pass; proof areas 1 and 2 are implemented. Later feature tasks remain pending.

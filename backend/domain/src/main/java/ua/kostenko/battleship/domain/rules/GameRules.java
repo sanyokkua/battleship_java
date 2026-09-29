@@ -34,11 +34,17 @@ public final class GameRules {
         Objects.requireNonNull(command, "command");
         Objects.requireNonNull(now, "now");
         Objects.requireNonNull(random, "random");
-        PlayerState actorState = player(state, actor);
-        if (actorState != null
-                && actorState.ready()
-                && !(command instanceof GameCommand.Fire)
-                && !(command instanceof GameCommand.Resign)) {
+        AllowedActions.Action action =
+                switch (command) {
+                    case GameCommand.PlaceShip ignored -> AllowedActions.Action.PLACE_SHIP;
+                    case GameCommand.RemoveShip ignored -> AllowedActions.Action.REMOVE_SHIP;
+                    case GameCommand.PlaceFleetRandomly ignored -> AllowedActions.Action.PLACE_FLEET_RANDOMLY;
+                    case GameCommand.ClearFleet ignored -> AllowedActions.Action.CLEAR_FLEET;
+                    case GameCommand.Ready ignored -> AllowedActions.Action.READY;
+                    case GameCommand.Fire ignored -> AllowedActions.Action.FIRE;
+                    case GameCommand.Resign ignored -> AllowedActions.Action.RESIGN;
+                };
+        if (!AllowedActions.of(state, actor).contains(action)) {
             return refused(state, Rejection.problem(ProblemCode.ACTION_NOT_ALLOWED));
         }
         return switch (command) {
