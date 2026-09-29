@@ -1,6 +1,7 @@
 package ua.kostenko.battleship.app;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
@@ -8,6 +9,9 @@ import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.Test;
+import ua.kostenko.battleship.application.registry.GameSlot;
+import ua.kostenko.battleship.application.registry.SessionRecord;
+import ua.kostenko.battleship.domain.model.GameState;
 
 class ArchitectureTest {
     private static final DescribedPredicate<JavaClass> FORBIDDEN_DOMAIN_TYPES =
@@ -74,5 +78,21 @@ class ArchitectureTest {
                 .dependOnClassesThat()
                 .resideInAPackage("..app..")
                 .check(MODULE_CLASSES);
+    }
+
+    @Test
+    void appDoesNotOwnAuthoritativeGameOrSessionState() {
+        assertThat(MODULE_CLASSES.stream()
+                        .filter(type -> type.getPackageName().startsWith("ua.kostenko.battleship.app.registry")))
+                .isEmpty();
+        assertThat(MODULE_CLASSES.stream()
+                        .filter(type -> type.getPackageName().equals("ua.kostenko.battleship.app")
+                                || type.getPackageName().startsWith("ua.kostenko.battleship.app."))
+                        .flatMap(type -> type.getAllFields().stream())
+                        .filter(field -> field.getAllInvolvedRawTypes().stream()
+                                .anyMatch(type -> type.isEquivalentTo(GameState.class)
+                                        || type.isEquivalentTo(GameSlot.class)
+                                        || type.isEquivalentTo(SessionRecord.class))))
+                .isEmpty();
     }
 }

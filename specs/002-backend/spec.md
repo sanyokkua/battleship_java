@@ -55,6 +55,9 @@ secret.
    invitation, **Then** it receives the current snapshot and nothing changes.
 3. **Given** a link that was opened but not confirmed, **When** nothing else happens, **Then** no seat
    is claimed and the invitation stays usable until it expires.
+4. **Given** an expired game still within its retention period, **When** its existing guest tries to
+   join again with any schema-valid secret, **Then** the answer is `410 game-expired`; a visitor who
+   never held the guest seat receives `409 invitation-unavailable` for that same game.
 
 ### User Story 3 — Both players arrange fleets privately and declare ready (Priority: P1)
 
@@ -339,10 +342,13 @@ confirm the running service reports the changed value.
 - **R34** The invitation secret is a high-entropy value generated from a cryptographically
   secure source. It travels only in the link fragment and in the join request body, is consumed
   atomically by the first successful join, and is invalidated by replacement, abandonment, expiry or
-  use. Every refusal of a join — unknown game, wrong, used, replaced or expired secret, seat taken, or
-  the host itself — is the same answer. Membership is checked before the secret: a browser that already
-  holds this game's guest seat receives the current state whatever secret it presents, so a reload after
-  the host replaced the invitation never locks the guest out of their own game.
+  use. Membership is checked before the secret. A browser that already holds this game's guest seat
+  receives the current state with any schema-valid secret while the game is live, so a reload after
+  the host replaced the invitation never locks the guest out. If that game expired and is still
+  remembered, the existing guest instead receives `game-expired` (410), regardless of schema-valid
+  secret. Every other join refusal — unknown or forgotten game, wrong, used, replaced or expired
+  secret, seat taken, the host itself, or an expired game for a non-guest — is
+  `invitation-unavailable` (409).
 - **R35** Every state-changing request must echo the readable anti-forgery token that the
   service information request establishes; a missing or wrong token is refused as a rejected request.
 - **R36** The service additionally refuses state-changing requests that browser-set origin and
@@ -412,10 +418,13 @@ deadline equals the current instant has already expired. The same comparison app
 - **R47** Expiry is checked on every access to a game and also swept in the background at the
   configured interval, so a late request can never resurrect an expired game.
 - **R63** An expired game is remembered for the same retention period as a finished one, measured from
-  the expiry instant. While it is remembered, only its own two players are told that it expired; every
-  other caller receives the same "no such game" answer as for a game that never existed, so an expiry
-  never confirms to a stranger that the game was real. Once that period has passed, its own players
-  receive that answer too.
+  the expiry instant. While it is remembered, protected game operations return `410 game-expired` to
+  its own players and `404 game-unavailable` to other callers, matching an unknown game for those
+  callers. Once that period has passed, its own players receive `404` too. `joinGame` uses its
+  invitation-refusal shape: an existing guest receives `410 game-expired` during retention, while the
+  host and nonmembers receive `409 invitation-unavailable`; after retention the forgotten game answers
+  `409 invitation-unavailable`
+  even to the former guest (R34).
 - **R48** All state is in memory. A restart ends every game and every session; there is no
   persistence, no recovery and no claim of continuity.
 
@@ -621,12 +630,13 @@ replicas, continuous-integration workflows, deployment manifests and hosting aut
 
 Also out of scope for this feature specifically: any user interface or user-interface asset
 (`003-frontend`); cross-product orchestration, the repository-wide verification gate and end-to-end
-browser journeys (`004-integration`); and any change to `contracts/` beyond the three amendments this
+browser journeys (`004-integration`); and any change to `contracts/` beyond the four amendments this
 feature makes under the `001-api-contract` R24 additive rule — the `Phase.PLAYING` first-turn wording,
 the `GameSnapshot.version` wording of R18, and normalizing five lines of OpenAPI-3.1-only syntax
-(`const` → single-value `enum`, `examples: [x]` → `example: x`) so that the wire types can be generated.
-All three are description- or constraint-level and leave the wire JSON byte-identical; the contract
-product is otherwise owned by `001-api-contract`.
+(`const` → single-value `enum`, `examples: [x]` → `example: x`) so that the wire types can be generated,
+plus the owner-approved `joinGame` 410 response for an existing guest of a retained expired game
+(R34, R63). The first three are description- or constraint-level and leave wire JSON byte-identical;
+the fourth clarifies a pre-release response. The contract product is otherwise owned by `001-api-contract`.
 
 The capabilities the contract itself defers are not built: claiming a win against a vanished opponent,
 rematch, recovering a join whose answer was lost before the session arrived, conditional reads and salvo

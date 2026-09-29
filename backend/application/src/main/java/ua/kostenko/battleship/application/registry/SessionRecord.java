@@ -1,4 +1,4 @@
-package ua.kostenko.battleship.app.registry;
+package ua.kostenko.battleship.application.registry;
 
 import java.time.Instant;
 import java.util.Set;

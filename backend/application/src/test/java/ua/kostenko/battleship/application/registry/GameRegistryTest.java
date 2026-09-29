@@ -1,14 +1,17 @@
-package ua.kostenko.battleship.app.registry;
+package ua.kostenko.battleship.application.registry;
 
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 import static org.assertj.core.api.Assertions.*;
 
-import com.tngtech.archunit.core.domain.JavaModifier;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 import org.junit.jupiter.api.Test;
 import ua.kostenko.battleship.domain.model.*;
@@ -30,7 +33,7 @@ class GameRegistryTest {
 
     @Test
     void gameCeilingRefusesWithoutEvictingFirstGame() {
-        GameRegistry registry = new GameRegistry(1, 1);
+        GameRegistry registry = new GameRegistry(1);
         GameSlot first = slot("first");
         registry.insert("first", first);
         assertThatThrownBy(() -> registry.insert("second", slot("second")))
@@ -41,7 +44,7 @@ class GameRegistryTest {
 
     @Test
     void gamePermitIsReleasedExactlyOnceAcrossTenThousandCycles() {
-        GameRegistry registry = new GameRegistry(1, 1);
+        GameRegistry registry = new GameRegistry(1);
         for (int i = 0; i < 10_000; i++) {
             String id = "game-" + i;
             registry.insert(id, slot(id));
@@ -57,7 +60,7 @@ class GameRegistryTest {
         ExecutorService workers = Executors.newFixedThreadPool(32);
         try {
             for (int round = 0; round < 100; round++) {
-                GameRegistry registry = new GameRegistry(1, 1);
+                GameRegistry registry = new GameRegistry(1);
                 CyclicBarrier start = new CyclicBarrier(32);
                 var jobs = new ArrayList<Future<Boolean>>();
                 for (int i = 0; i < 32; i++) {
@@ -83,20 +86,8 @@ class GameRegistryTest {
     }
 
     @Test
-    void streamPermitCannotBeDoubleReleased() {
-        GameRegistry registry = new GameRegistry(1, 1);
-        AutoCloseable first = registry.reserveStream();
-        assertThatThrownBy(registry::reserveStream).isInstanceOf(CapacityExceededException.class);
-        assertThatCode(first::close).doesNotThrowAnyException();
-        assertThatCode(first::close).doesNotThrowAnyException();
-        AutoCloseable second = registry.reserveStream();
-        assertThatThrownBy(registry::reserveStream).isInstanceOf(CapacityExceededException.class);
-        assertThatCode(second::close).doesNotThrowAnyException();
-    }
-
-    @Test
     void withSlotReleasesLockWhenFunctionThrows() throws Exception {
-        GameRegistry registry = new GameRegistry(1, 1);
+        GameRegistry registry = new GameRegistry(1);
         registry.insert("one", slot("one"));
         assertThatThrownBy(() -> registry.withSlot("one", s -> {
                     throw new IllegalStateException("failure");
@@ -114,7 +105,7 @@ class GameRegistryTest {
 
     @Test
     void withSlotHoldsLockUntilFunctionReturnsAndRemovalWaits() throws Exception {
-        GameRegistry registry = new GameRegistry(1, 1);
+        GameRegistry registry = new GameRegistry(1);
         registry.insert("one", slot("one"));
         ExecutorService workers = Executors.newFixedThreadPool(3);
         CountDownLatch entered = new CountDownLatch(1);
@@ -180,6 +171,17 @@ class GameRegistryTest {
     }
 
     @Test
+    void sessionRegistryRetainsNoRawSessionValueInItsObjectGraph() throws IllegalAccessException {
+        SessionRegistry sessions = new SessionRegistry(2);
+        String raw = "raw-session-canary-7b9f6e";
+        sessions.registerForGame(raw, "game-one", NOW);
+
+        assertThat(retainedStrings(sessions))
+                .contains(SessionRegistry.digest(raw))
+                .doesNotContain(raw);
+    }
+
+    @Test
     void inventedSessionsCannotEvictLiveGameSession() {
         SessionRegistry sessions = new SessionRegistry(2);
         sessions.registerForGame("active-secret", "game-one", NOW);
@@ -198,6 +200,37 @@ class GameRegistryTest {
         assertThat(sessions.find("host-secret")).get().satisfies(record -> assertThat(record.liveGames())
                 .containsExactly("game-one"));
         assertThat(sessions.find("invented-secret")).isEmpty();
+    }
+
+    @Test
+    void concurrentAssociationCannotLoseItsSessionToAnInventedCaller() throws Exception {
+        ExecutorService workers = Executors.newFixedThreadPool(2);
+        try {
+            for (int round = 0; round < 100; round++) {
+                SessionRegistry sessions = new SessionRegistry(1);
+                CyclicBarrier start = new CyclicBarrier(2);
+                Future<?> owner = workers.submit(() -> {
+                    start.await(5, TimeUnit.SECONDS);
+                    sessions.registerForGame("host-secret", "game-one", NOW);
+                    return null;
+                });
+                Future<?> invented = workers.submit(() -> {
+                    start.await(5, TimeUnit.SECONDS);
+                    try {
+                        sessions.register("invented-secret", NOW);
+                    } catch (CapacityExceededException refused) {
+                        // The owner associated first; refusing an invented caller is expected.
+                    }
+                    return null;
+                });
+                owner.get(5, TimeUnit.SECONDS);
+                invented.get(5, TimeUnit.SECONDS);
+                assertThat(sessions.find("host-secret")).get().satisfies(record -> assertThat(record.liveGames())
+                        .containsExactly("game-one"));
+            }
+        } finally {
+            workers.shutdownNow();
+        }
     }
 
     @Test
@@ -233,26 +266,12 @@ class GameRegistryTest {
     }
 
     @Test
-    void registryHasNoSynchronizedMethodAndPortSignatureExposesOnlySlot() {
+    void registryHasNoSynchronizedMethod() {
         for (Class<?> type :
                 new Class<?>[] {GameRegistry.class, GameSlot.class, SessionRegistry.class, SessionRecord.class}) {
             assertThat(Arrays.stream(type.getDeclaredMethods()).filter(m -> Modifier.isSynchronized(m.getModifiers())))
                     .isEmpty();
         }
-        assertThat(Arrays.stream(ua.kostenko.battleship.application.port.GameSlotStore.class.getDeclaredMethods())
-                        .filter(m -> m.getName().equals("withSlot")))
-                .singleElement()
-                .satisfies(m -> assertThat(m.getGenericParameterTypes()[1].getTypeName())
-                        .contains("application.port.Slot")
-                        .doesNotContain("app.registry.GameSlot"));
-    }
-
-    @Test
-    void registryMethodsAreNotSynchronized() {
-        noMethods()
-                .should()
-                .haveModifier(JavaModifier.SYNCHRONIZED)
-                .check(new ClassFileImporter().importPackages("ua.kostenko.battleship.app.registry"));
     }
 
     @Test
@@ -264,5 +283,34 @@ class GameRegistryTest {
         assertThat(host.invitationUrl()).isEqualTo("https://example.test/join/game-one#invite=invitation");
         assertThat(host.invitationExpiresAt()).isEqualTo(NOW.plusSeconds(30));
         assertThat(slot.contextFor(Seat.GUEST, NOW).invitationUrl()).isNull();
+    }
+
+    private static List<String> retainedStrings(Object root) throws IllegalAccessException {
+        List<String> strings = new ArrayList<>();
+        var visited = Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>());
+        var pending = new ArrayDeque<Object>();
+        pending.add(root);
+        while (!pending.isEmpty()) {
+            Object value = pending.removeFirst();
+            if (!visited.add(value)) continue;
+            if (value instanceof String string) {
+                strings.add(string);
+            } else if (value instanceof Map<?, ?> map) {
+                map.forEach((key, entry) -> {
+                    pending.add(key);
+                    pending.add(entry);
+                });
+            } else if (value instanceof Iterable<?> iterable) {
+                iterable.forEach(pending::add);
+            } else if (value.getClass().getPackageName().equals("ua.kostenko.battleship.application.registry")) {
+                for (Field field : value.getClass().getDeclaredFields()) {
+                    if (Modifier.isStatic(field.getModifiers())) continue;
+                    field.setAccessible(true);
+                    Object held = field.get(value);
+                    if (held != null) pending.add(held);
+                }
+            }
+        }
+        return strings;
     }
 }

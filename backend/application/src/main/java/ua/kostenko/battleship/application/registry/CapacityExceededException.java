@@ -1,4 +1,4 @@
-package ua.kostenko.battleship.app.registry;
+package ua.kostenko.battleship.application.registry;
 
 public final class CapacityExceededException extends RuntimeException {
     private final int retryAfterSeconds;

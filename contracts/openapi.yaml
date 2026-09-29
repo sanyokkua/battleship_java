@@ -269,10 +269,14 @@ paths:
         not call this operation: read the secret from the URL fragment, remove the fragment from the
         address bar, keep the secret in memory only, and call join when the visitor confirms a name.
         Success moves the game to `PLACEMENT` and issues the session cookie when the browser has none.
-        A caller who already is this game's guest gets `200` with the current snapshot, so a repeated
-        join is harmless. Every other refusal (unknown game, wrong, used, replaced or expired secret,
-        seat taken, caller is the host) is the same `409 invitation-unavailable`, so the answer reveals
-        nothing about the game. Rate limited per client address (default 20 per minute).
+        A caller who already is this game's guest gets `200` with the current snapshot while the game
+        is live, so a repeated join is harmless. If the game has expired but is still remembered,
+        that guest gets `410 game-expired` regardless of the submitted schema-valid secret. Every
+        other refusal (unknown or forgotten game, wrong, used, replaced or expired secret, seat taken,
+        caller is the host, or an expired game for a non-guest) is the same
+        `409 invitation-unavailable`, so the answer reveals nothing about the game to anyone who did
+        not join as its guest. Rate limited
+        per client address (default 20 per minute).
       security:
         - csrf: []
       requestBody:
@@ -305,6 +309,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
+        '410':
+          $ref: '#/components/responses/Gone'
         '422':
           $ref: '#/components/responses/Unprocessable'
         '429':
@@ -655,7 +661,8 @@ components:
     Gone:
       description: >-
         The game expired and the server still remembers that it did. Code `game-expired`. Once the
-        server forgets the game the answer becomes `404`; clients treat both as gone.
+        server forgets the game, protected game operations answer `404 game-unavailable`; `joinGame`
+        answers `409 invitation-unavailable`. Clients treat these outcomes as gone for that browser.
       content:
         application/problem+json:
           schema:
@@ -2111,4 +2118,3 @@ components:
 
         event: closed
         data: {"reason":"REPLACED"}
-

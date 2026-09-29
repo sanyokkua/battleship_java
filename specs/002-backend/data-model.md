@@ -42,6 +42,16 @@ size minus sunk ships — in `SnapshotProjector` (R22).
 A **view** is a player's snapshot excluding `serverTime` and `expiresAt` (spec R18); `viewChanged`
 names the seats whose view the transition actually altered.
 
+## Application failure (`backend/application/result`)
+
+`ApplicationFailure` is a framework-free exception raised by a use case for orchestration refusals
+such as `invitation-unavailable`, `game-expired`, or `service-unavailable`. It carries the contract
+`code` string, optional validation JSON Pointer `field` and `rule`, and optional
+`retryAfterSeconds`. It is not a second problem-code enum or a wire DTO. `CommandUseCase` converts a
+domain `Rejection` using its existing `ProblemCode.wireCode()` and validation fields. The app's
+`ProblemAdvice` maps that failure to the generated `Problem` and the HTTP status. Application tests
+assert the failure fields; adapter tests assert status, headers and body.
+
 ### Rulesets (R05–R08)
 
 The two ruleset identifiers, boards, fleets and flags are spec R05 — published product data, defined
@@ -172,20 +182,23 @@ they are always current, which is exactly why they are excluded from what moves 
 
 | Type | Module | Fields |
 |---|---|---|
-| `Slot` | `application/port` | The port-facing view of one game's mutable state, and the only shape an `application` use case sees. Reads and replaces the aggregate — `GameState state()`, `replace(GameState next)`; the idempotency memory — `Set<UUID> acceptedCommandIds()`; the four deadlines — `idleDeadline()`, `absoluteDeadline()`, `invitationDeadline()`, `terminalRetentionDeadline?()` — and `Map<Seat, Instant> presenceNotBefore()`; the digests and the one plaintext secret — `hostSessionDigest()`, `guestSessionDigest?()`, `invitationDigest?()`, `unusedInvitationSecret?()`, with the setters the use cases of T018–T021 need; and **`SnapshotContext contextFor(Seat seat, Instant now)`** |
-| `GameSlot` | `app/registry` | Implements `Slot`. `ReentrantLock`, `GameState`, `hostSessionDigest`, `guestSessionDigest?`, `invitationDigest?`, `unusedInvitationSecret?`, `Set<UUID> acceptedCommandIds`, `idleDeadline`, `absoluteDeadline`, `invitationDeadline`, `Map<Seat, Instant> presenceNotBefore`, `Map<Seat, Subscriber>`, `terminalRetentionDeadline?` |
-| `SessionRecord` | `app/registry` | `digest`, `createdAt`, `lastSeenAt` (drop-least-recently-used under the cap, R41), `Set<GameId> liveGames` (per-browser cap, R62) |
-| `Subscriber` | `app/realtime` | `SseEmitter`, `Seat`, `openedAt` (enforces `stream-max-lifetime-seconds`, R30), latest unsent snapshot (single slot, coalescing). It is an SSE type, so it lives beside the hub that owns it; `GameSlot` holds the `Map<Seat, Subscriber>` |
+| `GameRegistry` | `application/registry` | `ConcurrentHashMap<GameId, GameSlot>` and game-capacity semaphore; owns insertion, per-slot locking, removal and exactly-once permit release. It has no stream permit or Spring configuration dependency |
+| `GameSlot` | `application/registry` | `ReentrantLock`, `GameState`, `hostSessionDigest`, `guestSessionDigest?`, `invitationDigest?`, `unusedInvitationSecret?`, `Set<UUID> acceptedCommandIds`, `idleDeadline`, `absoluteDeadline`, `invitationDeadline`, `Map<Seat, Instant> presenceNotBefore`, `terminalRetentionDeadline?`, and the existing `SnapshotContext contextFor(Seat, Instant)` method retained in T017; from T029, framework-free per-seat connection flags. It holds no `Subscriber` or `SseEmitter` |
+| `SessionRegistry` / `SessionRecord` | `application/registry` | Digest-keyed session records with `digest`, `createdAt`, `lastSeenAt` (drop-least-recently-used under the cap, R41), `Set<GameId> liveGames` (per-browser cap, R62). Session values are never retained |
+| `Subscriber` | `app/realtime` | `SseEmitter`, `Seat`, `openedAt` (enforces `stream-max-lifetime-seconds`, R30), latest unsent snapshot (single slot, coalescing). The app-owned `SseHub` stores subscribers and stream permits, not the application game slot |
 
-`Slot` is what `GameSlotStore.withSlot(GameId, Function<Slot, T>)` (plan.md § *Ports*) hands the
-function it runs under the lock. It exists so that `CommandUseCase` and the other `application` use
-cases never name `GameSlot`, which lives in `app` — the module direction of plan.md § *Layout*.
-`contextFor` is the same rule applied to research.md D27: the projector's `SnapshotContext` is built
-from data that lives on the slot, so the slot builds it. `app/registry.SnapshotContextFactory` is
-`GameSlot`'s implementation of that one method; the projector still never sees `GameSlot`.
+Use cases access the real `GameRegistry` and `GameSlot` in their own module. The registry's per-game
+lock protects state transitions and framework-free connection changes. The projector still receives
+only `GameState` and `SnapshotContext`; `GameSlot.contextFor(Seat, Instant)` builds the context from
+the slot and connection flags. T025 may extract a helper only if repeated code warrants it. The app
+hub updates those flags through an application
+use case when an SSE subscriber opens, closes or is replaced; the Spring objects stay in the hub.
+The first open and last close each change a visible flag and increment `GameState.version` once;
+replacement leaves both the flag and version unchanged. The hub's pending subscriber buffers updates
+during registration and drops a late lower version, keeping event ids monotonic.
 
 Both `GameState` and `SnapshotContext` are immutable records, so a use case captures the pair inside
-`withSlot` and projects **after** the lock is released — which is what keeps plan.md § *Command path*'s
+the registry's locked operation and projects **after** the lock is released — which keeps plan.md § *Command path*'s
 "no projection while the lock is held" true.
 
 `terminalRetentionDeadline` is set from the instant the game finished, was abandoned or expired,

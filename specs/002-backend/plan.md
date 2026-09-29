@@ -25,19 +25,19 @@ backend/
 ├── domain/                  ua.kostenko.battleship.domain
 │   └── model/ rules/ command/ transition/
 ├── application/             ua.kostenko.battleship.application
-│   └── usecase/ port/ projection/ result/
+│   └── usecase/ port/ projection/ registry/ result/
 └── app/                     ua.kostenko.battleship.app
-    ├── web/ security/ registry/ realtime/ config/ observability/
+    ├── web/ security/ realtime/ config/ observability/
     └── target/generated-sources/openapi/     # generated wire DTOs, package …app.web.dto;
                                               # build output — not committed, not hand-edited,
                                               # not formatted by Spotless
 ```
 
-| Module | May depend on | Must not contain |
-|---|---|---|
-| `domain` | JDK only | Spring, Jackson, servlet, clock, random, logging, I/O |
-| `application` | `domain` | controllers, cookies, emitters, concrete maps, framework types |
-| `app` | `domain`, `application` | game rules, a second projection, any UI asset |
+| Module | May depend on | Owns | Must not contain |
+|---|---|---|---|
+| `domain` | JDK only | Raw game types and rules | Spring, Jackson, servlet, clock, random, logging, I/O |
+| `application` | `domain` | In-memory game/session registries, use-case orchestration, player-safe projection | Controllers, cookies, emitters, framework types |
+| `app` | `domain`, `application` | Spring HTTP/SSE adapters and composition | Game rules, authoritative game/session state, a second projection, any UI asset |
 
 `app` produces the single executable JAR (R57). Direction is enforced by Maven Enforcer
 `bannedDependencies` per module and by one ArchUnit test in `app` — an ArchUnit importer scoped to the
@@ -93,17 +93,18 @@ governs (research.md D24).
 
 ### Registry and slots
 
-`GameRegistry` holds `ConcurrentHashMap<GameId, GameSlot>` plus two `Semaphore`s sized from
-`max-concurrent-games` and `max-concurrent-streams`. A permit is acquired **before** insertion and
+`application/registry.GameRegistry` holds `ConcurrentHashMap<GameId, GameSlot>` and a `Semaphore` sized
+from `max-concurrent-games`. A permit is acquired **before** insertion and
 released exactly once on removal; `map.size()` is never admission control. Over a ceiling the answer
 is `503 service-unavailable` with `Retry-After`; nothing running is evicted and readiness stays true
 (R39, R04, S11).
 
 `GameSlot`'s fields are [data-model.md](data-model.md) § *Registry state*. Its lock is a
-`ReentrantLock`, never `synchronized`, which pins virtual threads; it holds at most one subscriber per
-seat.
+`ReentrantLock`, never `synchronized`, which pins virtual threads. It holds framework-free connection
+flags, never a Spring subscriber. `app/realtime.SseHub` owns the subscriber map and the independent
+stream-permit semaphore; it synchronizes connection changes with application state through a use case.
 
-`SessionRegistry` maps a SHA-256 digest to an anonymous session record. Only the digest is stored, so
+`application/registry.SessionRegistry` maps a SHA-256 digest to an anonymous session record. Only the digest is stored, so
 a copy of server memory yields no usable session (R32). Bounded by the sweeper and a hard cap with
 drop-least-recently-used, as are the rate-limit buckets (R41).
 
@@ -123,8 +124,10 @@ drop-least-recently-used, as are the rate-limit buckets (R41).
 | `sendPresence` | `PresenceController` | `PresenceUseCase` |
 | `leaveGame` | `LeaveController` | `LeaveGameUseCase` |
 
-`joinGame` answers `200` for a browser that already holds the guest seat, which is the membership-first
-order R34 requires. `Meta.serverTime` and every snapshot's `serverTime` come from `TimeSource.now()`.
+`joinGame` answers `200` for a browser that already holds the guest seat while the game is live; the
+same guest gets `410 game-expired` if the game is expired but retained. Other join refusals use `409
+invitation-unavailable` (§ *Join ordering*). `Meta.serverTime` and every snapshot's `serverTime` come
+from `TimeSource.now()`.
 `DisplayNameNormalizer` in `domain/model` implements R64. `Meta.apiVersion` is the constant
 **`1.0.0`**, equal to `contracts/openapi.yaml` `info.version`: it is not a configuration key and is
 never parsed from the YAML at runtime, but bumped by hand when the contract's `info.version` is.
@@ -154,8 +157,10 @@ thing that decides what one player may see, for HTTP and SSE alike (R17). It ret
 shapes in [data-model.md](data-model.md)) — rather than the wire type, because `application` may contain
 no framework type and the wire DTOs are generated with Jackson annotations (research.md D31).
 `SnapshotContext` is an application record carrying what lives outside the aggregate — `serverTime`,
-`expiresAt`, `invitationUrl?`, `invitationExpiresAt?` and each seat's `connected` flag — which
-`app/registry` builds from the slot; the projector never sees `GameSlot`, so the module direction holds.
+`expiresAt`, `invitationUrl?`, `invitationExpiresAt?` and each seat's `connected` flag.
+`application/registry.GameSlot.contextFor(Seat, Instant)` builds it from the slot; T017 retains this
+existing method when the slot moves, so T018 can project without a later prerequisite. T025 may
+extract a helper only if real duplication appears. The projector receives only the immutable context.
 `shipsRemaining` is derived here, like `Ship.cells` and `status`. It is the sole place that decides
 disclosure: the opponent grid carries only `UNKNOWN`/`MISS`/`HIT`/`SUNK`/`REVEALED_WATER` and `ships` lists only sunk ships until `FINISHED`;
 `ABANDONED` and expired reveal nothing (R19). `allowedActions` is computed here from the R13 table —
@@ -175,9 +180,17 @@ moves the idle deadline but bumps no version and pushes to nobody.
 ### Realtime (R27–R31)
 
 Spring MVC `SseEmitter` with `spring.threads.virtual.enabled=true`; a virtual thread per stream makes
-a bounded async executor and drain tasks unnecessary. Registration captures the current snapshot under
-the slot lock and sends it as the first `snapshot` event, so there is nothing to replay and
-`Last-Event-ID` is ignored. Event `id` is the snapshot `version`. A snapshot reaches a player only
+a bounded async executor and drain tasks unnecessary. The app hub installs a pending subscriber before
+the application use case takes the game lock. Under that lock the use case authorizes the seat, updates
+framework-free connection state, and captures immutable state and context. After unlocking, it
+projects the capture, queues that view as the first `snapshot` event, then drains newer buffered
+updates. A failed authorization removes the pending subscriber and releases its stream permit. A
+transition racing with registration is therefore either included in the capture or buffered for
+delivery after the first event; there is no gap between capture and subscription. The hub discards a
+late publish whose version is at or below the last queued or sent version for that seat, so out-of-order
+publisher arrival cannot regress the event id. No app hub lock is held while taking the game lock,
+projecting, serializing or writing. There is nothing to replay and `Last-Event-ID` is ignored. Event
+`id` is the snapshot `version`. A snapshot reaches a player only
 when that player's own view changed, so versions skip (R28). One emitter per (session, game): a newer
 one closes the older with `closed`/`REPLACED`, which is not a disconnection and changes no `connected`
 flag (R22). `closed`/`GAME_UNAVAILABLE` only when the game stops existing for that browser. Heartbeat
@@ -185,13 +198,20 @@ comment every `heartbeat-seconds` from one scheduler; `stream-max-lifetime-secon
 with no `closed` event; a subscriber keeps at most the latest unsent snapshot and is dropped if it
 cannot be written.
 
-The hub receives a `SnapshotView` from `SnapshotPublisher` and serializes it through the **same**
+The app-owned hub keeps `SseEmitter` subscribers and its stream-permit semaphore outside `GameSlot`.
+It updates the application-owned, framework-free connected flags through a use case under the slot
+lock. Opening the first stream or closing the last changes that seat's visible flag and bumps the
+game version once; replacing an emitter for the same seat preserves the flag and version. The hub
+receives a `SnapshotView` from
+`SnapshotPublisher` and serializes it through the **same**
 `SnapshotDtoAssembler` and the same Spring-configured `ObjectMapper` as the controllers. That shared
-path — not a parallel writer — is why the `snapshot` event's `data:` is byte-identical to what
-`getGame` returns for the same caller at the same version.
+path — not a parallel writer — gives identical bytes for the same captured `SnapshotView`. A fresh
+`getGame` may have a different `serverTime` at the same version, so byte identity across two requests
+is asserted only with a fixed `TimeSource` and no intervening state change.
 
 **Proving scheduled work without sleeping (R60).** The heartbeat scheduler and the expiry sweeper each
-expose a package-visible `tick()` that reads the injected `TimeSource` and does the whole of the work.
+expose a package-visible `tick()` that reads the injected `TimeSource`. The expiry adapter delegates
+reclamation to `application/usecase.ExpireGamesUseCase`; it owns no authoritative game state.
 `@Scheduled` drives `tick()` in production and nowhere else; every proof calls `tick()` directly after
 advancing the `TimeSource`. No proof waits on a scheduler, and nothing in this feature depends on real
 elapsed time.
@@ -224,9 +244,12 @@ carries `Cache-Control: no-store`. A `RequestSizeFilter` refuses a body over
 to `415 unsupported-media-type`; `replaceInvitation`, `sendPresence` and `leaveGame` declare no
 `consumes` and never reach the content-type check (R40).
 
-**Join ordering (R34).** `JoinGameUseCase` runs one order under the slot lock: membership, then expiry,
-then a constant-time compare of the invitation digest and its atomic consumption. Every refusal returns
-the one answer `409 invitation-unavailable`.
+**Join ordering (R34, R63).** `JoinGameUseCase` checks membership first under the slot lock. An
+existing guest gets the current snapshot if the game is live, regardless of secret; if the game is
+expired but retained, that guest gets `game-expired` (410). The host and nonmembers never learn
+expiry through join: unknown or forgotten game, expired game, wrong/used/replaced/expired invitation,
+seat taken and host caller collapse to `invitation-unavailable` (409). Only a live nonmember reaching
+an available seat has its invitation digest compared in constant time and atomically consumed.
 
 **Per-browser cap (R62).** `CreateGameUseCase` and `JoinGameUseCase` refuse with
 `503 service-unavailable` when `SessionRecord.liveGames` already holds
@@ -244,22 +267,31 @@ digest from the slot, so that browser reads `404` from then on.
 One `@RestControllerAdvice` maps every outcome to the **generated `Problem`**
 (`application/problem+json`) using exactly the contract's code→status table. The contract's schema is
 named `Problem` and D1 generates every component model, so there is no hand-written copy to drift
-(research.md D19). A `CorrelationIdFilter`
+(research.md D19). Application use cases throw one framework-free
+`application/result.ApplicationFailure` for orchestration failures. It carries the contract code as
+a string, optional validation `field`/`rule`, and an optional retry delay; it is not a second code enum
+or wire DTO. `CommandUseCase` converts a domain `Rejection` using its existing `wireCode()` and
+validation fields. `ProblemAdvice` owns the one code-to-HTTP-status mapping and converts the code to
+the generated DTO enum; application and domain do not import generated types or Spring. A `CorrelationIdFilter`
 puts a 16-hex id in MDC and into every problem body. No secret, cookie, board, request body, exception
 message or stack trace ever reaches a problem document.
 
 ### Lifetimes (R42–R48, R63)
 
 All deadlines are absolute `Instant`s compared **inclusively** — `deadline <= now` means expired.
-Expiry is checked on every access to a slot before anything else, and a `@Scheduled` sweeper runs
+Expiry is checked on every access to a slot before game rules or mutation; join first resolves guest
+membership to choose its privacy-safe expiry answer (§ *Join ordering*). A `@Scheduled` sweeper runs
 every `sweep-interval-seconds` purely to reclaim memory, so a late request can never resurrect a game.
-The sweeper's work lives in a package-visible `tick()` driven by the injected `TimeSource`; `@Scheduled`
-calls it only in production, and proofs call it directly (§ *Realtime*, R60).
+The application-owned expiry use case performs reclamation. The Spring sweeper adapter's
+package-visible `tick()` passes the injected `TimeSource` time to it; `@Scheduled` calls that adapter
+only in production, and proofs call `tick()` directly (§ *Realtime*, R60).
 Only creation, the guest joining, an accepted action and an accepted presence signal move the idle
 deadline; reads, stream opens, heartbeats, invitation replacement and refused actions never do.
 `terminalRetentionDeadline` is set from the instant a game ended or expired, whichever happened. An
 expired slot answers `410 game-expired` to its own two session digests and `404 game-unavailable` to
-every other caller; after `terminalRetentionDeadline` its own players get `404` too (R63).
+every other caller for protected game operations; after `terminalRetentionDeadline` its own players
+get `404` too. Join follows the R34 exception: the existing guest gets 410 during retention, everyone
+else gets 409; after retention everyone gets 409 (R63).
 
 ### Configuration and observability (R52–R59)
 
@@ -311,34 +343,31 @@ event; once readiness is `DRAINING` the events endpoint answers reconnection att
 `TimeSource.now()` (R60 — `Clock.systemUTC()` in production, mutable double in every test; no test
 sleeps), `RandomSource` (fleet arrangement and the R11 tie-break, seedable), `SecretGenerator`
 (`SecureRandom`: 128-bit base64url game ids matching `^[A-Za-z0-9_-]{22}$`, 256-bit session values,
-256-bit invitation secrets matching `^[A-Za-z0-9_-]{43}$`), `GameSlotStore`
-(`<T> T withSlot(GameId, Function<Slot,T>)`, `insert`, `remove` — implemented by
-`app/registry.GameRegistry`, with `InMemoryGameSlotStore` as the second implementation),
-`SnapshotPublisher` (`publish(GameId, Seat, SnapshotView)`, implemented by the SSE hub). Five ports,
-each with a real second implementation in tests. Four of them are declared in `application/port`;
+256-bit invitation secrets matching `^[A-Za-z0-9_-]{43}$`),
+`SnapshotPublisher` (`publish(GameId, Seat, SnapshotView)`, implemented by the SSE hub). Four ports,
+each with a real second implementation in tests. Three are declared in `application/port`;
 **`RandomSource` is declared in `domain`**, because `GameRules.apply(…, RandomSource)` takes it and
 `domain` may not reference `application` — putting it in `application` inverts the module direction
 and fails `ArchitectureTest`.
 
-`GameSlotStore` is how an `application` use case takes the slot lock without naming an `app` type.
-`GameSlot` lives in `app/registry` while `CommandUseCase` lives in `application/usecase`, and under
-the module table above `application` may not reference `app`; without the port that call cannot
-compile. It also keeps proof areas 4, 5 and 6 as `application` tests, run against the in-memory
-double.
+The fifth item in the historical count was `GameSlotStore`; decision A1 is superseded by the
+2026-09-29 ownership decision. `application/registry.GameRegistry` and `GameSlot` are concrete
+application components, so use cases call the real registry directly. No registry interface or
+test-only in-memory implementation is needed. T017 removes the old `GameSlotStore` and `Slot` after
+migrating their useful lock and mutation behavior. T017 retains
+`GameSlot.contextFor(Seat, Instant)`; it returns an immutable `SnapshotContext`. A use case captures
+that context and the immutable `GameState` under the game lock, then projects after release (§
+*Command path*). Proof areas 4, 5 and 6 use the real application registry.
 
-**`Slot`** is the port-facing view `withSlot` hands its function — the one shape an `application` use
-case sees of a game's mutable state, implemented by `app/registry.GameSlot`. Its members are
-[data-model.md](data-model.md) § *Registry state*, and they include
-`SnapshotContext contextFor(Seat, Instant)`, which is how an `application` use case obtains the
-context the projector needs without naming an `app` type (research.md D27 — the projector still never
-sees `GameSlot`). A use case therefore captures the `GameState` **and** the `SnapshotContext` inside
-`withSlot` — both immutable records, so neither costs a projection under the lock — and projects each
-seat's snapshot after the lock is released (§ *Command path*).
+`SnapshotPublisher` remains a genuine boundary between application snapshots and Spring SSE. Its
+declaration and production implementation arrive together in T029. The app composition root passes
+validated primitive limits and framework-free settings to application registries and use cases;
+application never depends on `BattleshipProperties` or any Spring type.
 
 `SnapshotPublisher` carries the framework-free `SnapshotView`, not a wire type, because it is declared
 in `application`. The SSE hub in `app/realtime` runs that view through the **same**
 `SnapshotDtoAssembler` and the same Spring `ObjectMapper` the controllers use, which is what makes the
-SSE payload byte-identical to `getGame`'s body rather than merely similar (R17; § *Realtime*).
+SSE payload byte-identical to `getGame`'s body for the same view and fixed time (R17; § *Realtime*).
 
 ## Validation
 
@@ -431,8 +460,9 @@ From `contracts/`: `npm ci && npm run check` stays the contract's own gate.
 | 7 — Packaging and wire conformance | 2 | 9 (packaging and published limits), 10 |
 | **Total** | **38** | |
 
-≈95 files under `backend/` (≈60 main, ≈25 test, 10 build) — unchanged by the count: the 32→38 split
-re-cuts the same work into units that each fit one session, it does not add files. Generated sources
+≈95 files under `backend/` (≈60 main, ≈25 test, 10 build) — the approved planning forecast, not an
+exact manifest. The 2026-09-29 relocation moves registry source/tests into `application` and replaces
+the old registry port and test double; it adds no task or runtime dependency. Generated sources
 are build output: not counted, not committed, not formatted by Spotless.
 
 This is above the 20-task line of AGENTS.md § *Scope control* rule 3, so it needed re-approval — the

@@ -1,4 +1,4 @@
-package ua.kostenko.battleship.app.registry;
+package ua.kostenko.battleship.application.registry;
 
 import java.time.Instant;
 import java.util.EnumMap;
@@ -8,13 +8,12 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
-import ua.kostenko.battleship.application.port.Slot;
 import ua.kostenko.battleship.application.projection.SnapshotContext;
 import ua.kostenko.battleship.domain.model.GameState;
 import ua.kostenko.battleship.domain.model.Phase;
 import ua.kostenko.battleship.domain.model.Seat;
 
-public final class GameSlot implements Slot {
+public final class GameSlot {
     private final ReentrantLock lock = new ReentrantLock();
     private final String gameId;
     private final String publicBaseUrl;
