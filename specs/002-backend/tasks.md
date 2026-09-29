@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.2.1 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001, T002 and T003 are complete; T004 is next.
+**Status**: in progress. T001, T002, T003 and T004 are complete; T005 is next.
 **Contract amendments**: the three changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -135,14 +135,14 @@ code and a command to prove it.
   - **Mutation** Two steps, because the two guards react to different things and neither substitutes for the other. **(a)** Add `spring-boot-starter` as a compile dependency of `domain/pom.xml`; Enforcer's `bannedDependencies` must fail the build at `validate`. Restore. **(b)** With the ban temporarily lifted and that dependency still present, add `import org.springframework.stereotype.Component;` and the annotation to a `domain` class; `ArchitectureTest` must fail. Restore both. A bare import with no dependency declared is a **compile** error, not an Enforcer failure — which is why (a) exists.
   - **Depends on** T001
 
-- [ ] T004 [P] Add Spotless with palantir-java-format in `backend/pom.xml`
+- [x] T004 [P] Add Spotless with palantir-java-format in `backend/pom.xml`
   - **Delivers** Spotless **3.9.0** with `palantir-java-format`, `spotless:check` bound inside `verify`, and `app/target/generated-sources/**` excluded so generated DTOs are never reformatted (Constitution VI).
   - **Covers** plan.md § *Stack* · research.md D22 · Constitution VI (generated output changed only by its generation path)
   - **Read first** plan.md § *Stack* · AGENTS.md § *Definition of Done* → *Generation path*
-  - **Files** `backend/pom.xml`
+  - **Files** `backend/pom.xml`; formatter-only normalization in `backend/app/src/main/java/ua/kostenko/battleship/app/BattleshipApplication.java`, `backend/app/src/test/java/ua/kostenko/battleship/app/ArchitectureTest.java`, and `backend/app/src/test/java/ua/kostenko/battleship/app/web/dto/GeneratedModelSpikeTest.java` (required for the whole-reactor check to start clean)
   - **Proof** `./mvnw spotless:check` is clean on the whole reactor, and stays clean when the generated sources exist (run it after T002's generation, not before).
   - **Verify** `cd backend && ./mvnw spotless:check` — `./mvnw spotless:apply` is the fix-up
-  - **Mutation** Collapse the indentation of one `domain` file; `spotless:check` must fail naming that file. `spotless:apply` restores it. Then, to make the exclusion's proof capable of failing: temporarily add `app/target/generated-sources/openapi/**/*.java` to Spotless's `includes` **with the exclusion still in place**, mis-indent a file there, and confirm `spotless:check` stays **clean** — then remove the exclusion and confirm the same run now fails. Restore both. (Spotless's default Java target is `src/{main,test}/java`, so mis-editing a generated file without widening `includes` first leaves `spotless:check` clean whether the exclusion exists or not — an assertion that cannot fail.)
+  - **Mutation** Collapse the indentation of one `domain` file; `spotless:check` must fail naming that file. `spotless:apply` restores it. Then, to make the exclusion's proof capable of failing: temporarily include `**/target/generated-sources/openapi/**/*.java` (the module-relative pattern matching `app/target/...` from the reactor root) **with the exclusion still in place**, mis-indent a file there, and confirm `spotless:check` stays **clean** — then remove the exclusion and confirm the same run now fails. Restore both. (Spotless's default Java target is `src/{main,test}/java`, so mis-editing a generated file without widening `includes` first leaves `spotless:check` clean whether the exclusion exists or not — an assertion that cannot fail.) **Observed:** malformed `domain/package-info.java` made `./mvnw -q spotless:check` exit 1 and report `src/main/java/ua/kostenko/battleship/domain/package-info.java`. With generated Java included and normalized, malformed `Coordinate.java` passed while excluded and failed when the exclusion was removed, reporting `target/generated-sources/openapi/src/main/java/ua/kostenko/battleship/app/web/dto/Coordinate.java`. The generated source files were restored byte-for-byte.
   - **Depends on** T001, T002
 
 - [ ] T005 Bootstrap the Spring Boot application in `backend/app/src/main/java/ua/kostenko/battleship/app/BattleshipApplication.java`
