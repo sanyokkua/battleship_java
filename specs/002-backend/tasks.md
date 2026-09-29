@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.2.1 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001, T002, T003, T004 and T005 are complete; T006 is next.
+**Status**: in progress. T001 through T006 are complete; T007 is next.
 **Contract amendments**: the three changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -155,7 +155,7 @@ code and a command to prove it.
   - **Mutation** Set `spring.threads.virtual.enabled=false`; `ApplicationContextTest` must fail.
   - **Depends on** T001
 
-- [ ] T006 [US7] Bind and validate every configuration setting in `backend/app/src/main/java/ua/kostenko/battleship/app/config/BattleshipProperties.java`
+- [X] T006 [US7] Bind and validate every configuration setting in `backend/app/src/main/java/ua/kostenko/battleship/app/config/BattleshipProperties.java`
   - **Delivers** One validated `@ConfigurationProperties(prefix = "battleship")` **record** with one nested `RateLimits` record, and the defaults written into `application.yaml`. **All 23 keys**, mapped from spec R52's rows by plan.md § *Configuration* — the defaults are R52's and are stated in exactly one place (this file plus `application.yaml`):
     `idle-timeout-seconds` 900 · `max-game-duration-seconds` 7200 · `result-retention-seconds` 300 · `invitation-lifetime-seconds` 900 · `presence-interval-seconds` 300 · `heartbeat-seconds` 15 · `stream-max-lifetime-seconds` 1200 · `max-concurrent-games` 100 · `max-concurrent-streams` 200 · `max-live-games-per-browser` 1 · `max-request-body-bytes` 16384 · `random-arrangement-attempts` 1000 · `sweep-interval-seconds` 30 · `shutdown-drain-seconds` 5 · `public-base-url` `http://localhost:5173` · `rate-limit.create-game-per-minute` 5 · `rate-limit.join-per-minute` 20 · `rate-limit.commands-per-minute` 60 · `rate-limit.read-game-per-minute` 120 · `rate-limit.presence-per-minute` 30 · `rate-limit.stream-open-per-minute` 30 · `rate-limit.replace-invitation-per-minute` 10 · `rate-limit.leave-per-minute` 10.
     Every numeric key carries `@Min(1)` (absent, unparseable, negative and zero all stop start-up naming the setting). A `@PostConstruct` check validates `public-base-url`: absolute, scheme `http` or `https`, no user-info credentials, no query, no fragment.
@@ -1008,6 +1008,7 @@ environment-blocked checks (Constitution VI; AGENTS.md § *Scope control* rule 5
 | T002 | 2026-09-29 | `cd backend && ./mvnw -q -pl app -am clean && ./mvnw -q -pl app -am test -Dtest=GeneratedModelSpikeTest -Dsurefire.failIfNoSpecifiedTests=false -Dfailsafe.failIfNoSpecifiedTests=false` | PASS — 5 tests, 0 failures, 0 errors, 0 skipped; generated 29 object models, 7 enums, and the three whitelisted helpers; no `ApiClient` or generated endpoint APIs | PASS — renamed `Coordinate` to `Coord` in a scratch contract copy and reran the focused Maven test; `testCompile` failed because `Coordinate` could not be resolved |
 | T003 | 2026-09-29 | `cd backend && ./mvnw -q verify` | PASS — Enforcer validated the three modules; `ArchitectureTest`: 4 tests, 0 failures, 0 errors, 0 skipped; reactor verify exited 0 | PASS — (a) temporary compile dependency `org.springframework.boot:spring-boot-starter` in domain failed Enforcer at `validate`, including its transitive Spring/Jakarta dependencies; (b) with `-Denforcer.skip=true` and that dependency present, a domain `@Component` annotation failed `domainDoesNotDependOnFrameworkOrIoTypes`; all mutations restored |
 | T005 | 2026-09-29 | `cd backend && ./mvnw -q -pl app -am test -Dtest=ApplicationContextTest -Dsurefire.failIfNoSpecifiedTests=false -Dfailsafe.failIfNoSpecifiedTests=false`; `./mvnw -q verify`; `./mvnw -q -DskipTests package && java -jar app/target/battleship-app-1.0.0-SNAPSHOT.jar` | PASS — context test 1/1; aggregate verify exited 0; packaged application reached `Started BattleshipApplication` on port 8080 and shut down cleanly (local socket permission granted for this runtime smoke check) | PASS — set `spring.threads.virtual.enabled=false`; focused test failed as expected (`expected true, was false`); restored true and focused test passed |
+| T006 | 2026-09-29 | `cd backend && ./mvnw -q -pl app -am verify -Dit.test=ConfigurationValidationIT -Dsurefire.failIfNoSpecifiedTests=false -Dfailsafe.failIfNoSpecifiedTests=false`; `cd backend && ./mvnw -q verify` | PASS — `ConfigurationValidationIT`: 11 tests, 0 failures, 0 errors, 0 skipped; full backend verify exited 0 (ApplicationContextTest 1/1, ArchitectureTest 4/4, GeneratedModelSpikeTest 5/5, ConfigurationValidationIT 11/11) | PASS — removed idle timeout `@Min(1)`; `zeroIdleTimeoutStopsStartupAndNamesSetting` failed with “Expected java.lang.RuntimeException to be thrown, but nothing was thrown”; removed the URI fragment check; `fragmentedPublicBaseUrlStopsStartupAndNamesSetting` failed with the same assertion; both restored and clean verify passed |
 
 ## Known limitations
 
@@ -1020,4 +1021,4 @@ environment-blocked checks (Constitution VI; AGENTS.md § *Scope control* rule 5
 ## Next unit
 
 `$speckit-analyze` has run across this package and its findings are applied (`AGENTS.md` § *The loop*
-step 6). T001, T002, T003, T004 and T005 are complete; start with **T006**.
+step 6). T001 through T006 are complete; start with **T007**.

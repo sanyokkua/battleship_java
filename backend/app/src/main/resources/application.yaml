@@ -2,3 +2,29 @@ spring:
   threads:
     virtual:
       enabled: true
+
+battleship:
+  idle-timeout-seconds: 900
+  max-game-duration-seconds: 7200
+  result-retention-seconds: 300
+  invitation-lifetime-seconds: 900
+  presence-interval-seconds: 300
+  heartbeat-seconds: 15
+  stream-max-lifetime-seconds: 1200
+  max-concurrent-games: 100
+  max-concurrent-streams: 200
+  max-live-games-per-browser: 1
+  max-request-body-bytes: 16384
+  random-arrangement-attempts: 1000
+  sweep-interval-seconds: 30
+  shutdown-drain-seconds: 5
+  public-base-url: http://localhost:5173
+  rate-limit:
+    create-game-per-minute: 5
+    join-per-minute: 20
+    commands-per-minute: 60
+    read-game-per-minute: 120
+    presence-per-minute: 30
+    stream-open-per-minute: 30
+    replace-invitation-per-minute: 10
+    leave-per-minute: 10
