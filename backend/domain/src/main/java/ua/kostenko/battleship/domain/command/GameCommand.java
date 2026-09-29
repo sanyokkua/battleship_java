@@ -5,7 +5,11 @@ import ua.kostenko.battleship.domain.model.Coordinate;
 import ua.kostenko.battleship.domain.model.Orientation;
 
 public sealed interface GameCommand
-        permits GameCommand.PlaceShip, GameCommand.RemoveShip, GameCommand.PlaceFleetRandomly, GameCommand.ClearFleet {
+        permits GameCommand.PlaceShip,
+                GameCommand.RemoveShip,
+                GameCommand.PlaceFleetRandomly,
+                GameCommand.ClearFleet,
+                GameCommand.Ready {
     record PlaceShip(String shipId, Coordinate anchor, Orientation orientation) implements GameCommand {
         public PlaceShip {
             Objects.requireNonNull(shipId, "shipId");
@@ -19,6 +23,8 @@ public sealed interface GameCommand
             if (attemptLimit < 1) throw new IllegalArgumentException("attemptLimit must be positive");
         }
     }
+
+    record Ready() implements GameCommand {}
 
     record ClearFleet() implements GameCommand {}
 

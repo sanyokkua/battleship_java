@@ -12,9 +12,11 @@ import ua.kostenko.battleship.domain.model.Board;
 import ua.kostenko.battleship.domain.model.Coordinate;
 import ua.kostenko.battleship.domain.model.GameState;
 import ua.kostenko.battleship.domain.model.Orientation;
+import ua.kostenko.battleship.domain.model.Phase;
 import ua.kostenko.battleship.domain.model.PlayerState;
 import ua.kostenko.battleship.domain.model.Seat;
 import ua.kostenko.battleship.domain.model.Ship;
+import ua.kostenko.battleship.domain.model.Timeline;
 import ua.kostenko.battleship.domain.transition.Rejection;
 import ua.kostenko.battleship.domain.transition.Rejection.ProblemCode;
 import ua.kostenko.battleship.domain.transition.Transition;
@@ -28,12 +30,51 @@ public final class GameRules {
         Objects.requireNonNull(command, "command");
         Objects.requireNonNull(now, "now");
         Objects.requireNonNull(random, "random");
+        PlayerState actorState = player(state, actor);
+        if (actorState != null && actorState.ready()) {
+            return refused(state, Rejection.problem(ProblemCode.ACTION_NOT_ALLOWED));
+        }
         return switch (command) {
             case GameCommand.PlaceShip placeShip -> placeShip(state, actor, placeShip);
             case GameCommand.RemoveShip removeShip -> removeShip(state, actor, removeShip);
             case GameCommand.PlaceFleetRandomly arrange -> placeFleetRandomly(state, actor, arrange, random);
             case GameCommand.ClearFleet ignored -> clearFleet(state, actor);
+            case GameCommand.Ready ignored -> ready(state, actor, now, random);
         };
+    }
+
+    private static Transition ready(GameState state, Seat actor, Instant now, RandomSource random) {
+        PlayerState player = player(state, actor);
+        if (state.phase() != Phase.PLACEMENT
+                || player == null
+                || player.board().fleet().isEmpty()
+                || player.board().fleet().stream().anyMatch(ship -> ship.anchor() == null)) {
+            return refused(state, Rejection.problem(ProblemCode.ACTION_NOT_ALLOWED));
+        }
+        PlayerState readyPlayer = new PlayerState(player.displayName(), true, player.board(), player.shotsFired());
+        PlayerState host = actor == Seat.HOST ? readyPlayer : state.host();
+        PlayerState guest = actor == Seat.GUEST ? readyPlayer : state.guest();
+        Timeline timeline = state.timeline().withReadyAt(actor, now);
+        boolean playing = host.ready() && guest != null && guest.ready();
+        Seat turn = null;
+        if (playing) {
+            int order = timeline.readyAt()
+                    .get(Seat.HOST)
+                    .compareTo(timeline.readyAt().get(Seat.GUEST));
+            turn = order < 0 ? Seat.HOST : order > 0 ? Seat.GUEST : random.nextInt(2) == 0 ? Seat.HOST : Seat.GUEST;
+            timeline = timeline.withPlayStartedAt(now, turn);
+        }
+        GameState next = new GameState(
+                state.rulesetId(),
+                playing ? Phase.PLAYING : Phase.PLACEMENT,
+                state.version() + 1,
+                host,
+                guest,
+                turn,
+                state.lastShot(),
+                state.outcome(),
+                timeline);
+        return new Transition(next, true, Set.of(Seat.HOST, Seat.GUEST), null);
     }
 
     private static Transition placeShip(GameState state, Seat actor, GameCommand.PlaceShip command) {

@@ -22,6 +22,7 @@ public record Rejection(ProblemCode code, String field, String rule) {
     }
 
     public enum ProblemCode {
+        ACTION_NOT_ALLOWED("action-not-allowed"),
         VALIDATION_FAILED("validation-failed"),
         PLACEMENT_OUT_OF_BOUNDS("placement-out-of-bounds"),
         PLACEMENT_OVERLAP("placement-overlap"),

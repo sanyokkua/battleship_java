@@ -4,10 +4,10 @@
 **Spec**: [spec.md](spec.md) · **Plan**: [plan.md](plan.md) · **Research**: [research.md](research.md)
 **Data model**: [data-model.md](data-model.md) · **Run guide**: [quickstart.md](quickstart.md)
 **Contract (authority)**: [`contracts/openapi.yaml`](../../contracts/openapi.yaml)
-**Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.2.1 · [`AGENTS.md`](../../AGENTS.md)
+**Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.3.0 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001 through T006 are complete; T007 is next.
+**Status**: in progress. T001 through T011 are complete; T012 is next.
 **Contract amendments**: the three changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -247,7 +247,7 @@ both rulesets, with no Spring, no clock and no I/O anywhere in `domain`.
   - **Mutation** Remove the attempt bound (loop forever until success); assertion (5) must hang or fail — cap the test with a JUnit timeout so it fails rather than hangs.
   - **Depends on** T009
 
-- [ ] T011 [US3] Implement `READY`, the start of play and the first turn in `backend/domain/src/main/java/ua/kostenko/battleship/domain/rules/GameRules.java`
+- [x] T011 [US3] Implement `READY`, the start of play and the first turn in `backend/domain/src/main/java/ua/kostenko/battleship/domain/rules/GameRules.java`
   - **Delivers** The `Ready` command variant. `READY` is accepted **only when the whole fleet is placed**; otherwise it is refused (and it is not offered — T013 owns the offering). It **cannot be undone**: `ready` never returns to false, and the four fleet-editing commands are refused once that seat is ready. The **second** `READY` moves `PLACEMENT` → `PLAYING`.
     **First turn (R11)**: the player whose `readyAt` is earlier fires first; an **exact** tie is broken from `RandomSource`. The choice is first visible when play starts, as `turn`.
     Timeline sampling: `readyAt[seat]` on each accepted `READY`; `playStartedAt` on the second; `turnStartedAt` initialised to `playStartedAt`.
@@ -258,6 +258,11 @@ both rulesets, with no Spring, no clock and no I/O anywhere in `domain`.
   - **Verify** `cd backend && ./mvnw -q -pl domain test -Dtest=ReadyAndFirstTurnTest`
   - **Mutation** Replace the ready-order comparison with a fixed `HOST`; assertion (4)'s guest-first case must fail.
   - **Depends on** T010
+
+  - **2026-09-29 verification**: `ReadyAndFirstTurnTest` passed 16 cases across both rulesets. The initial RED run reported 16 assertion failures (0 errors); the fixed-HOST mutation reported 2 guest-first assertion failures (`expected: GUEST`, `but was: HOST`, 0 errors), and the restored proof passed.
+    `./mvnw clean verify` and `./mvnw clean install` each reported `BUILD SUCCESS` in all four modules: 55 unit tests + 11 integration tests, 0 failures/errors/skips. `python3 scripts/sync-agent-files.py --check` passed (15 mirrors) and `git diff --check` passed.
+    The attached build failure was reproduced as eight pre-existing Spotless violations; a separate formatting-only repair restored the baseline gate before READY implementation. Task and independent final reviews found no Blocking/Important issues. Existing Java/tooling warnings remain; no feature-wide HTTP/gameplay readiness is claimed.
+    Task branch `feature/002-backend--t011` records parent `feature/002-backend` at `b08397d`; implementation commits are `acb2c70` (formatting repair) and `3d3a686` (READY).
 
 - [ ] T012 [US4] Implement `FIRE`, `RESIGN` and both endings in `backend/domain/src/main/java/ua/kostenko/battleship/domain/rules/GameRules.java`
   - **Delivers** The `Fire(target)` and `Resign` command variants, and the whole of play.

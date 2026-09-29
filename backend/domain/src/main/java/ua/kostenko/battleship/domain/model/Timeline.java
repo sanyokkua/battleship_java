@@ -1,6 +1,7 @@
 package ua.kostenko.battleship.domain.model;
 
 import java.time.Instant;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -33,6 +34,34 @@ public record Timeline(
                 finishedAt,
                 turnStartedAt,
                 shotDecisionStartedAt,
+                turnDurationsMs,
+                shotDecisionDurationsMs);
+    }
+
+    public Timeline withReadyAt(Seat seat, Instant now) {
+        Map<Seat, Instant> times = new EnumMap<>(Seat.class);
+        times.putAll(readyAt);
+        times.put(Objects.requireNonNull(seat, "seat"), Objects.requireNonNull(now, "now"));
+        return new Timeline(
+                guestJoinedAt,
+                times,
+                playStartedAt,
+                finishedAt,
+                turnStartedAt,
+                shotDecisionStartedAt,
+                turnDurationsMs,
+                shotDecisionDurationsMs);
+    }
+
+    public Timeline withPlayStartedAt(Instant now, Seat firstTurn) {
+        Objects.requireNonNull(now, "now");
+        return new Timeline(
+                guestJoinedAt,
+                readyAt,
+                now,
+                finishedAt,
+                now,
+                Map.of(Objects.requireNonNull(firstTurn, "firstTurn"), now),
                 turnDurationsMs,
                 shotDecisionDurationsMs);
     }
