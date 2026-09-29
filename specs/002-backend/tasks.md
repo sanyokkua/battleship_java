@@ -1023,4 +1023,4 @@ environment-blocked checks (Constitution VI; AGENTS.md § *Scope control* rule 5
 ## Next unit
 
 `$speckit-analyze` has run across this package and its findings are applied (`AGENTS.md` § *The loop*
-step 6). T001 through T006 are complete; start with **T007**.
+step 6). T001 through T008 are complete; start with **T009**.
