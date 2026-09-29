@@ -50,11 +50,14 @@ test-scoped `<type>test-jar</type>` dependencies. That is what puts `SeededRando
 downstream tests that use them.
 
 The wire types in `ua.kostenko.battleship.app.web.dto` are **generated** from `contracts/openapi.yaml`
-into `app/target/generated-sources/openapi` at `generate-sources` (research.md D1, D28). They carry
-Jackson annotations, so they can live in neither `domain` (Constitution III) nor `application` (the
-module table above). That is why `application/projection` produces a framework-free `SnapshotView` and
-`app/web` copies it into the generated DTO — § *Projection* and § *Adapters*. Generated sources are
-build output: not committed, not hand-edited (Constitution VI), and excluded from Spotless.
+into `app/target/generated-sources/openapi` at `generate-sources` (research.md D1, D28). The
+generator emits Jackson 2 models and only the whitelisted discriminator/date helpers required by the
+contract's `Command` oneOf model; it emits no API endpoint classes or `ApiClient`. The app declares Jackson 2 runtime modules explicitly, and its HTTP converter must use that mapper
+for generated DTOs. These types carry Jackson annotations, so they can live in neither `domain` (Constitution III) nor
+`application` (the module table above). That is why `application/projection` produces a
+framework-free `SnapshotView` and `app/web` copies it into the generated DTO — § *Projection* and §
+*Adapters*. Generated sources are build output: not committed, not hand-edited (Constitution VI),
+and excluded from Spotless.
 
 The rules of the game — R03, R05–R10, R12, R14, R20, R21, R26 — and the statistics boundaries of R51
 are constraints on `domain/rules` and `domain/model`; their exact shapes are
@@ -447,9 +450,10 @@ here and `T002` there are two numbering schemes for the same first real step.
 
 It passes only if the 39 component schemas emit as the manifest in T002 states — **29 object schemas
 as classes and 7 enum types**, with `GameId`, `DisplayName` and `Instant` inlining as `String` /
-`OffsetDateTime` rather than minting classes — or the gaps are named and hand-written; the four
-`Command` variants deserialize by their `type` tag; `ProblemCode`'s kebab-case values round-trip; and
-the plugin runs clean on JDK 25. The open questions it settles are listed in research.md D28.
+`OffsetDateTime` rather than minting classes — with only the required discriminator/date helpers
+whitelisted — or the gaps are named and hand-written; the four `Command` variants deserialize by
+their `type` tag; `ProblemCode`'s kebab-case values round-trip; and the plugin runs clean on JDK 25.
+The open questions it settles are listed in research.md D28.
 
 **If it fails**, the fallback is models-only for the schemas that do generate plus hand-written records for
 the rest, recorded as a decision — not a silent retreat to the rejected alternative of research.md D1.
@@ -460,11 +464,11 @@ Nothing later in this plan assumes the spike succeeded.
 - **Wire drift is retired,** not mitigated: the DTOs are generated from `contracts/openapi.yaml`, so a
   contract change that the assembler does not follow fails the build (§ *Projection*). What remains is
   completeness, which proof area 10 owns.
-- **The generator on this toolchain is unproven.** `openapi-generator-maven-plugin` 7.25.0 has not been
-  run here on JDK 25 against this contract, and `~/.m2` does not exist on this machine, so nothing about
-  it can be verified before the build exists. That is exactly why it is Task 1 with a named abort
-  condition and a recorded fallback (§ *Forecast*), rather than an assumption the rest of the plan rests
-  on.
+- **Jackson integration spans two major versions.** The generated models use Jackson 2 while Spring
+  Boot 4's default MVC converter uses Jackson 3. A later adapter task must route these DTOs through a
+  Jackson 2 mapper. T002 verifies generation and model serialization directly, not MVC converter wiring.
+- **The generator spike is verified on this toolchain.** OpenAPI Generator 7.25.0 completed on JDK 25
+  against the contract, including the schema manifest and mutation proof recorded in tasks.md.
 - **Java 25 + Spring Boot 4.1.1** is ahead of the repository's recorded standards and of the previous
   application's verified toolchain. Surefire/Failsafe behaviour on JDK 25 is proven by the first
   passing `verify`, not assumed.

@@ -12,10 +12,8 @@ Java 25 and Node 24 on `PATH`. The constitution's approved baselines (v1.2.1) ar
 Corretto 25.0.4.1, Maven 3.9.16 (used once to generate the wrapper) and Node 24.21.0. After the wrapper
 exists, use only `backend/mvnw`.
 
-`~/.m2` does not exist on this machine, so the **first** `./mvnw verify` is a cold download: the Maven
-distribution, the Spring Boot 4.1.1 dependency tree and `openapi-generator-maven-plugin` 7.25.0 all
-arrive on that run. Expect minutes and network traffic, and do not read its duration as a build problem.
-Subsequent runs are warm.
+The first `./mvnw verify` may need to download the Maven distribution, Spring Boot 4.1.1 dependency
+tree and `openapi-generator-maven-plugin` 7.25.0. Subsequent runs use the local cache.
 
 ## Commands
 

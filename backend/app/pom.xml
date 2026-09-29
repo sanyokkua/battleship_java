@@ -13,6 +13,48 @@
     <finalName>battleship-app-${project.version}</finalName>
     <plugins>
       <plugin>
+        <groupId>org.openapitools</groupId>
+        <artifactId>openapi-generator-maven-plugin</artifactId>
+        <version>7.25.0</version>
+        <executions>
+          <execution>
+            <id>generate-openapi-models</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <inputSpec>${project.basedir}/../../contracts/openapi.yaml</inputSpec>
+              <output>${project.build.directory}/generated-sources/openapi</output>
+              <generatorName>java</generatorName>
+              <library>native</library>
+              <modelPackage>ua.kostenko.battleship.app.web.dto</modelPackage>
+              <generateModels>true</generateModels>
+              <generateApis>false</generateApis>
+              <generateModelTests>false</generateModelTests>
+              <generateSupportingFiles>true</generateSupportingFiles>
+              <supportingFilesToGenerate>JSON.java,RFC3339DateFormat.java,AbstractOpenApiSchema.java</supportingFilesToGenerate>
+              <invokerPackage>ua.kostenko.battleship.app.web</invokerPackage>
+              <configOptions>
+                <useJakartaEe>true</useJakartaEe>
+                <serializationLibrary>jackson</serializationLibrary>
+                <dateLibrary>java8</dateLibrary>
+                <enumPropertyNaming>MACRO_CASE</enumPropertyNaming>
+                <disallowAdditionalPropertiesIfNotPresent>false</disallowAdditionalPropertiesIfNotPresent>
+                <openApiNullable>false</openApiNullable>
+                <supportUrlQuery>false</supportUrlQuery>
+              </configOptions>
+              <typeMappings>
+                <typeMapping>Instant=OffsetDateTime</typeMapping>
+              </typeMappings>
+              <importMappings>
+                <importMapping>OffsetDateTime=java.time.OffsetDateTime</importMapping>
+              </importMappings>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
         <executions>
@@ -26,6 +68,21 @@
     </plugins>
   </build>
   <dependencies>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.21.5</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-jsr310</artifactId>
+      <version>2.21.5</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>ua.kostenko.battleship</groupId>
       <artifactId>domain</artifactId>

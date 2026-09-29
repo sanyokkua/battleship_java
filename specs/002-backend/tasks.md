@@ -7,9 +7,9 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.2.1 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: not started. `backend/` does not exist at this HEAD.
+**Status**: in progress. T001 and T002 are complete; T003 is next.
 **Contract amendments**: the three changes spec.md § *Out of scope* authorises are **already applied
-in this worktree and uncommitted** — the `Phase.PLAYING` description (R11's ready-order rule), the
+on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
 (`const` → single-value `enum`, `examples: [x]` → `example: x`; research.md D1). `contracts/` must be
 green on its own gate — `cd contracts && npm ci && npm run check` reporting
@@ -44,8 +44,9 @@ the same change, the command that runs that proof, and the mutation that must ma
   command output showing the assertion failing when the guarded behaviour is removed. A green test
   that cannot fail is not evidence, and a checked box is not evidence.
 - **Every `-pl` command carries `-am`.** `domain` and `application` are `1.0.0-SNAPSHOT`, the gate is
-  `verify` and never `install`, and `~/.m2` does not exist on this machine, so a single-module build
-  has nothing to resolve its siblings from. `-pl domain` needs no `-am` — it has no upstream sibling.
+  `verify` and never `install`, and the reactor modules are not installed as standalone artifacts, so a
+  single-module build has nothing to resolve its siblings from. `-pl domain` needs no `-am` — it has no
+  upstream sibling.
 - **A focused `-Dtest=` / `-Dit.test=` run across a multi-module reactor also needs**
   `-Dsurefire.failIfNoSpecifiedTests=false -Dfailsafe.failIfNoSpecifiedTests=false`. With `-am` the
   reactor builds the upstream modules too, and those contain no test matching the filter, which would
@@ -102,10 +103,10 @@ code and a command to prove it.
   - **Verify** `cd backend && ./mvnw -q verify` — then `./mvnw -v` reports Maven 3.9.16 and Java 25.0.4
   - **Mutation** Set the parent version to a non-existent `4.1.99`; `verify` must fail resolving the parent. Restore.
   - **Depends on** nothing
-  - **Note** `~/.m2` does not exist on this machine (quickstart.md § *Prerequisites*). The first run is a cold download of the Maven distribution and the whole Spring Boot 4.1.1 tree. Expect minutes; that is not a build problem.
+  - **Note** A first run may download the Maven distribution and dependencies; later runs use the local cache (quickstart.md § *Prerequisites*).
 
-- [ ] T002 Generate the wire DTOs from the contract and prove the spike's abort condition in `backend/app/pom.xml` and `backend/app/src/test/java/ua/kostenko/battleship/app/web/dto/GeneratedModelSpikeTest.java`
-  - **Delivers** `openapi-generator-maven-plugin` **7.25.0** in the `app` module only, bound to `generate-sources`, reading `../../contracts/openapi.yaml` and emitting models into `target/generated-sources/openapi`, package `ua.kostenko.battleship.app.web.dto`. Configuration is research.md D28 **verbatim**: `generatorName=java`, `library=native`, `generateModels=true`, `generateApis=false`, `generateModelTests=false`, `generateSupportingFiles=false`, `useJakartaEe=true`, `serializationLibrary=jackson`, `dateLibrary=java8`, `enumPropertyNaming=UPPERCASE`, `disallowAdditionalPropertiesIfNotPresent=false`, and `typeMappings`/`importMappings` sending `Instant` → `java.time.OffsetDateTime`.
+- [X] T002 Generate the wire DTOs from the contract and prove the spike's abort condition in `backend/app/pom.xml` and `backend/app/src/test/java/ua/kostenko/battleship/app/web/dto/GeneratedModelSpikeTest.java`
+  - **Delivers** `openapi-generator-maven-plugin` **7.25.0** in the `app` module only, bound to `generate-sources`, reading `../../contracts/openapi.yaml` and emitting models into `target/generated-sources/openapi`, package `ua.kostenko.battleship.app.web.dto`. Configuration is research.md D28 **verbatim**: `generatorName=java`, `library=native`, `generateModels=true`, `generateApis=false`, `generateModelTests=false`, only `JSON.java`, `RFC3339DateFormat.java` and `AbstractOpenApiSchema.java` from supporting files in `ua.kostenko.battleship.app.web` / `.web.dto`, `useJakartaEe=true`, `serializationLibrary=jackson`, `dateLibrary=java8`, `enumPropertyNaming=MACRO_CASE` (Java's supported uppercase enum convention), `disallowAdditionalPropertiesIfNotPresent=false`, `openApiNullable=false`, `supportUrlQuery=false`, and `typeMappings`/`importMappings` sending `Instant` → `java.time.OffsetDateTime`. Add Jackson 2.21.5 runtime modules and `spring-boot-starter-test` for generated model compilation and the spike. These models use Jackson 2; the app's HTTP converter must use the Jackson 2 mapper for these DTOs. The support whitelist provides what the contract's `Command` discriminator and date-time handling require while keeping `ApiClient` and generated API endpoints out.
   - **Covers** research.md D1, D28, D29, D30 · plan.md § *Forecast* → *Task 1 — the generator spike, with an abort condition* · Constitution VI (generated output is changed only by its generation path)
   - **Read first** research.md D1, D28, D29, D30 · plan.md § *Layout* (the generated-sources note) and § *Risks* · AGENTS.md § *Definition of Done* → *Generation path* · `contracts/openapi.yaml` `components.schemas` (39 schemas) and `Command` (L1278)
   - **Files** `backend/app/pom.xml` (plugin block), `backend/app/src/test/java/.../GeneratedModelSpikeTest.java`
@@ -116,7 +117,7 @@ code and a command to prove it.
        The remaining **three — `GameId`, `DisplayName` and `Instant` — are `type: string` aliases and must *not* mint classes**: they are expected to inline as `String`, `String` and (via D28's `typeMappings`) `java.time.OffsetDateTime`. Assert no class of those three names exists in the generated package; assertion 4 is the `Instant` half of the same claim.
     2. **The four `Command` variants deserialize by their `type` tag**, including all four values that map to `SimpleCommand` (`PLACE_FLEET_RANDOMLY`, `CLEAR_FLEET`, `READY`, `RESIGN`) — research.md D30.
     3. **`ProblemCode`'s 17 kebab-case values round-trip** through Jackson: `malformed-request`, `session-required`, `request-security-rejected`, `game-unavailable`, `invitation-unavailable`, `action-not-allowed`, `placement-out-of-bounds`, `placement-overlap`, `placement-touching`, `target-already-fired`, `game-expired`, `payload-too-large`, `unsupported-media-type`, `validation-failed`, `rate-limit-exceeded`, `internal-error`, `service-unavailable`.
-    4. **The contract's schema named `Instant` does not shadow `java.time.Instant`** — `GameSnapshot.getServerTime()` returns `OffsetDateTime`, and a value serializes as `2026-09-20T12:00:00.000Z`.
+    4. **The contract's schema named `Instant` does not shadow `java.time.Instant`** — `GameSnapshot.getServerTime()` returns `OffsetDateTime`, and the generated JSON mapper with the contract's millisecond UTC format serializes the property as `2026-09-20T12:00:00.000Z`.
     5. **The 13 one-element `allOf` wrappers inline** rather than minting wrapper classes (`Ship.anchor`, `Ship.orientation`, `PlayerStatistics.turns`, `PlayerStatistics.shotDecisions`, `GameSnapshot.{serverTime, opponent, turn, expiresAt, invitationExpiresAt, yourBoard, opponentBoard, outcome, statistics}`); `StreamClosed` is emitted despite nothing `$ref`ing it; `Ruleset.board`'s inline object yields a usable nested type.
   - **Verify** `cd backend && ./mvnw -q -pl app -am test -Dtest=GeneratedModelSpikeTest` — then `ls app/target/generated-sources/openapi/src/main/java/ua/kostenko/battleship/app/web/dto/`
   - **Mutation** Rename `Coordinate` to `Coord` in a scratch copy of `contracts/openapi.yaml` outside the repository and point the plugin at it; the spike test must fail to compile or to load the class. Restore.
@@ -1005,13 +1006,15 @@ environment-blocked checks (Constitution VI; AGENTS.md § *Scope control* rule 5
 
 | Task | Date | Command | Result | Mutation proof |
 |---|---|---|---|---|
-| | | | | |
+| T002 | 2026-09-29 | `cd backend && ./mvnw -q -pl app -am clean && ./mvnw -q -pl app -am test -Dtest=GeneratedModelSpikeTest -Dsurefire.failIfNoSpecifiedTests=false -Dfailsafe.failIfNoSpecifiedTests=false` | PASS — 5 tests, 0 failures, 0 errors, 0 skipped; generated 29 object models, 7 enums, and the three whitelisted helpers; no `ApiClient` or generated endpoint APIs | PASS — renamed `Coordinate` to `Coord` in a scratch contract copy and reran the focused Maven test; `testCompile` failed because `Coordinate` could not be resolved |
 
 ## Known limitations
 
 *Filled in during implementation.*
 
+- T002 generated models use Jackson 2 while Spring Boot 4's default HTTP converter uses Jackson 3. The app must route generated DTOs through a Jackson 2 mapper when controller adapters are implemented; the focused T002 test validates generated model behavior, not MVC converter wiring.
+
 ## Next unit
 
 `$speckit-analyze` has run across this package and its findings are applied (`AGENTS.md` § *The loop*
-step 6). Start with **T001**.
+step 6). T001 and T002 are complete; start with **T003**.

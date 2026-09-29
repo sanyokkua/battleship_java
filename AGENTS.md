@@ -93,9 +93,11 @@ technical plan must name the build, test, lint, and local-run commands for the a
 
 **Generation path.** `002-backend` generates the wire DTOs from `contracts/openapi.yaml` into
 `backend/app/target/generated-sources/openapi` (package `ua.kostenko.battleship.app.web.dto`) during
-`generate-sources`; those sources are build output — never committed, never hand-edited, not formatted by
-Spotless, and changed only by amending the contract and regenerating (constitution § *Scope and Technical
-Baseline*, Principle VI).
+`generate-sources`. It generates Jackson 2 models and only the whitelisted discriminator/date helpers
+required by the `Command` oneOf model; it emits no API endpoint classes or `ApiClient`. The app declares
+Jackson 2 runtime modules explicitly, and its HTTP converter must use that mapper for generated DTOs. All generated sources are
+build output — never committed, never hand-edited, not formatted by Spotless, and changed only by amending
+the contract and regenerating (constitution § *Scope and Technical Baseline*, Principle VI).
 
 For a registered feature, start by proving the feature artifacts exist:
 
