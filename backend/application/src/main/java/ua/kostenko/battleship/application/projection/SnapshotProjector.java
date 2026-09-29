@@ -59,7 +59,8 @@ public final class SnapshotProjector {
                         ? new SnapshotView.OutcomeView(
                                 side(state.outcome().winner(), seat),
                                 state.outcome().reason())
-                        : null);
+                        : null,
+                state.phase() == Phase.FINISHED ? StatisticsView.from(state, seat) : null);
     }
 
     private static Side side(Seat value, Seat caller) {

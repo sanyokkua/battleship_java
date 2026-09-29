@@ -22,7 +22,8 @@ public record SnapshotView(
         BoardView yourBoard,
         BoardView opponentBoard,
         ShotView lastShot,
-        OutcomeView outcome) {
+        OutcomeView outcome,
+        StatisticsView statistics) {
     public SnapshotView {
         allowedActions = Set.copyOf(allowedActions);
     }

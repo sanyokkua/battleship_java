@@ -310,7 +310,7 @@ class ProjectionPrivacyTest {
                 id.equals("sea-battle-10-ship.v1") ? Seat.GUEST : Seat.HOST,
                 shot,
                 new Outcome(Seat.HOST, Outcome.Reason.RESIGNATION),
-                joined.timeline());
+                phase == Phase.FINISHED ? finishedTimeline(joined.timeline()) : joined.timeline());
     }
 
     private static GameState pair(Phase phase, Seat caller, boolean alternate, boolean hit) {
@@ -343,7 +343,7 @@ class ProjectionPrivacyTest {
                 Seat.HOST,
                 shot,
                 state.outcome(),
-                state.timeline());
+                phase == Phase.FINISHED ? finishedTimeline(state.timeline()) : state.timeline());
     }
 
     private static GameState withPhase(GameState state, Phase phase) {
@@ -356,7 +356,14 @@ class ProjectionPrivacyTest {
                 state.turn(),
                 state.lastShot(),
                 state.outcome(),
-                state.timeline());
+                phase == Phase.FINISHED ? finishedTimeline(state.timeline()) : state.timeline());
+    }
+
+    private static Timeline finishedTimeline(Timeline timeline) {
+        return timeline.withReadyAt(Seat.HOST, NOW)
+                .withReadyAt(Seat.GUEST, NOW)
+                .withPlayStartedAt(NOW, Seat.HOST)
+                .withFinishedAt(NOW, Seat.HOST);
     }
 
     private static void assertNoSeat(Object value) throws Exception {

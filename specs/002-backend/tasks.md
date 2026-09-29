@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.3.0 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001 through T015 are complete; T016 is next.
+**Status**: in progress. T001 through T016 are complete; T017 is next.
 **Contract amendments**: the three changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -375,7 +375,7 @@ no HTTP anywhere.
   - **Depends on** T013, T014
   - **Evidence (2026-09-29)** Task branch `feature/002-backend--t015` from `feature/002-backend` at `caef878`. `ProjectionPrivacyTest` first produced 11 assertion failures across 12 tests with a shape-valid neutral scaffold, then passed with the projector. A contract-example check of `WAITING` fleet counts first failed (`expected: 10`, `actual: 0`), then passed for both rulesets after deriving the count from the selected ruleset before fleet creation. After fixing synthetic fixture geometry and shot attribution, the focused suite passed 13/13. The required unsunk-ship and hidden-`SHIP` mutations each caused three focused assertion failures (zero errors/skips); both were restored exactly. Fresh `cd backend && ./mvnw -q verify` exited 0: 114 tests (67 domain, 17 application, 30 app), zero failures/errors/skips, including Spotless and architecture checks. `python3 scripts/sync-agent-files.py --check` and `git diff --check` exited 0. Independent review and scoped re-review found no remaining Critical or Important issue. Statistics, expiry refusal, wire serialization and packaged runtime verification remain owned by later tasks; T015 does not claim them.
 
-- [ ] T016 [US6] Project the finished game's statistics in `backend/application/src/main/java/ua/kostenko/battleship/application/projection/StatisticsView.java`
+- [x] T016 [US6] Project the finished game's statistics in `backend/application/src/main/java/ua/kostenko/battleship/application/projection/StatisticsView.java`
   - **Delivers** `StatisticsView` (and with it the `MatchStatistics`, `PlayerStatistics`, `DurationAggregate` and `FleetSummary` shapes) computed from `Timeline` and the accepted transitions only — never re-measured, never taken from a second clock. Present **exactly** in `FINISHED`; **absent entirely** for `ABANDONED`. The boundaries are data-model.md § *Statistics* and are not restated in code comments:
 
     | Field | Boundary |
@@ -406,6 +406,7 @@ no HTTP anywhere.
   - **Verify** `cd backend && ./mvnw -q -pl application -am test -Dtest=StatisticsTest`
   - **Mutation** Measure `match.totalDurationMs` from game creation instead of `guestJoinedAt`; identity 1 must fail.
   - **Depends on** T015
+  - **Evidence (2026-09-29)** Task branch `feature/002-backend--t016` from `feature/002-backend` at `68ee9aa`. `StatisticsTest` first failed to compile because the statistics view was absent. A real-transition sub-millisecond test then failed because independently truncated match intervals broke `total = placement + gameplay`; projecting the sum of the displayed parts made it pass. The named earlier-start mutation failed three `StatisticsTest` assertions and was restored. Fresh focused `cd backend && ./mvnw -q -pl application -am test -Dtest=StatisticsTest -Dsurefire.failIfNoSpecifiedTests=false` and aggregate `cd backend && ./mvnw -q verify` exited 0; reactor reports show 119 tests, zero failures/errors/skips. `git diff --check` and `python3 scripts/sync-agent-files.py --check` exited 0 (the latter retains an existing `AGENTS.md` length warning). Independent review found no remaining Critical or Important issue. Wire assembly and end-to-end delivery remain later tasks.
 
 - [ ] T017 Build the registry behind a port in `backend/application/src/main/java/ua/kostenko/battleship/application/port/GameSlotStore.java` and `backend/app/src/main/java/ua/kostenko/battleship/app/registry/`
   - **Delivers** **Decision A1** (see § *Decisions this task list settles*). `GameSlotStore` in `application/port` — `<T> T withSlot(GameId, Function<Slot,T>)`, `insert`, `remove` — is how `application` use cases reach state that lives in `app`. `GameRegistry` in `app/registry` implements it; `InMemoryGameSlotStore` is the test double. `plan.md` § *Ports* already lists five and states why (Decision A1 is applied, not pending).
@@ -1038,6 +1039,6 @@ environment-blocked checks (Constitution VI; AGENTS.md § *Scope control* rule 5
 ## Next unit
 
 `$speckit-analyze` has run across this package and its findings are applied (`AGENTS.md` § *The loop*
-step 6). T001 through T015 are complete; start with **T016**. T015's focused privacy proof,
-mutation checks and aggregate backend gate pass; proof areas 1–3 are implemented. Later feature tasks
-remain pending.
+step 6). T001 through T016 are complete; start with **T017**. T016's focused statistics proof,
+mutation checks and aggregate backend gate pass; proof areas 1–3 and T016's statistics portion of area 6
+are implemented. Later feature tasks remain pending.
