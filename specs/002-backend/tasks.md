@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.3.0 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001 through T014 are complete; T015 is next.
+**Status**: in progress. T001 through T015 are complete; T016 is next.
 **Contract amendments**: the three changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -342,7 +342,7 @@ no HTTP anywhere.
   - **Depends on** T005, T010
   - **Evidence (2026-09-29)** Implementation and independent review passed on task branch `feature/002-backend--t014`, parent `feature/002-backend` (base `f24d1ff`), code commit `9cec6df`. RED: `MutableTimeSourceTest` had 4 assertion failures; `SecretGeneratorTest` had 7 assertion failures before adapters were implemented. Fresh `cd backend && ./mvnw -q -pl application,app -am clean test -Dtest='SecretGeneratorTest,MutableTimeSourceTest,ApplicationContextTest' -Dsurefire.failIfNoSpecifiedTests=false -Dfailsafe.failIfNoSpecifiedTests=false` exited 0: 14 tests, no failures/errors/skips; app tests consumed both shared application doubles from clean reactor output. Named mutation: replacing `SecureRandom` with `new java.util.Random(0)` and running `SecretGeneratorTest#independentlyConstructedGeneratorsProduceDifferentGameIdStreams` with the same reactor/flags exited 1: 1 test, 1 failure, no errors/skips, `expected: not equal but was: <YLQguzhR2dR6y5M9vnA5mw>`. Source restored; focused tests passed again. `cd backend && ./mvnw -q verify` exited 0: domain 67, application 4, app unit 19, app integration 11 — 101 tests, no failures/errors/skips; includes formatting and architecture checks. `python3 scripts/sync-agent-files.py --check` exited 0: 15 mirrored skills, 0 problems (existing AGENTS length warning). Fresh independent review found no compliance or quality findings. Existing tool/development-security warnings and intentional invalid-configuration logs remain; no packaged runtime readiness claim is made for this task.
 
-- [ ] T015 [US1] [US2] [US3] [US4] Build the projector — the one place that decides disclosure — in `backend/application/src/main/java/ua/kostenko/battleship/application/projection/`
+- [x] T015 [US1] [US2] [US3] [US4] Build the projector — the one place that decides disclosure — in `backend/application/src/main/java/ua/kostenko/battleship/application/projection/`
   - **Delivers** `SnapshotProjector.project(GameState, Seat, SnapshotContext)` and the framework-free view records it returns: `SnapshotView`, `BoardView`, `PlayerView`, `ShotView` (and `StatisticsView` in T016). They are deeply immutable, take no decision of their own, and **never leave the server**; `SnapshotDtoAssembler` (T025) copies them into the generated `GameSnapshot`. Their fields are those of the contract schema each is copied into.
     `SnapshotContext` is an `application` record carrying what lives outside the aggregate — `serverTime`, `expiresAt`, `invitationUrl?`, `invitationExpiresAt?` and each seat's `connected` flag — built by `app/registry` from the slot. **The projector never sees `GameSlot`**, so the module direction holds (research.md D27).
     This is the **sole** place that decides disclosure (R17, R19):
@@ -373,6 +373,7 @@ no HTTP anywhere.
   - **Verify** `cd backend && ./mvnw -q -pl application -am test -Dtest=ProjectionPrivacyTest`
   - **Mutation** Include unsunk opponent ships in `opponentBoard.ships`; assertions (1) and (4) must fail. Emit `SHIP` for an undiscovered opponent cell; assertion (1) must fail.
   - **Depends on** T013, T014
+  - **Evidence (2026-09-29)** Task branch `feature/002-backend--t015` from `feature/002-backend` at `caef878`. `ProjectionPrivacyTest` first produced 11 assertion failures across 12 tests with a shape-valid neutral scaffold, then passed with the projector. A contract-example check of `WAITING` fleet counts first failed (`expected: 10`, `actual: 0`), then passed for both rulesets after deriving the count from the selected ruleset before fleet creation. After fixing synthetic fixture geometry and shot attribution, the focused suite passed 13/13. The required unsunk-ship and hidden-`SHIP` mutations each caused three focused assertion failures (zero errors/skips); both were restored exactly. Fresh `cd backend && ./mvnw -q verify` exited 0: 114 tests (67 domain, 17 application, 30 app), zero failures/errors/skips, including Spotless and architecture checks. `python3 scripts/sync-agent-files.py --check` and `git diff --check` exited 0. Independent review and scoped re-review found no remaining Critical or Important issue. Statistics, expiry refusal, wire serialization and packaged runtime verification remain owned by later tasks; T015 does not claim them.
 
 - [ ] T016 [US6] Project the finished game's statistics in `backend/application/src/main/java/ua/kostenko/battleship/application/projection/StatisticsView.java`
   - **Delivers** `StatisticsView` (and with it the `MatchStatistics`, `PlayerStatistics`, `DurationAggregate` and `FleetSummary` shapes) computed from `Timeline` and the accepted transitions only — never re-measured, never taken from a second clock. Present **exactly** in `FINISHED`; **absent entirely** for `ABANDONED`. The boundaries are data-model.md § *Statistics* and are not restated in code comments:
@@ -1037,4 +1038,6 @@ environment-blocked checks (Constitution VI; AGENTS.md § *Scope control* rule 5
 ## Next unit
 
 `$speckit-analyze` has run across this package and its findings are applied (`AGENTS.md` § *The loop*
-step 6). T001 through T013 are complete; start with **T014**. T013 focused, domain and aggregate backend gates pass; proof areas 1 and 2 are implemented. Later feature tasks remain pending.
+step 6). T001 through T015 are complete; start with **T016**. T015's focused privacy proof,
+mutation checks and aggregate backend gate pass; proof areas 1–3 are implemented. Later feature tasks
+remain pending.
