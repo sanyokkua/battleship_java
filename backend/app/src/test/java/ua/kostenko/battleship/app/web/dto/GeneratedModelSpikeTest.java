@@ -101,6 +101,7 @@ class GeneratedModelSpikeTest {
                 "placement-out-of-bounds",
                 "placement-overlap",
                 "placement-touching",
+                "random-arrangement-failed",
                 "target-already-fired",
                 "game-expired",
                 "payload-too-large",

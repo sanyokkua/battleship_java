@@ -8,6 +8,13 @@ server; every successful game operation answers with the same caller-relative `G
 client draws that snapshot and enables exactly the actions in `allowedActions`. A client holds no game
 state and no game rules, so it can be replaced without touching the backend.
 
+## Pre-release compatibility
+
+The rewrite stays on `/api/v1`. The `random-arrangement-failed` problem code is an additive
+open-list value: random placement exhaustion answers HTTP 409 and changes no game state.
+Current backend consumers regenerate their DTOs in the same change; clients with an unknown code
+follow the contract’s HTTP-status fallback. No migration or deprecation path is introduced.
+
 ## Commands
 
 ```bash

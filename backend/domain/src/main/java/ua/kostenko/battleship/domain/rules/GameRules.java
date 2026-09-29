@@ -2,12 +2,16 @@ package ua.kostenko.battleship.domain.rules;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import ua.kostenko.battleship.domain.RandomSource;
 import ua.kostenko.battleship.domain.command.GameCommand;
 import ua.kostenko.battleship.domain.model.Board;
+import ua.kostenko.battleship.domain.model.Coordinate;
 import ua.kostenko.battleship.domain.model.GameState;
+import ua.kostenko.battleship.domain.model.Orientation;
 import ua.kostenko.battleship.domain.model.PlayerState;
 import ua.kostenko.battleship.domain.model.Seat;
 import ua.kostenko.battleship.domain.model.Ship;
@@ -18,14 +22,17 @@ import ua.kostenko.battleship.domain.transition.Transition;
 public final class GameRules {
     private GameRules() {}
 
-    public static Transition apply(GameState state, Seat actor, GameCommand command, Instant now) {
+    public static Transition apply(GameState state, Seat actor, GameCommand command, Instant now, RandomSource random) {
         Objects.requireNonNull(state, "state");
         Objects.requireNonNull(actor, "actor");
         Objects.requireNonNull(command, "command");
         Objects.requireNonNull(now, "now");
+        Objects.requireNonNull(random, "random");
         return switch (command) {
             case GameCommand.PlaceShip placeShip -> placeShip(state, actor, placeShip);
             case GameCommand.RemoveShip removeShip -> removeShip(state, actor, removeShip);
+            case GameCommand.PlaceFleetRandomly arrange -> placeFleetRandomly(state, actor, arrange, random);
+            case GameCommand.ClearFleet ignored -> clearFleet(state, actor);
         };
     }
 
@@ -56,22 +63,9 @@ public final class GameRules {
                 command.anchor(),
                 command.orientation(),
                 moving.hits());
-        if (placed.cells().stream()
-                .anyMatch(cell -> cell.rowIndex() >= ruleset.rows() || cell.columnIndex() >= ruleset.columns())) {
-            return refused(state, Rejection.problem(ProblemCode.PLACEMENT_OUT_OF_BOUNDS));
-        }
-
-        for (int index = 0; index < fleet.size(); index++) {
-            if (index == shipIndex || fleet.get(index).anchor() == null) {
-                continue;
-            }
-            Ship other = fleet.get(index);
-            if (overlaps(placed, other)) {
-                return refused(state, Rejection.problem(ProblemCode.PLACEMENT_OVERLAP));
-            }
-            if (!ruleset.shipsMayTouch() && touches(placed, other)) {
-                return refused(state, Rejection.problem(ProblemCode.PLACEMENT_TOUCHING));
-            }
+        Rejection placementFailure = validatePlacement(ruleset, fleet, shipIndex, placed);
+        if (placementFailure != null) {
+            return refused(state, placementFailure);
         }
 
         List<Ship> updatedFleet = new ArrayList<>(fleet);
@@ -95,6 +89,77 @@ public final class GameRules {
         updatedFleet.set(
                 shipIndex, new Ship(existing.shipId(), existing.shipTypeId(), existing.length(), null, null, Set.of()));
         return accepted(state, actor, playerWithFleet(player, updatedFleet));
+    }
+
+    private static Transition placeFleetRandomly(
+            GameState state, Seat actor, GameCommand.PlaceFleetRandomly command, RandomSource random) {
+        Ruleset ruleset = Rulesets.byId(state.rulesetId()).orElseThrow();
+        PlayerState player = player(state, actor);
+        List<Ship> replacement = new ArrayList<>(unplacedFleet(player.board().fleet()));
+        List<Integer> placementOrder = new ArrayList<>();
+        for (int index = 0; index < replacement.size(); index++) {
+            placementOrder.add(index);
+        }
+        placementOrder.sort(Comparator.comparingInt(
+                        (Integer index) -> replacement.get(index).length())
+                .reversed());
+        int failedCandidates = 0;
+        for (int index : placementOrder) {
+            Ship existing = replacement.get(index);
+            while (true) {
+                Orientation orientation = random.nextInt(2) == 0 ? Orientation.HORIZONTAL : Orientation.VERTICAL;
+                Coordinate anchor = new Coordinate(random.nextInt(ruleset.rows()), random.nextInt(ruleset.columns()));
+                Ship candidate = new Ship(
+                        existing.shipId(), existing.shipTypeId(), existing.length(), anchor, orientation, Set.of());
+                if (validatePlacement(ruleset, replacement, index, candidate) == null) {
+                    replacement.set(index, candidate);
+                    break;
+                }
+                failedCandidates++;
+                if (failedCandidates >= command.attemptLimit()) {
+                    return refused(state, Rejection.problem(ProblemCode.RANDOM_ARRANGEMENT_FAILED));
+                }
+            }
+        }
+        if (replacement.equals(player.board().fleet())) {
+            return acceptedNoOp(state);
+        }
+        return accepted(state, actor, playerWithFleet(player, replacement));
+    }
+
+    private static Transition clearFleet(GameState state, Seat actor) {
+        PlayerState player = player(state, actor);
+        List<Ship> replacement = unplacedFleet(player.board().fleet());
+        if (replacement.equals(player.board().fleet())) {
+            return acceptedNoOp(state);
+        }
+        return accepted(state, actor, playerWithFleet(player, replacement));
+    }
+
+    private static List<Ship> unplacedFleet(List<Ship> fleet) {
+        return fleet.stream()
+                .map(ship -> new Ship(ship.shipId(), ship.shipTypeId(), ship.length(), null, null, Set.of()))
+                .toList();
+    }
+
+    private static Rejection validatePlacement(Ruleset ruleset, List<Ship> fleet, int shipIndex, Ship placed) {
+        if (placed.cells().stream()
+                .anyMatch(cell -> cell.rowIndex() >= ruleset.rows() || cell.columnIndex() >= ruleset.columns())) {
+            return Rejection.problem(ProblemCode.PLACEMENT_OUT_OF_BOUNDS);
+        }
+        for (int index = 0; index < fleet.size(); index++) {
+            if (index == shipIndex || fleet.get(index).anchor() == null) {
+                continue;
+            }
+            Ship other = fleet.get(index);
+            if (overlaps(placed, other)) {
+                return Rejection.problem(ProblemCode.PLACEMENT_OVERLAP);
+            }
+            if (!ruleset.shipsMayTouch() && touches(placed, other)) {
+                return Rejection.problem(ProblemCode.PLACEMENT_TOUCHING);
+            }
+        }
+        return null;
     }
 
     private static boolean overlaps(Ship first, Ship second) {

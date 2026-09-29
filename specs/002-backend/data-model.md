@@ -103,7 +103,8 @@ here per player per moment and never restated.
   `placement-out-of-bounds`; an overlap is `placement-overlap`; a forbidden touch is
   `placement-touching`.
 - **`PLACE_FLEET_RANDOMLY`** draws from `RandomSource`, places longest ships first, and gives up after
-  the configured attempt limit — an ordinary refusal that leaves the fleet exactly as it was (R26).
+  the configured attempt limit — an ordinary `random-arrangement-failed` refusal (HTTP 409) that
+  returns the original game state with its fleet and version unchanged (R26).
 - **`FIRE`** on a cell already disclosed is `target-already-fired`: no turn consumed, nothing changed
   (R10). On a sink under `revealWaterAroundSunk`, every still-`UNKNOWN` neighbour of every cell of
   that ship — up to eight per cell — becomes `REVEALED_WATER` without a shot (R08).

@@ -300,7 +300,9 @@ confirm the running service reports the changed value.
   arrangement can be reproduced in a proof rather than only smoke-tested, and the same source breaks a
   tied first turn (R11). The search is attempt-bounded: after the configured number of failed attempts
   it gives up, refuses the action as an ordinary failure and leaves the fleet exactly as it was, so a
-  search can never occupy its game indefinitely.
+  search can never occupy its game indefinitely. `[user]` Clarification (2026-09-29): exhaustion
+  uses the dedicated `random-arrangement-failed` code, mapped to HTTP 409, and leaves the game state
+  and version unchanged.
 
 ### Live updates
 
@@ -422,8 +424,9 @@ deadline equals the current instant has already expired. The same comparison app
 - **R49** Every failure is a problem document with a stable machine-readable code from the
   contract's list, mapped as follows — `malformed-request` 400; `session-required` 401;
   `request-security-rejected` 403; `game-unavailable` 404; `invitation-unavailable`,
-  `action-not-allowed`, `placement-out-of-bounds`, `placement-overlap`, `placement-touching` and
-  `target-already-fired` 409; `game-expired` 410; `payload-too-large` 413; `unsupported-media-type` 415;
+  `action-not-allowed`, `placement-out-of-bounds`, `placement-overlap`, `placement-touching`,
+  `random-arrangement-failed` and `target-already-fired` 409; `game-expired` 410;
+  `payload-too-large` 413; `unsupported-media-type` 415;
   `validation-failed` 422; `rate-limit-exceeded` 429; `internal-error` 500; `service-unavailable` 503.
   Health is the only operation whose unavailable answer is not a problem document.
 - **R50** A problem document carries a correlation identifier that ties it to the logs, and

@@ -634,7 +634,8 @@ components:
         The request is well formed but the game does not allow it now. Codes: `invitation-unavailable`
         (join), `action-not-allowed` (not in `allowedActions`: wrong phase, not your turn, already
         ready, fleet incomplete, not the host), `placement-out-of-bounds`, `placement-overlap`,
-        `placement-touching`, `target-already-fired`. Nothing changed; except for
+        `placement-touching`, `random-arrangement-failed` (random arrangement exhausted its attempt
+        limit), `target-already-fired`. Nothing changed; except for
         `invitation-unavailable`, fetch the snapshot.
       content:
         application/problem+json:
@@ -647,6 +648,8 @@ components:
               value: { title: Action not allowed, status: 409, code: action-not-allowed, correlationId: 9f2c1d7a4b6e4c1e }
             placementTouching:
               value: { title: Ships may not touch, status: 409, code: placement-touching, correlationId: 9f2c1d7a4b6e4c1e }
+            randomArrangementFailed:
+              value: { title: Random arrangement failed, status: 409, code: random-arrangement-failed, correlationId: 9f2c1d7a4b6e4c1e }
             targetAlreadyFired:
               value: { title: Target already fired, status: 409, code: target-already-fired, correlationId: 9f2c1d7a4b6e4c1e }
     Gone:
@@ -1267,7 +1270,9 @@ components:
       description: |
         Commands without further fields.
         - `PLACE_FLEET_RANDOMLY`: the server arranges the whole fleet legally at random, replacing the
-          current arrangement. Clients need no placement rules of their own.
+          current arrangement. If the bounded search exhausts its attempt limit, it answers
+          `409 random-arrangement-failed` and leaves the game state unchanged. Clients need no
+          placement rules of their own.
         - `CLEAR_FLEET`: takes every ship off the board.
         - `READY`: locks the fleet. Cannot be undone. Play starts when both players are ready.
         - `RESIGN`: ends a game in `PLAYING`; the opponent wins and both boards are shown.
@@ -1334,6 +1339,7 @@ components:
         - placement-out-of-bounds
         - placement-overlap
         - placement-touching
+        - random-arrangement-failed
         - target-already-fired
         - game-expired
         - payload-too-large

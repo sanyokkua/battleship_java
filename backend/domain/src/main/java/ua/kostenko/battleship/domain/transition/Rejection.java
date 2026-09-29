@@ -25,7 +25,8 @@ public record Rejection(ProblemCode code, String field, String rule) {
         VALIDATION_FAILED("validation-failed"),
         PLACEMENT_OUT_OF_BOUNDS("placement-out-of-bounds"),
         PLACEMENT_OVERLAP("placement-overlap"),
-        PLACEMENT_TOUCHING("placement-touching");
+        PLACEMENT_TOUCHING("placement-touching"),
+        RANDOM_ARRANGEMENT_FAILED("random-arrangement-failed");
 
         private final String wireCode;
 

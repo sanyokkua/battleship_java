@@ -141,7 +141,9 @@ class PlacementRulesTest {
     }
 
     private static Transition apply(GameState state, Seat actor, GameCommand command) {
-        return GameRules.apply(state, actor, command, NOW);
+        return GameRules.apply(state, actor, command, NOW, bound -> {
+            throw new AssertionError("manual placement must not draw randomness");
+        });
     }
 
     private static GameState state(String rulesetId) {
