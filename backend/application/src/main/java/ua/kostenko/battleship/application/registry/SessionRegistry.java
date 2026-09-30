@@ -4,18 +4,18 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 public final class SessionRegistry {
     private final int capacity;
-    private final Map<String, SessionRecord> records = new HashMap<>();
+    private final Map<String, SessionRecord> records = new ConcurrentHashMap<>();
     private final ReentrantLock lock = new ReentrantLock();
 
     public SessionRegistry(int capacity) {
@@ -112,12 +112,14 @@ public final class SessionRegistry {
     }
 
     public Optional<SessionRecord> findDigest(String digest) {
-        lock.lock();
-        try {
-            return Optional.ofNullable(records.get(digest));
-        } finally {
-            lock.unlock();
-        }
+        return Optional.ofNullable(records.get(digest));
+    }
+
+    /** Terminal ownership release deliberately avoids the admission lock while a game slot is held. */
+    public void releaseGame(String digest, String gameId) {
+        if (digest == null) return;
+        SessionRecord record = records.get(digest);
+        if (record != null) record.detachGame(gameId);
     }
 
     public void touch(String sessionValue, Instant now) {

@@ -39,4 +39,8 @@ public final class SessionRecord {
     void attachGame(String gameId) {
         liveGames.add(gameId);
     }
+
+    void detachGame(String gameId) {
+        liveGames.remove(gameId);
+    }
 }
