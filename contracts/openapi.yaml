@@ -737,8 +737,9 @@ components:
       minLength: 1
       maxLength: 32
       description: >-
-        Name shown to both players. The server trims surrounding whitespace, normalizes to Unicode NFC
-        and rejects control characters; length is counted in code points after that. It is plain
+        Name shown to both players. The server rejects control characters anywhere in the input, including
+        at its edges, then trims surrounding whitespace and normalizes to Unicode NFC; length is
+        counted in code points after that. It is plain
         text, need not be unique, cannot be changed and proves nothing about who the player is.
         Always display it as text, never as markup.
     Instant:

@@ -11,7 +11,7 @@ import ua.kostenko.battleship.domain.rules.AllowedActions;
 import ua.kostenko.battleship.domain.rules.Ruleset;
 import ua.kostenko.battleship.domain.rules.Rulesets;
 
-public final class SnapshotProjector {
+public class SnapshotProjector {
     public SnapshotView project(GameState state, Seat seat, SnapshotContext context) {
         Objects.requireNonNull(state, "state");
         Objects.requireNonNull(seat, "seat");

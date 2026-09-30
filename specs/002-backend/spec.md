@@ -359,8 +359,9 @@ confirm the running service reports the changed value.
 - **R37** Requests reject unknown fields, so a caller can never supply a seat, a turn, a winner
   or a result. Field-level failures are reported per field with a machine-readable rule. Every response
   is marked not to be stored by caches.
-- **R64** A display name is trimmed of surrounding whitespace and normalised to Unicode NFC before it is
-  validated; control characters are rejected; length is counted in code points after normalisation and
+- **R64** A display name containing any control character is rejected, including at its edges. Otherwise
+  it is trimmed of surrounding whitespace and normalised to Unicode NFC before length validation;
+  length is counted in code points after normalisation and
   must lie within the bounds the contract's `DisplayName` schema states. A name that fails any of these
   is a field-level validation failure (R37) and no game or seat is created.
 

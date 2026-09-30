@@ -7,9 +7,11 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 public final class SessionRegistry {
     private final int capacity;
@@ -40,6 +42,40 @@ public final class SessionRegistry {
             SessionRecord record = registerDigest(digest(sessionValue), now);
             record.attachGame(gameId);
             return record;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /** Runs admission before changing session ownership, while the per-browser cap is locked. */
+    public Instant admitGame(String sessionValue, String gameId, int maxLiveGames, Supplier<Instant> admission) {
+        Objects.requireNonNull(admission);
+        if (maxLiveGames < 1) throw new IllegalArgumentException("maxLiveGames must be positive");
+        String digest = digest(sessionValue);
+        lock.lock();
+        try {
+            SessionRecord current = records.get(digest);
+            if (current != null && current.liveGames().size() >= maxLiveGames)
+                throw new CapacityExceededException("browser games", 1);
+            String evictable = null;
+            if (current == null && records.size() == capacity) {
+                evictable = records.entrySet().stream()
+                        .filter(entry -> entry.getValue().liveGames().isEmpty())
+                        .min((a, b) ->
+                                a.getValue().lastSeenAt().compareTo(b.getValue().lastSeenAt()))
+                        .map(Map.Entry::getKey)
+                        .orElseThrow(() -> new CapacityExceededException("sessions", 1));
+            }
+            Instant now = admission.get();
+            if (evictable != null) records.remove(evictable);
+            if (current == null) {
+                current = new SessionRecord(digest, now);
+                records.put(digest, current);
+            } else {
+                current.touch(now);
+            }
+            current.attachGame(gameId);
+            return now;
         } finally {
             lock.unlock();
         }

@@ -33,6 +33,10 @@ public record GameState(
                 ruleset.id(), Phase.WAITING, 0, PlayerState.empty(hostName), null, null, null, null, Timeline.empty());
     }
 
+    public GameState withBumpedVersion() {
+        return new GameState(rulesetId, phase, version + 1, host, guest, turn, lastShot, outcome, timeline);
+    }
+
     public GameState withGuest(String guestName, Instant now) {
         if (guest != null || phase != Phase.WAITING) {
             throw new IllegalStateException("guest can join only once while waiting");
@@ -48,7 +52,7 @@ public record GameState(
         return new GameState(
                 rulesetId,
                 Phase.PLACEMENT,
-                1,
+                version + 1,
                 joinedHost,
                 joinedGuest,
                 null,
