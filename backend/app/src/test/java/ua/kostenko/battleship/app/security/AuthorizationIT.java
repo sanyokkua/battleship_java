@@ -25,10 +25,10 @@ import ua.kostenko.battleship.app.security.SecurityHttp.Reply;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
 
 /**
- * Parts 1, 2 and 3 of 4: what the session filter and the chain decide before any controller is reached, how a session
- * is issued and reused (R32, R33), and that a valid session which is not a player gets the same answer for a real game
- * as for one that never existed (S6). Part 3 covers five of the six protected operations; {@code streamGameEvents}
- * joins them as the sixth row when it exists (T029). Two live games per browser let one browser create twice.
+ * Parts 1 to 4: what the session filter and the chain decide before any controller is reached, how a session is
+ * issued and reused (R32, R33), and that a valid session which is not a player gets the same answer for a real game as
+ * for one that never existed (S6). Part 3 covers the five synchronous protected operations; part 4 adds
+ * {@code streamGameEvents} as the sixth row. Two live games per browser let one browser create twice.
  */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -198,7 +198,7 @@ class AuthorizationIT {
 
     private static final String NEVER_EXISTED = "AAAAAAAAAAAAAAAAAAAAAA";
 
-    /** The five synchronous protected operations; the sixth, the event stream, is added by T029. */
+    /** The five synchronous protected operations; the sixth, the event stream, is part 4. */
     private static List<Probe> synchronousProtectedOperations() {
         String command = "{\"commandId\":\"" + UUID.randomUUID() + "\",\"command\":{\"type\":\"READY\"}}";
         return List.of(
@@ -212,7 +212,9 @@ class AuthorizationIT {
     private Reply asNonPlayer(Probe probe, String gameId, String stranger) throws Exception {
         String path = "/api/v1/games/" + gameId + probe.suffix();
         if (probe.method().equals("GET")) {
-            return http.call("GET", path, stranger);
+            return probe.suffix().equals("/events")
+                    ? http.call("GET", path, stranger, "Accept", "text/event-stream")
+                    : http.call("GET", path, stranger);
         }
         return probe.body() == null
                 ? http.postWithToken(path, http.freshToken(), stranger)
@@ -258,7 +260,9 @@ class AuthorizationIT {
         String stranger = SESSION_COOKIE + "=a-valid-session-that-plays-nowhere-0123456789abcdef";
         sessions.register(stranger.substring(SESSION_COOKIE.length() + 1), Instant.now());
 
-        for (Probe probe : synchronousProtectedOperations()) {
+        List<Probe> all = new java.util.ArrayList<>(synchronousProtectedOperations());
+        all.add(new Probe("streamGameEvents", "GET", "/events", null));
+        for (Probe probe : all) {
             Reply real = asNonPlayer(probe, realGameId, stranger);
             Reply never = asNonPlayer(probe, NEVER_EXISTED, stranger);
 

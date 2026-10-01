@@ -254,11 +254,19 @@ class CreateGameUseCaseTest {
                     secrets,
                     time,
                     projector,
+                    new RecordingPublisher(),
                     browserCap,
                     Duration.ofSeconds(60),
                     Duration.ofSeconds(30));
             replace = new ReplaceInvitationUseCase(
-                    games, sessions, secrets, time, projector, Duration.ofSeconds(30), Duration.ofSeconds(30));
+                    games,
+                    sessions,
+                    secrets,
+                    time,
+                    projector,
+                    new RecordingPublisher(),
+                    Duration.ofSeconds(30),
+                    Duration.ofSeconds(30));
         }
     }
 }

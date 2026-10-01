@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import ua.kostenko.battleship.application.port.SnapshotPublisher;
 import ua.kostenko.battleship.application.port.TimeSource;
 import ua.kostenko.battleship.application.projection.SnapshotContext;
 import ua.kostenko.battleship.application.projection.SnapshotProjector;
@@ -24,13 +25,17 @@ import ua.kostenko.battleship.domain.model.Seat;
 import ua.kostenko.battleship.domain.rules.GameRules;
 import ua.kostenko.battleship.domain.transition.Transition;
 
-/** Serializes an action per game and projects its immutable result after unlocking. */
+/**
+ * Serializes an action per game, then projects its immutable result and publishes each changed seat's view after
+ * unlocking.
+ */
 public final class CommandUseCase {
     private final GameRegistry games;
     private final SessionRegistry sessions;
     private final TimeSource time;
     private final RandomSource random;
     private final SnapshotProjector projector;
+    private final SnapshotPublisher publisher;
     private final Duration idleTimeout;
     private final Duration resultRetention;
 
@@ -40,6 +45,7 @@ public final class CommandUseCase {
             TimeSource time,
             RandomSource random,
             SnapshotProjector projector,
+            SnapshotPublisher publisher,
             Duration idleTimeout,
             Duration resultRetention) {
         this.games = Objects.requireNonNull(games);
@@ -47,6 +53,7 @@ public final class CommandUseCase {
         this.time = Objects.requireNonNull(time);
         this.random = Objects.requireNonNull(random);
         this.projector = Objects.requireNonNull(projector);
+        this.publisher = Objects.requireNonNull(publisher);
         if (idleTimeout.isZero()
                 || idleTimeout.isNegative()
                 || resultRetention.isZero()
@@ -73,6 +80,7 @@ public final class CommandUseCase {
                     seat,
                     seat == captured.actor() ? caller : projector.project(captured.state(), seat, entry.getValue()));
         }
+        deliveries.forEach((seat, view) -> publisher.publish(gameId, seat, view));
         return new CommandResult(caller, deliveries);
     }
 

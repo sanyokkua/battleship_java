@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import ua.kostenko.battleship.app.config.BattleshipProperties;
 import ua.kostenko.battleship.application.port.SecretGenerator;
+import ua.kostenko.battleship.application.port.SnapshotPublisher;
 import ua.kostenko.battleship.application.port.TimeSource;
 import ua.kostenko.battleship.application.projection.SnapshotProjector;
 import ua.kostenko.battleship.application.registry.GameRegistry;
@@ -20,6 +21,7 @@ import ua.kostenko.battleship.application.usecase.JoinGameUseCase;
 import ua.kostenko.battleship.application.usecase.LeaveGameUseCase;
 import ua.kostenko.battleship.application.usecase.PresenceUseCase;
 import ua.kostenko.battleship.application.usecase.ReplaceInvitationUseCase;
+import ua.kostenko.battleship.application.usecase.SubscribeUseCase;
 import ua.kostenko.battleship.domain.RandomSource;
 
 @SpringBootApplication
@@ -81,6 +83,7 @@ public class BattleshipApplication {
             SecretGenerator secrets,
             TimeSource time,
             SnapshotProjector projector,
+            SnapshotPublisher publisher,
             BattleshipProperties properties) {
         return new JoinGameUseCase(
                 games,
@@ -88,6 +91,7 @@ public class BattleshipApplication {
                 secrets,
                 time,
                 projector,
+                publisher,
                 properties.maxLiveGamesPerBrowser(),
                 Duration.ofSeconds(properties.idleTimeoutSeconds()),
                 Duration.ofSeconds(properties.resultRetentionSeconds()));
@@ -100,6 +104,7 @@ public class BattleshipApplication {
             SecretGenerator secrets,
             TimeSource time,
             SnapshotProjector projector,
+            SnapshotPublisher publisher,
             BattleshipProperties properties) {
         return new ReplaceInvitationUseCase(
                 games,
@@ -107,20 +112,42 @@ public class BattleshipApplication {
                 secrets,
                 time,
                 projector,
+                publisher,
                 Duration.ofSeconds(properties.invitationLifetimeSeconds()),
                 Duration.ofSeconds(properties.resultRetentionSeconds()));
     }
 
     @Bean
     ExpireGamesUseCase expireGamesUseCase(
-            GameRegistry games, SessionRegistry sessions, BattleshipProperties properties) {
-        return new ExpireGamesUseCase(games, sessions, Duration.ofSeconds(properties.resultRetentionSeconds()));
+            GameRegistry games,
+            SessionRegistry sessions,
+            SnapshotPublisher publisher,
+            BattleshipProperties properties) {
+        return new ExpireGamesUseCase(
+                games, sessions, publisher, Duration.ofSeconds(properties.resultRetentionSeconds()));
     }
 
     @Bean
     LeaveGameUseCase leaveGameUseCase(
-            GameRegistry games, SessionRegistry sessions, TimeSource time, BattleshipProperties properties) {
-        return new LeaveGameUseCase(games, sessions, time, Duration.ofSeconds(properties.resultRetentionSeconds()));
+            GameRegistry games,
+            SessionRegistry sessions,
+            TimeSource time,
+            SnapshotProjector projector,
+            SnapshotPublisher publisher,
+            BattleshipProperties properties) {
+        return new LeaveGameUseCase(
+                games, sessions, time, projector, publisher, Duration.ofSeconds(properties.resultRetentionSeconds()));
+    }
+
+    @Bean
+    SubscribeUseCase subscribeUseCase(
+            GameRegistry games,
+            SessionRegistry sessions,
+            TimeSource time,
+            SnapshotProjector projector,
+            BattleshipProperties properties) {
+        return new SubscribeUseCase(
+                games, sessions, time, projector, Duration.ofSeconds(properties.resultRetentionSeconds()));
     }
 
     @Bean
@@ -130,6 +157,7 @@ public class BattleshipApplication {
             TimeSource time,
             RandomSource random,
             SnapshotProjector projector,
+            SnapshotPublisher publisher,
             BattleshipProperties properties) {
         return new CommandUseCase(
                 games,
@@ -137,6 +165,7 @@ public class BattleshipApplication {
                 time,
                 random,
                 projector,
+                publisher,
                 Duration.ofSeconds(properties.idleTimeoutSeconds()),
                 Duration.ofSeconds(properties.resultRetentionSeconds()));
     }

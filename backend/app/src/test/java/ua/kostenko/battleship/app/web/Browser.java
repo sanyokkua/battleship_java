@@ -97,6 +97,16 @@ public final class Browser {
         return http.postWithToken(GAMES + gameId + "/leave", http.freshToken(), sessionCookie);
     }
 
+    /** Opens {@code streamGameEvents} for this browser's game; {@code headers} are extra name/value pairs. */
+    public SseStream events(String... headers) throws Exception {
+        return SseStream.open(port, GAMES + gameId + "/events", sessionCookie, headers);
+    }
+
+    /** The raw session value this browser presents, without the cookie name. */
+    public String sessionValue() {
+        return sessionCookie.substring(sessionCookie.indexOf('=') + 1);
+    }
+
     public static String simple(String type) {
         return "{\"type\":\"" + type + "\"}";
     }

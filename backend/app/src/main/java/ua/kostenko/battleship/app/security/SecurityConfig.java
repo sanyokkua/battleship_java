@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.app.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,7 +23,8 @@ import ua.kostenko.battleship.application.registry.SessionRegistry;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 class SecurityConfig {
     @Bean
-    SecurityFilterChain apiSecurity(HttpSecurity http, SessionRegistry sessions) throws Exception {
+    SecurityFilterChain apiSecurity(HttpSecurity http, SessionRegistry sessions, ObjectMapper wireMapper)
+            throws Exception {
         CookieCsrfTokenRepository csrfTokens = new CookieCsrfTokenRepository();
         csrfTokens.setCookiePath("/");
         csrfTokens.setCookieCustomizer(
@@ -36,9 +38,10 @@ class SecurityConfig {
         return http.authorizeHttpRequests(requests -> requests.anyRequest().permitAll())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.csrfTokenRepository(csrfTokens).csrfTokenRequestHandler(plainHandler))
-                .exceptionHandling(handling -> handling.accessDeniedHandler((request, response, denied) ->
-                        ProblemAdvice.writeProblem(request, response, ProblemCode.REQUEST_SECURITY_REJECTED)))
-                .addFilterAfter(new SessionCookieFilter(sessions), CsrfFilter.class)
+                .exceptionHandling(handling ->
+                        handling.accessDeniedHandler((request, response, denied) -> ProblemAdvice.writeProblem(
+                                request, response, ProblemCode.REQUEST_SECURITY_REJECTED, wireMapper)))
+                .addFilterAfter(new SessionCookieFilter(sessions, wireMapper), CsrfFilter.class)
                 .build();
     }
 }

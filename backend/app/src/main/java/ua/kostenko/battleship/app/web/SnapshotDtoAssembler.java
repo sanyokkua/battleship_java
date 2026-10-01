@@ -38,10 +38,10 @@ import ua.kostenko.battleship.application.projection.StatisticsView;
  * enum crosses by name, so a contract change that renames a value fails here, and the one document it builds is what
  * HTTP and the event stream both send (R17).
  */
-final class SnapshotDtoAssembler {
+public final class SnapshotDtoAssembler {
     private SnapshotDtoAssembler() {}
 
-    static GameSnapshot assemble(SnapshotView view) {
+    public static GameSnapshot assemble(SnapshotView view) {
         return new GameSnapshot()
                 .gameId(view.gameId())
                 .version(Math.toIntExact(view.version()))

@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Objects;
 import ua.kostenko.battleship.application.port.SecretGenerator;
+import ua.kostenko.battleship.application.port.SnapshotPublisher;
 import ua.kostenko.battleship.application.port.TimeSource;
 import ua.kostenko.battleship.application.projection.SnapshotContext;
 import ua.kostenko.battleship.application.projection.SnapshotProjector;
@@ -26,6 +27,7 @@ public final class JoinGameUseCase {
     private final SecretGenerator secrets;
     private final TimeSource time;
     private final SnapshotProjector projector;
+    private final SnapshotPublisher publisher;
     private final int maxLiveGames;
     private final Duration idleTimeout;
     private final Duration resultRetention;
@@ -36,6 +38,7 @@ public final class JoinGameUseCase {
             SecretGenerator secrets,
             TimeSource time,
             SnapshotProjector projector,
+            SnapshotPublisher publisher,
             int maxLiveGames,
             Duration idleTimeout,
             Duration resultRetention) {
@@ -44,6 +47,7 @@ public final class JoinGameUseCase {
         this.secrets = Objects.requireNonNull(secrets);
         this.time = Objects.requireNonNull(time);
         this.projector = Objects.requireNonNull(projector);
+        this.publisher = Objects.requireNonNull(publisher);
         if (maxLiveGames < 1
                 || idleTimeout.isZero()
                 || idleTimeout.isNegative()
@@ -69,7 +73,7 @@ public final class JoinGameUseCase {
                     if (status == ExpiryPolicy.Status.EXPIRED_RETAINED)
                         throw new ApplicationFailure("game-expired", null, null, null);
                     if (status == ExpiryPolicy.Status.FORGOTTEN) throw unavailable();
-                    return new Captured(presentedSessionValue, slot.state(), slot.contextFor(Seat.GUEST, now));
+                    return new Captured(presentedSessionValue, slot.state(), slot.contextFor(Seat.GUEST, now), null);
                 }
                 if (presentedDigest != null && presentedDigest.equals(slot.hostSessionDigest())) throw unavailable();
                 if (status != ExpiryPolicy.Status.LIVE
@@ -114,8 +118,15 @@ public final class JoinGameUseCase {
                 } catch (CapacityExceededException full) {
                     throw new ApplicationFailure("service-unavailable", null, null, full.retryAfterSeconds());
                 }
-                return new Captured(sessionValue, slot.state(), slot.contextFor(Seat.GUEST, admittedAt));
+                return new Captured(
+                        sessionValue,
+                        slot.state(),
+                        slot.contextFor(Seat.GUEST, admittedAt),
+                        slot.contextFor(Seat.HOST, admittedAt));
             });
+            if (captured.hostContext() != null)
+                publisher.publish(
+                        gameId, Seat.HOST, projector.project(captured.state(), Seat.HOST, captured.hostContext()));
             return new JoinedGame(
                     captured.sessionValue(), projector.project(captured.state(), Seat.GUEST, captured.context()));
         } catch (UnknownGameException unknown) {
@@ -140,5 +151,7 @@ public final class JoinGameUseCase {
 
     public record JoinedGame(String sessionValue, SnapshotView snapshot) {}
 
-    private record Captured(String sessionValue, GameState state, SnapshotContext context) {}
+    /** {@code hostContext} is present only when this call seated the guest, which changed the host's view. */
+    private record Captured(
+            String sessionValue, GameState state, SnapshotContext context, SnapshotContext hostContext) {}
 }

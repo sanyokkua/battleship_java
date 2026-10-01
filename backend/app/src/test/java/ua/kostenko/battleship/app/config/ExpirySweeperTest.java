@@ -8,12 +8,15 @@ import java.time.Duration;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import ua.kostenko.battleship.application.MutableTimeSource;
+import ua.kostenko.battleship.application.port.SnapshotPublisher;
+import ua.kostenko.battleship.application.projection.SnapshotView;
 import ua.kostenko.battleship.application.registry.CapacityExceededException;
 import ua.kostenko.battleship.application.registry.GameRegistry;
 import ua.kostenko.battleship.application.registry.GameSlot;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
 import ua.kostenko.battleship.application.usecase.ExpireGamesUseCase;
 import ua.kostenko.battleship.domain.model.GameState;
+import ua.kostenko.battleship.domain.model.Seat;
 import ua.kostenko.battleship.domain.rules.Rulesets;
 
 class ExpirySweeperTest {
@@ -23,8 +26,15 @@ class ExpirySweeperTest {
 
     private final MutableTimeSource time = new MutableTimeSource(START);
     private final GameRegistry games = new GameRegistry(1);
+    private final SnapshotPublisher noStreams = new SnapshotPublisher() {
+        @Override
+        public void publish(String gameId, Seat seat, SnapshotView view) {}
+
+        @Override
+        public void unavailable(String gameId, Seat seat) {}
+    };
     private final ExpirySweeper sweeper =
-            new ExpirySweeper(new ExpireGamesUseCase(games, new SessionRegistry(4), RETENTION), time);
+            new ExpirySweeper(new ExpireGamesUseCase(games, new SessionRegistry(4), noStreams, RETENTION), time);
 
     private void insertGame(String id) {
         games.insert(

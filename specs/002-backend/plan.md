@@ -346,8 +346,13 @@ event; once readiness is `DRAINING` the events endpoint answers reconnection att
 sleeps), `RandomSource` (fleet arrangement and the R11 tie-break, seedable), `SecretGenerator`
 (`SecureRandom`: 128-bit base64url game ids matching `^[A-Za-z0-9_-]{22}$`, 256-bit session values,
 256-bit invitation secrets matching `^[A-Za-z0-9_-]{43}$`),
-`SnapshotPublisher` (`publish(GameId, Seat, SnapshotView)`, implemented by the SSE hub). Four ports,
-each with a real second implementation in tests. Three are declared in `application/port`;
+`SnapshotPublisher` (`publish(String gameId, Seat, SnapshotView)` and `unavailable(String gameId, Seat)`,
+implemented by the SSE hub; game ids are plain `String`s, there is no `GameId` type). Four ports,
+each with a real second implementation in tests. `unavailable` is the one owner-approved addition
+(T029): `LeaveGameUseCase` and `ExpireGamesUseCase` call it, after releasing the slot lock, when a game
+stops existing for a seat, so the hub can end that seat's stream (T030 adds the `GAME_UNAVAILABLE`
+event). `CommandUseCase`, `JoinGameUseCase`, `ReplaceInvitationUseCase` and `LeaveGameUseCase` call
+`publish`, also only after releasing the lock. Three are declared in `application/port`;
 **`RandomSource` is declared in `domain`**, because `GameRules.apply(…, RandomSource)` takes it and
 `domain` may not reference `application` — putting it in `application` inverts the module direction
 and fails `ArchitectureTest`.

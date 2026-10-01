@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 import ua.kostenko.battleship.application.port.SecretGenerator;
+import ua.kostenko.battleship.application.port.SnapshotPublisher;
 import ua.kostenko.battleship.application.port.TimeSource;
 import ua.kostenko.battleship.application.projection.SnapshotContext;
 import ua.kostenko.battleship.application.projection.SnapshotProjector;
@@ -22,6 +23,7 @@ public final class ReplaceInvitationUseCase {
     private final SecretGenerator secrets;
     private final TimeSource time;
     private final SnapshotProjector projector;
+    private final SnapshotPublisher publisher;
     private final Duration invitationLifetime;
     private final Duration resultRetention;
 
@@ -31,6 +33,7 @@ public final class ReplaceInvitationUseCase {
             SecretGenerator secrets,
             TimeSource time,
             SnapshotProjector projector,
+            SnapshotPublisher publisher,
             Duration invitationLifetime,
             Duration resultRetention) {
         this.games = Objects.requireNonNull(games);
@@ -38,6 +41,7 @@ public final class ReplaceInvitationUseCase {
         this.secrets = Objects.requireNonNull(secrets);
         this.time = Objects.requireNonNull(time);
         this.projector = Objects.requireNonNull(projector);
+        this.publisher = Objects.requireNonNull(publisher);
         if (invitationLifetime.isZero()
                 || invitationLifetime.isNegative()
                 || resultRetention.isZero()
@@ -68,7 +72,9 @@ public final class ReplaceInvitationUseCase {
         } catch (UnknownGameException unknown) {
             throw ExpiryPolicy.unavailable();
         }
-        return projector.project(captured.state(), Seat.HOST, captured.context());
+        SnapshotView host = projector.project(captured.state(), Seat.HOST, captured.context());
+        publisher.publish(gameId, Seat.HOST, host);
+        return host;
     }
 
     private record Captured(GameState state, SnapshotContext context) {}

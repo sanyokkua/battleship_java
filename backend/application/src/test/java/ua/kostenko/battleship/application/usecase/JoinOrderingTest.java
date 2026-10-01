@@ -294,6 +294,7 @@ class JoinOrderingTest {
                 fixture.secrets,
                 advancingAtAdmission,
                 fixture.projector,
+                new RecordingPublisher(),
                 2,
                 Duration.ofSeconds(60),
                 Duration.ofSeconds(30));

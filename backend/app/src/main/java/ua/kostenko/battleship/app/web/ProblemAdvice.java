@@ -30,6 +30,8 @@ import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 import ua.kostenko.battleship.app.observability.CorrelationIdFilter;
 import ua.kostenko.battleship.app.web.dto.Problem;
 import ua.kostenko.battleship.app.web.dto.ProblemCode;
@@ -44,7 +46,6 @@ import ua.kostenko.battleship.application.result.ApplicationFailure;
 public class ProblemAdvice {
     private static final Logger LOG = LoggerFactory.getLogger(ProblemAdvice.class);
 
-    private static final ObjectMapper WIRE_MAPPER = JacksonConfig.wireMapper();
     private static final String ONE_OF_NO_MATCH = "Failed deserialization for Command";
 
     private record Entry(int status, String title) {}
@@ -86,14 +87,15 @@ public class ProblemAdvice {
      * Writes the problem document for a code on a response that never reaches MVC, such as a rejection by a security
      * filter, through the same builder and mapper as the advice so there is one problem shape.
      */
-    public static void writeProblem(HttpServletRequest request, HttpServletResponse response, ProblemCode code)
+    public static void writeProblem(
+            HttpServletRequest request, HttpServletResponse response, ProblemCode code, ObjectMapper wireMapper)
             throws IOException {
         String correlationId = (String) request.getAttribute(CorrelationIdFilter.REQUEST_ATTRIBUTE);
         Problem problem = problem(code, correlationId, null, null);
         LOG.info("problem code={} status={} correlationId={}", code.getValue(), problem.getStatus(), correlationId);
         response.setStatus(problem.getStatus());
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-        WIRE_MAPPER.writeValue(response.getOutputStream(), problem);
+        wireMapper.writeValue(response.getOutputStream(), problem);
     }
 
     @ExceptionHandler(ApplicationFailure.class)
@@ -154,6 +156,13 @@ public class ProblemAdvice {
                 : ProblemCode.INTERNAL_ERROR;
         return respond(request, code, null, null, code == ProblemCode.INTERNAL_ERROR ? failure : null);
     }
+
+    /**
+     * An event stream that ended underneath an open response (its client went away, or the container timed it out):
+     * the response is already committed, so there is nothing to answer and nothing went wrong on our side.
+     */
+    @ExceptionHandler({AsyncRequestNotUsableException.class, AsyncRequestTimeoutException.class})
+    void streamEnded() {}
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<Problem> unexpected(HttpServletRequest request, Exception failure) {

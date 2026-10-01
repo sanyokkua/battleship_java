@@ -30,6 +30,7 @@ final class CommandTestFixture {
     final SessionRegistry sessions = new SessionRegistry(30);
     final MutableTimeSource time = new MutableTimeSource(NOW);
     final SnapshotProjector projector;
+    final RecordingPublisher published = new RecordingPublisher();
     final AtomicInteger commandIds = new AtomicInteger();
     final SecretGenerator secrets = new SecretGenerator() {
         final AtomicInteger games = new AtomicInteger();
@@ -84,6 +85,7 @@ final class CommandTestFixture {
             Duration presenceInterval) {
         this.projector = projector;
         games = new GameRegistry(maxGames);
+        published.watch(games);
         create = new CreateGameUseCase(
                 games,
                 sessions,
@@ -96,12 +98,14 @@ final class CommandTestFixture {
                 invitation,
                 retention,
                 "https://example.test");
-        replace = new ReplaceInvitationUseCase(games, sessions, secrets, time, projector, invitation, retention);
-        join = new JoinGameUseCase(games, sessions, secrets, time, projector, 1, idle, retention);
-        commands = new CommandUseCase(games, sessions, time, new SeededRandomSource(42), projector, idle, retention);
+        replace = new ReplaceInvitationUseCase(
+                games, sessions, secrets, time, projector, published, invitation, retention);
+        join = new JoinGameUseCase(games, sessions, secrets, time, projector, published, 1, idle, retention);
+        commands = new CommandUseCase(
+                games, sessions, time, new SeededRandomSource(42), projector, published, idle, retention);
         presence = new PresenceUseCase(games, sessions, time, projector, idle, presenceInterval, retention);
-        expire = new ExpireGamesUseCase(games, sessions, retention);
-        leave = new LeaveGameUseCase(games, sessions, time, retention);
+        expire = new ExpireGamesUseCase(games, sessions, published, retention);
+        leave = new LeaveGameUseCase(games, sessions, time, projector, published, retention);
     }
 
     /** A hosted game still waiting for its guest; {@code secret} is the unused invitation secret. */

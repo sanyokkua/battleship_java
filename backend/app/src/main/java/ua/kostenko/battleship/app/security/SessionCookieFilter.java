@@ -1,5 +1,6 @@
 package ua.kostenko.battleship.app.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -36,9 +37,11 @@ final class SessionCookieFilter extends OncePerRequestFilter {
             .toList());
 
     private final SessionRegistry sessions;
+    private final ObjectMapper wireMapper;
 
-    SessionCookieFilter(SessionRegistry sessions) {
+    SessionCookieFilter(SessionRegistry sessions, ObjectMapper wireMapper) {
         this.sessions = sessions;
+        this.wireMapper = wireMapper;
     }
 
     @Override
@@ -52,7 +55,7 @@ final class SessionCookieFilter extends OncePerRequestFilter {
         String value = sessionValue(request);
         if (value == null || sessions.find(value).isEmpty()) {
             response.addHeader(HttpHeaders.SET_COOKIE, SessionCookie.cleared());
-            ProblemAdvice.writeProblem(request, response, ProblemCode.SESSION_REQUIRED);
+            ProblemAdvice.writeProblem(request, response, ProblemCode.SESSION_REQUIRED, wireMapper);
             return;
         }
         chain.doFilter(request, response);
