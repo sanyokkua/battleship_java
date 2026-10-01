@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.3.0 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001 through T023 are complete; T024 is next.
+**Status**: in progress. T001 through T024 are complete; T025 is next.
 **Contract amendments**: the four changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -569,7 +569,7 @@ describes.
   - **Mutation** Hard-code `idleTimeoutSeconds: 900` in `MetaController` instead of reading the properties; assertion (2) must fail. This is the assertion that guards R55's "there is no second copy of a limit anywhere".
   - **Depends on** T022, T007
 
-- [ ] T024 Build the security chain — session and anti-forgery — in `backend/app/src/main/java/ua/kostenko/battleship/app/security/`
+- [x] T024 Build the security chain — session and anti-forgery — in `backend/app/src/main/java/ua/kostenko/battleship/app/security/`
   - **Delivers** One `SecurityFilterChain`: stateless, `permitAll` (authorization is the session filter's and the use cases' job, not a URL matcher's), and **CORS never configured at all** — the interface and the API share one origin (R36).
     **`SessionCookieFilter`** reads `__Host-battleship_session` (`HttpOnly; Secure; SameSite=Strict; Path=/`, **no `Domain`**, no expiry attribute, 256-bit value), digests it with SHA-256 and resolves the session against `SessionRegistry`. A missing, unknown or malformed cookie on a protected operation answers `401 session-required` **and clears the cookie**. `createGame` and `joinGame` **never** answer 401 — they issue a session instead (R32, R33).
     **Authorization (R33)**: a game identifier locates a game and grants nothing. Authentication is evaluated **first**. A caller with a valid session who is **not** one of a game's players receives the **same answer as for a game that never existed** — indistinguishable in status, body and timing-independent content.

@@ -218,6 +218,8 @@ elapsed time.
 
 ### Request security (R32–R37, R64)
 
+Precedence on unsafe methods: the CSRF check (403) is evaluated before the session check (401).
+
 One `SecurityFilterChain`: stateless, `permitAll`, CORS never configured, and CSRF through a
 `CookieCsrfTokenRepository` customised to the contract's cookie — name `XSRF-TOKEN`, `Path=/`,
 `Secure`, `SameSite=Strict`, script-readable — paired with a plain `CsrfTokenRequestAttributeHandler`

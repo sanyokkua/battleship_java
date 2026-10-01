@@ -23,31 +23,21 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.web.SecurityFilterChain;
 import ua.kostenko.battleship.app.config.BattleshipProperties;
 import ua.kostenko.battleship.application.port.TimeSource;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import(MetaAndRulesetsIT.FixedTimeAndPermitAll.class)
+@Import(MetaAndRulesetsIT.FixedTime.class)
 class MetaAndRulesetsIT {
     private static final Instant NOW = Instant.parse("2031-05-06T07:08:09.123Z");
     private static final String HEX16 = "[0-9a-f]{16}";
 
-    /** T024 owns the real chain; this keeps Boot's default chain out of the way. */
     @TestConfiguration(proxyBeanMethods = false)
-    static class FixedTimeAndPermitAll {
+    static class FixedTime {
         @Bean
         @Primary
         TimeSource fixedTime() {
             return () -> NOW;
-        }
-
-        @Bean
-        SecurityFilterChain permitAll(HttpSecurity http) throws Exception {
-            return http.authorizeHttpRequests(a -> a.anyRequest().permitAll())
-                    .csrf(c -> c.disable())
-                    .build();
         }
     }
 
@@ -72,6 +62,23 @@ class MetaAndRulesetsIT {
     private Reply call(String method, String path) throws Exception {
         var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
                 .method(method, HttpRequest.BodyPublishers.noBody())
+                .build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        String raw = response.body();
+        return new Reply(response.statusCode(), response, raw.isBlank() ? null : mapper.readTree(raw));
+    }
+
+    /** Passes the anti-forgery check the way a client does, so the request reaches the unsupported-method path. */
+    private Reply postWithFreshToken(String path) throws Exception {
+        String cookie = call("GET", "/api/v1/meta").response().headers().allValues("Set-Cookie").stream()
+                .filter(c -> c.startsWith("XSRF-TOKEN="))
+                .findFirst()
+                .orElseThrow();
+        String token = cookie.substring("XSRF-TOKEN=".length(), cookie.indexOf(';'));
+        var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .header("Cookie", "XSRF-TOKEN=" + token)
+                .header("X-XSRF-TOKEN", token)
                 .build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         String raw = response.body();
@@ -158,11 +165,11 @@ class MetaAndRulesetsIT {
     @ParameterizedTest
     @ValueSource(strings = {"/api/v1/meta", "/api/v1/rulesets"})
     void anUnsupportedMethodAnswersWithTheAdvicesProblemDocument(String path) throws Exception {
-        Reply reply = call("POST", path);
+        Reply reply = postWithFreshToken(path);
 
-        assertThat(reply.status()).isBetween(400, 499);
+        assertThat(reply.status()).isEqualTo(400);
         assertThat(reply.header("Content-Type")).startsWith("application/problem+json");
-        assertThat(reply.json().get("code").asText()).isNotBlank();
+        assertThat(reply.json().get("code").asText()).isEqualTo("malformed-request");
         assertThat(reply.json().get("correlationId").asText()).matches(HEX16);
         assertThat(reply.header("Cache-Control")).isEqualTo("no-store");
     }
@@ -190,7 +197,7 @@ class MetaAndRulesetsIT {
     @SpringBootTest(
             webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
             properties = "battleship.idle-timeout-seconds=60")
-    @Import(FixedTimeAndPermitAll.class)
+    @Import(FixedTime.class)
     class WithIdleTimeoutOverride {
         @LocalServerPort
         private int overridePort;

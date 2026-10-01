@@ -24,6 +24,8 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -34,12 +36,14 @@ class ProblemMappingIT {
     private static final String COOKIE = "battleship_session=cookie-value-1f9e4c";
     private static final String HEX16 = "[0-9a-f]{16}";
 
-    /** T024 owns the real chain; this keeps Boot's default chain out of the way. */
+    /** Lets the probe paths past the real request-security chain, which has its own ITs; every other path keeps it. */
     @TestConfiguration(proxyBeanMethods = false)
     static class PermitAllSecurity {
         @Bean
-        SecurityFilterChain permitAll(HttpSecurity http) throws Exception {
-            return http.authorizeHttpRequests(a -> a.anyRequest().permitAll())
+        @Order(Ordered.HIGHEST_PRECEDENCE)
+        SecurityFilterChain probes(HttpSecurity http) throws Exception {
+            return http.securityMatcher("/probe/**")
+                    .authorizeHttpRequests(a -> a.anyRequest().permitAll())
                     .csrf(c -> c.disable())
                     .build();
         }

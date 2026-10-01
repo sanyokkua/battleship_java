@@ -2,6 +2,7 @@ package ua.kostenko.battleship.app.web;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import ua.kostenko.battleship.app.config.BattleshipProperties;
@@ -24,7 +25,9 @@ class MetaController {
     }
 
     @GetMapping("/api/v1/meta")
-    Meta meta() {
+    Meta meta(CsrfToken csrfToken) {
+        // Resolving the token now makes the repository issue the XSRF-TOKEN cookie on this response (R35).
+        csrfToken.getToken();
         Limits limits = new Limits()
                 .idleTimeoutSeconds(properties.idleTimeoutSeconds())
                 .maxGameDurationSeconds(properties.maxGameDurationSeconds())

@@ -2,10 +2,12 @@ package ua.kostenko.battleship.app.web;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Path;
 import jakarta.validation.constraints.Max;
@@ -39,9 +41,10 @@ import ua.kostenko.battleship.application.result.ApplicationFailure;
  * fixed text per code; exception messages, stack traces and request content never reach the document (R49, R50).
  */
 @RestControllerAdvice
-class ProblemAdvice {
+public class ProblemAdvice {
     private static final Logger LOG = LoggerFactory.getLogger(ProblemAdvice.class);
 
+    private static final ObjectMapper WIRE_MAPPER = JacksonConfig.wireMapper();
     private static final String ONE_OF_NO_MATCH = "Failed deserialization for Command";
 
     private record Entry(int status, String title) {}
@@ -77,6 +80,20 @@ class ProblemAdvice {
                 .correlationId(correlationId)
                 .retryAfterSeconds(retryAfterSeconds);
         return problem.violations(violations == null || violations.isEmpty() ? null : violations);
+    }
+
+    /**
+     * Writes the problem document for a code on a response that never reaches MVC, such as a rejection by a security
+     * filter, through the same builder and mapper as the advice so there is one problem shape.
+     */
+    public static void writeProblem(HttpServletRequest request, HttpServletResponse response, ProblemCode code)
+            throws IOException {
+        String correlationId = (String) request.getAttribute(CorrelationIdFilter.REQUEST_ATTRIBUTE);
+        Problem problem = problem(code, correlationId, null, null);
+        LOG.info("problem code={} status={} correlationId={}", code.getValue(), problem.getStatus(), correlationId);
+        response.setStatus(problem.getStatus());
+        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        WIRE_MAPPER.writeValue(response.getOutputStream(), problem);
     }
 
     @ExceptionHandler(ApplicationFailure.class)
