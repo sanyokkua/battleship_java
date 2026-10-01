@@ -10,6 +10,7 @@ import ua.kostenko.battleship.application.projection.SnapshotProjector;
 import ua.kostenko.battleship.application.projection.SnapshotView;
 import ua.kostenko.battleship.application.registry.GameRegistry;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
+import ua.kostenko.battleship.application.registry.UnknownGameException;
 import ua.kostenko.battleship.application.result.ApplicationFailure;
 import ua.kostenko.battleship.domain.model.GameState;
 import ua.kostenko.battleship.domain.model.Phase;
@@ -22,6 +23,7 @@ public final class ReplaceInvitationUseCase {
     private final TimeSource time;
     private final SnapshotProjector projector;
     private final Duration invitationLifetime;
+    private final Duration resultRetention;
 
     public ReplaceInvitationUseCase(
             GameRegistry games,
@@ -29,15 +31,19 @@ public final class ReplaceInvitationUseCase {
             SecretGenerator secrets,
             TimeSource time,
             SnapshotProjector projector,
-            Duration invitationLifetime) {
+            Duration invitationLifetime,
+            Duration resultRetention) {
         this.games = Objects.requireNonNull(games);
         this.sessions = Objects.requireNonNull(sessions);
         this.secrets = Objects.requireNonNull(secrets);
         this.time = Objects.requireNonNull(time);
         this.projector = Objects.requireNonNull(projector);
-        if (invitationLifetime.isZero() || invitationLifetime.isNegative())
-            throw new IllegalArgumentException("invitationLifetime must be positive");
+        if (invitationLifetime.isZero()
+                || invitationLifetime.isNegative()
+                || resultRetention.isZero()
+                || resultRetention.isNegative()) throw new IllegalArgumentException("lifetimes must be positive");
         this.invitationLifetime = invitationLifetime;
+        this.resultRetention = resultRetention;
     }
 
     public SnapshotView execute(String gameId, String sessionValue) {
@@ -48,11 +54,8 @@ public final class ReplaceInvitationUseCase {
             captured = games.withSlot(gameId, slot -> {
                 Instant now = time.now();
                 String callerDigest = SessionRegistry.digest(sessionValue);
-                if (!callerDigest.equals(slot.hostSessionDigest())) {
-                    if (callerDigest.equals(slot.guestSessionDigest()))
-                        throw new ApplicationFailure("action-not-allowed", null, null, null);
-                    throw new ApplicationFailure("game-unavailable", null, null, null);
-                }
+                if (ExpiryPolicy.authorize(slot, callerDigest, now, resultRetention, sessions) != Seat.HOST)
+                    throw new ApplicationFailure("action-not-allowed", null, null, null);
                 if (slot.state().phase() != Phase.WAITING)
                     throw new ApplicationFailure("action-not-allowed", null, null, null);
                 String secret = secrets.invitationSecret();
@@ -62,8 +65,8 @@ public final class ReplaceInvitationUseCase {
                 slot.replace(slot.state().withBumpedVersion());
                 return new Captured(slot.state(), slot.contextFor(Seat.HOST, now));
             });
-        } catch (IllegalArgumentException unknown) {
-            throw new ApplicationFailure("game-unavailable", null, null, null);
+        } catch (UnknownGameException unknown) {
+            throw ExpiryPolicy.unavailable();
         }
         return projector.project(captured.state(), Seat.HOST, captured.context());
     }

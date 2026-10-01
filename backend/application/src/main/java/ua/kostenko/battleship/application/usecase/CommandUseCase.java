@@ -14,6 +14,7 @@ import ua.kostenko.battleship.application.projection.SnapshotView;
 import ua.kostenko.battleship.application.registry.GameRegistry;
 import ua.kostenko.battleship.application.registry.GameSlot;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
+import ua.kostenko.battleship.application.registry.UnknownGameException;
 import ua.kostenko.battleship.application.result.ApplicationFailure;
 import ua.kostenko.battleship.domain.RandomSource;
 import ua.kostenko.battleship.domain.command.GameCommand;
@@ -61,9 +62,8 @@ public final class CommandUseCase {
         Captured captured;
         try {
             captured = games.withSlot(gameId, slot -> apply(slot, gameId, digest, commandId, command));
-        } catch (IllegalArgumentException unknown) {
-            if (!"unknown game id".equals(unknown.getMessage())) throw unknown;
-            throw unavailable();
+        } catch (UnknownGameException unknown) {
+            throw ExpiryPolicy.unavailable();
         }
         SnapshotView caller = projector.project(captured.state(), captured.actor(), captured.callerContext());
         Map<Seat, SnapshotView> deliveries = new EnumMap<>(Seat.class);
@@ -78,13 +78,7 @@ public final class CommandUseCase {
 
     private Captured apply(GameSlot slot, String gameId, String digest, UUID commandId, GameCommand command) {
         Instant now = time.now();
-        Seat actor = seatFor(slot, digest);
-        Phase phase = slot.state().phase();
-        if (phase != Phase.FINISHED
-                && phase != Phase.ABANDONED
-                && (!now.isBefore(slot.idleDeadline()) || !now.isBefore(slot.absoluteDeadline())))
-            throw actor == null ? unavailable() : new ApplicationFailure("game-expired", null, null, null);
-        if (actor == null || sessions.findDigest(digest).isEmpty()) throw unavailable();
+        Seat actor = ExpiryPolicy.authorize(slot, digest, now, resultRetention, sessions);
 
         Set<Seat> changed = Set.of();
         if (!slot.acceptedCommandIds().contains(commandId)) {
@@ -110,17 +104,6 @@ public final class CommandUseCase {
         Map<Seat, SnapshotContext> deliveryContexts = new EnumMap<>(Seat.class);
         for (Seat seat : changed) deliveryContexts.put(seat, slot.contextFor(seat, now));
         return new Captured(slot.state(), actor, slot.contextFor(actor, now), Map.copyOf(deliveryContexts));
-    }
-
-    private static Seat seatFor(GameSlot slot, String digest) {
-        if (digest == null) return null;
-        if (digest.equals(slot.hostSessionDigest())) return Seat.HOST;
-        if (digest.equals(slot.guestSessionDigest())) return Seat.GUEST;
-        return null;
-    }
-
-    private static ApplicationFailure unavailable() {
-        return new ApplicationFailure("game-unavailable", null, null, null);
     }
 
     public record CommandResult(SnapshotView snapshot, Map<Seat, SnapshotView> deliveries) {

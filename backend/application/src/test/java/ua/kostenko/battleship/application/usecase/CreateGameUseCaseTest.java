@@ -103,6 +103,7 @@ class CreateGameUseCaseTest {
                 Duration.ofSeconds(60),
                 Duration.ofSeconds(120),
                 Duration.ofSeconds(30),
+                Duration.ofSeconds(30),
                 "https://example.test");
         assertThat(create.execute(RULESET, "Host", null).snapshot().phase()).isEqualTo(Phase.WAITING);
         assertThat(projected.get()).isTrue();
@@ -245,9 +246,19 @@ class CreateGameUseCaseTest {
                     Duration.ofSeconds(60),
                     Duration.ofSeconds(120),
                     Duration.ofSeconds(30),
+                    Duration.ofSeconds(30),
                     "https://example.test");
-            join = new JoinGameUseCase(games, sessions, secrets, time, projector, browserCap, Duration.ofSeconds(60));
-            replace = new ReplaceInvitationUseCase(games, sessions, secrets, time, projector, Duration.ofSeconds(30));
+            join = new JoinGameUseCase(
+                    games,
+                    sessions,
+                    secrets,
+                    time,
+                    projector,
+                    browserCap,
+                    Duration.ofSeconds(60),
+                    Duration.ofSeconds(30));
+            replace = new ReplaceInvitationUseCase(
+                    games, sessions, secrets, time, projector, Duration.ofSeconds(30), Duration.ofSeconds(30));
         }
     }
 }

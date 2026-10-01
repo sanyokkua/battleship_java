@@ -98,6 +98,32 @@ class StatisticsTest {
     }
 
     @Test
+    void averageRoundsHalfUpAtTheExactMidpoint() {
+        GameState game = playing();
+        game = accepted(game, Seat.HOST, new GameCommand.Fire(c(9, 9)), 1);
+        game = accepted(game, Seat.GUEST, new GameCommand.Fire(c(9, 9)), 1);
+        game = accepted(game, Seat.HOST, new GameCommand.Fire(c(9, 8)), 2);
+        game = accepted(game, Seat.GUEST, new GameCommand.Resign(), 1);
+        var decisions = snapshot(game, Seat.HOST).statistics().you().shotDecisions();
+        assertThat(decisions.totalMs()).isEqualTo(3);
+        assertThat(decisions.averageMs()).isEqualTo(2L);
+        assertThat(decisions.fastestMs()).isEqualTo(1L);
+        assertThat(decisions.slowestMs()).isEqualTo(2L);
+    }
+
+    @Test
+    void aPlayerWithNoSamplesHasNoFastestSlowestOrAverage() {
+        GameState game = playing();
+        game = accepted(game, Seat.GUEST, new GameCommand.Resign(), 5);
+        var none = snapshot(game, Seat.HOST).statistics().you().shotDecisions();
+        assertThat(none.count()).isZero();
+        assertThat(none.totalMs()).isZero();
+        assertThat(none.averageMs()).isNull();
+        assertThat(none.fastestMs()).isNull();
+        assertThat(none.slowestMs()).isNull();
+    }
+
+    @Test
     void unfinishedAndAbandonedGamesHaveNoStatistics() {
         GameState waiting = GameState.create(Rulesets.byId(RULESET).orElseThrow(), "Host");
         assertThat(snapshot(waiting, Seat.HOST).statistics()).isNull();

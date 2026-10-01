@@ -295,7 +295,8 @@ class JoinOrderingTest {
                 advancingAtAdmission,
                 fixture.projector,
                 2,
-                Duration.ofSeconds(60));
+                Duration.ofSeconds(60),
+                Duration.ofSeconds(30));
         var joined = join.execute(id, CreateGameUseCaseTest.INVITATION, "Guest", null);
         assertThat(samples.get()).isEqualTo(2);
         assertThat(joined.snapshot().serverTime()).isEqualTo(CreateGameUseCaseTest.NOW.plusSeconds(10));

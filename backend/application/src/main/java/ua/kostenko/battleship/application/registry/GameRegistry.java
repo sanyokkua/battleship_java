@@ -1,6 +1,7 @@
 package ua.kostenko.battleship.application.registry;
 
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.function.Function;
@@ -29,14 +30,18 @@ public final class GameRegistry {
 
     public <T> T withSlot(String gameId, Function<GameSlot, T> action) {
         GameSlot slot = games.get(gameId);
-        if (slot == null) throw new IllegalArgumentException("unknown game id");
+        if (slot == null) throw new UnknownGameException();
         slot.lock().lock();
         try {
-            if (games.get(gameId) != slot) throw new IllegalArgumentException("unknown game id");
+            if (games.get(gameId) != slot) throw new UnknownGameException();
             return action.apply(slot);
         } finally {
             slot.lock().unlock();
         }
+    }
+
+    public Set<String> gameIds() {
+        return Set.copyOf(games.keySet());
     }
 
     public void remove(String gameId) {

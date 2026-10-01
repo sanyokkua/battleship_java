@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
 import ua.kostenko.battleship.application.projection.SnapshotContext;
+import ua.kostenko.battleship.application.usecase.ExpiryPolicy;
 import ua.kostenko.battleship.domain.model.GameState;
 import ua.kostenko.battleship.domain.model.Phase;
 import ua.kostenko.battleship.domain.model.Seat;
@@ -48,6 +49,10 @@ public final class GameSlot {
 
     ReentrantLock lock() {
         return lock;
+    }
+
+    public String gameId() {
+        return gameId;
     }
 
     public GameState state() {
@@ -125,12 +130,13 @@ public final class GameSlot {
     public SnapshotContext contextFor(Seat seat, Instant now) {
         Instant expiry = terminalRetentionDeadline;
         if (expiry == null || (state.phase() != Phase.FINISHED && state.phase() != Phase.ABANDONED)) {
-            expiry = idleDeadline.isBefore(absoluteDeadline) ? idleDeadline : absoluteDeadline;
+            expiry = ExpiryPolicy.playDeadline(this);
         }
         Instant invitationExpiry = invitationDeadline.isBefore(expiry) ? invitationDeadline : expiry;
-        String invitationUrl = seat == Seat.HOST && unusedInvitationSecret != null && now.isBefore(invitationExpiry)
-                ? publicBaseUrl.replaceAll("/+$", "") + "/join/" + gameId + "#invite=" + unusedInvitationSecret
-                : null;
+        String invitationUrl =
+                seat == Seat.HOST && unusedInvitationSecret != null && !ExpiryPolicy.reached(invitationExpiry, now)
+                        ? publicBaseUrl.replaceAll("/+$", "") + "/join/" + gameId + "#invite=" + unusedInvitationSecret
+                        : null;
         return new SnapshotContext(
                 gameId, now, expiry, invitationUrl, invitationUrl == null ? null : invitationExpiry, false, false);
     }

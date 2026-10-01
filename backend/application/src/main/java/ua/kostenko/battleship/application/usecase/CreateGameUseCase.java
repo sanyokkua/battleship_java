@@ -27,6 +27,7 @@ public final class CreateGameUseCase {
     private final Duration idleTimeout;
     private final Duration absoluteLifetime;
     private final Duration invitationLifetime;
+    private final Duration resultRetention;
     private final String publicBaseUrl;
 
     public CreateGameUseCase(
@@ -39,6 +40,7 @@ public final class CreateGameUseCase {
             Duration idleTimeout,
             Duration absoluteLifetime,
             Duration invitationLifetime,
+            Duration resultRetention,
             String publicBaseUrl) {
         this.games = Objects.requireNonNull(games);
         this.sessions = Objects.requireNonNull(sessions);
@@ -56,6 +58,7 @@ public final class CreateGameUseCase {
         this.idleTimeout = idleTimeout;
         this.absoluteLifetime = absoluteLifetime;
         this.invitationLifetime = invitationLifetime;
+        this.resultRetention = resultRetention;
         this.publicBaseUrl = Objects.requireNonNull(publicBaseUrl);
     }
 
@@ -73,6 +76,7 @@ public final class CreateGameUseCase {
                         && sessions.find(presentedSessionValue).isPresent()
                 ? presentedSessionValue
                 : secrets.sessionValue();
+        ExpiryPolicy.settleExpiredGamesOf(games, sessions, presentedSessionValue, time, resultRetention);
         String gameId = secrets.gameId();
         String invitation = secrets.invitationSecret();
         Instant now;

@@ -13,6 +13,7 @@ import ua.kostenko.battleship.application.projection.SnapshotView;
 import ua.kostenko.battleship.application.registry.CapacityExceededException;
 import ua.kostenko.battleship.application.registry.GameRegistry;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
+import ua.kostenko.battleship.application.registry.UnknownGameException;
 import ua.kostenko.battleship.application.result.ApplicationFailure;
 import ua.kostenko.battleship.domain.model.DisplayNameNormalizer;
 import ua.kostenko.battleship.domain.model.GameState;
@@ -27,6 +28,7 @@ public final class JoinGameUseCase {
     private final SnapshotProjector projector;
     private final int maxLiveGames;
     private final Duration idleTimeout;
+    private final Duration resultRetention;
 
     public JoinGameUseCase(
             GameRegistry games,
@@ -35,36 +37,46 @@ public final class JoinGameUseCase {
             TimeSource time,
             SnapshotProjector projector,
             int maxLiveGames,
-            Duration idleTimeout) {
+            Duration idleTimeout,
+            Duration resultRetention) {
         this.games = Objects.requireNonNull(games);
         this.sessions = Objects.requireNonNull(sessions);
         this.secrets = Objects.requireNonNull(secrets);
         this.time = Objects.requireNonNull(time);
         this.projector = Objects.requireNonNull(projector);
-        if (maxLiveGames < 1 || idleTimeout.isZero() || idleTimeout.isNegative())
-            throw new IllegalArgumentException("invalid game limits");
+        if (maxLiveGames < 1
+                || idleTimeout.isZero()
+                || idleTimeout.isNegative()
+                || resultRetention.isZero()
+                || resultRetention.isNegative()) throw new IllegalArgumentException("invalid game limits");
         this.maxLiveGames = maxLiveGames;
         this.idleTimeout = idleTimeout;
+        this.resultRetention = resultRetention;
     }
 
     public JoinedGame execute(
             String gameId, String invitationSecret, String displayName, String presentedSessionValue) {
+        ExpiryPolicy.settleExpiredGamesOf(games, sessions, presentedSessionValue, time, resultRetention);
         try {
             Captured captured = games.withSlot(gameId, slot -> {
                 Instant now = time.now();
                 String presentedDigest =
                         presentedSessionValue == null ? null : SessionRegistry.digest(presentedSessionValue);
-                if (presentedDigest != null && presentedDigest.equals(slot.guestSessionDigest()))
+                var status = ExpiryPolicy.status(slot, now, resultRetention);
+                if (status == ExpiryPolicy.Status.EXPIRED_RETAINED)
+                    ExpiryPolicy.settle(slot, sessions, resultRetention);
+                if (presentedDigest != null && presentedDigest.equals(slot.guestSessionDigest())) {
+                    if (status == ExpiryPolicy.Status.EXPIRED_RETAINED)
+                        throw new ApplicationFailure("game-expired", null, null, null);
+                    if (status == ExpiryPolicy.Status.FORGOTTEN) throw unavailable();
                     return new Captured(presentedSessionValue, slot.state(), slot.contextFor(Seat.GUEST, now));
+                }
                 if (presentedDigest != null && presentedDigest.equals(slot.hostSessionDigest())) throw unavailable();
-                if (slot.state().phase() != Phase.WAITING
+                if (status != ExpiryPolicy.Status.LIVE
+                        || slot.state().phase() != Phase.WAITING
                         || slot.state().guest() != null
-                        || !now.isBefore(slot.invitationDeadline())
-                        || !now.isBefore(slot.idleDeadline())
-                        || !now.isBefore(slot.absoluteDeadline())) {
-                    if (!now.isBefore(slot.invitationDeadline())
-                            || !now.isBefore(slot.idleDeadline())
-                            || !now.isBefore(slot.absoluteDeadline())) clearInvitation(slot);
+                        || ExpiryPolicy.reached(slot.invitationDeadline(), now)) {
+                    if (ExpiryPolicy.reached(slot.invitationDeadline(), now)) clearInvitation(slot);
                     throw unavailable();
                 }
                 if (invitationSecret == null
@@ -88,9 +100,8 @@ public final class JoinGameUseCase {
                 try {
                     admittedAt = sessions.admitGame(sessionValue, gameId, maxLiveGames, () -> {
                         Instant admissionNow = time.now();
-                        if (!admissionNow.isBefore(slot.invitationDeadline())
-                                || !admissionNow.isBefore(slot.idleDeadline())
-                                || !admissionNow.isBefore(slot.absoluteDeadline())) {
+                        if (ExpiryPolicy.status(slot, admissionNow, resultRetention) != ExpiryPolicy.Status.LIVE
+                                || ExpiryPolicy.reached(slot.invitationDeadline(), admissionNow)) {
                             clearInvitation(slot);
                             throw unavailable();
                         }
@@ -107,7 +118,7 @@ public final class JoinGameUseCase {
             });
             return new JoinedGame(
                     captured.sessionValue(), projector.project(captured.state(), Seat.GUEST, captured.context()));
-        } catch (IllegalArgumentException unknown) {
+        } catch (UnknownGameException unknown) {
             throw unavailable();
         }
     }

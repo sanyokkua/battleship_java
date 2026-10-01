@@ -8,6 +8,7 @@ import ua.kostenko.battleship.application.port.SecretGenerator;
 import ua.kostenko.battleship.application.projection.SnapshotProjector;
 import ua.kostenko.battleship.application.registry.GameRegistry;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
+import ua.kostenko.battleship.application.result.ApplicationFailure;
 import ua.kostenko.battleship.domain.SeededRandomSource;
 import ua.kostenko.battleship.domain.command.GameCommand;
 import ua.kostenko.battleship.domain.model.Coordinate;
@@ -19,10 +20,13 @@ final class CommandTestFixture {
     static final Instant NOW = Instant.parse("2026-09-29T12:00:00Z");
     static final String RULESET = "sea-battle-10-ship.v1";
     static final Duration IDLE = Duration.ofSeconds(60);
+    static final Duration ABSOLUTE = Duration.ofSeconds(120);
+    static final Duration INVITATION = Duration.ofSeconds(30);
     static final Duration RETENTION = Duration.ofSeconds(30);
+    static final Duration PRESENCE = Duration.ofSeconds(10);
     static final int[][] ANCHORS = {{0, 0}, {2, 0}, {2, 4}, {4, 0}, {4, 3}, {4, 6}, {6, 0}, {6, 2}, {6, 4}, {6, 6}};
 
-    final GameRegistry games = new GameRegistry(20);
+    final GameRegistry games;
     final SessionRegistry sessions = new SessionRegistry(30);
     final MutableTimeSource time = new MutableTimeSource(NOW);
     final SnapshotProjector projector;
@@ -47,13 +51,38 @@ final class CommandTestFixture {
     final CreateGameUseCase create;
     final JoinGameUseCase join;
     final CommandUseCase commands;
+    final PresenceUseCase presence;
+    final ExpireGamesUseCase expire;
+    final ReplaceInvitationUseCase replace;
 
     CommandTestFixture() {
         this(new SnapshotProjector());
     }
 
     CommandTestFixture(SnapshotProjector projector) {
+        this(projector, 20, IDLE, ABSOLUTE, INVITATION, RETENTION, PRESENCE);
+    }
+
+    CommandTestFixture(
+            int maxGames,
+            Duration idle,
+            Duration absolute,
+            Duration invitation,
+            Duration retention,
+            Duration presenceInterval) {
+        this(new SnapshotProjector(), maxGames, idle, absolute, invitation, retention, presenceInterval);
+    }
+
+    private CommandTestFixture(
+            SnapshotProjector projector,
+            int maxGames,
+            Duration idle,
+            Duration absolute,
+            Duration invitation,
+            Duration retention,
+            Duration presenceInterval) {
         this.projector = projector;
+        games = new GameRegistry(maxGames);
         create = new CreateGameUseCase(
                 games,
                 sessions,
@@ -61,13 +90,27 @@ final class CommandTestFixture {
                 time,
                 projector,
                 1,
-                IDLE,
-                Duration.ofSeconds(120),
-                Duration.ofSeconds(30),
+                idle,
+                absolute,
+                invitation,
+                retention,
                 "https://example.test");
-        join = new JoinGameUseCase(games, sessions, secrets, time, projector, 1, IDLE);
-        commands = new CommandUseCase(games, sessions, time, new SeededRandomSource(42), projector, IDLE, RETENTION);
+        replace = new ReplaceInvitationUseCase(games, sessions, secrets, time, projector, invitation, retention);
+        join = new JoinGameUseCase(games, sessions, secrets, time, projector, 1, idle, retention);
+        commands = new CommandUseCase(games, sessions, time, new SeededRandomSource(42), projector, idle, retention);
+        presence = new PresenceUseCase(games, sessions, time, projector, idle, presenceInterval, retention);
+        expire = new ExpireGamesUseCase(games, sessions, retention);
     }
+
+    /** A hosted game still waiting for its guest; {@code secret} is the unused invitation secret. */
+    Waiting newWaitingGame() {
+        var created = create.execute(RULESET, "Host", null);
+        String url = created.snapshot().invitationUrl();
+        return new Waiting(
+                created.snapshot().gameId(), created.sessionValue(), url.substring(url.indexOf("#invite=") + 8));
+    }
+
+    record Waiting(String id, String host, String secret) {}
 
     Game newGame() {
         return newGame(null, null);
@@ -114,6 +157,21 @@ final class CommandTestFixture {
         send(game, Seat.HOST, new GameCommand.Ready());
         time.advance(Duration.ofMillis(1));
         send(game, Seat.GUEST, new GameCommand.Ready());
+    }
+
+    static String failureCode(org.assertj.core.api.ThrowableAssert.ThrowingCallable call) {
+        Throwable thrown = org.assertj.core.api.Assertions.catchThrowable(call);
+        org.assertj.core.api.Assertions.assertThat(thrown).isInstanceOf(ApplicationFailure.class);
+        return ((ApplicationFailure) thrown).code();
+    }
+
+    /** An accepted, view-neutral action while the game is in placement: re-places the first ship where it is. */
+    CommandUseCase.CommandResult probe(Game game, Seat seat) {
+        return send(game, seat, new GameCommand.PlaceShip("s01", new Coordinate(0, 0), Orientation.HORIZONTAL));
+    }
+
+    Instant idleDeadline(String gameId) {
+        return games.withSlot(gameId, slot -> slot.idleDeadline());
     }
 
     record Game(String id, String host, String guest) {}
