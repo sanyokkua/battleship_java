@@ -6,8 +6,6 @@ import static ua.kostenko.battleship.app.security.SecurityHttp.XSRF_COOKIE;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import ua.kostenko.battleship.app.security.SecurityHttp.Reply;
@@ -47,12 +45,17 @@ class RequestSecurityIT {
         }
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/games", "/api/v1/games/g1/leave"})
-    void echoingTheRawCookieValueIsNotRefused(String path) throws Exception {
-        String token = http.freshToken();
+    @Test
+    void echoingTheRawCookieValueIsAcceptedAndCreatesAGame() throws Exception {
+        Reply reply = http.postJson(
+                "/api/v1/games", null, "{\"rulesetId\":\"sea-battle-10-ship.v1\",\"displayName\":\"Captain\"}");
 
-        Reply reply = http.postWithToken(path, token, null);
+        assertThat(reply.status()).isEqualTo(201);
+    }
+
+    @Test
+    void echoingTheRawCookieValueIsNotRefusedOnAProtectedPathEither() throws Exception {
+        Reply reply = http.postWithToken("/api/v1/games/g1/leave", http.freshToken(), null);
 
         assertThat(reply.status()).isNotEqualTo(403);
     }

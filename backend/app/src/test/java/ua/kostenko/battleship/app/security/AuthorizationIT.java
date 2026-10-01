@@ -18,9 +18,15 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import ua.kostenko.battleship.app.security.SecurityHttp.Reply;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
 
-/** Part 1 of 4: what the session filter and the chain decide before any controller is reached (R32, R33). */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+/**
+ * Parts 1 and 2 of 4: what the session filter and the chain decide before any controller is reached, and how a session
+ * is issued and reused (R32, R33). Two live games per browser let one browser create twice.
+ */
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "battleship.max-live-games-per-browser=2")
 class AuthorizationIT {
+    private static final String CREATE_BODY = "{\"rulesetId\":\"sea-battle-10-ship.v1\",\"displayName\":\"Captain\"}";
     private static final String UNKNOWN_VALUE = "dW5rbm93bi1zZXNzaW9uLXZhbHVlLXRoYXQtd2FzLW5ldmVyLWlzc3VlZA";
 
     @LocalServerPort
@@ -148,5 +154,35 @@ class AuthorizationIT {
     @ValueSource(strings = {"/api/v1/meta", "/api/v1/rulesets", "/api/v1/health"})
     void theUnauthenticatedOperationsAnswer200WithNoCookieAndNoToken(String path) throws Exception {
         assertThat(http.call("GET", path, null).status()).isEqualTo(200);
+    }
+
+    @Test
+    void createGameIssuesTheSessionCookieWithExactlyTheContractAttributes() throws Exception {
+        Reply created = http.postJson("/api/v1/games", null, CREATE_BODY);
+
+        assertThat(created.status()).isEqualTo(201);
+        List<String> issued = created.setCookies(SESSION_COOKIE);
+        assertThat(issued).hasSize(1);
+        String[] parts = issued.getFirst().split("; ");
+        assertThat(parts[0]).matches(SESSION_COOKIE + "=[A-Za-z0-9_-]{43}");
+        assertThat(List.of(parts).subList(1, parts.length))
+                .containsExactlyInAnyOrder("Path=/", "Secure", "HttpOnly", "SameSite=Strict");
+    }
+
+    @Test
+    void oneBrowserIsRecognisedOnEveryGameItCreatesWithoutANewCookie() throws Exception {
+        Reply first = http.postJson("/api/v1/games", null, CREATE_BODY);
+        String cookie = SecurityHttp.issuedSession(first);
+
+        Reply second = http.postJson("/api/v1/games", cookie, CREATE_BODY);
+
+        assertThat(second.status()).isEqualTo(201);
+        assertThat(second.setCookies(SESSION_COOKIE)).isEmpty();
+        for (Reply created : List.of(first, second)) {
+            Reply read = http.call(
+                    "GET", "/api/v1/games/" + created.json().get("gameId").asText(), cookie);
+            assertThat(read.status()).isEqualTo(200);
+            assertThat(read.setCookies(SESSION_COOKIE)).isEmpty();
+        }
     }
 }

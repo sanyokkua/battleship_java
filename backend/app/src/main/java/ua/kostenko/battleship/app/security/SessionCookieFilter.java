@@ -8,12 +8,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.stream.Stream;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 import ua.kostenko.battleship.app.web.ProblemAdvice;
+import ua.kostenko.battleship.app.web.SessionCookie;
 import ua.kostenko.battleship.app.web.dto.ProblemCode;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
 
@@ -23,8 +23,6 @@ import ua.kostenko.battleship.application.registry.SessionRegistry;
  * are not matched here because they issue a session instead of requiring one (R32).
  */
 final class SessionCookieFilter extends OncePerRequestFilter {
-    static final String COOKIE_NAME = "__Host-battleship_session";
-
     /** Matched as MVC matches, on the decoded path segments, so a percent-encoded spelling cannot skip the filter. */
     private static final RequestMatcher PROTECTED = new OrRequestMatcher(Stream.of(
                     "/api/v1/games/{gameId}",
@@ -53,7 +51,7 @@ final class SessionCookieFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String value = sessionValue(request);
         if (value == null || sessions.find(value).isEmpty()) {
-            response.addHeader(HttpHeaders.SET_COOKIE, clearedCookie());
+            response.addHeader(HttpHeaders.SET_COOKIE, SessionCookie.cleared());
             ProblemAdvice.writeProblem(request, response, ProblemCode.SESSION_REQUIRED);
             return;
         }
@@ -66,21 +64,11 @@ final class SessionCookieFilter extends OncePerRequestFilter {
             return null;
         }
         for (Cookie cookie : cookies) {
-            if (COOKIE_NAME.equals(cookie.getName()) && !cookie.getValue().isEmpty()) {
+            if (SessionCookie.NAME.equals(cookie.getName())
+                    && !cookie.getValue().isEmpty()) {
                 return cookie.getValue();
             }
         }
         return null;
-    }
-
-    private static String clearedCookie() {
-        return ResponseCookie.from(COOKIE_NAME, "")
-                .path("/")
-                .secure(true)
-                .httpOnly(true)
-                .sameSite("Strict")
-                .maxAge(0)
-                .build()
-                .toString();
     }
 }

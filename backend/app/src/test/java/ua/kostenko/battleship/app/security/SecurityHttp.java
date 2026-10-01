@@ -10,16 +10,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** Real-server HTTP helper for the security ITs: manual cookies, no cookie jar, every response recorded. */
-final class SecurityHttp {
-    static final String SESSION_COOKIE = "__Host-battleship_session";
-    static final String XSRF_COOKIE = "XSRF-TOKEN";
+public final class SecurityHttp {
+    static {
+        // Lets a test set the Host header to prove the service never reads it; read once when the client class loads.
+        System.setProperty("jdk.httpclient.allowRestrictedHeaders", "host");
+    }
 
-    record Reply(int status, HttpResponse<String> response, JsonNode json) {
-        String header(String name) {
+    public static final String SESSION_COOKIE = "__Host-battleship_session";
+    public static final String XSRF_COOKIE = "XSRF-TOKEN";
+
+    public record Reply(int status, HttpResponse<String> response, JsonNode json) {
+        public String header(String name) {
             return response.headers().firstValue(name).orElse("");
         }
 
-        List<String> setCookies(String name) {
+        public List<String> setCookies(String name) {
             return response.headers().allValues("Set-Cookie").stream()
                     .filter(c -> c.startsWith(name + "="))
                     .toList();
@@ -31,18 +36,23 @@ final class SecurityHttp {
     private final ObjectMapper mapper = new ObjectMapper();
     private final List<Reply> seen = new ArrayList<>();
 
-    SecurityHttp(int port) {
+    public SecurityHttp(int port) {
         this.port = port;
     }
 
-    List<Reply> seen() {
+    public List<Reply> seen() {
         return seen;
     }
 
     /** Sends a request; {@code headers} are name/value pairs, {@code cookies} the raw Cookie header or null. */
-    Reply call(String method, String path, String cookies, String... headers) throws Exception {
+    public Reply call(String method, String path, String cookies, String... headers) throws Exception {
+        return send(method, path, cookies, HttpRequest.BodyPublishers.noBody(), headers);
+    }
+
+    private Reply send(String method, String path, String cookies, HttpRequest.BodyPublisher body, String... headers)
+            throws Exception {
         HttpRequest.Builder request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
-                .method(method, HttpRequest.BodyPublishers.noBody());
+                .method(method, body);
         if (cookies != null) {
             request.header("Cookie", cookies);
         }
@@ -57,15 +67,36 @@ final class SecurityHttp {
     }
 
     /** Value of the readable anti-forgery cookie as {@code GET /meta} issues it. */
-    String freshToken() throws Exception {
+    public String freshToken() throws Exception {
         Reply meta = call("GET", "/api/v1/meta", null);
         String cookie = meta.setCookies(XSRF_COOKIE).getFirst();
         return cookie.substring(XSRF_COOKIE.length() + 1, cookie.indexOf(';'));
     }
 
     /** A POST carrying the cookie and the matching header, plus any extra cookie text. */
-    Reply postWithToken(String path, String token, String extraCookies) throws Exception {
+    public Reply postWithToken(String path, String token, String extraCookies) throws Exception {
         String cookies = XSRF_COOKIE + "=" + token + (extraCookies == null ? "" : "; " + extraCookies);
         return call("POST", path, cookies, "X-XSRF-TOKEN", token);
+    }
+
+    /** A JSON POST carrying a fresh anti-forgery token and the given session cookie (null for none). */
+    public Reply postJson(String path, String sessionCookie, String json, String... headers) throws Exception {
+        String token = freshToken();
+        String cookies = XSRF_COOKIE + "=" + token + (sessionCookie == null ? "" : "; " + sessionCookie);
+        String[] all = new String[headers.length + 4];
+        all[0] = "X-XSRF-TOKEN";
+        all[1] = token;
+        all[2] = "Content-Type";
+        all[3] = "application/json";
+        System.arraycopy(headers, 0, all, 4, headers.length);
+        return send("POST", path, cookies, HttpRequest.BodyPublishers.ofString(json), all);
+    }
+
+    /** The Cookie header text for the session cookie a reply issued, or null when it issued none. */
+    public static String issuedSession(Reply reply) {
+        List<String> issued = reply.setCookies(SESSION_COOKIE);
+        return issued.isEmpty()
+                ? null
+                : issued.getFirst().substring(0, issued.getFirst().indexOf(';'));
     }
 }

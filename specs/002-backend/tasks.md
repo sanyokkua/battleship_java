@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.3.0 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001 through T024 are complete; T025 is next.
+**Status**: in progress. T001 through T025 are complete; T026 is next.
 **Contract amendments**: the four changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -586,7 +586,7 @@ describes.
   - **Mutation** Replace the plain handler with Spring's default `XorCsrfTokenRequestAttributeHandler`; `RequestSecurityIT` assertion (2) must fail. Answer 404 for a missing session on an unknown game; `AuthorizationIT` assertion (3) must fail.
   - **Depends on** T023, T017
 
-- [ ] T025 Assemble the snapshot and serve create and read in `backend/app/src/main/java/ua/kostenko/battleship/app/web/`
+- [x] T025 Assemble the snapshot and serve create and read in `backend/app/src/main/java/ua/kostenko/battleship/app/web/`
   - **Delivers** `SnapshotDtoAssembler` — a **mechanical 1:1 copy** of `SnapshotView` into the generated `GameSnapshot`, taking no decisions of its own. The mapping is total: `SnapshotView` to `GameSnapshot`, `BoardView` to `Board`, `PlayerView` to `Player`, `ShotView` to `Shot`, `StatisticsView` to `GameStatistics` and with it `MatchStatistics`, `PlayerStatistics`, `DurationAggregate`, `FleetSummary`. **That one document is what goes on the wire for HTTP and SSE alike** — there is no second representation of a game (R17). Because the DTOs are generated, a contract change regenerates them and **breaks this assembler's compilation**, which is what retires the wire-drift risk.
     `GameController` → `POST /api/v1/games` (`createGame`): **201** with a `Location: /api/v1/games/{gameId}` header and a `Set-Cookie` session header when the browser presented no valid one; body is the `WAITING` snapshot carrying `invitationUrl` and `invitationExpiresAt` for the host. The invitation URL is built **solely** from `public-base-url` in the shape `{site}/join/{gameId}#invite={invitationSecret}`; the service **never infers it from a request header** (R56).
     `GetGameUseCase` in `application` checks expiry and membership, captures immutable state and context under the registry lock, and projects after release. `GameController` → `GET /api/v1/games/{gameId}` (`getGame`): 200 with that caller-relative snapshot. A read **never** moves the idle deadline and **never** bumps the version (R18, R42).
