@@ -67,10 +67,18 @@ public final class SseStream implements AutoCloseable {
 
     /** The next complete event; fails when none arrives in time or the stream ends first. */
     public Event next() throws InterruptedException {
+        Event event = poll(WAIT);
+        if (event == null) throw new AssertionError("no event within " + WAIT);
+        return event;
+    }
+
+    /** The next complete event, or null when none starts within {@code wait}; fails when the stream ends first. */
+    public Event poll(Duration wait) throws InterruptedException {
         List<String> raw = new ArrayList<>();
         while (true) {
-            String line = lines.poll(WAIT.toMillis(), TimeUnit.MILLISECONDS);
-            if (line == null) throw new AssertionError("no event within " + WAIT + "; partial lines " + raw);
+            String line = lines.poll((raw.isEmpty() ? wait : WAIT).toMillis(), TimeUnit.MILLISECONDS);
+            if (line == null && raw.isEmpty()) return null;
+            if (line == null) throw new AssertionError("no complete event within " + WAIT + "; partial lines " + raw);
             if (line == END) throw new AssertionError("the stream ended; partial lines " + raw);
             if (!line.isEmpty()) {
                 raw.add(line);

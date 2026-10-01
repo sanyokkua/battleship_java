@@ -13,6 +13,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import ua.kostenko.battleship.app.config.BattleshipProperties;
 import ua.kostenko.battleship.app.web.SnapshotDtoAssembler;
+import ua.kostenko.battleship.app.web.dto.StreamClosed;
 import ua.kostenko.battleship.application.port.SnapshotPublisher;
 import ua.kostenko.battleship.application.projection.SnapshotView;
 import ua.kostenko.battleship.application.result.ApplicationFailure;
@@ -23,7 +24,10 @@ import ua.kostenko.battleship.domain.model.Seat;
  * The live-update hub: owns the open streams and the streams permit, and turns each published view into a
  * {@code snapshot} event through the same assembler and wire mapper as the HTTP answers (R17). A subscriber is
  * installed before the game lock is taken, so a transition racing with registration is either in the captured first
- * snapshot or buffered and sent after it. The hub never holds its own lock while taking the game lock, projecting,
+ * snapshot or buffered and sent after it. At most one stream is kept per game and seat: a newer one closes the older
+ * with {@code closed}/{@code REPLACED}, and a game that stops existing for a seat closes its stream with
+ * {@code closed}/{@code GAME_UNAVAILABLE} (R29, R31). Every ended stream is reported to {@link SubscribeUseCase}, which
+ * keeps the {@code connected} flags (R22). The hub never holds its own lock while taking the game lock, projecting,
  * serializing or writing.
  */
 @Component
@@ -72,8 +76,27 @@ public class SseHub implements SnapshotPublisher {
             throw refused;
         }
         afterCapture.run();
-        subscriber.activate(subscription.seat(), subscription.first());
+        Seat seat = subscription.seat();
+        long stream = subscription.stream();
+        Subscriber[] replaced = {null};
+        boolean[] active = {false};
+        subscribers.computeIfPresent(gameId, (id, set) -> {
+            active[0] = subscriber.activate(seat, stream, subscription.first());
+            if (active[0]) {
+                for (Subscriber other : set) {
+                    if (other != subscriber && other.isOpenFor(seat))
+                        replaced[0] = other.stream() < stream ? other : subscriber;
+                }
+            }
+            return set;
+        });
+        if (!active[0]) {
+            disconnected(gameId, seat, stream);
+            return emitter;
+        }
+        if (subscription.opponent() != null) publish(gameId, seat.opponent(), subscription.opponent());
         drain(subscriber);
+        if (replaced[0] != null && replaced[0].closeWith(StreamClosed.ReasonEnum.REPLACED)) drain(replaced[0]);
         return emitter;
     }
 
@@ -84,13 +107,11 @@ public class SseHub implements SnapshotPublisher {
         }
     }
 
+    /** Closes the seat's stream with {@code GAME_UNAVAILABLE}, including one still registering. */
     @Override
     public void unavailable(String gameId, Seat seat) {
         for (Subscriber subscriber : subscribersOf(gameId)) {
-            if (subscriber.isFor(seat)) {
-                drop(subscriber);
-                subscriber.emitter().complete();
-            }
+            if (subscriber.unavailable(seat)) drain(subscriber);
         }
     }
 
@@ -99,13 +120,25 @@ public class SseHub implements SnapshotPublisher {
         return present == null ? Set.of() : present;
     }
 
-    /** Writes queued views until none is left; a concurrent caller leaves the work to the thread already draining. */
+    /**
+     * Writes queued views until none is left, then a deliberate close if one was asked for, after which the stream
+     * ends. A concurrent caller leaves the work to the thread already draining.
+     */
     private void drain(Subscriber subscriber) {
         if (!subscriber.startDrain()) return;
-        for (SnapshotView view = subscriber.next(); view != null; view = subscriber.next()) {
+        while (true) {
+            SnapshotView view = subscriber.next();
+            StreamClosed.ReasonEnum closing = view == null ? subscriber.endDrain() : null;
+            if (view == null && closing == null) return;
             try {
-                subscriber.emitter().send(Set.of(new DataWithMediaType(frame(view), FRAME)));
+                String frame = view != null ? frame(view) : closedFrame(closing);
+                subscriber.emitter().send(Set.of(new DataWithMediaType(frame, FRAME)));
             } catch (IOException | IllegalStateException failed) {
+                drop(subscriber);
+                return;
+            }
+            if (closing != null) {
+                subscriber.emitter().complete();
                 drop(subscriber);
                 return;
             }
@@ -122,6 +155,12 @@ public class SseHub implements SnapshotPublisher {
         }
     }
 
+    /** A deliberate close: {@code event: closed} and a {@code StreamClosed} document, with no {@code id}. */
+    private String closedFrame(StreamClosed.ReasonEnum reason) throws JsonProcessingException {
+        return "event: closed\ndata: " + wireMapper.writeValueAsString(new StreamClosed().reason(reason)) + "\n\n";
+    }
+
+    /** Ends a stream once: releases its permit and, for an activated stream, reports the disconnection. */
     private void drop(Subscriber subscriber) {
         if (!subscriber.close()) return;
         subscribers.computeIfPresent(subscriber.gameId(), (id, set) -> {
@@ -129,5 +168,13 @@ public class SseHub implements SnapshotPublisher {
             return set.isEmpty() ? null : set;
         });
         streams.release();
+        Seat seat = subscriber.seat();
+        if (seat != null) disconnected(subscriber.gameId(), seat, subscriber.stream());
+    }
+
+    /** A closed stream may have been its seat's last: the opponent then sees the seat disconnected. */
+    private void disconnected(String gameId, Seat seat, long stream) {
+        SnapshotView opponent = subscribe.close(gameId, seat, stream);
+        if (opponent != null) publish(gameId, seat.opponent(), opponent);
     }
 }

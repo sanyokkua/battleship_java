@@ -29,6 +29,7 @@ public final class GameSlot {
     private Instant invitationDeadline;
     private final Map<Seat, Instant> presenceNotBefore = new EnumMap<>(Seat.class);
     private Instant terminalRetentionDeadline;
+    private final Map<Seat, Long> connectedStreams = new EnumMap<>(Seat.class);
 
     public GameSlot(
             String gameId,
@@ -99,6 +100,14 @@ public final class GameSlot {
         return presenceNotBefore;
     }
 
+    /**
+     * The stream that marks each seat connected, by the number {@code SubscribeUseCase} gave it: a seat is connected
+     * exactly when it has an entry. Recording the newest stream lets a replaced stream's late close change nothing.
+     */
+    public Map<Seat, Long> connectedStreams() {
+        return connectedStreams;
+    }
+
     public String hostSessionDigest() {
         return hostSessionDigest;
     }
@@ -144,6 +153,12 @@ public final class GameSlot {
                         ? publicBaseUrl.replaceAll("/+$", "") + "/join/" + gameId + "#invite=" + unusedInvitationSecret
                         : null;
         return new SnapshotContext(
-                gameId, now, expiry, invitationUrl, invitationUrl == null ? null : invitationExpiry, false, false);
+                gameId,
+                now,
+                expiry,
+                invitationUrl,
+                invitationUrl == null ? null : invitationExpiry,
+                connectedStreams.containsKey(Seat.HOST),
+                connectedStreams.containsKey(Seat.GUEST));
     }
 }

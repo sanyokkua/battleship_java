@@ -26,6 +26,7 @@ import ua.kostenko.battleship.app.web.SseStream;
 import ua.kostenko.battleship.app.web.SseStream.Event;
 import ua.kostenko.battleship.application.MutableTimeSource;
 import ua.kostenko.battleship.application.projection.SnapshotView;
+import ua.kostenko.battleship.application.usecase.ExpireGamesUseCase;
 import ua.kostenko.battleship.application.usecase.GetGameUseCase;
 import ua.kostenko.battleship.domain.RandomSource;
 import ua.kostenko.battleship.domain.SeededRandomSource;
@@ -33,7 +34,8 @@ import ua.kostenko.battleship.domain.model.Seat;
 
 /**
  * {@code streamGameEvents} over a real server. The three parts are assertion groups of this one class: part 1 (T029)
- * is the first event, framing, byte identity with {@code getGame}, per-seat delivery and registration races. Time is
+ * is the first event, framing, byte identity with {@code getGame}, per-seat delivery and registration races; part 2
+ * (T030) is the two deliberate closes and the {@code connected} flags. Time is
  * a {@link MutableTimeSource}, so nothing here waits on wall time except for events to arrive (R60). A stream its
  * client abandoned stays open until a write fails, and draining streams on shutdown is T036's (R59), so this context
  * stops without waiting for them.
@@ -74,6 +76,9 @@ class EventStreamIT {
 
     @Autowired
     private GetGameUseCase getGame;
+
+    @Autowired
+    private ExpireGamesUseCase expire;
 
     private record Game(Browser host, Browser guest) {}
 
@@ -153,15 +158,17 @@ class EventStreamIT {
         }
 
         Game abandoned = game();
-        try (SseStream stayer = abandoned.host().events();
-                SseStream leaver = abandoned.guest().events()) {
+        try (SseStream stayer = abandoned.host().events()) {
             assertFirstIsCurrent(stayer, abandoned.host());
-            assertFirstIsCurrent(leaver, abandoned.guest());
-            assertThat(abandoned.guest().leave().status()).isEqualTo(204);
-            assertThat(json(stayer.next()).get("phase").asText()).isEqualTo("ABANDONED");
-            assertThat(leaver.ended())
-                    .as("the game stopped existing for the leaver")
-                    .isTrue();
+            try (SseStream leaver = abandoned.guest().events()) {
+                assertFirstIsCurrent(leaver, abandoned.guest());
+                assertThat(json(stayer.next()).at("/opponent/connected").asBoolean())
+                        .as("the guest's first stream changes the host's view")
+                        .isTrue();
+                assertThat(abandoned.guest().leave().status()).isEqualTo(204);
+                assertThat(json(stayer.next()).get("phase").asText()).isEqualTo("ABANDONED");
+                assertClosed(leaver, "GAME_UNAVAILABLE");
+            }
         }
         try (SseStream reopened = abandoned.host().events()) {
             assertThat(json(assertFirstIsCurrent(reopened, abandoned.host()))
@@ -205,10 +212,13 @@ class EventStreamIT {
     @Test
     void aPlayerReceivesOnlyChangesToTheirOwnViewSoVersionsSkip() throws Exception {
         Game game = game();
-        try (SseStream host = game.host().events();
-                SseStream guest = game.guest().events()) {
-            long start = version(json(assertFirstIsCurrent(host, game.host())));
-            assertFirstIsCurrent(guest, game.guest());
+        try (SseStream host = game.host().events()) {
+            assertFirstIsCurrent(host, game.host());
+            SseStream guest = game.guest().events();
+            long start = version(json(assertFirstIsCurrent(guest, game.guest())));
+            assertThat(host.next().id())
+                    .as("the guest's first stream changes the host's view")
+                    .isEqualTo(String.valueOf(start));
 
             game.host().accept(simple("PLACE_FLEET_RANDOMLY"));
             game.host().accept(simple("READY"));
@@ -220,6 +230,7 @@ class EventStreamIT {
                     .as("arranging the host's fleet is invisible to the guest, so its version is skipped")
                     .isEqualTo(String.valueOf(start + 2));
             assertThat(json(ready).at("/opponent/ready").asBoolean()).isTrue();
+            guest.close();
         }
     }
 
@@ -276,7 +287,9 @@ class EventStreamIT {
         hub.afterPendingInstalled = once(() -> game.host().accept(simple("PLACE_FLEET_RANDOMLY")));
         try (SseStream stream = game.host().events()) {
             Event first = stream.next();
-            assertThat(first.id()).isEqualTo(String.valueOf(before + 1));
+            assertThat(first.id())
+                    .as("the racing command and then the stream connecting the host, each bumping once")
+                    .isEqualTo(String.valueOf(before + 2));
             assertThat(json(first).at("/yourBoard/ships/0/anchor").isMissingNode())
                     .as("the racing arrangement is in the captured snapshot")
                     .isFalse();
@@ -284,14 +297,14 @@ class EventStreamIT {
             game.host().accept(simple("CLEAR_FLEET"));
             assertThat(stream.next().id())
                     .as("the racing transition is not delivered a second time")
-                    .isEqualTo(String.valueOf(before + 2));
+                    .isEqualTo(String.valueOf(before + 3));
         }
     }
 
     @Test
     void commandsRacingAfterTheCaptureArriveAfterTheFirstSnapshotAndIdsOnlyIncrease() throws Exception {
         Game game = game();
-        long captured = version(game.host().snapshot());
+        long captured = version(game.host().snapshot()) + 1; // the stream connecting the host bumps once
         hub.afterCapture = once(() -> {
             game.host().accept(simple("PLACE_FLEET_RANDOMLY"));
             game.host().accept(simple("PLACE_FLEET_RANDOMLY"));
@@ -313,6 +326,242 @@ class EventStreamIT {
             assertThat(List.of(stream.next().id(), stream.next().id()))
                     .containsExactly(String.valueOf(captured + 3), String.valueOf(captured + 4));
         }
+    }
+
+    // ------------------------------------------------------------------ part 2 (T030)
+
+    private static boolean connected(JsonNode snapshot, String player) {
+        return snapshot.get(player).get("connected").asBoolean();
+    }
+
+    /** The next event is the deliberate close the contract frames, and the server then ends the stream. */
+    private static void assertClosed(SseStream stream, String reason) throws Exception {
+        Event closed = stream.next();
+        assertThat(closed.lines()).containsExactly("event: closed", "data: {\"reason\":\"" + reason + "\"}");
+        assertThat(stream.ended())
+                .as("the server ends the stream after `closed`")
+                .isTrue();
+    }
+
+    /** Like {@link #assertClosed}, after any snapshots still queued from earlier steps of a journey. */
+    private static void assertClosedAfterSnapshots(SseStream stream, String reason) throws Exception {
+        Event event = stream.next();
+        while ("snapshot".equals(event.name())) event = stream.next();
+        assertThat(event.lines()).containsExactly("event: closed", "data: {\"reason\":\"" + reason + "\"}");
+        assertThat(stream.ended())
+                .as("the server ends the stream after `closed`")
+                .isTrue();
+    }
+
+    private static void finish(Game game) throws Exception {
+        game.host().accept(simple("PLACE_FLEET_RANDOMLY"));
+        game.guest().accept(simple("PLACE_FLEET_RANDOMLY"));
+        game.host().accept(simple("READY"));
+        game.guest().accept(simple("READY"));
+        game.guest().accept(simple("RESIGN"));
+    }
+
+    @Test
+    void aSecondTabReplacesTheOlderStreamWithoutAnyVisibleChange() throws Exception {
+        Game game = game();
+        try (SseStream host = game.host().events();
+                SseStream older = game.guest().events()) {
+            host.next();
+            older.next();
+            assertThat(connected(json(host.next()), "opponent"))
+                    .as("the guest's first stream is delivered to the host")
+                    .isTrue();
+            long before = version(game.guest().snapshot());
+
+            try (SseStream newer = game.guest().events()) {
+                JsonNode first = json(newer.next());
+                assertClosed(older, "REPLACED");
+
+                assertThat(version(first)).as("replacement bumps no version").isEqualTo(before);
+                assertThat(connected(first, "you")).isTrue();
+                assertThat(version(game.host().snapshot())).isEqualTo(before);
+                assertThat(connected(game.host().snapshot(), "opponent"))
+                        .as("replacement is not a disconnection")
+                        .isTrue();
+
+                game.guest().accept(simple("PLACE_FLEET_RANDOMLY"));
+                game.guest().accept(simple("READY"));
+                assertThat(host.next().id())
+                        .as("no opponent snapshot came from the replacement: the next one is the guest's READY")
+                        .isEqualTo(String.valueOf(before + 2));
+                assertThat(newer.next().id())
+                        .as("exactly one stream remains open for the guest, the newer one")
+                        .isEqualTo(String.valueOf(before + 1));
+            }
+        }
+    }
+
+    @Test
+    void leavingAFinishedGameClosesTheLeaversStreamAndTheStayerGetsASnapshot() throws Exception {
+        Game game = game();
+        finish(game);
+        try (SseStream stayer = game.host().events();
+                SseStream leaver = game.guest().events()) {
+            stayer.next();
+            leaver.next();
+            assertThat(connected(json(stayer.next()), "opponent")).isTrue();
+            long before = version(game.host().snapshot());
+
+            assertThat(game.guest().leave().status()).isEqualTo(204);
+            assertClosed(leaver, "GAME_UNAVAILABLE");
+            JsonNode seen = json(stayer.next());
+            assertThat(seen.get("phase").asText()).isEqualTo("FINISHED");
+            assertThat(connected(seen, "opponent")).isFalse();
+            assertThat(version(seen)).isEqualTo(before + 1);
+        }
+    }
+
+    @Test
+    void anExpiredGameClosesItsPlayersStreamsEvenOneStillRegistering() throws Exception {
+        Game game = game();
+        String expiresAt = game.host().snapshot().get("expiresAt").asText();
+        try (SseStream host = game.host().events();
+                SseStream guest = game.guest().events()) {
+            host.next();
+            guest.next();
+            host.next();
+            time.set(Instant.parse(expiresAt));
+            expire.sweep(time.now());
+            assertClosed(host, "GAME_UNAVAILABLE");
+            assertClosed(guest, "GAME_UNAVAILABLE");
+        } finally {
+            time.set(START);
+        }
+
+        Browser pending = hostOnly("Captain");
+        String deadline = pending.snapshot().get("expiresAt").asText();
+        hub.afterCapture = once(() -> {
+            time.set(Instant.parse(deadline));
+            expire.sweep(time.now());
+        });
+        try (SseStream stream = pending.events()) {
+            assertThat(stream.next().name())
+                    .as("the snapshot captured before the expiry")
+                    .isEqualTo("snapshot");
+            assertClosed(stream, "GAME_UNAVAILABLE");
+        } finally {
+            time.set(START);
+        }
+    }
+
+    @Test
+    void finishedAndAbandonedArriveAsOrdinarySnapshotsAndKeepTheStreamOpen() throws Exception {
+        Game finished = game();
+        try (SseStream host = finished.host().events();
+                SseStream guest = finished.guest().events()) {
+            host.next();
+            guest.next();
+            host.next();
+            finish(finished);
+            Event last;
+            do {
+                last = host.next();
+                assertThat(last.name()).isEqualTo("snapshot");
+            } while (!json(last).get("phase").asText().equals("FINISHED"));
+            try (SseStream newer = finished.host().events()) {
+                newer.next();
+                assertClosed(host, "REPLACED");
+            }
+        }
+
+        Game abandoned = game();
+        try (SseStream stayer = abandoned.host().events();
+                SseStream leaver = abandoned.guest().events()) {
+            stayer.next();
+            leaver.next();
+            stayer.next();
+            assertThat(abandoned.guest().leave().status()).isEqualTo(204);
+            Event seen = stayer.next();
+            assertThat(seen.name()).isEqualTo("snapshot");
+            assertThat(json(seen).get("phase").asText()).isEqualTo("ABANDONED");
+            try (SseStream newer = abandoned.host().events()) {
+                newer.next();
+                assertClosed(stayer, "REPLACED");
+            }
+        }
+    }
+
+    @Test
+    void theFirstStreamConnectsAndTheLastDisconnectsEachWithOneDeliveredBump() throws Exception {
+        Game game = game();
+        try (SseStream host = game.host().events()) {
+            JsonNode hostFirst = json(host.next());
+            assertThat(connected(hostFirst, "you")).isTrue();
+            assertThat(connected(hostFirst, "opponent")).isFalse();
+            long v = version(hostFirst);
+
+            SseStream guest = game.guest().events();
+            JsonNode guestFirst = json(guest.next());
+            assertThat(version(guestFirst)).as("connecting bumps once").isEqualTo(v + 1);
+            Event connectedSeen = host.next();
+            assertThat(connectedSeen.id()).isEqualTo(String.valueOf(v + 1));
+            assertThat(connected(json(connectedSeen), "opponent")).isTrue();
+
+            // The server learns a stream is gone when writing to it fails; the guest's own actions write to it and
+            // are invisible to the host, so the first event the host sees is the disconnection.
+            guest.close();
+            long lastAccepted = 0;
+            Event disconnectedSeen = null;
+            for (int attempt = 0; attempt < 50 && disconnectedSeen == null; attempt++) {
+                lastAccepted = version(game.guest().accept(simple("PLACE_FLEET_RANDOMLY")));
+                disconnectedSeen = host.poll(Duration.ofMillis(100));
+            }
+            assertThat(disconnectedSeen)
+                    .as("the host is told the guest disconnected")
+                    .isNotNull();
+            assertThat(connected(json(disconnectedSeen), "opponent")).isFalse();
+            assertThat(disconnectedSeen.id())
+                    .as("disconnecting bumps once")
+                    .isEqualTo(String.valueOf(lastAccepted + 1));
+            assertThat(version(game.host().snapshot())).isEqualTo(lastAccepted + 1);
+        }
+    }
+
+    @Test
+    void noPlayerIsEverConnectedWithoutAnOpenStreamAcrossAJourney() throws Exception {
+        Browser host = hostOnly("Captain");
+        assertThat(connected(host.snapshot(), "you")).isFalse();
+        try (SseStream hostTab = host.events()) {
+            hostTab.next();
+            assertThat(connected(host.snapshot(), "you")).isTrue();
+
+            Browser guest = new Browser(port);
+            guest.join(host.gameId(), invitationSecret(host.snapshot()), "Rival");
+            Game game = new Game(host, guest);
+            assertFlags(game, true, false);
+            try (SseStream guestTab = guest.events()) {
+                guestTab.next();
+                assertFlags(game, true, true);
+                try (SseStream secondHostTab = host.events()) {
+                    secondHostTab.next();
+                    assertClosedAfterSnapshots(hostTab, "REPLACED");
+                    assertFlags(game, true, true);
+
+                    finish(game);
+                    assertFlags(game, true, true);
+                    assertThat(guest.leave().status()).isEqualTo(204);
+                    assertClosedAfterSnapshots(guestTab, "GAME_UNAVAILABLE");
+                    assertThat(connected(host.snapshot(), "opponent")).isFalse();
+                    assertThat(connected(host.snapshot(), "you")).isTrue();
+                    assertThat(host.leave().status()).isEqualTo(204);
+                    assertClosedAfterSnapshots(secondHostTab, "GAME_UNAVAILABLE");
+                }
+            }
+        }
+    }
+
+    private static void assertFlags(Game game, boolean host, boolean guest) throws Exception {
+        JsonNode hostView = game.host().snapshot();
+        JsonNode guestView = game.guest().snapshot();
+        assertThat(List.of(connected(hostView, "you"), connected(hostView, "opponent")))
+                .containsExactly(host, guest);
+        assertThat(List.of(connected(guestView, "you"), connected(guestView, "opponent")))
+                .containsExactly(guest, host);
     }
 
     @AfterEach
