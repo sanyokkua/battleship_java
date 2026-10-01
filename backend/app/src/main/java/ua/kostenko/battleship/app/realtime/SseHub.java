@@ -54,7 +54,11 @@ public class SseHub implements SnapshotPublisher {
     private final Semaphore streams;
     private final Duration heartbeat;
     private final Duration lifetime;
+    private final int drainRetryAfterSeconds;
     private final ConcurrentHashMap<String, Set<Subscriber>> subscribers = new ConcurrentHashMap<>();
+
+    /** Set by {@link #closeAll()}; from then on no stream is admitted, so none can open after the others ended. */
+    volatile boolean closing;
 
     /** Race seams for EventStreamIT only: run after the pending install and after the capture; no-ops otherwise. */
     volatile Runnable afterPendingInstalled = () -> {};
@@ -77,6 +81,7 @@ public class SseHub implements SnapshotPublisher {
         this.streams = new Semaphore(properties.maxConcurrentStreams());
         this.heartbeat = Duration.ofSeconds(properties.heartbeatSeconds());
         this.lifetime = Duration.ofSeconds(properties.streamMaxLifetimeSeconds());
+        this.drainRetryAfterSeconds = properties.shutdownDrainSeconds();
     }
 
     /**
@@ -94,6 +99,11 @@ public class SseHub implements SnapshotPublisher {
         });
         emitter.onCompletion(() -> drop(subscriber));
         emitter.onError(failure -> drop(subscriber));
+        // Checked after the subscriber is registered: either closeAll() sees it and ends it, or this sees the flag.
+        if (closing) {
+            drop(subscriber);
+            throw new ApplicationFailure("service-unavailable", null, null, drainRetryAfterSeconds);
+        }
         afterPendingInstalled.run();
         SubscribeUseCase.Subscription subscription;
         try {
@@ -200,14 +210,30 @@ public class SseHub implements SnapshotPublisher {
         for (Set<Subscriber> game : subscribers.values()) {
             for (Subscriber subscriber : game) {
                 if (subscriber.outlived(now, lifetime)) {
-                    drop(subscriber);
-                    // complete() waits for the emitter's write lock, which a stalled write holds.
-                    WRITERS.newThread(subscriber.emitter()::complete).start();
+                    endWithoutClosedEvent(subscriber);
                 } else if (subscriber.beatDue(now, heartbeat)) {
                     drain(subscriber);
                 }
             }
         }
+    }
+
+    /**
+     * Ends every open stream, each with no {@code closed} event: shutdown is not one of the two deliberate closes
+     * (R29), so a client sees only an ended stream. Each stream releases its permit and reports its disconnection
+     * exactly as any other end does.
+     */
+    public void closeAll() {
+        closing = true;
+        for (Set<Subscriber> game : subscribers.values()) {
+            for (Subscriber subscriber : game) endWithoutClosedEvent(subscriber);
+        }
+    }
+
+    private void endWithoutClosedEvent(Subscriber subscriber) {
+        drop(subscriber);
+        // complete() waits for the emitter's write lock, which a stalled write holds.
+        WRITERS.newThread(subscriber.emitter()::complete).start();
     }
 
     /** The contract's framing, exactly: {@code event: snapshot}, {@code id: <version>}, {@code data: <document>}. */

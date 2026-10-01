@@ -3,7 +3,12 @@ logging:
     format:
       console: ecs
 
+server:
+  shutdown: graceful
+
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: ${battleship.shutdown-drain-seconds}s
   threads:
     virtual:
       enabled: true

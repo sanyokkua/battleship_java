@@ -175,14 +175,14 @@ class MetaAndRulesetsIT {
     }
 
     @Test
-    void healthIsNotReadyWithStartingAndA503HealthBodyWhileTrafficIsRefused() throws Exception {
+    void healthIsNotReadyWithDrainingAndA503HealthBodyOnceAcceptedTrafficIsRefused() throws Exception {
         AvailabilityChangeEvent.publish(context, ReadinessState.REFUSING_TRAFFIC);
         try {
             Reply reply = call("GET", "/api/v1/health");
 
             assertThat(reply.status()).isEqualTo(503);
             assertThat(reply.header("Content-Type")).startsWith("application/json");
-            assertThat(reply.json().toString()).isEqualTo("{\"live\":true,\"ready\":false,\"reason\":\"STARTING\"}");
+            assertThat(reply.json().toString()).isEqualTo("{\"live\":true,\"ready\":false,\"reason\":\"DRAINING\"}");
         } finally {
             AvailabilityChangeEvent.publish(context, ReadinessState.ACCEPTING_TRAFFIC);
         }

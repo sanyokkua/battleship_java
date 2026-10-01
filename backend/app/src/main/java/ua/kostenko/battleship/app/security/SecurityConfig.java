@@ -13,6 +13,7 @@ import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.header.HeaderWriterFilter;
 import ua.kostenko.battleship.app.config.BattleshipProperties;
+import ua.kostenko.battleship.app.config.GracefulShutdownConfig;
 import ua.kostenko.battleship.app.web.ProblemAdvice;
 import ua.kostenko.battleship.app.web.dto.ProblemCode;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
@@ -31,6 +32,7 @@ class SecurityConfig {
             SessionRegistry sessions,
             ObjectMapper wireMapper,
             FixedWindowBuckets buckets,
+            GracefulShutdownConfig shutdown,
             BattleshipProperties properties)
             throws Exception {
         CookieCsrfTokenRepository csrfTokens = new CookieCsrfTokenRepository();
@@ -63,6 +65,10 @@ class SecurityConfig {
                 .addFilterBefore(new SiteIsolationFilter(properties.publicBaseUrl(), wireMapper), CsrfFilter.class)
                 .addFilterBefore(
                         new RequestSizeFilter(properties.maxRequestBodyBytes(), wireMapper), SiteIsolationFilter.class)
+                // Draining refuses new work before anything else spends quota or looks at the request.
+                .addFilterBefore(
+                        new DrainingFilter(shutdown, wireMapper, properties.shutdownDrainSeconds()),
+                        RequestSizeFilter.class)
                 .addFilterAfter(new SessionCookieFilter(sessions, wireMapper), CsrfFilter.class)
                 .addFilterAfter(
                         new RateLimitFilter(buckets, properties.rateLimit(), wireMapper), SessionCookieFilter.class)

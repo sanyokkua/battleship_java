@@ -860,8 +860,32 @@ class EventStreamIT {
         }
     }
 
+    /**
+     * Shutdown race (R59): a stream that registers after {@code closeAll()} has run its loop would otherwise stay open
+     * after every other stream ended. Once the hub is closing, an open is refused 503 and gives its permit back.
+     */
+    @Test
+    void aStreamOpenedOnceTheHubIsClosingIsRefusedAndKeepsNoPermit() throws Exception {
+        Game game = game();
+        hub.closeAll();
+
+        for (int attempt = 0; attempt < 3; attempt++) {
+            try (SseStream refused = game.host().events()) {
+                assertThat(refused.status()).isEqualTo(503);
+                assertThat(refused.header("Retry-After")).isEqualTo("5");
+            }
+        }
+        hub.closing = false;
+        try (SseStream reopened = game.host().events()) {
+            assertThat(reopened.next().name())
+                    .as("no permit leaked by the refusals")
+                    .isEqualTo("snapshot");
+        }
+    }
+
     @AfterEach
     void removeRaceSeams() {
+        hub.closing = false;
         hub.afterPendingInstalled = () -> {};
         hub.afterCapture = () -> {};
         hub.newEmitter = () -> new SseEmitter(0L);
