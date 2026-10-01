@@ -15,7 +15,9 @@ import ua.kostenko.battleship.application.registry.SessionRegistry;
 import ua.kostenko.battleship.application.usecase.CreateGameUseCase;
 import ua.kostenko.battleship.application.usecase.ExpireGamesUseCase;
 import ua.kostenko.battleship.application.usecase.GetGameUseCase;
+import ua.kostenko.battleship.application.usecase.JoinGameUseCase;
 import ua.kostenko.battleship.application.usecase.LeaveGameUseCase;
+import ua.kostenko.battleship.application.usecase.ReplaceInvitationUseCase;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
@@ -67,6 +69,43 @@ public class BattleshipApplication {
             BattleshipProperties properties) {
         return new GetGameUseCase(
                 games, sessions, time, projector, Duration.ofSeconds(properties.resultRetentionSeconds()));
+    }
+
+    @Bean
+    JoinGameUseCase joinGameUseCase(
+            GameRegistry games,
+            SessionRegistry sessions,
+            SecretGenerator secrets,
+            TimeSource time,
+            SnapshotProjector projector,
+            BattleshipProperties properties) {
+        return new JoinGameUseCase(
+                games,
+                sessions,
+                secrets,
+                time,
+                projector,
+                properties.maxLiveGamesPerBrowser(),
+                Duration.ofSeconds(properties.idleTimeoutSeconds()),
+                Duration.ofSeconds(properties.resultRetentionSeconds()));
+    }
+
+    @Bean
+    ReplaceInvitationUseCase replaceInvitationUseCase(
+            GameRegistry games,
+            SessionRegistry sessions,
+            SecretGenerator secrets,
+            TimeSource time,
+            SnapshotProjector projector,
+            BattleshipProperties properties) {
+        return new ReplaceInvitationUseCase(
+                games,
+                sessions,
+                secrets,
+                time,
+                projector,
+                Duration.ofSeconds(properties.invitationLifetimeSeconds()),
+                Duration.ofSeconds(properties.resultRetentionSeconds()));
     }
 
     @Bean

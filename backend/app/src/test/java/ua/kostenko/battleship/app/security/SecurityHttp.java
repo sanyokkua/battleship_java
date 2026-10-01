@@ -81,15 +81,21 @@ public final class SecurityHttp {
 
     /** A JSON POST carrying a fresh anti-forgery token and the given session cookie (null for none). */
     public Reply postJson(String path, String sessionCookie, String json, String... headers) throws Exception {
+        return postBody(path, sessionCookie, "application/json", json, headers);
+    }
+
+    /** A POST carrying a fresh anti-forgery token, the given session cookie and an arbitrary body and Content-Type. */
+    public Reply postBody(String path, String sessionCookie, String contentType, String body, String... headers)
+            throws Exception {
         String token = freshToken();
         String cookies = XSRF_COOKIE + "=" + token + (sessionCookie == null ? "" : "; " + sessionCookie);
         String[] all = new String[headers.length + 4];
         all[0] = "X-XSRF-TOKEN";
         all[1] = token;
         all[2] = "Content-Type";
-        all[3] = "application/json";
+        all[3] = contentType;
         System.arraycopy(headers, 0, all, 4, headers.length);
-        return send("POST", path, cookies, HttpRequest.BodyPublishers.ofString(json), all);
+        return send("POST", path, cookies, HttpRequest.BodyPublishers.ofString(body), all);
     }
 
     /** The Cookie header text for the session cookie a reply issued, or null when it issued none. */

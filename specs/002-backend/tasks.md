@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.3.0 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001 through T025 are complete; T026 is next.
+**Status**: in progress. T001 through T026 are complete; T027 is next.
 **Contract amendments**: the four changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -602,7 +602,7 @@ describes.
   - **Mutation** Build the invitation URL from the `Host` header; assertion (2) must fail. Bump the version on a read; assertion (5) must fail.
   - **Depends on** T024, T018
 
-- [ ] T026 [US2] [US1] Serve join and invitation replacement in `backend/app/src/main/java/ua/kostenko/battleship/app/web/`
+- [x] T026 [US2] [US1] Serve join and invitation replacement in `backend/app/src/main/java/ua/kostenko/battleship/app/web/`
   - **Delivers** `JoinController` → `POST /api/v1/games/{gameId}/join` (`joinGame`): 200 with the snapshot and a `Set-Cookie` session header when the browser presented no valid one. An existing guest gets **200** while the game is live, regardless of schema-valid secret, or **410 game-expired** if the game has expired but is retained. All other join refusals use **409 invitation-unavailable**, including a nonmember or host joining an expired game (R34, R63).
     `InvitationController` → `POST /api/v1/games/{gameId}/invitation` (`replaceInvitation`): 200 with the host's snapshot carrying the **new** `invitationUrl`. **No request body at all** — the operation declares no `consumes`, never checks a content type, and accepts any body or none (R40).
   - **Covers** R01 (two more operations), R34, R45, R63 (join expiry) · US1 acceptance 2, US2 acceptances 1–4
