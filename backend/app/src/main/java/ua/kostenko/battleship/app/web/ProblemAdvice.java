@@ -31,7 +31,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
-import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 import ua.kostenko.battleship.app.observability.CorrelationIdFilter;
 import ua.kostenko.battleship.app.web.dto.Problem;
 import ua.kostenko.battleship.app.web.dto.ProblemCode;
@@ -158,10 +157,10 @@ public class ProblemAdvice {
     }
 
     /**
-     * An event stream that ended underneath an open response (its client went away, or the container timed it out):
-     * the response is already committed, so there is nothing to answer and nothing went wrong on our side.
+     * An event stream that ended underneath an open response (its client went away): the response is already
+     * committed, so there is nothing to answer and nothing went wrong on our side. Streams never time out.
      */
-    @ExceptionHandler({AsyncRequestNotUsableException.class, AsyncRequestTimeoutException.class})
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
     void streamEnded() {}
 
     @ExceptionHandler(Exception.class)

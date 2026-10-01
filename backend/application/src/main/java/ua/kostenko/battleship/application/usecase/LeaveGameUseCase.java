@@ -66,7 +66,7 @@ public final class LeaveGameUseCase {
                         sessions.releaseGame(slot.hostSessionDigest(), gameId);
                         sessions.releaseGame(slot.guestSessionDigest(), gameId);
                         slot.clearSeat(seat);
-                        return new Left(seat, false, slot.state(), slot.contextFor(other(seat), now));
+                        return new Left(seat, false, slot.state(), slot.contextFor(seat.opponent(), now));
                     }
                     default -> slot.clearSeat(seat);
                 }
@@ -78,13 +78,9 @@ public final class LeaveGameUseCase {
         if (left.remove()) games.remove(gameId);
         publisher.unavailable(gameId, left.seat());
         if (left.abandoned() != null) {
-            Seat stayer = other(left.seat());
+            Seat stayer = left.seat().opponent();
             publisher.publish(gameId, stayer, projector.project(left.abandoned(), stayer, left.stayerContext()));
         }
-    }
-
-    private static Seat other(Seat seat) {
-        return seat == Seat.HOST ? Seat.GUEST : Seat.HOST;
     }
 
     /** What the locked step decided; {@code abandoned} and its context are present only when the stayer's view changed. */

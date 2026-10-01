@@ -9,6 +9,8 @@ import java.time.Instant;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadFactory;
+import java.util.function.Supplier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter.DataWithMediaType;
@@ -32,14 +34,17 @@ import ua.kostenko.battleship.domain.model.Seat;
  * {@code closed}/{@code GAME_UNAVAILABLE} (R29, R31). Every ended stream is reported to {@link SubscribeUseCase}, which
  * keeps the {@code connected} flags (R22). Every stream is bounded (R30): {@link HeartbeatScheduler} drives
  * {@link #bound(Instant)}, a subscriber holds at most its latest unsent snapshot, and a stream whose write fails is
- * dropped; every ended stream releases its permit exactly once (R39). The hub never holds its own lock while taking
- * the game lock, projecting, serializing or writing.
+ * dropped; every ended stream releases its permit exactly once (R39). Writes run on a virtual thread per draining
+ * stream, never on the publishing thread. The hub never holds its own lock while taking the game lock, projecting,
+ * serializing or writing.
  */
 @Component
 public class SseHub implements SnapshotPublisher {
     private static final MediaType FRAME = new MediaType("text", "plain", StandardCharsets.UTF_8);
     private static final int RETRY_AFTER_SECONDS = 1;
     private static final String KEEP_ALIVE = ": keep-alive\n\n";
+    private static final ThreadFactory WRITERS =
+            Thread.ofVirtual().name("sse-writer-", 0).factory();
 
     private final SubscribeUseCase subscribe;
     private final TimeSource time;
@@ -53,6 +58,9 @@ public class SseHub implements SnapshotPublisher {
     volatile Runnable afterPendingInstalled = () -> {};
 
     volatile Runnable afterCapture = () -> {};
+
+    /** Emitter seam for EventStreamIT only: lets a proof open a stream whose writes it can stall. */
+    volatile Supplier<SseEmitter> newEmitter = () -> new SseEmitter(0L);
 
     SseHub(SubscribeUseCase subscribe, ObjectMapper wireMapper, TimeSource time, BattleshipProperties properties) {
         this.subscribe = subscribe;
@@ -69,7 +77,7 @@ public class SseHub implements SnapshotPublisher {
      */
     public SseEmitter open(String gameId, String sessionValue) {
         if (!streams.tryAcquire()) throw new ApplicationFailure("service-unavailable", null, null, RETRY_AFTER_SECONDS);
-        SseEmitter emitter = new SseEmitter(0L);
+        SseEmitter emitter = newEmitter.get();
         Subscriber subscriber = new Subscriber(gameId, emitter, time.now());
         subscribers.compute(gameId, (id, present) -> {
             Set<Subscriber> set = present == null ? ConcurrentHashMap.newKeySet() : present;
@@ -77,7 +85,6 @@ public class SseHub implements SnapshotPublisher {
             return set;
         });
         emitter.onCompletion(() -> drop(subscriber));
-        emitter.onTimeout(() -> drop(subscriber));
         emitter.onError(failure -> drop(subscriber));
         afterPendingInstalled.run();
         SubscribeUseCase.Subscription subscription;
@@ -133,23 +140,33 @@ public class SseHub implements SnapshotPublisher {
     }
 
     /**
-     * Writes queued frames until none is left; a deliberate close is written last, after which the stream ends. A
-     * concurrent caller leaves the work to the thread already draining, and a write that fails drops the subscriber.
+     * Claims the subscriber's single writer and, when the claim is won, writes on a virtual thread of its own, so a
+     * client that stops reading stalls only its own stream, never the caller: another player's request thread, the
+     * heartbeat or the expiry sweep (R30). A concurrent caller leaves the work to the writer already running, which
+     * picks up whatever was offered before it releases the claim.
      */
     private void drain(Subscriber subscriber) {
-        if (!subscriber.startDrain()) return;
+        if (subscriber.startDrain()) WRITERS.newThread(() -> write(subscriber)).start();
+    }
+
+    /**
+     * Writes queued frames until none is left; a deliberate close is written last, after which the stream ends. A
+     * write that fails drops the subscriber.
+     */
+    private void write(Subscriber subscriber) {
         while (true) {
             Subscriber.Frame next = subscriber.next();
             if (next == null) return;
             try {
                 subscriber.emitter().send(Set.of(new DataWithMediaType(text(next), FRAME)));
-            } catch (IOException | IllegalStateException failed) {
+            } catch (IOException | RuntimeException failed) {
                 drop(subscriber);
                 return;
             }
             if (next.closing() != null) {
-                subscriber.emitter().complete();
+                // Dropped before the end reaches the client, so whoever sees the end also sees the flags it changed.
                 drop(subscriber);
+                subscriber.emitter().complete();
                 return;
             }
         }
@@ -171,7 +188,8 @@ public class SseHub implements SnapshotPublisher {
             for (Subscriber subscriber : game) {
                 if (subscriber.outlived(now, lifetime)) {
                     drop(subscriber);
-                    subscriber.emitter().complete();
+                    // complete() waits for the emitter's write lock, which a stalled write holds.
+                    WRITERS.newThread(subscriber.emitter()::complete).start();
                 } else if (subscriber.beatDue(now, heartbeat)) {
                     drain(subscriber);
                 }

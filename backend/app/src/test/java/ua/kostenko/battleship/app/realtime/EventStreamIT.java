@@ -7,11 +7,19 @@ import static ua.kostenko.battleship.app.web.Browser.simple;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,6 +31,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter.DataWithMediaType;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import ua.kostenko.battleship.app.config.BattleshipProperties;
 import ua.kostenko.battleship.app.security.SecurityHttp.Reply;
@@ -486,6 +495,11 @@ class EventStreamIT {
             Event seen = stayer.next();
             assertThat(seen.name()).isEqualTo("snapshot");
             assertThat(json(seen).get("phase").asText()).isEqualTo("ABANDONED");
+            // The leaver's stream closing bumps once more; it may arrive as its own snapshot, after this one.
+            while (connected(json(seen), "opponent")) {
+                seen = stayer.next();
+                assertThat(json(seen).get("phase").asText()).isEqualTo("ABANDONED");
+            }
             try (SseStream newer = abandoned.host().events()) {
                 newer.next();
                 assertClosed(stayer, "REPLACED");
@@ -663,6 +677,71 @@ class EventStreamIT {
         assertThat(stalled.next()).as("not a queue of them").isNull();
     }
 
+    /** An emitter whose first write succeeds and every later one blocks until released, then fails. */
+    private static final class StallingEmitter extends SseEmitter {
+        private final AtomicInteger sends = new AtomicInteger();
+        private final CountDownLatch stalled = new CountDownLatch(1);
+        private final CountDownLatch released = new CountDownLatch(1);
+
+        StallingEmitter() {
+            super(0L);
+        }
+
+        @Override
+        public void send(Set<DataWithMediaType> frames) throws IOException {
+            if (sends.getAndIncrement() == 0) {
+                super.send(frames);
+                return;
+            }
+            stalled.countDown();
+            try {
+                released.await();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+            throw new IOException("the client stopped reading");
+        }
+    }
+
+    @Test
+    void aStalledWriterBlocksNeitherTheCallerNorAnotherStream() throws Exception {
+        Game game = game();
+        StallingEmitter stalling = new StallingEmitter();
+        ExecutorService caller = Executors.newVirtualThreadPerTaskExecutor();
+        try (SseStream guest = game.guest().events()) {
+            guest.next();
+            // The host's stream is opened on the hub with an emitter whose writes block after the first snapshot,
+            // as when its client stops reading and the socket buffer is full.
+            hub.newEmitter = () -> stalling;
+            assertThat(hub.open(game.host().gameId(), game.host().sessionValue()))
+                    .isSameAs(stalling);
+            hub.newEmitter = () -> new SseEmitter(0L);
+            assertThat(connected(json(guest.next()), "opponent")).isTrue();
+
+            // Both streams are due a keep-alive: the host's write blocks, and that must hold up neither the thread
+            // calling tick() nor the guest's keep-alive.
+            time.advance(Duration.ofSeconds(properties.heartbeatSeconds()));
+            Future<?> tick = caller.submit(() -> heartbeat.tick());
+            assertThat(stalling.stalled.await(10, TimeUnit.SECONDS))
+                    .as("the host's write is blocked")
+                    .isTrue();
+            tick.get(10, TimeUnit.SECONDS);
+            assertThat(guest.nextFrame().lines()).containsExactly(KEEP_ALIVE);
+
+            // A publish to the guest still arrives while the host's write is blocked.
+            long placed = version(game.guest().accept(simple("PLACE_FLEET_RANDOMLY")));
+            assertThat(guest.next().id()).isEqualTo(String.valueOf(placed));
+
+            // Once the blocked write fails, the host's stream is dropped like any other.
+            stalling.released.countDown();
+            assertThat(connected(json(guest.next()), "opponent")).isFalse();
+        } finally {
+            stalling.released.countDown();
+            caller.shutdownNow();
+            time.set(START);
+        }
+    }
+
     @Test
     void aHeartbeatDoesNotMoveTheIdleDeadline() throws Exception {
         Browser host = hostOnly("Captain");
@@ -777,6 +856,7 @@ class EventStreamIT {
     void removeRaceSeams() {
         hub.afterPendingInstalled = () -> {};
         hub.afterCapture = () -> {};
+        hub.newEmitter = () -> new SseEmitter(0L);
     }
 
     private interface Step {
