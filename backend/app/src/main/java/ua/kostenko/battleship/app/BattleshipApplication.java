@@ -12,12 +12,15 @@ import ua.kostenko.battleship.application.port.TimeSource;
 import ua.kostenko.battleship.application.projection.SnapshotProjector;
 import ua.kostenko.battleship.application.registry.GameRegistry;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
+import ua.kostenko.battleship.application.usecase.CommandUseCase;
 import ua.kostenko.battleship.application.usecase.CreateGameUseCase;
 import ua.kostenko.battleship.application.usecase.ExpireGamesUseCase;
 import ua.kostenko.battleship.application.usecase.GetGameUseCase;
 import ua.kostenko.battleship.application.usecase.JoinGameUseCase;
 import ua.kostenko.battleship.application.usecase.LeaveGameUseCase;
+import ua.kostenko.battleship.application.usecase.PresenceUseCase;
 import ua.kostenko.battleship.application.usecase.ReplaceInvitationUseCase;
+import ua.kostenko.battleship.domain.RandomSource;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
@@ -118,6 +121,41 @@ public class BattleshipApplication {
     LeaveGameUseCase leaveGameUseCase(
             GameRegistry games, SessionRegistry sessions, TimeSource time, BattleshipProperties properties) {
         return new LeaveGameUseCase(games, sessions, time, Duration.ofSeconds(properties.resultRetentionSeconds()));
+    }
+
+    @Bean
+    CommandUseCase commandUseCase(
+            GameRegistry games,
+            SessionRegistry sessions,
+            TimeSource time,
+            RandomSource random,
+            SnapshotProjector projector,
+            BattleshipProperties properties) {
+        return new CommandUseCase(
+                games,
+                sessions,
+                time,
+                random,
+                projector,
+                Duration.ofSeconds(properties.idleTimeoutSeconds()),
+                Duration.ofSeconds(properties.resultRetentionSeconds()));
+    }
+
+    @Bean
+    PresenceUseCase presenceUseCase(
+            GameRegistry games,
+            SessionRegistry sessions,
+            TimeSource time,
+            SnapshotProjector projector,
+            BattleshipProperties properties) {
+        return new PresenceUseCase(
+                games,
+                sessions,
+                time,
+                projector,
+                Duration.ofSeconds(properties.idleTimeoutSeconds()),
+                Duration.ofSeconds(properties.presenceIntervalSeconds()),
+                Duration.ofSeconds(properties.resultRetentionSeconds()));
     }
 
     public static void main(String[] args) {

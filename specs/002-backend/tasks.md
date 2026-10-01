@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.3.0 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001 through T026 are complete; T027 is next.
+**Status**: in progress. T001 through T027 are complete; T028 is next.
 **Contract amendments**: the four changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -613,7 +613,7 @@ describes.
   - **Mutation** Declare `consumes = application/json` on `replaceInvitation`; assertion (7) must fail. Give the used-secret case a distinct code; assertion (4) must fail. Map the retained guest's game-expiry failure to 409; assertion (8) must fail.
   - **Depends on** T025
 
-- [ ] T027 [US3] [US4] [US5] [US6] Serve commands, presence and leaving in `backend/app/src/main/java/ua/kostenko/battleship/app/web/`
+- [x] T027 [US3] [US4] [US5] [US6] Serve commands, presence and leaving in `backend/app/src/main/java/ua/kostenko/battleship/app/web/`
   - **Delivers** `CommandController` → `POST /api/v1/games/{gameId}/commands` (`sendCommand`): 200 with the caller's snapshot. The inbound body is the generated `CommandRequest`, so the four `Command` variants bind by their `type` discriminator and unknown fields are refused 422 (T022). Accepted, refused and repeated actions all behave exactly as `CommandUseCase` (T019) defines.
     `PresenceController` → `POST /api/v1/games/{gameId}/presence` (`sendPresence`): 200 with the caller's snapshot. **No request body.**
     `LeaveController` → `POST /api/v1/games/{gameId}/leave` (`leaveGame`): **204, no content, no body** — the only operation that does not answer with a snapshot. **No request body.**

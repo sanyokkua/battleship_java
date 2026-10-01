@@ -2,9 +2,15 @@ package ua.kostenko.battleship.app.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static ua.kostenko.battleship.app.security.SecurityHttp.SESSION_COOKIE;
+import static ua.kostenko.battleship.app.security.SecurityHttp.XSRF_COOKIE;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.net.http.HttpHeaders;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,8 +25,10 @@ import ua.kostenko.battleship.app.security.SecurityHttp.Reply;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
 
 /**
- * Parts 1 and 2 of 4: what the session filter and the chain decide before any controller is reached, and how a session
- * is issued and reused (R32, R33). Two live games per browser let one browser create twice.
+ * Parts 1, 2 and 3 of 4: what the session filter and the chain decide before any controller is reached, how a session
+ * is issued and reused (R32, R33), and that a valid session which is not a player gets the same answer for a real game
+ * as for one that never existed (S6). Part 3 covers five of the six protected operations; {@code streamGameEvents}
+ * joins them as the sixth row when it exists (T029). Two live games per browser let one browser create twice.
  */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -183,6 +191,82 @@ class AuthorizationIT {
                     "GET", "/api/v1/games/" + created.json().get("gameId").asText(), cookie);
             assertThat(read.status()).isEqualTo(200);
             assertThat(read.setCookies(SESSION_COOKIE)).isEmpty();
+        }
+    }
+
+    private record Probe(String name, String method, String suffix, String body) {}
+
+    private static final String NEVER_EXISTED = "AAAAAAAAAAAAAAAAAAAAAA";
+
+    /** The five synchronous protected operations; the sixth, the event stream, is added by T029. */
+    private static List<Probe> synchronousProtectedOperations() {
+        String command = "{\"commandId\":\"" + UUID.randomUUID() + "\",\"command\":{\"type\":\"READY\"}}";
+        return List.of(
+                new Probe("getGame", "GET", "", null),
+                new Probe("sendCommand", "POST", "/commands", command),
+                new Probe("replaceInvitation", "POST", "/invitation", null),
+                new Probe("sendPresence", "POST", "/presence", null),
+                new Probe("leaveGame", "POST", "/leave", null));
+    }
+
+    private Reply asNonPlayer(Probe probe, String gameId, String stranger) throws Exception {
+        String path = "/api/v1/games/" + gameId + probe.suffix();
+        if (probe.method().equals("GET")) {
+            return http.call("GET", path, stranger);
+        }
+        return probe.body() == null
+                ? http.postWithToken(path, http.freshToken(), stranger)
+                : http.postJson(path, stranger, probe.body());
+    }
+
+    /**
+     * Every header except those that legitimately differ per request: the date, a correlation id and the value of a
+     * freshly issued anti-forgery token (its attributes are still compared).
+     */
+    private static Map<String, List<String>> comparableHeaders(Reply reply) {
+        HttpHeaders headers = reply.response().headers();
+        Map<String, List<String>> kept = new TreeMap<>();
+        headers.map().forEach((name, values) -> {
+            String lower = name.toLowerCase();
+            if (!lower.equals("date") && !lower.contains("correlation")) {
+                kept.put(
+                        lower,
+                        values.stream()
+                                .map(v -> v.startsWith(XSRF_COOKIE + "=")
+                                        ? XSRF_COOKIE + "=<token>" + v.substring(v.indexOf(';'))
+                                        : v)
+                                .toList());
+            }
+        });
+        return kept;
+    }
+
+    /** The body with only the per-request correlation id removed. */
+    private static String comparableBody(Reply reply) {
+        if (reply.json() == null) {
+            return reply.response().body();
+        }
+        ObjectNode problem = reply.json().deepCopy();
+        problem.remove("correlationId");
+        return problem.toString();
+    }
+
+    @Test
+    void aValidSessionThatIsNotAPlayerGetsTheSameAnswerForARealGameAndANeverExistingOne() throws Exception {
+        Reply created = http.postJson("/api/v1/games", null, CREATE_BODY);
+        String realGameId = created.json().get("gameId").asText();
+        String stranger = SESSION_COOKIE + "=a-valid-session-that-plays-nowhere-0123456789abcdef";
+        sessions.register(stranger.substring(SESSION_COOKIE.length() + 1), Instant.now());
+
+        for (Probe probe : synchronousProtectedOperations()) {
+            Reply real = asNonPlayer(probe, realGameId, stranger);
+            Reply never = asNonPlayer(probe, NEVER_EXISTED, stranger);
+
+            assertThat(real.status()).as(probe.name()).isEqualTo(404);
+            assertThat(real.json().get("code").asText()).as(probe.name()).isEqualTo("game-unavailable");
+            assertThat(never.status()).as(probe.name() + " status").isEqualTo(real.status());
+            assertThat(comparableHeaders(never)).as(probe.name() + " headers").isEqualTo(comparableHeaders(real));
+            assertThat(comparableBody(never)).as(probe.name() + " body").isEqualTo(comparableBody(real));
         }
     }
 }
