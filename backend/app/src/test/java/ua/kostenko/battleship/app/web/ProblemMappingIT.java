@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -101,6 +102,41 @@ class ProblemMappingIT {
                 response.headers().firstValue("Retry-After").orElse(""),
                 raw,
                 json);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/", "/index.html", "/static/x.js", "/assets/x.css", "/api/v1/nowhere"})
+    void anUnknownPathAnswersGameUnavailableWithItsCorrelationId(String path) throws Exception {
+        Reply reply = get(path);
+
+        assertEquals(404, reply.status(), reply.raw());
+        assertThat(reply.contentType()).startsWith("application/problem+json");
+        assertEquals("game-unavailable", reply.json().get("code").asText());
+        assertEquals("Game unavailable", reply.json().get("title").asText());
+        assertThat(reply.json().get("correlationId").asText()).matches(HEX16);
+    }
+
+    @Test
+    void aPostToAnUnknownPathAnswersGameUnavailableToo() throws Exception {
+        String cookie = client
+                .send(
+                        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/meta"))
+                                .GET()
+                                .build(),
+                        HttpResponse.BodyHandlers.discarding())
+                .headers()
+                .allValues("Set-Cookie")
+                .stream()
+                .filter(c -> c.startsWith("XSRF-TOKEN="))
+                .findFirst()
+                .orElseThrow();
+        String token = cookie.substring("XSRF-TOKEN=".length(), cookie.indexOf(';'));
+
+        Reply reply = post(
+                "/api/v1/nowhere", "application/json", "{}", "Cookie", "XSRF-TOKEN=" + token, "X-XSRF-TOKEN", token);
+
+        assertEquals(404, reply.status(), reply.raw());
+        assertEquals("game-unavailable", reply.json().get("code").asText());
     }
 
     @ParameterizedTest

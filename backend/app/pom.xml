@@ -19,6 +19,8 @@
           <!-- Lets an IT set the Host header to prove the service never reads it; the JDK reads this once per JVM. -->
           <systemPropertyVariables>
             <jdk.httpclient.allowRestrictedHeaders>host</jdk.httpclient.allowRestrictedHeaders>
+            <!-- The executable JAR that package built before failsafe runs, for the ITs that launch it with java -jar. -->
+            <packaged.jar>${project.build.directory}/${project.build.finalName}.jar</packaged.jar>
           </systemPropertyVariables>
         </configuration>
       </plugin>

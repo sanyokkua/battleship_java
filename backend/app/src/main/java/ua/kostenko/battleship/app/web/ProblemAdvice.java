@@ -31,6 +31,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 import ua.kostenko.battleship.app.observability.CorrelationIdFilter;
 import ua.kostenko.battleship.app.web.dto.Problem;
 import ua.kostenko.battleship.app.web.dto.ProblemCode;
@@ -158,6 +159,12 @@ public class ProblemAdvice {
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     ResponseEntity<Problem> unsupportedMediaType(HttpServletRequest request) {
         return respond(request, ProblemCode.UNSUPPORTED_MEDIA_TYPE, null, null, null);
+    }
+
+    /** No handler (static resources are switched off): the service serves no user interface, so an unknown path is just absent. */
+    @ExceptionHandler(NoHandlerFoundException.class)
+    ResponseEntity<Problem> unknownPath(HttpServletRequest request) {
+        return respond(request, ProblemCode.GAME_UNAVAILABLE, null, null, null);
     }
 
     /** Spring MVC's own refusals (unknown path, wrong method, missing parameter) are all client errors. */

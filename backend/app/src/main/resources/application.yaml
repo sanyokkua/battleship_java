@@ -7,6 +7,9 @@ server:
   shutdown: graceful
 
 spring:
+  web:
+    resources:
+      add-mappings: false
   lifecycle:
     timeout-per-shutdown-phase: ${battleship.shutdown-drain-seconds}s
   threads:
