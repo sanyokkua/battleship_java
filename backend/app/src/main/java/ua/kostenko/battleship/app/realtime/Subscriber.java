@@ -1,5 +1,7 @@
 package ua.kostenko.battleship.app.realtime;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Map;
@@ -12,12 +14,14 @@ import ua.kostenko.battleship.domain.model.Seat;
 /**
  * One open stream: transport delivery state only, never game authority. It is installed before its seat is known
  * (pending), buffers what is published meanwhile, and once activated sends the captured view first and then only
- * strictly newer versions of its own seat's view, so event ids never regress. A deliberate close is written last,
- * after anything already queued. The monitor guards only these fields; no write happens while holding it.
+ * strictly newer versions of its own seat's view, so event ids never regress. Unsent work is bounded: one slot holds
+ * the latest unsent view, a newer one replacing it (R30, R41). A deliberate close is written last, after anything
+ * already queued. The monitor guards only these fields; no write happens while holding it.
  */
 final class Subscriber {
     private final String gameId;
     private final SseEmitter emitter;
+    private final Instant openedAt;
     private final Map<Seat, SnapshotView> pendingBySeat = new EnumMap<>(Seat.class);
     private final Set<Seat> unavailableWhilePending = EnumSet.noneOf(Seat.class);
     private Seat seat;
@@ -25,13 +29,22 @@ final class Subscriber {
     private long lastVersion = Long.MIN_VALUE;
     private SnapshotView first;
     private SnapshotView latest;
+    private Instant lastBeat;
+    private boolean beat;
     private StreamClosed.ReasonEnum closing;
     private boolean draining;
     private boolean closed;
 
-    Subscriber(String gameId, SseEmitter emitter) {
+    /** What the drainer writes next: a snapshot view, a deliberate close, or, with neither, a keep-alive. */
+    record Frame(SnapshotView view, StreamClosed.ReasonEnum closing) {}
+
+    private static final Frame KEEP_ALIVE = new Frame(null, null);
+
+    Subscriber(String gameId, SseEmitter emitter, Instant openedAt) {
         this.gameId = gameId;
         this.emitter = emitter;
+        this.openedAt = openedAt;
+        this.lastBeat = openedAt;
     }
 
     String gameId() {
@@ -113,26 +126,45 @@ final class Subscriber {
         return true;
     }
 
-    /** The next view to send, or null when none is queued. */
-    synchronized SnapshotView next() {
-        SnapshotView next;
+    /**
+     * The next frame to write: the captured view, then the latest unsent view, then a deliberate close, then a
+     * keep-alive. Null when nothing is left, which ends the claim taken by {@link #startDrain()} in the same step, so
+     * nothing offered meanwhile can be stranded.
+     */
+    synchronized Frame next() {
         if (first != null) {
-            next = first;
+            Frame next = new Frame(first, null);
             first = null;
-        } else {
-            next = latest;
-            latest = null;
+            return next;
         }
-        return next;
+        if (latest != null) {
+            Frame next = new Frame(latest, null);
+            latest = null;
+            return next;
+        }
+        if (closing != null) return new Frame(null, closing);
+        if (beat) {
+            beat = false;
+            return KEEP_ALIVE;
+        }
+        draining = false;
+        return null;
     }
 
     /**
-     * Called when no view is queued: returns the deliberate-close reason to write last, keeping the claim, or null,
-     * which ends the claim taken by {@link #startDrain()}.
+     * Asks for a keep-alive once {@code interval} has passed since the last one, or since opening; true when the
+     * caller must drain to write it. A stream being closed gets none.
      */
-    synchronized StreamClosed.ReasonEnum endDrain() {
-        if (closing == null) draining = false;
-        return closing;
+    synchronized boolean beatDue(Instant now, Duration interval) {
+        if (closed || closing != null || now.isBefore(lastBeat.plus(interval))) return false;
+        lastBeat = now;
+        beat = true;
+        return true;
+    }
+
+    /** True from {@code openedAt + lifetime} on: the stream has reached its maximum lifetime. */
+    boolean outlived(Instant now, Duration lifetime) {
+        return !now.isBefore(openedAt.plus(lifetime));
     }
 
     /** Marks the subscriber closed; true exactly once, so its permit is released exactly once. */

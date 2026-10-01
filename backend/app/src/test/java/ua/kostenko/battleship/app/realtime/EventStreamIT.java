@@ -9,9 +9,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,6 +22,9 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import ua.kostenko.battleship.app.config.BattleshipProperties;
 import ua.kostenko.battleship.app.security.SecurityHttp.Reply;
 import ua.kostenko.battleship.app.web.Browser;
 import ua.kostenko.battleship.app.web.SseStream;
@@ -35,8 +40,10 @@ import ua.kostenko.battleship.domain.model.Seat;
 /**
  * {@code streamGameEvents} over a real server. The three parts are assertion groups of this one class: part 1 (T029)
  * is the first event, framing, byte identity with {@code getGame}, per-seat delivery and registration races; part 2
- * (T030) is the two deliberate closes and the {@code connected} flags. Time is
- * a {@link MutableTimeSource}, so nothing here waits on wall time except for events to arrive (R60). A stream its
+ * (T030) is the two deliberate closes and the {@code connected} flags; part 3 (T031) is the bounds: heartbeat,
+ * maximum lifetime, the single coalescing slot and permit release. Time is a {@link MutableTimeSource} and the
+ * heartbeat is driven by calling {@link HeartbeatScheduler#tick()}, so nothing here waits on wall time except for
+ * events to arrive (R60). A stream its
  * client abandoned stays open until a write fails, and draining streams on shutdown is T036's (R59), so this context
  * stops without waiting for them.
  */
@@ -562,6 +569,208 @@ class EventStreamIT {
                 .containsExactly(host, guest);
         assertThat(List.of(connected(guestView, "you"), connected(guestView, "opponent")))
                 .containsExactly(guest, host);
+    }
+
+    // ------------------------------------------------------------------ part 3 (T031)
+
+    private static final String KEEP_ALIVE = ": keep-alive";
+    private static final Duration QUIET = Duration.ofMillis(300);
+
+    @Autowired
+    private HeartbeatScheduler heartbeat;
+
+    @Autowired
+    private BattleshipProperties properties;
+
+    @Test
+    void aKeepAliveCommentArrivesAtEachHeartbeatIntervalAndIsNotANamedEvent() throws Exception {
+        Browser host = hostOnly("Captain");
+        Duration interval = Duration.ofSeconds(properties.heartbeatSeconds());
+        Instant opened = time.now();
+        try (SseStream stream = host.events()) {
+            stream.next();
+            for (int beat = 1; beat <= 3; beat++) {
+                Instant due = opened.plus(interval.multipliedBy(beat));
+                time.set(due.minusMillis(1));
+                heartbeat.tick();
+                assertThat(stream.pollFrame(QUIET))
+                        .as("nothing before interval %d is up", beat)
+                        .isNull();
+                time.set(due);
+                heartbeat.tick();
+                Event keepAlive = stream.nextFrame();
+                assertThat(keepAlive.lines()).as("beat %d", beat).containsExactly(KEEP_ALIVE);
+                assertThat(keepAlive.name()).isNull();
+                assertThat(keepAlive.data()).isNull();
+            }
+        } finally {
+            time.set(START);
+        }
+    }
+
+    @Test
+    void aStreamEndsAtItsMaximumLifetimeWithNoClosedEvent() throws Exception {
+        Game game = game();
+        Duration lifetime = Duration.ofSeconds(properties.streamMaxLifetimeSeconds());
+        try (SseStream stream = game.host().events()) {
+            stream.next();
+            Instant deadline = time.now().plus(lifetime);
+            // An accepted action keeps the game alive past its idle timeout (R42), so only the stream bound ends it.
+            time.set(deadline.minus(lifetime.dividedBy(2)));
+            game.host().accept(simple("PLACE_FLEET_RANDOMLY"));
+            stream.next();
+
+            time.set(deadline.minusMillis(1));
+            heartbeat.tick();
+            assertThat(stream.nextFrame().lines())
+                    .as("alive one millisecond before the deadline")
+                    .containsExactly(KEEP_ALIVE);
+            assertThat(connected(game.guest().snapshot(), "opponent")).isTrue();
+
+            time.set(deadline);
+            heartbeat.tick();
+            assertThat(stream.ended())
+                    .as("ended at the deadline, with no closed event before the end")
+                    .isTrue();
+            assertThat(connected(game.guest().snapshot(), "opponent"))
+                    .as("the ended stream is reported like any other")
+                    .isFalse();
+        } finally {
+            time.set(START);
+        }
+    }
+
+    @Test
+    void aStalledSubscriberKeepsOnlyTheLatestUnsentSnapshot() throws Exception {
+        Game game = game();
+        String gameId = game.host().gameId();
+        String session = game.host().sessionValue();
+        Subscriber stalled = new Subscriber(gameId, new SseEmitter(0L), time.now());
+        SnapshotView captured = getGame.execute(gameId, session);
+        assertThat(stalled.activate(Seat.HOST, 1, captured)).isTrue();
+
+        // Nothing drains this subscriber, as when its writer is stuck: transitions keep arriving meanwhile.
+        List<SnapshotView> published = new ArrayList<>();
+        for (int transition = 0; transition < 3; transition++) {
+            game.host().accept(simple("PLACE_FLEET_RANDOMLY"));
+            published.add(getGame.execute(gameId, session));
+            stalled.offer(Seat.HOST, published.getLast());
+        }
+
+        assertThat(stalled.startDrain()).isTrue();
+        assertThat(stalled.next().view()).isSameAs(captured);
+        assertThat(stalled.next().view()).as("one pending snapshot, the latest").isSameAs(published.getLast());
+        assertThat(stalled.next()).as("not a queue of them").isNull();
+    }
+
+    @Test
+    void aHeartbeatDoesNotMoveTheIdleDeadline() throws Exception {
+        Browser host = hostOnly("Captain");
+        try (SseStream stream = host.events()) {
+            JsonNode first = json(stream.next());
+            time.advance(Duration.ofSeconds(properties.heartbeatSeconds()));
+            heartbeat.tick();
+            assertThat(stream.nextFrame().lines()).containsExactly(KEEP_ALIVE);
+
+            JsonNode after = host.snapshot();
+            assertThat(after.get("expiresAt").asText())
+                    .isEqualTo(first.get("expiresAt").asText());
+            assertThat(version(after)).isEqualTo(version(first));
+        } finally {
+            time.set(START);
+        }
+    }
+
+    /**
+     * Proofs (3) and (6) need the streams ceiling at 1, so they run in their own context. Its games never expire, so
+     * time can advance through many heartbeats without the game ending first.
+     */
+    @Nested
+    @TestPropertySource(
+            properties = {
+                "battleship.max-concurrent-streams=1",
+                "battleship.idle-timeout-seconds=100000000",
+                "battleship.max-game-duration-seconds=100000000"
+            })
+    class AtAStreamsCeilingOfOne {
+        @LocalServerPort
+        private int ceilingPort;
+
+        @Autowired
+        private MutableTimeSource clock;
+
+        @Autowired
+        private HeartbeatScheduler beats;
+
+        @Autowired
+        private BattleshipProperties limits;
+
+        private Game ceilingGame() throws Exception {
+            Browser host = new Browser(ceilingPort);
+            host.create(SEA_BATTLE, "Captain");
+            Browser guest = new Browser(ceilingPort);
+            guest.join(host.gameId(), invitationSecret(host.snapshot()), "Rival");
+            return new Game(host, guest);
+        }
+
+        /**
+         * The client of the other player's stream went away without a word and nothing happens in the game: only the
+         * heartbeat writes to that stream, and the write that fails drops it, which {@code observer} sees (R30). Every
+         * test ends with this, so the next one starts with the permit free.
+         */
+        private void heartbeatUntilOpponentDropped(Browser observer) throws Exception {
+            Duration interval = Duration.ofSeconds(limits.heartbeatSeconds());
+            for (int beat = 0; beat < 50 && connected(observer.snapshot(), "opponent"); beat++) {
+                clock.advance(interval);
+                beats.tick();
+            }
+            assertThat(connected(observer.snapshot(), "opponent"))
+                    .as("a heartbeat write failed and dropped the silent stream")
+                    .isFalse();
+        }
+
+        @Test
+        void aSubscriberThatCannotBeWrittenIsDroppedAndItsPermitReleased() throws Exception {
+            Game game = ceilingGame();
+            SseStream silent = game.host().events();
+            silent.next();
+            try (SseStream refused = game.guest().events()) {
+                assertThat(refused.status()).as("the ceiling is reached").isEqualTo(503);
+            }
+
+            silent.close();
+            heartbeatUntilOpponentDropped(game.guest());
+
+            try (SseStream reopened = game.guest().events()) {
+                assertThat(reopened.status())
+                        .as("the dropped stream's permit is free")
+                        .isEqualTo(200);
+                assertThat(connected(json(reopened.next()), "opponent")).isFalse();
+            }
+            heartbeatUntilOpponentDropped(game.host());
+        }
+
+        @Test
+        void aHundredOpenAndDropCyclesLeakNoPermit() throws Exception {
+            Game game = ceilingGame();
+            for (int cycle = 0; cycle < 100; cycle++) {
+                SseStream stream = game.host().events();
+                assertThat(stream.status()).as("cycle %d opens", cycle).isEqualTo(200);
+                stream.next();
+                stream.close();
+                heartbeatUntilOpponentDropped(game.guest());
+            }
+            try (SseStream last = game.host().events()) {
+                assertThat(last.status()).isEqualTo(200);
+                last.next();
+                try (SseStream second = game.guest().events()) {
+                    assertThat(second.status())
+                            .as("each permit was released once, not more: the ceiling still holds")
+                            .isEqualTo(503);
+                }
+            }
+            heartbeatUntilOpponentDropped(game.guest());
+        }
     }
 
     @AfterEach

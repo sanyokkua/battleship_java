@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
@@ -15,6 +17,7 @@ import ua.kostenko.battleship.app.config.BattleshipProperties;
 import ua.kostenko.battleship.app.web.SnapshotDtoAssembler;
 import ua.kostenko.battleship.app.web.dto.StreamClosed;
 import ua.kostenko.battleship.application.port.SnapshotPublisher;
+import ua.kostenko.battleship.application.port.TimeSource;
 import ua.kostenko.battleship.application.projection.SnapshotView;
 import ua.kostenko.battleship.application.result.ApplicationFailure;
 import ua.kostenko.battleship.application.usecase.SubscribeUseCase;
@@ -27,17 +30,23 @@ import ua.kostenko.battleship.domain.model.Seat;
  * snapshot or buffered and sent after it. At most one stream is kept per game and seat: a newer one closes the older
  * with {@code closed}/{@code REPLACED}, and a game that stops existing for a seat closes its stream with
  * {@code closed}/{@code GAME_UNAVAILABLE} (R29, R31). Every ended stream is reported to {@link SubscribeUseCase}, which
- * keeps the {@code connected} flags (R22). The hub never holds its own lock while taking the game lock, projecting,
- * serializing or writing.
+ * keeps the {@code connected} flags (R22). Every stream is bounded (R30): {@link HeartbeatScheduler} drives
+ * {@link #bound(Instant)}, a subscriber holds at most its latest unsent snapshot, and a stream whose write fails is
+ * dropped; every ended stream releases its permit exactly once (R39). The hub never holds its own lock while taking
+ * the game lock, projecting, serializing or writing.
  */
 @Component
 public class SseHub implements SnapshotPublisher {
     private static final MediaType FRAME = new MediaType("text", "plain", StandardCharsets.UTF_8);
     private static final int RETRY_AFTER_SECONDS = 1;
+    private static final String KEEP_ALIVE = ": keep-alive\n\n";
 
     private final SubscribeUseCase subscribe;
+    private final TimeSource time;
     private final ObjectMapper wireMapper;
     private final Semaphore streams;
+    private final Duration heartbeat;
+    private final Duration lifetime;
     private final ConcurrentHashMap<String, Set<Subscriber>> subscribers = new ConcurrentHashMap<>();
 
     /** Race seams for EventStreamIT only: run after the pending install and after the capture; no-ops otherwise. */
@@ -45,10 +54,13 @@ public class SseHub implements SnapshotPublisher {
 
     volatile Runnable afterCapture = () -> {};
 
-    SseHub(SubscribeUseCase subscribe, ObjectMapper wireMapper, BattleshipProperties properties) {
+    SseHub(SubscribeUseCase subscribe, ObjectMapper wireMapper, TimeSource time, BattleshipProperties properties) {
         this.subscribe = subscribe;
+        this.time = time;
         this.wireMapper = wireMapper;
         this.streams = new Semaphore(properties.maxConcurrentStreams());
+        this.heartbeat = Duration.ofSeconds(properties.heartbeatSeconds());
+        this.lifetime = Duration.ofSeconds(properties.streamMaxLifetimeSeconds());
     }
 
     /**
@@ -58,7 +70,7 @@ public class SseHub implements SnapshotPublisher {
     public SseEmitter open(String gameId, String sessionValue) {
         if (!streams.tryAcquire()) throw new ApplicationFailure("service-unavailable", null, null, RETRY_AFTER_SECONDS);
         SseEmitter emitter = new SseEmitter(0L);
-        Subscriber subscriber = new Subscriber(gameId, emitter);
+        Subscriber subscriber = new Subscriber(gameId, emitter, time.now());
         subscribers.compute(gameId, (id, present) -> {
             Set<Subscriber> set = present == null ? ConcurrentHashMap.newKeySet() : present;
             set.add(subscriber);
@@ -121,26 +133,48 @@ public class SseHub implements SnapshotPublisher {
     }
 
     /**
-     * Writes queued views until none is left, then a deliberate close if one was asked for, after which the stream
-     * ends. A concurrent caller leaves the work to the thread already draining.
+     * Writes queued frames until none is left; a deliberate close is written last, after which the stream ends. A
+     * concurrent caller leaves the work to the thread already draining, and a write that fails drops the subscriber.
      */
     private void drain(Subscriber subscriber) {
         if (!subscriber.startDrain()) return;
         while (true) {
-            SnapshotView view = subscriber.next();
-            StreamClosed.ReasonEnum closing = view == null ? subscriber.endDrain() : null;
-            if (view == null && closing == null) return;
+            Subscriber.Frame next = subscriber.next();
+            if (next == null) return;
             try {
-                String frame = view != null ? frame(view) : closedFrame(closing);
-                subscriber.emitter().send(Set.of(new DataWithMediaType(frame, FRAME)));
+                subscriber.emitter().send(Set.of(new DataWithMediaType(text(next), FRAME)));
             } catch (IOException | IllegalStateException failed) {
                 drop(subscriber);
                 return;
             }
-            if (closing != null) {
+            if (next.closing() != null) {
                 subscriber.emitter().complete();
                 drop(subscriber);
                 return;
+            }
+        }
+    }
+
+    private String text(Subscriber.Frame next) throws JsonProcessingException {
+        if (next.view() != null) return frame(next.view());
+        if (next.closing() != null) return closedFrame(next.closing());
+        return KEEP_ALIVE;
+    }
+
+    /**
+     * One heartbeat round at {@code now}: a stream that reached its maximum lifetime ends with no {@code closed}
+     * event, so the browser reconnects by itself; every other stream due a keep-alive gets one. A failed keep-alive
+     * write is how a client that went away silently is noticed (R30).
+     */
+    void bound(Instant now) {
+        for (Set<Subscriber> game : subscribers.values()) {
+            for (Subscriber subscriber : game) {
+                if (subscriber.outlived(now, lifetime)) {
+                    drop(subscriber);
+                    subscriber.emitter().complete();
+                } else if (subscriber.beatDue(now, heartbeat)) {
+                    drain(subscriber);
+                }
             }
         }
     }

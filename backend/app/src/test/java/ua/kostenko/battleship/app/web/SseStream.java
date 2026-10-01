@@ -14,8 +14,9 @@ import java.util.stream.Stream;
 
 /**
  * A real-server Server-Sent Events reader for the stream ITs: it keeps the raw lines, so framing can be asserted as
- * sent, and groups them into events at each blank line. {@link HttpClient#send} with a string body would block until
- * the stream ends, so lines are read asynchronously into a queue.
+ * sent, and groups them into events at each blank line. A keep-alive comment can arrive at any time, so the event
+ * readers skip comment-only frames and the frame readers return them. {@link HttpClient#send} with a string body would
+ * block until the stream ends, so lines are read asynchronously into a queue.
  */
 public final class SseStream implements AutoCloseable {
     private static final Duration WAIT = Duration.ofSeconds(10);
@@ -65,15 +66,35 @@ public final class SseStream implements AutoCloseable {
         return response.headers().firstValue(name).orElse("");
     }
 
-    /** The next complete event; fails when none arrives in time or the stream ends first. */
+    /** The next complete event; fails when none arrives in time or the stream ends first. Comments are skipped. */
     public Event next() throws InterruptedException {
-        Event event = poll(WAIT);
+        return required(read(WAIT, false));
+    }
+
+    /** The next frame, a comment line such as a keep-alive included; fails when none arrives in time. */
+    public Event nextFrame() throws InterruptedException {
+        return required(read(WAIT, true));
+    }
+
+    /**
+     * The next complete event, or null when none starts within {@code wait}; fails when the stream ends first.
+     * Comments are skipped.
+     */
+    public Event poll(Duration wait) throws InterruptedException {
+        return read(wait, false);
+    }
+
+    /** The next frame, comments included, or null when none starts within {@code wait}. */
+    public Event pollFrame(Duration wait) throws InterruptedException {
+        return read(wait, true);
+    }
+
+    private static Event required(Event event) {
         if (event == null) throw new AssertionError("no event within " + WAIT);
         return event;
     }
 
-    /** The next complete event, or null when none starts within {@code wait}; fails when the stream ends first. */
-    public Event poll(Duration wait) throws InterruptedException {
+    private Event read(Duration wait, boolean comments) throws InterruptedException {
         List<String> raw = new ArrayList<>();
         while (true) {
             String line = lines.poll((raw.isEmpty() ? wait : WAIT).toMillis(), TimeUnit.MILLISECONDS);
@@ -83,16 +104,24 @@ public final class SseStream implements AutoCloseable {
             if (!line.isEmpty()) {
                 raw.add(line);
             } else if (!raw.isEmpty()) {
-                return parse(raw);
+                if (comments || !raw.stream().allMatch(SseStream::isComment)) return parse(raw);
+                raw.clear();
             }
         }
     }
 
-    /** True when the server ends the stream before any further line arrives. */
+    private static boolean isComment(String line) {
+        return line.startsWith(":");
+    }
+
+    /** True when the server ends the stream before any further event; comment lines are not events. */
     public boolean ended() throws InterruptedException {
-        String line = lines.poll(WAIT.toMillis(), TimeUnit.MILLISECONDS);
-        if (line == null) throw new AssertionError("the stream neither ended nor sent anything within " + WAIT);
-        return line == END;
+        while (true) {
+            String line = lines.poll(WAIT.toMillis(), TimeUnit.MILLISECONDS);
+            if (line == null) throw new AssertionError("the stream neither ended nor sent anything within " + WAIT);
+            if (line == END) return true;
+            if (!line.isEmpty() && !isComment(line)) return false;
+        }
     }
 
     private static Event parse(List<String> raw) {
