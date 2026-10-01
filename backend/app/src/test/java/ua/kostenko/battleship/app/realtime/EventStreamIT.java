@@ -6,7 +6,6 @@ import static ua.kostenko.battleship.app.web.Browser.simple;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
@@ -292,15 +291,15 @@ class EventStreamIT {
         try (SseStream before = host.events()) {
             assertThat(json(before.next()).get("serverTime").isTextual()).isTrue();
         }
-        wireMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, true);
+        wireMapper.configure(com.fasterxml.jackson.core.JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
         try (SseStream after = host.events()) {
             Event first = after.next();
             Reply read = host.read();
-            assertThat(json(first).get("serverTime").isNumber()).isTrue();
-            assertThat(read.json().get("serverTime").isNumber()).isTrue();
+            assertThat(json(first).get("version").isTextual()).isTrue();
+            assertThat(read.json().get("version").isTextual()).isTrue();
             assertThat(first.data()).isEqualTo(read.response().body());
         } finally {
-            wireMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+            wireMapper.configure(com.fasterxml.jackson.core.JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, false);
         }
     }
 

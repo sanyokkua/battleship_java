@@ -2,7 +2,12 @@ package ua.kostenko.battleship.app.web;
 
 import jakarta.validation.Valid;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,7 +25,20 @@ import ua.kostenko.battleship.application.result.ApplicationFailure;
  */
 @TestConfiguration(proxyBeanMethods = false)
 @RestController
-class ProblemProbeController {
+public class ProblemProbeController {
+    /** Lets the probe paths past the real request-security chain, which has its own ITs; every other path keeps it. */
+    @TestConfiguration(proxyBeanMethods = false)
+    public static class PermitAllSecurity {
+        @Bean
+        @Order(Ordered.HIGHEST_PRECEDENCE)
+        SecurityFilterChain probes(HttpSecurity http) throws Exception {
+            return http.securityMatcher("/probe/**")
+                    .authorizeHttpRequests(a -> a.anyRequest().permitAll())
+                    .csrf(c -> c.disable())
+                    .build();
+        }
+    }
+
     @GetMapping("/probe/ok")
     ResponseEntity<Void> ok() {
         return ResponseEntity.ok().build();

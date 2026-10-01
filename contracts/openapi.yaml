@@ -652,6 +652,10 @@ components:
               value: { title: Invitation unavailable, status: 409, code: invitation-unavailable, correlationId: 9f2c1d7a4b6e4c1e }
             actionNotAllowed:
               value: { title: Action not allowed, status: 409, code: action-not-allowed, correlationId: 9f2c1d7a4b6e4c1e }
+            placementOutOfBounds:
+              value: { title: Ship is out of bounds, status: 409, code: placement-out-of-bounds, correlationId: 9f2c1d7a4b6e4c1e }
+            placementOverlap:
+              value: { title: Ships may not overlap, status: 409, code: placement-overlap, correlationId: 9f2c1d7a4b6e4c1e }
             placementTouching:
               value: { title: Ships may not touch, status: 409, code: placement-touching, correlationId: 9f2c1d7a4b6e4c1e }
             randomArrangementFailed:
@@ -745,7 +749,7 @@ components:
     Instant:
       type: string
       format: date-time
-      description: UTC timestamp, RFC 3339.
+      description: UTC timestamp, RFC 3339, always written with exactly three fractional digits.
       example: '2026-09-20T12:00:00.000Z'
     Coordinate:
       type: object

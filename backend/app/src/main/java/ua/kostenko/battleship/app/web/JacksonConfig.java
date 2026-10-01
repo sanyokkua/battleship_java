@@ -1,12 +1,20 @@
 package ua.kostenko.battleship.app.web;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.io.IOException;
 import java.lang.reflect.Type;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,11 +47,30 @@ class JacksonConfig implements WebMvcConfigurer {
     static ObjectMapper wireMapper() {
         return JsonMapper.builder()
                 .addModule(new JavaTimeModule())
+                .addModule(new SimpleModule().addSerializer(OffsetDateTime.class, new MillisUtcSerializer()))
                 .defaultPropertyInclusion(
                         JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true)
                 .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
                 .build();
+    }
+
+    /**
+     * Every timestamp the contract shows is UTC with exactly three fractional digits ({@code 2026-09-20T12:00:00.000Z}),
+     * whereas ISO formatting trims trailing zeros ({@code ...:00Z}, {@code ...:00.1Z}), so one fixed form is written.
+     */
+    private static final class MillisUtcSerializer extends StdSerializer<OffsetDateTime> {
+        private static final DateTimeFormatter MILLIS_UTC = DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'");
+
+        MillisUtcSerializer() {
+            super(OffsetDateTime.class);
+        }
+
+        @Override
+        public void serialize(OffsetDateTime value, JsonGenerator generator, SerializerProvider provider)
+                throws IOException {
+            generator.writeString(MILLIS_UTC.format(value.withOffsetSameInstant(ZoneOffset.UTC)));
+        }
     }
 
     @Override
