@@ -32,7 +32,13 @@ import ua.kostenko.battleship.application.registry.SessionRegistry;
  */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "battleship.max-live-games-per-browser=2")
+        properties = {
+            "battleship.max-live-games-per-browser=2",
+            "battleship.rate-limit.create-game-per-minute=100000",
+            "battleship.rate-limit.join-per-minute=100000",
+            "battleship.rate-limit.commands-per-minute=100000",
+            "battleship.rate-limit.read-game-per-minute=100000"
+        })
 class AuthorizationIT {
     private static final String CREATE_BODY = "{\"rulesetId\":\"sea-battle-10-ship.v1\",\"displayName\":\"Captain\"}";
     private static final String UNKNOWN_VALUE = "dW5rbm93bi1zZXNzaW9uLXZhbHVlLXRoYXQtd2FzLW5ldmVyLWlzc3VlZA";

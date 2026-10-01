@@ -61,7 +61,8 @@ final class SessionCookieFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    private static String sessionValue(HttpServletRequest request) {
+    /** The session cookie's value, or null when the request carries none. */
+    static String sessionValue(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
         if (cookies == null) {
             return null;

@@ -4,12 +4,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.ObjectPostProcessor;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.header.HeaderWriterFilter;
+import ua.kostenko.battleship.app.config.BattleshipProperties;
 import ua.kostenko.battleship.app.web.ProblemAdvice;
 import ua.kostenko.battleship.app.web.dto.ProblemCode;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
@@ -23,7 +26,12 @@ import ua.kostenko.battleship.application.registry.SessionRegistry;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 class SecurityConfig {
     @Bean
-    SecurityFilterChain apiSecurity(HttpSecurity http, SessionRegistry sessions, ObjectMapper wireMapper)
+    SecurityFilterChain apiSecurity(
+            HttpSecurity http,
+            SessionRegistry sessions,
+            ObjectMapper wireMapper,
+            FixedWindowBuckets buckets,
+            BattleshipProperties properties)
             throws Exception {
         CookieCsrfTokenRepository csrfTokens = new CookieCsrfTokenRepository();
         csrfTokens.setCookiePath("/");
@@ -36,12 +44,23 @@ class SecurityConfig {
         plainHandler.setCsrfRequestAttributeName(null);
 
         return http.authorizeHttpRequests(requests -> requests.anyRequest().permitAll())
+                // Headers are written before the chain runs: an event stream commits its response from another
+                // thread, so a header write while this thread unwinds the chain races the container's recycling.
+                .headers(headers -> headers.withObjectPostProcessor(new ObjectPostProcessor<HeaderWriterFilter>() {
+                    @Override
+                    public <F extends HeaderWriterFilter> F postProcess(F filter) {
+                        filter.setShouldWriteHeadersEagerly(true);
+                        return filter;
+                    }
+                }))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.csrfTokenRepository(csrfTokens).csrfTokenRequestHandler(plainHandler))
                 .exceptionHandling(handling ->
                         handling.accessDeniedHandler((request, response, denied) -> ProblemAdvice.writeProblem(
                                 request, response, ProblemCode.REQUEST_SECURITY_REJECTED, wireMapper)))
                 .addFilterAfter(new SessionCookieFilter(sessions, wireMapper), CsrfFilter.class)
+                .addFilterAfter(
+                        new RateLimitFilter(buckets, properties.rateLimit(), wireMapper), SessionCookieFilter.class)
                 .build();
     }
 }

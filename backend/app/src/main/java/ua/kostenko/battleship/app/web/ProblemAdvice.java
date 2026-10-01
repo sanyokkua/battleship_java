@@ -89,10 +89,24 @@ public class ProblemAdvice {
     public static void writeProblem(
             HttpServletRequest request, HttpServletResponse response, ProblemCode code, ObjectMapper wireMapper)
             throws IOException {
+        writeProblem(request, response, code, wireMapper, null);
+    }
+
+    /** As above, also telling the caller how long to wait: the header and the body carry the one value. */
+    public static void writeProblem(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            ProblemCode code,
+            ObjectMapper wireMapper,
+            Integer retryAfterSeconds)
+            throws IOException {
         String correlationId = (String) request.getAttribute(CorrelationIdFilter.REQUEST_ATTRIBUTE);
-        Problem problem = problem(code, correlationId, null, null);
+        Problem problem = problem(code, correlationId, null, retryAfterSeconds);
         LOG.info("problem code={} status={} correlationId={}", code.getValue(), problem.getStatus(), correlationId);
         response.setStatus(problem.getStatus());
+        if (retryAfterSeconds != null) {
+            response.setHeader(HttpHeaders.RETRY_AFTER, retryAfterSeconds.toString());
+        }
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         wireMapper.writeValue(response.getOutputStream(), problem);
     }

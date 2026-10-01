@@ -31,7 +31,14 @@ import ua.kostenko.battleship.domain.model.Phase;
 import ua.kostenko.battleship.domain.model.Seat;
 
 /** Create and read over HTTP, and the one wire document assembled from the projector's view (R17, R18, R56). */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {
+            "battleship.rate-limit.create-game-per-minute=100000",
+            "battleship.rate-limit.join-per-minute=100000",
+            "battleship.rate-limit.commands-per-minute=100000",
+            "battleship.rate-limit.read-game-per-minute=100000"
+        })
 @Import(GameControllerIT.Clock.class)
 class GameControllerIT {
     private static final Instant START = Instant.parse("2031-05-06T07:08:09.123Z");

@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.3.0 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001 through T031 are complete; T032 is next.
+**Status**: in progress. T001 through T032 are complete; T033 is next.
 **Contract amendments**: the four changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -726,7 +726,7 @@ everything an operator needs.
 **Checkpoint**: proof areas 7 and 9 are owned and green; every structure a hostile caller can grow is
 bounded by construction (R41).
 
-- [ ] T032 Rate-limit every operation in `backend/app/src/main/java/ua/kostenko/battleship/app/security/RateLimitFilter.java`
+- [x] T032 Rate-limit every operation in `backend/app/src/main/java/ua/kostenko/battleship/app/security/RateLimitFilter.java`
   - **Delivers** A **fixed 60-second window per key per operation class** (research.md D16 — every limit in R52 is "per minute", and the window end gives an exact `Retry-After`). Eight classes, each reading its own configured limit:
 
     | Operation class | Key | Default |
@@ -749,6 +749,8 @@ bounded by construction (R41).
   - **Verify** `cd backend && ./mvnw -q -pl app -am verify -Dit.test=RateLimitIT`
   - **Mutation** Drop the **newest** key instead of the least recently used when the table is full; assertion (5) must fail. Emit `Retry-After` as an HTTP-date; assertion (2) must fail.
   - **Depends on** T031
+  - **As built (2026-10-01)** — `FixedWindowBuckets` (`app/security`, a `@Component`): key space `class + NUL + key`, access-order `LinkedHashMap` under one lock, a window starts at the key's first call and resets inclusively at start + 60 s, time from the injected `TimeSource`; a full table drops the eldest key and never refuses a new one. The cap is an **internal bound** (10 000, package-visible constructor argument for tests), deliberately **not** a new R52 key; `prune(now)` is called from `ExpirySweeper.tick()` (constructor gains the buckets). `RateLimitFilter` is added **after `SessionCookieFilter`** (CSRF 403 and session 401 stay ahead of the quota, so neither consumes it); createGame/joinGame key on `getRemoteAddr()`, the six others on the session cookie value (`SessionCookieFilter.sessionValue` made package-visible and reused). GET classes also match **HEAD** (MVC serves HEAD for every GET mapping). Meta, rulesets and health are not limited. `ProblemAdvice.writeProblem` gained a `retryAfterSeconds` overload (the old one delegates); header and body come from one value (remaining window seconds, rounded up, at least 1). Extra production change forced by a race that predates T032: `SecurityConfig` makes `HeaderWriterFilter` write its headers **eagerly** — a stream commits its response from another thread, and the lazy header write while the request thread unwound raced the container's recycling (a Tomcat `NullPointerException` in `MimeHeaders`, after which the JDK client retried the GET and counted a second stream open; about 1 full run in 3). `CacheControlFilter` already runs first, so `Cache-Control` is unchanged. Existing ITs (`AuthorizationIT`, `JoinIT`, `EventStreamIT`, `GameControllerIT`, `CommandControllerIT`) raise the create/join/commands/read limits by property only. `RateLimitIT` pins `server.shutdown=immediate` like `EventStreamIT` (draining streams is T036). Not covered: the sweeper's call to `prune` has no direct test (`tick()` is package-private in another package; bucket-level prune is proven in `RateLimitIT`).
+  - **Evidence (2026-10-01)** Task branch `feature/002-backend--t032` from `feature/002-backend` at `33f3e97`. RED (stub buckets that always admit, no filter): 14 of 15 tests failed — each per-class test at "call limit+1" (e.g. `[createGame call 3]`, `[getGame call 41]`, `[streamGameEvents call 8]`), plus Retry-After, window boundary, address-vs-session, flood (`exactly the configured 40 were admitted`) and prune; only `unlimitedOperationsAreNeverThrottled` passed. GREEN: `cd backend && ./mvnw -q -pl app -am verify -Dit.test=RateLimitIT -Dfailsafe.failIfNoSpecifiedTests=false -Dsurefire.failIfNoSpecifiedTests=false` exited 0 three consecutive times (16 tests); `cd backend && ./mvnw -q verify` exited 0: 390 tests, 0 failures/errors (incl. Spotless, `ArchitectureTest`). Mutations, each reverted: drop the newest key instead of the least recently used → (5) `aFloodOfInventedKeysNeverEvictsAPlayerWhoIsStillActive:319 exactly the configured 40 were admitted`, expected 40 was 61; `Retry-After` as an HTTP-date → (2) `retryAfterHeaderEqualsTheBodyValueInDeltaSeconds:205` (header no longer matches `[0-9]+`); extra, from review: GET-only matchers → `aHeadRequestIsCountedAgainstTheLimitOfTheGetItMirrors:170 [HEAD call 41]`.
 
 - [ ] T033 Refuse cross-site, oversized and mistyped requests in `backend/app/src/main/java/ua/kostenko/battleship/app/security/`
   - **Delivers** Three refusals that complete the request-security surface.

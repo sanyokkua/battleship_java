@@ -25,7 +25,14 @@ import ua.kostenko.battleship.domain.RandomSource;
 import ua.kostenko.battleship.domain.SeededRandomSource;
 
 /** Commands, presence and leaving over HTTP between two real browsers (R01, R16, R23, R24, R33, R40, R46). */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {
+            "battleship.rate-limit.create-game-per-minute=100000",
+            "battleship.rate-limit.join-per-minute=100000",
+            "battleship.rate-limit.commands-per-minute=100000",
+            "battleship.rate-limit.read-game-per-minute=100000"
+        })
 @Import(CommandControllerIT.Determinism.class)
 class CommandControllerIT {
     private static final Instant START = Instant.parse("2031-05-06T07:08:09.123Z");

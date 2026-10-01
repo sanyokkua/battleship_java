@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.Duration;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
+import ua.kostenko.battleship.app.security.FixedWindowBuckets;
 import ua.kostenko.battleship.application.MutableTimeSource;
 import ua.kostenko.battleship.application.port.SnapshotPublisher;
 import ua.kostenko.battleship.application.projection.SnapshotView;
@@ -33,8 +34,10 @@ class ExpirySweeperTest {
         @Override
         public void unavailable(String gameId, Seat seat) {}
     };
-    private final ExpirySweeper sweeper =
-            new ExpirySweeper(new ExpireGamesUseCase(games, new SessionRegistry(4), noStreams, RETENTION), time);
+    private final ExpirySweeper sweeper = new ExpirySweeper(
+            new ExpireGamesUseCase(games, new SessionRegistry(4), noStreams, RETENTION),
+            time,
+            new FixedWindowBuckets(time));
 
     private void insertGame(String id) {
         games.insert(

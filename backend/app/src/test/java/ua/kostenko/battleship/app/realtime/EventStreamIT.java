@@ -56,7 +56,15 @@ import ua.kostenko.battleship.domain.model.Seat;
  * client abandoned stays open until a write fails, and draining streams on shutdown is T036's (R59), so this context
  * stops without waiting for them.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "server.shutdown=immediate")
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {
+            "server.shutdown=immediate",
+            "battleship.rate-limit.create-game-per-minute=100000",
+            "battleship.rate-limit.join-per-minute=100000",
+            "battleship.rate-limit.commands-per-minute=100000",
+            "battleship.rate-limit.read-game-per-minute=100000"
+        })
 @Import(EventStreamIT.Determinism.class)
 class EventStreamIT {
     private static final Instant START = Instant.parse("2031-05-06T07:08:09.123Z");

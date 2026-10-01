@@ -24,7 +24,13 @@ import ua.kostenko.battleship.application.MutableTimeSource;
 /** Joining a game and replacing its invitation over HTTP, with two browsers that share nothing (R34, R40, R45, R63). */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "battleship.invitation-lifetime-seconds=300")
+        properties = {
+            "battleship.invitation-lifetime-seconds=300",
+            "battleship.rate-limit.create-game-per-minute=100000",
+            "battleship.rate-limit.join-per-minute=100000",
+            "battleship.rate-limit.commands-per-minute=100000",
+            "battleship.rate-limit.read-game-per-minute=100000"
+        })
 @Import(JoinIT.Clock.class)
 class JoinIT {
     private static final Instant START = Instant.parse("2031-05-06T07:08:09.123Z");
