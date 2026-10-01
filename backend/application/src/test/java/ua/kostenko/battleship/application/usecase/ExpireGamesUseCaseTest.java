@@ -2,6 +2,7 @@ package ua.kostenko.battleship.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.ABSOLUTE;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.IDLE;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.INVITATION;
@@ -12,7 +13,11 @@ import static ua.kostenko.battleship.application.usecase.CommandTestFixture.fail
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.Test;
+import ua.kostenko.battleship.application.port.SnapshotPublisher;
+import ua.kostenko.battleship.application.projection.SnapshotView;
 import ua.kostenko.battleship.application.usecase.CommandTestFixture.Game;
 import ua.kostenko.battleship.domain.model.Seat;
 
@@ -31,10 +36,39 @@ class ExpireGamesUseCaseTest {
         assertThat(failureCode(() -> f.create.execute(CommandTestFixture.RULESET, "Other", null)))
                 .isEqualTo("service-unavailable");
         f.time.set(FORGOTTEN_AT);
-        f.expire.sweep(f.time.now());
+        List<String> expired = new ArrayList<>();
+        f.expire.sweep(f.time.now(), expired::add);
+        assertThat(expired).as("an unfinished game forgotten is an expired one").hasSize(1);
+        f.expire.sweep(f.time.now(), expired::add);
+        assertThat(expired).as("and is reported once").hasSize(1);
         assertThat(f.games.gameIds()).isEmpty();
         assertThatCode(() -> f.create.execute(CommandTestFixture.RULESET, "Other", null))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void aFailingSweepStillReportsEveryGameItForgot() {
+        var f = new CommandTestFixture(2, IDLE, ABSOLUTE, INVITATION, RETENTION, PRESENCE);
+        Game first = f.newGame();
+        Game second = f.newGame();
+        f.time.set(FORGOTTEN_AT);
+        var failing = new ExpireGamesUseCase(
+                f.games,
+                f.sessions,
+                new SnapshotPublisher() {
+                    @Override
+                    public void publish(String gameId, Seat seat, SnapshotView view) {}
+
+                    @Override
+                    public void unavailable(String gameId, Seat seat) {
+                        throw new IllegalStateException("stream hub failed");
+                    }
+                },
+                RETENTION);
+        List<String> expired = new ArrayList<>();
+        assertThatThrownBy(() -> failing.sweep(f.time.now(), expired::add)).isInstanceOf(IllegalStateException.class);
+        assertThat(expired).containsExactlyInAnyOrder(first.id(), second.id());
+        assertThat(f.games.gameIds()).isEmpty();
     }
 
     @Test

@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.Objects;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import ua.kostenko.battleship.app.observability.CorrelationIdFilter;
+import ua.kostenko.battleship.app.observability.OperationalEvents;
 import ua.kostenko.battleship.app.security.FixedWindowBuckets;
 import ua.kostenko.battleship.application.port.TimeSource;
 import ua.kostenko.battleship.application.usecase.ExpireGamesUseCase;
@@ -14,11 +16,14 @@ public final class ExpirySweeper {
     private final ExpireGamesUseCase expire;
     private final TimeSource time;
     private final FixedWindowBuckets buckets;
+    private final OperationalEvents events;
 
-    public ExpirySweeper(ExpireGamesUseCase expire, TimeSource time, FixedWindowBuckets buckets) {
+    public ExpirySweeper(
+            ExpireGamesUseCase expire, TimeSource time, FixedWindowBuckets buckets, OperationalEvents events) {
         this.expire = Objects.requireNonNull(expire);
         this.time = Objects.requireNonNull(time);
         this.buckets = Objects.requireNonNull(buckets);
+        this.events = Objects.requireNonNull(events);
     }
 
     @Scheduled(
@@ -28,9 +33,12 @@ public final class ExpirySweeper {
         tick();
     }
 
-    void tick() {
-        Instant now = time.now();
-        expire.sweep(now);
-        buckets.prune(now);
+    public void tick() {
+        // a tick has no request, so its records share one id of their own
+        CorrelationIdFilter.scoped(() -> {
+            Instant now = time.now();
+            expire.sweep(now, events::gameExpired);
+            buckets.prune(now);
+        });
     }
 }

@@ -7,12 +7,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import ua.kostenko.battleship.app.config.BattleshipProperties;
+import ua.kostenko.battleship.app.observability.OperationalEvents;
 import ua.kostenko.battleship.app.web.dto.CommandRequest;
 import ua.kostenko.battleship.app.web.dto.FireCommand;
 import ua.kostenko.battleship.app.web.dto.GameSnapshot;
 import ua.kostenko.battleship.app.web.dto.PlaceShipCommand;
 import ua.kostenko.battleship.app.web.dto.RemoveShipCommand;
 import ua.kostenko.battleship.app.web.dto.SimpleCommand;
+import ua.kostenko.battleship.application.result.ApplicationFailure;
 import ua.kostenko.battleship.application.usecase.CommandUseCase;
 import ua.kostenko.battleship.domain.command.GameCommand;
 import ua.kostenko.battleship.domain.model.Coordinate;
@@ -23,9 +25,11 @@ import ua.kostenko.battleship.domain.model.Orientation;
 class CommandController {
     private final CommandUseCase commands;
     private final int randomArrangementAttempts;
+    private final OperationalEvents events;
 
-    CommandController(CommandUseCase commands, BattleshipProperties properties) {
+    CommandController(CommandUseCase commands, BattleshipProperties properties, OperationalEvents events) {
         this.commands = commands;
+        this.events = events;
         this.randomArrangementAttempts = properties.randomArrangementAttempts();
     }
 
@@ -35,8 +39,14 @@ class CommandController {
             @Valid @RequestBody CommandRequest request,
             @CookieValue(name = SessionCookie.NAME, required = false) String presentedSession) {
         GameCommand command = toDomain(request.getCommand().getActualInstance());
-        return SnapshotDtoAssembler.assemble(commands.execute(gameId, presentedSession, request.getCommandId(), command)
-                .snapshot());
+        try {
+            return SnapshotDtoAssembler.assemble(
+                    commands.execute(gameId, presentedSession, request.getCommandId(), command)
+                            .snapshot());
+        } catch (ApplicationFailure rejected) {
+            events.commandRejected(rejected.code());
+            throw rejected;
+        }
     }
 
     private GameCommand toDomain(Object variant) {

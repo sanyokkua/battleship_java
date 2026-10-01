@@ -4,6 +4,7 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import ua.kostenko.battleship.app.observability.CorrelationIdFilter;
 import ua.kostenko.battleship.application.port.TimeSource;
 
 /**
@@ -26,6 +27,6 @@ final class HeartbeatScheduler {
     }
 
     void tick() {
-        hub.bound(time.now());
+        CorrelationIdFilter.scoped(() -> hub.bound(time.now()));
     }
 }

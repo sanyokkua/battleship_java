@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter.DataWithMediaType;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import ua.kostenko.battleship.app.config.BattleshipProperties;
+import ua.kostenko.battleship.app.observability.OperationalEvents;
 import ua.kostenko.battleship.app.web.SnapshotDtoAssembler;
 import ua.kostenko.battleship.app.web.dto.StreamClosed;
 import ua.kostenko.battleship.application.port.SnapshotPublisher;
@@ -47,6 +48,7 @@ public class SseHub implements SnapshotPublisher {
             Thread.ofVirtual().name("sse-writer-", 0).factory();
 
     private final SubscribeUseCase subscribe;
+    private final OperationalEvents events;
     private final TimeSource time;
     private final ObjectMapper wireMapper;
     private final Semaphore streams;
@@ -62,7 +64,13 @@ public class SseHub implements SnapshotPublisher {
     /** Emitter seam for EventStreamIT only: lets a proof open a stream whose writes it can stall. */
     volatile Supplier<SseEmitter> newEmitter = () -> new SseEmitter(0L);
 
-    SseHub(SubscribeUseCase subscribe, ObjectMapper wireMapper, TimeSource time, BattleshipProperties properties) {
+    SseHub(
+            SubscribeUseCase subscribe,
+            ObjectMapper wireMapper,
+            TimeSource time,
+            BattleshipProperties properties,
+            OperationalEvents events) {
+        this.events = events;
         this.subscribe = subscribe;
         this.time = time;
         this.wireMapper = wireMapper;
@@ -160,7 +168,12 @@ public class SseHub implements SnapshotPublisher {
             try {
                 subscriber.emitter().send(Set.of(new DataWithMediaType(text(next), FRAME)));
             } catch (IOException | RuntimeException failed) {
-                drop(subscriber);
+                // Only the failure that wins the close claim says so, once, and before the stream's end becomes
+                // visible to anyone, so whoever sees it gone also finds the record.
+                if (subscriber.close()) {
+                    events.deliveryFailed(subscriber.gameId());
+                    end(subscriber);
+                }
                 return;
             }
             if (next.closing() != null) {
@@ -214,7 +227,11 @@ public class SseHub implements SnapshotPublisher {
 
     /** Ends a stream once: releases its permit and, for an activated stream, reports the disconnection. */
     private void drop(Subscriber subscriber) {
-        if (!subscriber.close()) return;
+        if (subscriber.close()) end(subscriber);
+    }
+
+    /** What a claimed close does: unregisters, releases the permit, reports the disconnection. */
+    private void end(Subscriber subscriber) {
         subscribers.computeIfPresent(subscriber.gameId(), (id, set) -> {
             set.remove(subscriber);
             return set.isEmpty() ? null : set;

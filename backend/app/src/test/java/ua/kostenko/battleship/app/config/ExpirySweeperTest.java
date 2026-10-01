@@ -6,7 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.Test;
+import ua.kostenko.battleship.app.observability.OperationalEvents;
 import ua.kostenko.battleship.app.security.FixedWindowBuckets;
 import ua.kostenko.battleship.application.MutableTimeSource;
 import ua.kostenko.battleship.application.port.SnapshotPublisher;
@@ -37,7 +40,8 @@ class ExpirySweeperTest {
     private final ExpirySweeper sweeper = new ExpirySweeper(
             new ExpireGamesUseCase(games, new SessionRegistry(4), noStreams, RETENTION),
             time,
-            new FixedWindowBuckets(time));
+            new FixedWindowBuckets(time),
+            new OperationalEvents());
 
     private void insertGame(String id) {
         games.insert(
@@ -82,5 +86,36 @@ class ExpirySweeperTest {
         sweeper.tick();
         insertGame("g2");
         assertThatThrownBy(() -> insertGame("g3")).isInstanceOf(CapacityExceededException.class);
+    }
+
+    @Test
+    void aFailingTickStillReportsTheGamesItForgotAndThenFails() {
+        insertGame("g1");
+        List<String> reported = new ArrayList<>();
+        ExpirySweeper failing = new ExpirySweeper(
+                new ExpireGamesUseCase(
+                        games,
+                        new SessionRegistry(4),
+                        new SnapshotPublisher() {
+                            @Override
+                            public void publish(String gameId, Seat seat, SnapshotView view) {}
+
+                            @Override
+                            public void unavailable(String gameId, Seat seat) {
+                                throw new IllegalStateException("stream hub failed");
+                            }
+                        },
+                        RETENTION),
+                time,
+                new FixedWindowBuckets(time),
+                new OperationalEvents() {
+                    @Override
+                    public void gameExpired(String gameId) {
+                        reported.add(gameId);
+                    }
+                });
+        time.advance(IDLE.plus(RETENTION));
+        assertThatThrownBy(failing::tick).isInstanceOf(IllegalStateException.class);
+        assertThat(reported).containsExactly("g1");
     }
 }
