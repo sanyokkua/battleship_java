@@ -82,6 +82,23 @@ public final class SecurityHttp {
     /** A POST carrying a fresh anti-forgery token, the given session cookie and an arbitrary body and Content-Type. */
     public Reply postBody(String path, String sessionCookie, String contentType, String body, String... headers)
             throws Exception {
+        return postPublished(path, sessionCookie, contentType, HttpRequest.BodyPublishers.ofString(body), headers);
+    }
+
+    /** As {@link #postBody} but sent with no declared length, so the body travels chunked. */
+    public Reply postChunked(String path, String sessionCookie, String contentType, byte[] body, String... headers)
+            throws Exception {
+        return postPublished(
+                path,
+                sessionCookie,
+                contentType,
+                HttpRequest.BodyPublishers.ofInputStream(() -> new java.io.ByteArrayInputStream(body)),
+                headers);
+    }
+
+    private Reply postPublished(
+            String path, String sessionCookie, String contentType, HttpRequest.BodyPublisher body, String... headers)
+            throws Exception {
         String token = freshToken();
         String cookies = XSRF_COOKIE + "=" + token + (sessionCookie == null ? "" : "; " + sessionCookie);
         String[] all = new String[headers.length + 4];
@@ -90,7 +107,7 @@ public final class SecurityHttp {
         all[2] = "Content-Type";
         all[3] = contentType;
         System.arraycopy(headers, 0, all, 4, headers.length);
-        return send("POST", path, cookies, HttpRequest.BodyPublishers.ofString(body), all);
+        return send("POST", path, cookies, body, all);
     }
 
     /** The Cookie header text for the session cookie a reply issued, or null when it issued none. */

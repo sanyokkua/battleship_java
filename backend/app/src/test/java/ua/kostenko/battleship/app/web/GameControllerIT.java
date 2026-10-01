@@ -122,7 +122,7 @@ class GameControllerIT {
                         "X-Forwarded-Host",
                         "evil.example",
                         "Origin",
-                        "https://evil.example");
+                        properties.publicBaseUrl());
 
         assertThat(spoofed.status()).isEqualTo(201);
         assertThat(spoofed.json().get("invitationUrl").asText())

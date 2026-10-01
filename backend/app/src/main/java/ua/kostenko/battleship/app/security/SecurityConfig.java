@@ -58,6 +58,11 @@ class SecurityConfig {
                 .exceptionHandling(handling ->
                         handling.accessDeniedHandler((request, response, denied) -> ProblemAdvice.writeProblem(
                                 request, response, ProblemCode.REQUEST_SECURITY_REJECTED, wireMapper)))
+                // Refused before the anti-forgery check, size, then site; both run before the rate limit, so a refusal
+                // never spends quota.
+                .addFilterBefore(new SiteIsolationFilter(properties.publicBaseUrl(), wireMapper), CsrfFilter.class)
+                .addFilterBefore(
+                        new RequestSizeFilter(properties.maxRequestBodyBytes(), wireMapper), SiteIsolationFilter.class)
                 .addFilterAfter(new SessionCookieFilter(sessions, wireMapper), CsrfFilter.class)
                 .addFilterAfter(
                         new RateLimitFilter(buckets, properties.rateLimit(), wireMapper), SessionCookieFilter.class)
