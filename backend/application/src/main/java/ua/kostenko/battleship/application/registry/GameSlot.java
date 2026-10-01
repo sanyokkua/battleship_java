@@ -19,7 +19,7 @@ public final class GameSlot {
     private final String gameId;
     private final String publicBaseUrl;
     private GameState state;
-    private final String hostSessionDigest;
+    private String hostSessionDigest;
     private String guestSessionDigest;
     private String invitationDigest;
     private String unusedInvitationSecret;
@@ -109,6 +109,12 @@ public final class GameSlot {
 
     public void guestSessionDigest(String digest) {
         guestSessionDigest = digest;
+    }
+
+    /** Forgets the seat's session, so that browser reads the game as unavailable from now on. */
+    public void clearSeat(Seat seat) {
+        if (seat == Seat.HOST) hostSessionDigest = null;
+        else guestSessionDigest = null;
     }
 
     public String invitationDigest() {

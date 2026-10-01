@@ -7,9 +7,11 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import ua.kostenko.battleship.app.config.BattleshipProperties;
+import ua.kostenko.battleship.application.port.TimeSource;
 import ua.kostenko.battleship.application.registry.GameRegistry;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
 import ua.kostenko.battleship.application.usecase.ExpireGamesUseCase;
+import ua.kostenko.battleship.application.usecase.LeaveGameUseCase;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
@@ -29,6 +31,12 @@ public class BattleshipApplication {
     ExpireGamesUseCase expireGamesUseCase(
             GameRegistry games, SessionRegistry sessions, BattleshipProperties properties) {
         return new ExpireGamesUseCase(games, sessions, Duration.ofSeconds(properties.resultRetentionSeconds()));
+    }
+
+    @Bean
+    LeaveGameUseCase leaveGameUseCase(
+            GameRegistry games, SessionRegistry sessions, TimeSource time, BattleshipProperties properties) {
+        return new LeaveGameUseCase(games, sessions, time, Duration.ofSeconds(properties.resultRetentionSeconds()));
     }
 
     public static void main(String[] args) {

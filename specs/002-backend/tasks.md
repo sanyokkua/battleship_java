@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.3.0 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001 through T020 are complete; T021 is next.
+**Status**: in progress. T001 through T021 are complete; T022 is next.
 **Contract amendments**: the four changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -480,7 +480,7 @@ no HTTP anywhere.
     **Deferred, with owner:** assertion (6) covers four moving and four non-moving events actually reachable now; reads, stream open/reconnect and keep-alive markers are asserted in T025 / T029 / T031. `SessionRegistry` cap is derived as `max-concurrent-games * 2` in `BattleshipApplication` (no R52 key); promote to a property if one is added. A FINISHED/ABANDONED slot with no `terminalRetentionDeadline` is never forgotten — T021's abandon path must set it. Open decision: `PresenceUseCase` on a terminal game returns current state (200 no-op) rather than `action-not-allowed`; spec is silent.
   - **Depends on** T019
 
-- [ ] T021 [US6] Implement leaving in `backend/application/src/main/java/ua/kostenko/battleship/application/usecase/LeaveGameUseCase.java`
+- [x] T021 [US6] Implement leaving in `backend/application/src/main/java/ua/kostenko/battleship/application/usecase/LeaveGameUseCase.java`
   - **Delivers** Four branches, and nothing else (R16):
     - **`WAITING`** — the host leaves: the game is **removed outright**, not shown as abandoned. `ABANDONED` is reachable only from `PLACEMENT` (data-model.md § *State machine*).
     - **`PLACEMENT`** — either player leaves: the state is replaced with `ABANDONED`, **nothing is revealed** (neither placement, ever), and no statistics are produced.
@@ -493,6 +493,8 @@ no HTTP anywhere.
   - **Proof** `LeaveGameTest` uses the real application game/session registries; every refusal asserted through `ApplicationFailure.code()`, because `application` has no HTTP; the status mapping is T027 `CommandControllerIT` (7). (1) `WAITING` host leave removes the game: the slot is gone, the semaphore permit released, and the host now reads `game-unavailable`; (2) `PLACEMENT` leave by **each** player in turn yields `ABANDONED`, and projecting it for either seat reveals **no part** of the opponent's placement and carries no statistics; (3) `PLAYING` leave is refused `action-not-allowed` for **both** seats, with the state returned by identity and the version untouched, while `RESIGN` is accepted for both; (4) after `FINISHED`, one player's leave **succeeds with no payload**, that browser then reads `game-unavailable` **including on a repeated leave**, and the **other** player still reads the full result; (5) the game id leaves `liveGames` in every branch that ends access, and a browser at `max-live-games-per-browser` can immediately create a new game afterwards.
   - **Verify** `cd backend && ./mvnw -q -pl application -am test -Dtest=LeaveGameTest`
   - **Mutation** Move a `WAITING` game to `ABANDONED` instead of removing it; assertion (1) must fail. Clear both digests on a post-game leave; assertion (4)'s "other player" case must fail.
+  - **Evidence (2026-10-01)** Task branch `feature/002-backend--t021` from `feature/002-backend` at `12cf648`. `LeaveGameTest` (6 tests) written first (compile-red), then `GameState.abandoned()`, `GameSlot.clearSeat(Seat)` (host digest no longer final), `LeaveGameUseCase`, and its bean in `BattleshipApplication`. Mutations each failed the named assertion and were reverted: `WAITING` → `ABANDONED` instead of removal (`waitingHostLeaveRemovesTheGameAndFreesPermitAndAllocation`, `games.gameIds()` assertion); both digests cleared on a post-game leave (`finishedLeaveClearsOnlyTheLeaversSeatAndIsRepeatSafe` and `abandonedLeaveClearsOnlyTheLeaversSeat` error `game-unavailable` for the other player); `PLACEMENT` leave not clearing the leaver's seat (`placementLeave…` and `abandonedLeave…` fail). Independent review (fresh Opus) found and this task fixed: (B1) a `PLACEMENT` leaver kept access — now cleared, so that browser reads `game-unavailable` and a repeat leave is 404 (contract: "leave for good"); (B2) a `WAITING` leave left the slot joinable between lock release and `games.remove` — the slot is now dead under the lock (host seat and invitation cleared), so a racing join gets `invitation-unavailable` and a repeat leave `game-unavailable`. `cd backend && ./mvnw -q verify` exit 0.
+    **Deferred, with owner:** the WAITING leave/join race (B2) has no deterministic test — it needs an interleaving hook the real registries do not expose; the guard is the under-lock clearing. T027 maps `ApplicationFailure` to 204/404/409 and calls `LeaveGameUseCase`. The T020 note that an abandoned slot without `terminalRetentionDeadline` is never forgotten is resolved: the `PLACEMENT` branch sets it.
   - **Depends on** T020
 
 **Checkpoint**: proof areas 3, 4, 5 and 6 are owned and green. A whole game runs through the use cases

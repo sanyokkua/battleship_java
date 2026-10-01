@@ -37,6 +37,10 @@ public record GameState(
         return new GameState(rulesetId, phase, version + 1, host, guest, turn, lastShot, outcome, timeline);
     }
 
+    public GameState abandoned() {
+        return new GameState(rulesetId, Phase.ABANDONED, version + 1, host, guest, null, lastShot, null, timeline);
+    }
+
     public GameState withGuest(String guestName, Instant now) {
         if (guest != null || phase != Phase.WAITING) {
             throw new IllegalStateException("guest can join only once while waiting");

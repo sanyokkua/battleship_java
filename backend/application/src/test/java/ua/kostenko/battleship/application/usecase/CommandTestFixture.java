@@ -54,6 +54,7 @@ final class CommandTestFixture {
     final PresenceUseCase presence;
     final ExpireGamesUseCase expire;
     final ReplaceInvitationUseCase replace;
+    final LeaveGameUseCase leave;
 
     CommandTestFixture() {
         this(new SnapshotProjector());
@@ -100,6 +101,7 @@ final class CommandTestFixture {
         commands = new CommandUseCase(games, sessions, time, new SeededRandomSource(42), projector, idle, retention);
         presence = new PresenceUseCase(games, sessions, time, projector, idle, presenceInterval, retention);
         expire = new ExpireGamesUseCase(games, sessions, retention);
+        leave = new LeaveGameUseCase(games, sessions, time, retention);
     }
 
     /** A hosted game still waiting for its guest; {@code secret} is the unused invitation secret. */
