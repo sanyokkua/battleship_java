@@ -11,11 +11,6 @@ import java.util.List;
 
 /** Real-server HTTP helper for the security ITs: manual cookies, no cookie jar, every response recorded. */
 public final class SecurityHttp {
-    static {
-        // Lets a test set the Host header to prove the service never reads it; read once when the client class loads.
-        System.setProperty("jdk.httpclient.allowRestrictedHeaders", "host");
-    }
-
     public static final String SESSION_COOKIE = "__Host-battleship_session";
     public static final String XSRF_COOKIE = "XSRF-TOKEN";
 

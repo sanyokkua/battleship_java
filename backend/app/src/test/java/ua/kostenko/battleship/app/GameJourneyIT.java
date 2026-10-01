@@ -296,7 +296,7 @@ class GameJourneyIT {
         String result = shot.get("result").asText();
         assertThat(reply.at("/opponentBoard/grid/" + target[0] + "/" + target[1])
                         .asText())
-                .isEqualTo(result.equals("MISS") ? "MISS" : result.equals("HIT") ? "HIT" : "SUNK");
+                .isEqualTo(result);
         assertTurnAfter(reply, result, game.ruleset());
         if (result.equals("SUNK")) {
             assertWaterAroundSunk(reply, shot.get("sunkShipId").asText(), game.ruleset());

@@ -355,6 +355,5 @@ class CommandControllerIT {
         Reply leaveBodyless =
                 guest.http().postWithToken(guest.path("leave"), guest.http().freshToken(), guest.cookie());
         assertThat(leaveBodyless.status()).isEqualTo(204);
-        assertThat(leaveBodyless.status()).isNotEqualTo(415);
     }
 }
