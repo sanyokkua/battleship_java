@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.3.0 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001 through T021 are complete; T022 is next.
+**Status**: in progress. T001 through T022 are complete; T023 is next.
 **Contract amendments**: the four changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -524,7 +524,7 @@ Validation and Jackson bind straight onto them. Hand-writing any wire type is a 
 **Checkpoint**: a whole game is playable over HTTP with `curl` exactly as quickstart.md § *Smoke*
 describes.
 
-- [ ] T022 Map every failure to one problem document in `backend/app/src/main/java/ua/kostenko/battleship/app/web/ProblemAdvice.java`
+- [x] T022 Map every failure to one problem document in `backend/app/src/main/java/ua/kostenko/battleship/app/web/ProblemAdvice.java`
   - **Delivers** **Decision A3**: the wire type is the **generated `Problem`**, not a hand-written `ProblemDto`. `research.md` D19 and `plan.md` § *Failures* already say so (A3 is applied, not pending). D19's actual rejection — Spring's `ProblemDetail`, whose `type`/`instance` defaults and dynamic properties the contract does not define — still stands and is not reintroduced.
     One `@RestControllerAdvice` maps T018's framework-free `ApplicationFailure` to a generated `Problem` served as `application/problem+json`, using **exactly** the contract's code-to-status table (R49). It converts the failure's code string to the generated `ProblemCode`, carries its optional validation pointer/rule or retry delay, and never serializes exception text. T019 wraps domain `Rejection` as `ApplicationFailure`; the domain enum stays limited to game rules. The eighteen mappings:
 
@@ -552,7 +552,7 @@ describes.
     **`ProblemProbeController` is a test fixture, not a mock of the system under test.** No contract endpoint exists yet — T023–T027 and T036 deliver them — so the probe is what gives the advice something to advise on. It is a `@TestConfiguration`-registered controller, visible only to `ProblemMappingIT`, with one path per application failure it must raise and one path that binds a generated `CreateGameRequest` body (available since T002). The **system under test** is the real `ProblemAdvice` + `JacksonConfig` + `CacheControlFilter` + `CorrelationIdFilter`; the probe only supplies the throw sites and a body to bind. Once the real controllers exist, T038 `WireConformanceIT` re-asserts every failure body against the contract's response components over the real operations, so the probe is never the last word on any of them.
   - **Proof** `ProblemMappingIT` — (1) each of the **18** codes is produced by a scenario or a directly thrown application failure and answers with its table status and `application/problem+json`; (2) an unknown field in each of `CreateGameRequest`, `JoinGameRequest` and `CommandRequest` yields 422 with rule `UNKNOWN_FIELD` and a JSON Pointer naming that field; (3) a Bean Validation failure yields 422 with the right rule and pointer (`/command/anchor/rowIndex` for an out-of-range coordinate); (4) malformed JSON yields 400 `malformed-request`; (5) every problem body carries a 16-hex `correlationId` that also appears in the log record for that request; (6) **redaction** — a failure triggered by a request carrying a session cookie, an invitation secret and a full board finds none of those three strings, nor any stack frame or exception class name, anywhere in the response body; (7) every response, success and failure alike, carries `Cache-Control: no-store`. Assertions (2), (3), (4) and (6) run against `ProblemProbeController`'s paths, which is the only place a request body can be bound at this point in the list.
     Not asserted here: the `getHealth` 503 exception — that endpoint does not exist until T023 and cannot answer 503 until T036, which is where that assertion lives. T023 asserts the cheap counterpart (health 200 is a `Health` body).
-  - **Verify** `cd backend && ./mvnw -q -pl app -am verify -Dit.test=ProblemMappingIT`
+  - **Verify** `cd backend && ./mvnw -q -pl app -am verify -Dit.test=ProblemMappingIT -Dfailsafe.failIfNoSpecifiedTests=false`
   - **Mutation** Map `game-expired` to 404 instead of 410; assertion (1) must fail. Set `FAIL_ON_UNKNOWN_PROPERTIES=false`; assertion (2) must fail. Put `exception.getMessage()` into `detail`; assertion (6) must fail.
   - **Depends on** T002, T006, T018
 

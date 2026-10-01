@@ -60,6 +60,8 @@
               <invokerPackage>ua.kostenko.battleship.app.web</invokerPackage>
               <configOptions>
                 <useJakartaEe>true</useJakartaEe>
+                <useOneOfDiscriminatorLookup>true</useOneOfDiscriminatorLookup>
+                <useBeanValidation>true</useBeanValidation>
                 <serializationLibrary>jackson</serializationLibrary>
                 <dateLibrary>java8</dateLibrary>
                 <enumPropertyNaming>MACRO_CASE</enumPropertyNaming>
