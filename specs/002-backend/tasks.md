@@ -7,7 +7,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.3.0 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*).
-**Status**: in progress. T001 through T027 are complete; T028 is next.
+**Status**: in progress. T001 through T028 are complete; T029 is next.
 **Contract amendments**: the four changes spec.md § *Out of scope* authorises are **already applied
 on this feature branch** — the `Phase.PLAYING` description (R11's ready-order rule), the
 `GameSnapshot.version` description, and five lines of 3.1-only syntax normalized for the generator
@@ -627,7 +627,7 @@ describes.
   - **Mutation** Return a body from `leaveGame`; assertion (7) must fail. Map an out-of-board coordinate to `placement-out-of-bounds`; assertion (3) must fail. Answer `game-unavailable` for a real game and a distinct body for an unknown id; `AuthorizationIT`'s S6 assertions must fail.
   - **Depends on** T026, T019, T020, T021
 
-- [ ] T028 [US4] [US5] Prove a whole game over the wire in `backend/app/src/test/java/ua/kostenko/battleship/app/GameJourneyIT.java`
+- [x] T028 [US4] [US5] Prove a whole game over the wire in `backend/app/src/test/java/ua/kostenko/battleship/app/GameJourneyIT.java`
   - **Delivers** The server-level HTTP journey that success criteria S1 and S3 have no other owner for, plus the reusable fixtures T038 builds on. It is **not** a browser journey — those belong to `004-integration` (spec.md § *Out of scope*). Whatever gaps this journey exposes in T023–T027 are fixed **in this task**, which is what makes it a deliverable and not a test-only task.
     The journey is the automated form of quickstart.md § *Smoke: a whole game over the wire*: two cookie jars, `GET /meta` for the CSRF token, `createGame`, take the `#invite=` fragment, `joinGame` from the second jar, then drive both sides through `PLACE_FLEET_RANDOMLY`, `READY` and `FIRE` to a finished game.
   - **Covers** S1, S3 · R01 (the ten synchronous operations exercised together; `streamGameEvents` joins them in T029-T031) · plan.md § *Validation* row "A whole game over the wire, and reload recovery"
