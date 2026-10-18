@@ -1,5 +1,6 @@
 <!--
 Sync Impact Report
+- 1.3.1 -> 1.3.2 (2026-10-18): PATCH. Runtimes are pinned by major version only (Java 25, Node 24, newest patch); runtime checks verify the major alone. Motivation: owner decision while planning `003-frontend` — the machine runs Node 24.21.0 against the recorded 24.19.0, and patch levels move during development. Modified section: Scope and Technical Baseline. Dependency versions stay exact in lockfiles; the Maven Wrapper and Spring Boot pins are unchanged. AGENTS.md and agent memory updated in the same change.
 - 1.3.0 -> 1.3.1 (2026-10-18): PATCH. Folded the planned `004-integration` feature into `003-frontend` by owner decision, so the frontend is tested against the real backend instead of recorded data or a fake engine. `003-frontend` now owns the root integration layer and `scripts/verify.sh`. Modified sections: VII (gate owner wording), Development Workflow and Quality Gates (feature order). No principle added or removed. AGENTS.md and agent memory updated in the same change.
 - 1.2.1 -> 1.3.0 (2026-09-29): MINOR. Added a mandatory task-branch lifecycle: verify branch/worktree state at task start, isolate tasks expected to need multiple commits, commit each completed task, and squash-merge task branches into their recorded parent feature branch. `rewrite_prod_ready` remains reserved for completed feature-level integration. Motivation: make task completion and branch integration explicit and verifiable across sessions. Updated AGENTS.md in the same change.
 - Version change: 1.2.1 -> 1.3.0
@@ -268,10 +269,13 @@ one root integration layer:
   they are not a fourth application product or a root npm workspace.
 
 The primary implementation languages are Java and TypeScript. The approved
-baseline is Java 25 LTS at patch 25.0.4 with Maven 3.9.16 Wrapper and Spring
-Boot 4.1.1, plus Node 24.19.0 LTS/npm with the approved React, Vite, TypeScript, contract,
+baseline is Java 25 LTS with Maven 3.9.16 Wrapper and Spring Boot 4.1.1, plus
+Node 24 LTS/npm with the approved React, Vite, TypeScript, contract,
 testing, accessibility, and browser tooling versions recorded by the owning
-feature plan and lockfile. Dependencies MUST use exact versions in the owning
+feature plan and lockfile. Runtimes (Java, Node) are pinned by major version
+only: use the newest available patch of that major, and runtime checks MUST
+verify the major version alone, because minor and patch releases change
+during development. Dependencies MUST use exact versions in the owning
 lockfile and MUST pass compatibility checks before acceptance. A later version
 or framework substitution requires evidence and an approved plan change; it
 MUST NOT be introduced as an incidental upgrade.
@@ -347,4 +351,4 @@ scope, reason, risk, owner, expiry or removal condition, and compensating proof;
 an undocumented exception is not accepted. Compliance review does not replace
 behavioral tests or the local verification commands.
 
-**Version**: 1.3.1 | **Ratified**: 2026-08-20 | **Last Amended**: 2026-10-18
+**Version**: 1.3.2 | **Ratified**: 2026-08-20 | **Last Amended**: 2026-10-18

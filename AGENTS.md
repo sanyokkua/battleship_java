@@ -7,7 +7,9 @@ implementation that currently lives on `master`. Branch `rewrite_prod_ready` mus
 branch.
 
 **Stack.** Target modules are API, backend, and frontend, but their concrete technologies, boundaries, and verification
-commands are defined by the approved spec and technical plan for the active feature.
+commands are defined by the approved spec and technical plan for the active feature. Runtimes are pinned by major
+version only (Java 25, Node 24, newest patch); runtime checks verify the major alone (constitution v1.3.2). npm and
+Maven dependencies stay exact.
 
 **State.** Current workflow state lives in the active Spec Kit feature artifacts and the prerequisite checker. Do not
 assume an application module, build, test, lint, or local-run command exists until the approved plan introduces it.

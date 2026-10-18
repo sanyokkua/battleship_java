@@ -1,0 +1,300 @@
+# Implementation Plan: Battleship Frontend and Local Integration
+
+**Branch**: `feature/003-frontend` · **Spec**: [spec.md](spec.md) · **Contract**: [`contracts/openapi.yaml`](../../contracts/openapi.yaml) · **Date**: 2026-10-18
+
+## Summary
+
+A static React app in `frontend/` that renders the server's `GameSnapshot` and sends only the actions the
+snapshot allows, plus a root integration layer in `scripts/` that runs it against the packaged backend in
+development, production-style and verification modes. No client rules, no fake engine, no recorded game data:
+every game behaviour is proven by browser journeys against the real JAR (R53). Four fixes to the contract and
+backend ship with it (R57). Decisions: [research.md](research.md). Client state:
+[data-model.md](data-model.md). Routes, storage and commands: [contracts/ui-surface.md](contracts/ui-surface.md).
+Runbook: [quickstart.md](quickstart.md).
+
+## Assurance level: Standard
+
+Owner decision 2026-10-18 (AGENTS.md rule 2). Evidence is the R54 unit list and the R55 journey matrix, and
+nothing beyond them. No pixel matching, coverage gate or cross-browser matrix.
+
+## Layout
+
+```text
+frontend/                      standalone npm project; no root workspace
+├── package.json  package-lock.json  vite.config.ts  tsconfig*.json  eslint.config.js  .prettierrc
+├── vitest.config.ts  playwright.config.ts  index.html  public/ (manifest, icons)
+├── src/
+│   ├── main.tsx               fragment strip, then render (R08)
+│   ├── app/                   router, shell, status bar, error boundary
+│   ├── contract/generated/    openapi-typescript output — git-ignored build output
+│   ├── gateway/               GameGateway, EventStream, decode, problem → message
+│   ├── session/               snapshot store, action slot, presence
+│   ├── screens/               home create join waiting placement gameplay results unavailable
+│   ├── components/            Board, Dialog, Qr, Statistics, ConnectionStatus
+│   ├── i18n/                  translate.ts, en.ts, uk.ts
+│   ├── preferences/  feedback/ (audio, haptics)  pwa/  styles/ (tokens)
+├── tests/                     vitest — R54 items only
+└── e2e/                       Playwright journeys + stack fixture
+scripts/   install.sh  stack.mjs  dev.sh  local-prod.sh  verify.sh
+config/local.env.example
+docs/local-operation.md
+```
+
+| Area | Owns | Must not contain |
+|---|---|---|
+| `gateway/` | Every HTTP and SSE call, CSRF, decode, problem mapping (Constitution III: one gateway) | UI, game decisions |
+| `session/` | The latest accepted snapshot per open game, connection state, the in-flight action | Rules, derived legality, wire copies |
+| `screens/`, `components/` | Rendering a snapshot; offering `allowedActions` | `fetch`, `EventSource`, storage |
+| `scripts/` | Process orchestration and the gate | Application code, a root `package.json` |
+
+## Stack
+
+Runtimes by major only (Constitution v1.3.2): Node 24, Java 25. Exact npm pins, all already proven together on
+this machine in `/Users/ok/Development/GitHub/solitaire` (research D1):
+
+`react`/`react-dom` 19.3.0 · `vite` 8.3.0 · `@vitejs/plugin-react` 6.1.1 · `typescript` 6.0.3 ·
+`vite-plugin-pwa` 1.3.0 · `workbox-window` 7.4.1 · `vitest` 5.0.1 · `jsdom` 30.1.1 ·
+`@testing-library/react` 16.3.3 · `@testing-library/user-event` 14.6.7 · `@testing-library/jest-dom` 7.0.1 ·
+`@playwright/test` 1.63.0 · `@axe-core/playwright` 4.13.0 · `eslint` 10.11.0 · `@eslint/js` 10.0.1 ·
+`typescript-eslint` 8.70.1 · `eslint-plugin-react-hooks` 7.1.1 · `eslint-config-prettier` 10.1.8 ·
+`prettier` 3.9.8 · `@types/react`/`@types/react-dom` 19.3.0 · `@types/node` 26.6.2.
+Added for this feature: `openapi-typescript` 7.13.0 (same as `contracts/`), `openapi-fetch` 0.17.0, `qrcode`
+1.5.4 + `@types/qrcode` 1.5.6 (master's QR library, D7).
+
+**Deliberately not added:** TanStack Query (D2), Zod or any hand-written wire schema (D3, R56), a router library
+(D4), an i18n library (D5), `eslint-plugin-jsx-a11y` (ESLint 10 support unverified; axe proves S4), MSW or any
+fixture/fake backend (R53), Firefox/WebKit projects (spec Assumption 2).
+
+## Runtime design
+
+### Boot and routing (R06, R08, R38)
+
+`main.tsx` reads `#invite=` on `/join/:gameId` into a module-scoped variable and calls `history.replaceState`
+with the fragmentless URL **before** `createRoot().render`. A History-API router serves `/`, `/create`,
+`/join/:gameId`, `/games/:gameId`; anything else renders Home. Reload of a game route rebuilds from `getGame`.
+
+### Gateway (R03, R13, R22, R23, R56)
+
+- Types and enum value arrays only from `src/contract/generated/api.ts` (`openapi-typescript --enum-values`; a
+  `.ts` file because the arrays are runtime values). A `generate` script runs before every script that reads
+  `src/` (`predev`, `prebuild`, `pretypecheck`, `prelint`, `pretest`); output never committed. Calls through
+  `openapi-fetch`, same-origin credentials.
+- CSRF: `getMeta` before the first POST; a `403 request-security-rejected` refreshes meta and resends that request
+  once — create and join included (R03). A `createGame` that ends in a network failure or an unreadable answer is
+  an unknown outcome and is never resent (R13); a problem answer (422, 429, 503, `browser-game-limit`) is a definite
+  refusal with its own message (R22).
+- Decode sniff: JSON content type, `JSON.parse`, and presence of required keys from a list typed
+  `as const satisfies readonly (keyof GameSnapshot)[]`. Applies to HTTP bodies and SSE `data`. Failure → transport
+  failure; the value never reaches the store (R23). This checks readability, not the schema (R56).
+- Problems: `Record<ProblemCode, MessageKey>` (a removed entry fails typecheck) plus a status-class fallback for
+  codes the client does not know — the contract declares its enums open. `retryAfterSeconds` disables the retry
+  control until it elapses (R22). Unknown `allowedActions` values are dropped.
+
+### Live stream (R24–R26)
+
+One `EventSource` per open game. Before opening, the previous instance is closed and its late events ignored.
+`closed`/`REPLACED` → "open in another tab", never reopened. `closed`/`GAME_UNAVAILABLE` → one `getGame`, no
+reopen. `error` with `readyState === CLOSED`, or the tab becoming visible → `getGame`; reopen if it succeeds.
+While reconnecting, a failed `getGame` without a definite problem (network error, proxy 502, unreadable answer)
+is retried with backoff (1, 2, 4, then every 8 s), and a `429`/`503` after its `retryAfterSeconds`, until it
+succeeds or returns 401/404/410 — the contract's
+"poll every few seconds" fallback. Heartbeats send nothing.
+
+### Session store (R01, R02, R05, R16, R19, R21)
+
+`useSyncExternalStore` store per open game: [data-model.md](data-model.md). One version gate for every
+snapshot source (command, presence, invitation, `getGame`, SSE): higher version replaces; equal version merges
+only the fields the contract excludes from `version` (`expiresAt`, `serverTime`, and — after fix 4 below —
+`invitationUrl`/`invitationExpiresAt`); lower is dropped. One action slot: a new `commandId` per user action, the
+same one on retry after a lost answer; controls disabled while it is pending. The slot settles only on that
+action's own HTTP answer — an SSE snapshot updates the board but leaves a lost action in *checking* until the
+player retries (R19, R24). Presence does not use the action slot:
+visible tab, `SEND_PRESENCE` allowed, every `limits.presenceIntervalSeconds` from `getMeta`; the timer restarts
+(does not fire) on visibility return or reconnect.
+
+### Outcome → screen (R07, R12, R15, R20, R27, R28)
+
+| Server answer | Client outcome |
+|---|---|
+| `410 game-expired` | Session unavailable — "game expired"; forget remembered id |
+| `401 session-required`, `404 game-unavailable` | Session unavailable — "no longer available (ended, left, or server restarted)"; forget id |
+| `404` after the caller's own leave | Leave succeeded → Home |
+| join `409 invitation-unavailable` | Invitation unavailable (R15) |
+| `409 browser-game-limit` (new, R57) | "You already have a game" + Return to your game if an id is remembered, else "play again once it expires" |
+| other `409` on a command | `getGame`, then the worded reason (R20) |
+| `429`, `503` | Calm wait message with `retryAfterSeconds`; no automatic retry |
+| Host `WAITING` snapshot without `invitationUrl` | Invitation expired, sharing unavailable (R12) |
+
+Replace invitation is offered whenever `NEW_INVITATION` is allowed, expired or not, and sent only after the host
+confirms the current link stops working (R12). The client reads `getGame` once at `invitationExpiresAt`
+(offset-corrected) so the server's answer, not the clock, shows the expiry. Countdowns display server times
+corrected by the `serverTime` offset; they never decide expiry.
+
+### Leaving, layouts, dialogs (R28–R30, R39, R41)
+
+- Leave in `WAITING`/`PLACEMENT`: confirmation dialog → `leaveGame`; Home after `204` or `404` (already left).
+  In `PLAYING`: the dialog says it means resigning → `RESIGN` command. Leave results: `leaveGame` from a finished
+  or abandoned result → Home; forget the remembered id.
+- Layout mode from container width and orientation (`landscape` when height < 520 px and width > height — it
+  wins over the others; else `desktop` ≥ 960 px wide; else `portrait`): portrait shows a `role="tablist"` board switch with turn and action status
+  outside the tab panels; landscape uses compact cell size. CSS only, no horizontal overflow (R39).
+- One `Dialog` component on native `<dialog>` + `showModal()` (focus containment, Escape → `cancel`), labelled by
+  its heading, returns focus to the opener; Escape is disabled where dismissal is unsafe (pending action) (R41).
+
+### Placement, play, results (R17, R18, R21, R31, R32, R36)
+
+Cell → ship-action dialog (unplaced ship + orientation; or move/rotate/remove for a placed ship). Move and rotate
+are one `PLACE_SHIP`. Drag uses pointer events and sends the same `PLACE_SHIP`; the anchor is clamped to the board
+grid before sending, the dialog path stays. Fire only on `UNKNOWN` opponent cells while `FIRE` is allowed.
+Announcements and sound/haptics trigger once per new `lastShot` (`by` + `target`). Results render
+`outcome`, both boards and `statistics` as supplied.
+
+### Preferences, i18n, feedback, PWA (R32–R35, R42–R44)
+
+- Translator, storage wrapper and theme controller adapted from solitaire `src/i18n/translate.ts`,
+  `src/features/persistence/storageGateway.ts`, `src/app/themeController.ts` (Redux removed). Ruleset and ship
+  names by id with raw-id fallback (R35). Theme tokens from the mockup's CSS variables.
+- Audio: master `frontend/src/audio/audioRecipes.ts` + `AudioFeedback.ts` (WebAudio, swallow-all failures). Haptics:
+  `navigator.vibrate` behind a capability check. Both no-op on denial.
+- PWA: solitaire `src/pwa/` (`registerType: 'prompt'`, update applied only after consent, R44); workbox precaches
+  static assets only, `navigateFallbackDenylist: [/^\/api\//]`, no runtime caching (R42). Offline: `navigator.onLine`
+  + `online`/`offline` events → "network required", game actions disabled (R43).
+
+### Contract and backend fixes (R57)
+
+1. **`browser-game-limit` (409)** — new `ProblemCode` on `createGame` and `joinGame`, with an example, in
+   `contracts/openapi.yaml`. Backend: `SessionRegistry.admitGame` (`SessionRegistry.java:58-59`) throws a distinct
+   exception instead of `CapacityExceededException`; `CreateGameUseCase` (`:99`) and `JoinGameUseCase` (`:118`) map it
+   to the new code; `ProblemAdvice` maps it to 409 with no `Retry-After`. `createGame` gains a `409` response
+   (it has none today). Dependents updated in the same change: `CapacityIT` (its header, `:28`, says every ceiling
+   answers 503) and `specs/002-backend/spec.md` R62/S11 wording. Proof: `CapacityIT` expects 409
+   `browser-game-limit` for the cap and still 503 for a full server; `WireConformanceIT` covers the example.
+2. **Forked test JVM lingers 30 s** — Failsafe dumpstream: "kill self fork JVM … 30 seconds after System.exit(0)";
+   shutdown hook waits in Tomcat `GracefulShutdown`. Diagnose the cause first (hypothesis: ITs inheriting
+   `server.shutdown: graceful` with a 5 s phase timeout), fix at the root without weakening `GracefulShutdownIT`.
+   Proof: a clean `./mvnw -q verify` leaves no "kill self fork JVM" line in `app/target/failsafe-reports/*.dumpstream`.
+3. **Actuator on the public port** — `spring-boot-starter-actuator` (`app/pom.xml:169`) has no use and no
+   `management.*` config, contradicting 002 plan ("Actuator stays off the public surface"). Confirm
+   `/actuator/health` answers, then remove the dependency (or disable web exposure if something needs it).
+   Proof: `PackagedArtifactIT` asserts `404` on `/actuator/health`. Agent-proposed; owner approved 2026-10-18.
+4. **Invitation lapse is invisible to `version`** — `GameSlot.contextFor` (`GameSlot.java:144-153`) drops
+   `invitationUrl` once its deadline passes, but no version bump or push happens, while `GameSnapshot.version`
+   (`openapi.yaml:1029-1035`) claims it grows on every view change. Fix in the contract only (D16): `version`
+   also excludes `invitationUrl` and `invitationExpiresAt`, which — like `expiresAt` — are always current. The
+   backend already behaves so; no backend change; `contracts/README.md` gets a matching note. Delivered with the waiting-room task. Proof: `npm run check`;
+   the waiting journey on the short-lifetime stack shows "invitation expired" without a reload.
+
+### Local topology (R45–R52)
+
+| Mode | Frontend | Backend | `BATTLESHIP_PUBLICBASEURL` |
+|---|---|---|---|
+| Development (`scripts/dev.sh`) | `vite` on `localhost:5173`, `strictPort` | JAR on `:8080` | default `http://localhost:5173` |
+| Production-style (`scripts/local-prod.sh`) | `vite preview` of `dist/` on `localhost:4173`, `strictPort` | JAR on `:8080` | `http://localhost:4173` |
+| Journeys | `vite preview` per stack: default `4173`, short-lifetime `4174`, lowered-limit `4175`, restart `4176` | JAR per stack: `8080`, `8081`, `8082`, `8083` | matching frontend origin |
+
+`vite.config.ts` reads `FRONTEND_PORT` and `BACKEND_PORT` (defaults 5173/4173 and 8080).
+
+- Both Vite servers proxy `/api` to `http://127.0.0.1:<backend port>` (SSE streamed, no compression); `vite
+  preview` serves `index.html` for deep links (D10). The backend accepts unsafe requests only from that exact
+  origin, so `localhost` is used everywhere, never `127.0.0.1`, for the page.
+- `scripts/stack.mjs` (Node standard library only): starts the JAR with env overrides and the frontend server,
+  waits for `GET /api/v1/health` `ready`, prefixes and redacts output (drops `Set-Cookie`, `#invite=`, cookie
+  values), names component + address + next step on failure, stops only the processes it started (R48, R51). It is
+  the CLI behind `dev.sh`/`local-prod.sh` and is imported by the Playwright fixture (D11).
+- The default journey stack raises `create-game`/`join` rate limits (both keyed by client address, and all
+  proxied traffic shares one). Dedicated stacks set short `idle-timeout-seconds`, `presence-interval-seconds`,
+  `sweep-interval-seconds`, `result-retention-seconds`, `invitation-lifetime-seconds`, or a lowered rate limit,
+  through existing env keys only (R50, D12). Restart = stop and start the same JAR.
+- `scripts/install.sh`: checks `java` major 25 and `node` major 24, `npm ci` in `contracts/` and `frontend/`,
+  `npx`-free Playwright Chromium install via the frontend script, `backend/mvnw -q validate` (R45).
+
+## Validation
+
+Every task delivers one behaviour and its own proof in the same change (AGENTS.md rules 4–5, memory
+*tasks carry their own proof*). The tables are the evidence map, not a separate slice of work.
+
+Journey files (`frontend/e2e/`, Chromium, `workers: 1`, two isolated browser contexts per game), the complete
+list: `smoke`, `settings`, `create`, `waiting`, `invitation`, `placement`, `play`, `results`, `leaving`,
+`lifetime`, `recovery`, `accessibility`, `offline` (`*.spec.ts`).
+
+| Proof | Owner |
+|---|---|
+| R54: key parity, preference persistence, sound/haptic no-op on denial, QR rendering of a string, layout-mode selection, decode rejection | `frontend/tests/*.test.ts(x)` (vitest, jsdom) |
+| Proxy, SSE through the proxy, deep-link reload, occupied-port failure message (R46–R48) | `smoke` |
+| Settings apply immediately, survive reload, mid-game toggles of sound/haptics (R33, S5) | `settings` |
+| Each advertised ruleset's facts before submit; single create request (R04, R13) | `create` |
+| Copy link, QR, replace after confirmation, invitation expired without reload on the short-lifetime stack (R11, R12) | `waiting` |
+| Fragment gone before render, explicit join, two-guest race; scan of URL, history, `localStorage`, `sessionStorage`, console and captured `stack.mjs` output for the secret, `Set-Cookie` and cookie values (R08–R10, R15, R51, S2) | `invitation` |
+| Place/move/rotate/remove, refusal wording, random/clear, ready once, one drag (R17, R18) | `placement` |
+| Fire, turn per ruleset, live update, action race; lost answer — `page.route` → `route.fetch()` reaches the real server, `route.abort()` hides the answer, the page shows *checking*, the retry request carries the same `commandId`, the board shows the action applied once (R19–R21, D13) | `play` |
+| One full game per ruleset; statistics as supplied (R36, S1) | `results` |
+| Leave before play, resign, abandoned view, leave results (R28–R30) | `leaving` |
+| Expiry → "expired" then "no longer available" after retention; presence extends expiry; restart → "no longer available" (R16, R27, R50) | `lifetime` |
+| Stream drop and tab return refresh without repeating an action; `429` with wait hint under a lowered limit (R22, R25) | `recovery` |
+| Three layouts, tab control, keyboard-only journey, axe serious/critical = 0, forced colours and reduced motion via `emulateMedia`, dialogs focus/Escape (R39–R41, S4) | `accessibility` |
+| Offline shell ≤ 3 s with "network required" and no request sent; `caches` hold no `/api` URL; update prompt after rebuilding into the served `dist/` while `vite preview` keeps serving the same origin (R42–R44, S6) | `offline` |
+| No development address in `dist/` (R47) | `frontend` `npm run check` build step |
+| Contract and backend fixes (R57) | `contracts` `npm run check`; `CapacityIT`; `PackagedArtifactIT`; Failsafe dumpstream |
+| Runtime check and exact installs (R45); gate fails on a broken stage (R49, S7) | `scripts/verify.sh` stage 0 runs `install.sh`; one run with a stage forced to fail |
+
+| Success criterion | Owner |
+|---|---|
+| S1 full game per ruleset | `results` |
+| S2 secret never leaks | `invitation` |
+| S3 honest recovery | `lifetime`, `recovery`, `play` |
+| S4 keyboard, no horizontal scroll, no serious/critical axe violation at 3 sizes | `accessibility` |
+| S5 sound/haptics never change outcome | `tests/feedback.test.ts` + `settings` |
+| S6 offline shell ≤ 3 s, nothing sent | `offline` |
+| S7 clean-clone commands, gate fails on broken stage | `scripts/verify.sh` evidence |
+
+## Gate
+
+Created by this feature. From the repository root:
+
+| Command | Proves |
+|---|---|
+| `./scripts/install.sh` | runtime majors, exact lockfile installs, Playwright Chromium, wrapper valid (R45) |
+| `./scripts/dev.sh` | backend + Vite dev, one origin, live updates (R46) |
+| `./scripts/local-prod.sh` | packaged JAR + built `dist/` behind one origin (R47) |
+| `./scripts/verify.sh` | stage 0 `install.sh`, then in order: `contracts` `npm run check` → `backend` `./mvnw -q verify && ./mvnw spotless:check` → `frontend` `npm run check` (format, lint, typecheck, vitest, build, no-dev-address) → `frontend` `npm run e2e` against the packaged JAR. Any failed, skipped or timed-out stage exits non-zero (R49) |
+
+## Forecast
+
+20 tasks, ≈110 files (≈75 frontend source, ≈20 unit/e2e, ≈10 scripts/config/docs, ≈5 contract/backend).
+At the 20-task line of AGENTS.md rule 3, not above it; any further task needs owner approval.
+
+| # | Task | Proof it carries |
+|---|---|---|
+| 1 | `browser-game-limit` in contract + backend (fix 1) | `npm run check`, `CapacityIT` |
+| 2 | Backend: forked test JVM linger (fix 2) | clean dumpstream |
+| 3 | Backend: actuator off the public port (fix 3) | `PackagedArtifactIT` |
+| 4 | `install.sh` + `frontend/` scaffold, pins, lint/format, type generation | clean install; renaming a contract operation fails typecheck |
+| 5 | `stack.mjs`, `dev.sh`, `local-prod.sh`, `config/local.env.example`, Playwright config + stack fixture | `smoke` |
+| 6 | Shell: router, i18n, preferences, theme, dialog primitive, rules/settings | key parity, persistence, layout-mode units; `settings` |
+| 7 | Gateway + session store + Home + Create | decode unit; `create` |
+| 8 | Waiting room: copy, QR, replace, invitation expired + contract fix 4 | QR unit; `waiting` |
+| 9 | Join: fragment strip, explicit join, race | `invitation` |
+| 10 | Placement: board, ship-action dialog, random/clear/ready, refusals | `placement` |
+| 11 | Drag placement | drag step in `placement` |
+| 12 | Play: fire, turns, live updates, announcements, action race, lost answer | `play` |
+| 13 | Results + one full game per ruleset | `results` (S1) |
+| 14 | Sound + haptics | no-op unit; `settings` mid-game toggles |
+| 15 | Leave, resign, abandoned view, leave results | `leaving` |
+| 16 | Session unavailable, expiry, presence extension, restart | `lifetime` (dedicated stacks) |
+| 17 | Stream recovery with backoff, rate-limit refusal | `recovery` |
+| 18 | Three layouts, tab control, keyboard + a11y | `accessibility` (S4) |
+| 19 | PWA: installable shell, offline state, update prompt | `offline` (S6) |
+| 20 | `verify.sh` + `docs/local-operation.md` + AGENTS.md gate/Definition-of-Done update | full run green; broken-stage run red (S7) |
+
+## Risks
+
+- `__Host-`/`Secure` cookies over `http://localhost` are relied on in Chromium only (spec Assumption 2).
+- `vite preview` as the production-style server: SSE streaming and deep-link fallback are proven by the
+  `smoke` and `waiting` journeys (tasks 5 and 8); if either fails, `stack.mjs` gains a Node standard-library static server, recorded as
+  a decision.
+- The page must be opened on `localhost` with the configured port; any other host gets `403` on every POST.
+- Playwright 1.63.0 browser revision must be installed by `install.sh`; the cache on this machine is not assumed.
+
+## Complexity Tracking
+
+Nothing to justify.
