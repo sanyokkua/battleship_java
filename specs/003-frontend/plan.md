@@ -211,6 +211,7 @@ corrected by the `serverTime` offset; they never decide expiry.
 |---|---|---|---|
 | Development (`scripts/dev.sh`) | `vite` on `localhost:5173`, `strictPort` | JAR on `:8080` | default `http://localhost:5173` |
 | Production-style (`scripts/local-prod.sh`) | `vite preview` of `dist/` on `localhost:4173`, `strictPort` | JAR on `:8080` | `http://localhost:4173` |
+| Command checks (`smoke`) | `vite` on 5174 / `vite preview` on 4177 | JAR on 8084 / 8085 | matching frontend origin |
 | Journeys | `vite preview` per stack: default `4173`, short-lifetime `4174`, lowered-limit `4175`, restart `4176` | JAR per stack: `8080`, `8081`, `8082`, `8083` | matching frontend origin |
 
 `vite.config.ts` reads `FRONTEND_PORT` (default 5173 for `vite`, 4173 for `vite preview`) and `BACKEND_PORT` (default 8080); `stack.mjs` passes `BACKEND_PORT` to the JAR as `SERVER_PORT` (the backend sets no `server.port`).
@@ -242,19 +243,19 @@ list: `smoke`, `settings`, `create`, `waiting`, `invitation`, `placement`, `play
 | Proof | Owner |
 |---|---|
 | R54: key parity, preference persistence, sound/haptic no-op on denial, QR rendering of a string, decode rejection | `frontend/tests/*.test.ts(x)` (vitest, jsdom) |
-| Proxy, SSE through the proxy, deep-link reload, occupied-port failure message (R46–R48) | `smoke` |
+| Proxy, SSE through the proxy, deep-link reload, occupied-port failure message; `stack.mjs dev` (5174/8084) and `stack.mjs prod` (4177/8085) each start, answer health and stream one snapshot, and stop their children (R46–R48, S7) | `smoke` |
 | Settings apply immediately, survive reload, mid-game toggles of sound/haptics (R33, S5) | `settings` |
-| Each advertised ruleset's facts before submit; single create request; Home then offers Return to your game; with storage cleared a second create shows the `browser-game-limit` message and is not retried; a create answer hidden by `page.route` → `route.abort()` shows "outcome unknown" and sends no second create (R04, R07, R13) | `create` |
+| Each advertised ruleset's facts before submit; single create request; a wrong `XSRF-TOKEN` → one 403, one `getMeta`, one resend (R03); Home then offers Return to your game; with storage cleared a second create shows the `browser-game-limit` message and is not retried; a create answer hidden by `page.route` → `route.abort()` shows "outcome unknown" and sends no second create (R04, R07, R13) | `create` |
 | Copy link, QR, replace after confirmation, invitation expired without reload on the short-lifetime stack (R11, R12) | `waiting` |
-| Fragment gone before render, explicit join, two-guest race; scan of URL, history, `localStorage`, `sessionStorage`, console and captured `stack.mjs` output for the secret, `Set-Cookie` and cookie values (R08–R10, R15, R51, S2) | `invitation` |
+| Fragment gone before render, explicit join, two-guest race; join refused with `browser-game-limit` shows the R07 message, a join `410` follows R27; scan of URL, history, `localStorage`, `sessionStorage`, console and captured `stack.mjs` output for the secret, `Set-Cookie` and cookie values (R08–R10, R15, R51, S2) | `invitation` |
 | Place/move/rotate/remove, refusal wording, random/clear, ready after confirmation once, one tray drag with a mouse and one ship drag in a touch context (R17, R18, R61) | `placement` |
-| Fire, turn per ruleset, live update, action race; lost answer — `page.route` → `route.fetch()` reaches the real server, `route.abort()` hides the answer, the page shows *checking*, the retry request carries the same `commandId`, the board shows the action applied once (R19–R21, D13) | `play` |
+| Fire, turn per ruleset, live update, action race (Classic; a `page.request` shot against a stale view); lost answer — `page.route` → `route.fetch()` reaches the real server, `route.abort()` hides the answer, the page shows *checking*, the retry request carries the same `commandId`, the board shows the action applied once (R19–R21, D13) | `play` |
 | One full game per ruleset; statistics as supplied (R36, S1) | `results` |
 | Leave before play, resign, abandoned view, leave results (R28–R30) | `leaving` |
 | Expiry → "expired" then "no longer available" after retention; presence extends expiry; restart → "no longer available" (R16, R27, R50) | `lifetime` |
-| Stream drop and tab return refresh without repeating an action; a second tab in the same context opens the game → the first shows "open in another tab" and opens no new stream; `429` with wait hint under a lowered limit (R22, R25, R26) | `recovery` |
-| Three layouts at 390×844, 844×390, 1280×800 with no horizontal overflow, tab control, keyboard-only journey, touch-only journey in a `hasTouch` context, axe serious/critical = 0, forced colours and reduced motion via `emulateMedia`, dialogs focus/Escape (R39–R41, R61, S4) | `accessibility` |
-| Screenshots of every surface at the three sizes in dark and light into `frontend/test-results/visual/`; the owner's comparison with the mockup recorded in the task (R58–R60, S8) | `accessibility` |
+| Stream drop and tab return refresh without repeating an action; a second tab in the same context opens the game → the first shows "open in another tab" and opens no new stream; offline disables fire controls and Refresh (R43); `429` with wait hint under a lowered limit (R22, R25, R26) | `recovery` |
+| Three layouts at 390×844, 844×390, 1280×800 with no horizontal overflow, tab control, keyboard-only journey, touch-only journey in a `devices['Pixel 7']` context (`hover: none`), axe serious/critical = 0, forced colours and reduced motion via `emulateMedia`, dialogs focus/Escape (R39–R41, R61, S4) | `accessibility` |
+| Screenshots of the 19 surfaces named in tasks T018 (every screen, dialog and status overlay of R38) at the three sizes in dark and light into `frontend/test-results/visual/`; the owner's comparison with the mockup recorded in the task (R58–R60, S8) | `accessibility` |
 | Offline shell ≤ 3 s with "network required" and no request sent; `caches` hold no `/api` URL; update prompt after rebuilding into the served `dist/` while `vite preview` keeps serving the same origin (R42–R44, S6) | `offline` |
 | No development address in `dist/` (R47) | `frontend` `npm run check` build step |
 | Contract and backend fixes (R57) | `contracts` `npm run check`; `CapacityIT`; `PackagedArtifactIT`; Failsafe dumpstream |

@@ -439,8 +439,9 @@ development, production-style local run and the single verification gate.
   queued.
 - **S7** From a clean clone, the documented commands start development and production-style runs, and
   the single verification command passes end to end; a deliberately broken stage makes it fail.
-- **S8** Screenshots of every surface at phone portrait, phone landscape and laptop sizes in both themes
-  are captured by the journeys, and the owner's comparison with the mockup is recorded.
+- **S8** Screenshots of every screen, dialog and status overlay listed in R38 at phone portrait, phone
+  landscape and laptop sizes in both themes are captured by the journeys, and the owner's comparison with
+  the mockup is recorded.
 
 ## Assumptions
 

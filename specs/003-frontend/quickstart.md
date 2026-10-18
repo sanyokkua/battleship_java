@@ -5,7 +5,7 @@ None of these commands exist before this feature's tasks create them. Details: [
 
 ## Prerequisites
 
-Java 25 and Node 24 (any patch), macOS or Linux shell, free ports 8080, 5173, 4173 (journeys also use 4174–4176 and 8081–8083).
+Java 25 and Node 24 (any patch), macOS or Linux shell, free ports 8080, 5173, 4173 (journeys also use 4174–4177, 5174 and 8081–8085).
 
 ## Run
 
