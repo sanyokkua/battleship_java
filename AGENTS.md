@@ -88,8 +88,15 @@ user tires. These seven rules are the missing counterweight. They bind the agent
 
 ## Definition of Done
 
-**Gate.** There is no single repository-wide product gate at this `HEAD` yet. Before BUILD starts, the approved
-technical plan must name the build, test, lint, and local-run commands for the affected module or feature.
+**Gate.** There is no single repository-wide product gate at this `HEAD` yet; `003-frontend` creates
+`scripts/verify.sh` as that gate (it also owns the root integration layer — there is no `004-integration`). Until
+then, the approved technical plan must name the build, test, lint, and local-run commands for the affected module.
+
+**Backend gate.** `cd backend && ./mvnw -q verify && ./mvnw spotless:check`. Contract gate: see below.
+
+**Local topology.** UI and API share one origin (no CORS): Vite proxy in development, a same-origin static
+server in production-style local runs. Frontend tests run against the real packaged backend; no recorded game
+data and no fake engine.
 
 **Generation path.** `002-backend` generates the wire DTOs from `contracts/openapi.yaml` into
 `backend/app/target/generated-sources/openapi` (package `ua.kostenko.battleship.app.web.dto`) during

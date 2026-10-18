@@ -1,5 +1,6 @@
 <!--
 Sync Impact Report
+- 1.3.0 -> 1.3.1 (2026-10-18): PATCH. Folded the planned `004-integration` feature into `003-frontend` by owner decision, so the frontend is tested against the real backend instead of recorded data or a fake engine. `003-frontend` now owns the root integration layer and `scripts/verify.sh`. Modified sections: VII (gate owner wording), Development Workflow and Quality Gates (feature order). No principle added or removed. AGENTS.md and agent memory updated in the same change.
 - 1.2.1 -> 1.3.0 (2026-09-29): MINOR. Added a mandatory task-branch lifecycle: verify branch/worktree state at task start, isolate tasks expected to need multiple commits, commit each completed task, and squash-merge task branches into their recorded parent feature branch. `rewrite_prod_ready` remains reserved for completed feature-level integration. Motivation: make task completion and branch integration explicit and verifiable across sessions. Updated AGENTS.md in the same change.
 - Version change: 1.2.1 -> 1.3.0
 - Modified principles: VIII. Proportionate Process (added task branch, commit, and closeout requirements).
@@ -194,8 +195,8 @@ intentionally ephemeral and in-memory. The accepted lifecycle baseline is a
 retention, and explicit restart loss; the UI and tests MUST describe these
 limits rather than implying persistence.
 
-The root integration feature owns the single authoritative `scripts/verify.sh`
-gate. Before that feature exists, each feature MUST use only the focused build,
+Feature `003-frontend` owns the root integration layer and the single
+authoritative `scripts/verify.sh` gate. Before that feature exists, each feature MUST use only the focused build,
 test, lint, and local-run commands named by its approved plan. No command may
 declare a skipped, timed-out, or capability-blocked stage green.
 
@@ -286,8 +287,8 @@ assumptions needed for a later hosting choice.
 
 ## Development Workflow and Quality Gates
 
-The approved feature order is `001-api-contract`, `002-backend`,
-`003-frontend`, and `004-integration`. Each feature MUST have its own
+The approved feature order is `001-api-contract`, `002-backend`, and
+`003-frontend`; `003-frontend` also delivers the root integration layer. Each feature MUST have its own
 `specs/<feature>/spec.md`, `plan.md`, and `tasks.md`; the plan MUST be complete
 before feature code is written. The normal loop is:
 
@@ -346,4 +347,4 @@ scope, reason, risk, owner, expiry or removal condition, and compensating proof;
 an undocumented exception is not accepted. Compliance review does not replace
 behavioral tests or the local verification commands.
 
-**Version**: 1.3.0 | **Ratified**: 2026-08-20 | **Last Amended**: 2026-09-29
+**Version**: 1.3.1 | **Ratified**: 2026-08-20 | **Last Amended**: 2026-10-18
