@@ -1,5 +1,31 @@
 <!--
 Sync Impact Report
+- 1.2.1 -> 1.3.0 (2026-09-29): MINOR. Added a mandatory task-branch lifecycle: verify branch/worktree state at task start, isolate tasks expected to need multiple commits, commit each completed task, and squash-merge task branches into their recorded parent feature branch. `rewrite_prod_ready` remains reserved for completed feature-level integration. Motivation: make task completion and branch integration explicit and verifiable across sessions. Updated AGENTS.md in the same change.
+- Version change: 1.2.1 -> 1.3.0
+- Modified principles: VIII. Proportionate Process (added task branch, commit, and closeout requirements).
+- Modified sections: Governance workflow, branch policy.
+- Added principles: none
+- Added sections: none
+- Removed sections: none
+- Follow-up TODOs: none. The repository has no additional saved project memory file; the mandatory memory loader reads this constitution.
+- 1.2.0 -> 1.2.1 (2026-09-21): PATCH. Re-pinned the approved backend baseline to the newest GA release
+  and named the contract code-generation path that Principle VI presupposes. Motivation: feature
+  002-backend reversed research.md D1 and now generates the wire DTOs from `contracts/openapi.yaml`,
+  which Principle VI only permits once a generation path exists for `backend/`; and the recorded Spring
+  Boot pin (4.1.0) was already behind GA. Evidence for the version change: `repo1.maven.org` metadata
+  for `spring-boot-starter-parent` lists `<release>4.2.0-M1` with 4.1.1 the newest GA; 4.2.0 GA is
+  scheduled ~24 Sep 2026 and was deliberately not targeted because it does not exist on Maven Central.
+  Java 25 LTS is unchanged and recorded at patch 25.0.4 (the machine runs Corretto 25.0.4.1); Node
+  24.19.0 LTS is unchanged.
+- Version change: 1.2.0 -> 1.2.1
+- Modified principles: none (wording and pins only).
+- Modified sections: Scope and Technical Baseline (Spring Boot 4.1.0 -> 4.1.1; Java 25 LTS patch level
+  recorded; one sentence permitting build-time generation of the contract's wire types into the
+  application-adapter module as build output).
+- Added principles: none
+- Added sections: none
+- Removed sections: none
+- Follow-up TODOs: none. `AGENTS.md` and the affected auto-memory files are updated in this same change.
 - 1.1.0 -> 1.2.0 (2026-09-21): Lean extraction of applicable engineering-governance guidance from a
   retired research report ("Governance Constitution for GitHub Spec Kit and OpenSpec-Style Projects.md",
   deleted from the repo in this same change). Adopted only the substance that fits a solo-developer
@@ -186,10 +212,17 @@ required artifact, role, ceremony, or check MUST identify the concrete risk it
 addresses and how its result will be used. Genuine ambiguity MUST be resolved
 before implementation; where approved artifacts are silent on behavior that
 matters, work MUST pause for a decision with a recommended default. Unrelated
-worktree changes MUST be preserved. The protected `rewrite_prod_ready` branch
-MUST not receive direct development commits; feature work uses focused branches
-and reviewable commits, with final integration remaining an authorized
-developer action.
+worktree changes MUST be preserved. At the start of each task, the agent MUST
+inspect the worktree and local branches, confirm the current branch exists and
+is the intended feature branch, and check whether a task branch for the work
+already exists. A task expected to need multiple commits MUST use a focused
+`feature/<feature>--<task>` branch created from the active feature integration
+branch; its parent MUST be recorded. Every completed task MUST be committed.
+At closeout, the agent MUST verify the task changes are committed and, when a
+task branch was used, squash-merged into its recorded parent feature branch.
+The protected `rewrite_prod_ready` branch MUST not receive direct task commits;
+feature-level integration there remains a separately authorized developer
+action.
 
 **EARS rule — Process addition:** When a mandatory process step is proposed,
 the proposal MUST state its protected boundary, failure risk, owner, and
@@ -221,7 +254,11 @@ one root integration layer:
 - `contracts/` is the authoritative OpenAPI, JSON (or Yaml) Schema, event, example, and
   compatibility product.
 - `backend/` is a Java/Spring Boot Maven reactor with domain, application, and
-  application-adapter modules, producing one executable backend-only JAR.
+  application-adapter modules, producing one executable backend-only JAR. Its
+  application-adapter module MAY generate the contract's wire types from
+  `contracts/openapi.yaml` during the build; such generated sources are build
+  output, not committed source, and remain subject to Principle VI — they are
+  changed only by amending the contract and regenerating.
 - `frontend/` is an independent TypeScript/React/Vite static application that
   consumes the contract through a single gateway and does not ship a local
   rules engine or frontend assets inside the backend JAR.
@@ -230,8 +267,8 @@ one root integration layer:
   they are not a fourth application product or a root npm workspace.
 
 The primary implementation languages are Java and TypeScript. The approved
-baseline is Java 25 LTS with Maven 3.9.16 Wrapper and Spring Boot 4.1.0, plus
-Node 24.19.0 LTS/npm with the approved React, Vite, TypeScript, contract,
+baseline is Java 25 LTS at patch 25.0.4 with Maven 3.9.16 Wrapper and Spring
+Boot 4.1.1, plus Node 24.19.0 LTS/npm with the approved React, Vite, TypeScript, contract,
 testing, accessibility, and browser tooling versions recorded by the owning
 feature plan and lockfile. Dependencies MUST use exact versions in the owning
 lockfile and MUST pass compatibility checks before acceptance. A later version
@@ -309,4 +346,4 @@ scope, reason, risk, owner, expiry or removal condition, and compensating proof;
 an undocumented exception is not accepted. Compliance review does not replace
 behavioral tests or the local verification commands.
 
-**Version**: 1.2.0 | **Ratified**: 2026-08-20 | **Last Amended**: 2026-09-21
+**Version**: 1.3.0 | **Ratified**: 2026-08-20 | **Last Amended**: 2026-09-29

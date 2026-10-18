@@ -1,0 +1,193 @@
+package ua.kostenko.battleship.app;
+
+import java.time.Duration;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import ua.kostenko.battleship.app.config.BattleshipProperties;
+import ua.kostenko.battleship.application.port.SecretGenerator;
+import ua.kostenko.battleship.application.port.SnapshotPublisher;
+import ua.kostenko.battleship.application.port.TimeSource;
+import ua.kostenko.battleship.application.projection.SnapshotProjector;
+import ua.kostenko.battleship.application.registry.GameRegistry;
+import ua.kostenko.battleship.application.registry.SessionRegistry;
+import ua.kostenko.battleship.application.usecase.CommandUseCase;
+import ua.kostenko.battleship.application.usecase.CreateGameUseCase;
+import ua.kostenko.battleship.application.usecase.ExpireGamesUseCase;
+import ua.kostenko.battleship.application.usecase.GetGameUseCase;
+import ua.kostenko.battleship.application.usecase.JoinGameUseCase;
+import ua.kostenko.battleship.application.usecase.LeaveGameUseCase;
+import ua.kostenko.battleship.application.usecase.PresenceUseCase;
+import ua.kostenko.battleship.application.usecase.ReplaceInvitationUseCase;
+import ua.kostenko.battleship.application.usecase.SubscribeUseCase;
+import ua.kostenko.battleship.domain.RandomSource;
+
+@SpringBootApplication
+@ConfigurationPropertiesScan
+@EnableScheduling
+public class BattleshipApplication {
+    @Bean
+    GameRegistry gameRegistry(BattleshipProperties properties) {
+        return new GameRegistry(properties.maxConcurrentGames());
+    }
+
+    @Bean
+    SessionRegistry sessionRegistry(BattleshipProperties properties) {
+        return new SessionRegistry(properties.maxConcurrentGames() * 2);
+    }
+
+    @Bean
+    SnapshotProjector snapshotProjector() {
+        return new SnapshotProjector();
+    }
+
+    @Bean
+    CreateGameUseCase createGameUseCase(
+            GameRegistry games,
+            SessionRegistry sessions,
+            SecretGenerator secrets,
+            TimeSource time,
+            SnapshotProjector projector,
+            BattleshipProperties properties) {
+        return new CreateGameUseCase(
+                games,
+                sessions,
+                secrets,
+                time,
+                projector,
+                properties.maxLiveGamesPerBrowser(),
+                Duration.ofSeconds(properties.idleTimeoutSeconds()),
+                Duration.ofSeconds(properties.maxGameDurationSeconds()),
+                Duration.ofSeconds(properties.invitationLifetimeSeconds()),
+                Duration.ofSeconds(properties.resultRetentionSeconds()),
+                properties.publicBaseUrl());
+    }
+
+    @Bean
+    GetGameUseCase getGameUseCase(
+            GameRegistry games,
+            SessionRegistry sessions,
+            TimeSource time,
+            SnapshotProjector projector,
+            BattleshipProperties properties) {
+        return new GetGameUseCase(
+                games, sessions, time, projector, Duration.ofSeconds(properties.resultRetentionSeconds()));
+    }
+
+    @Bean
+    JoinGameUseCase joinGameUseCase(
+            GameRegistry games,
+            SessionRegistry sessions,
+            SecretGenerator secrets,
+            TimeSource time,
+            SnapshotProjector projector,
+            SnapshotPublisher publisher,
+            BattleshipProperties properties) {
+        return new JoinGameUseCase(
+                games,
+                sessions,
+                secrets,
+                time,
+                projector,
+                publisher,
+                properties.maxLiveGamesPerBrowser(),
+                Duration.ofSeconds(properties.idleTimeoutSeconds()),
+                Duration.ofSeconds(properties.resultRetentionSeconds()));
+    }
+
+    @Bean
+    ReplaceInvitationUseCase replaceInvitationUseCase(
+            GameRegistry games,
+            SessionRegistry sessions,
+            SecretGenerator secrets,
+            TimeSource time,
+            SnapshotProjector projector,
+            SnapshotPublisher publisher,
+            BattleshipProperties properties) {
+        return new ReplaceInvitationUseCase(
+                games,
+                sessions,
+                secrets,
+                time,
+                projector,
+                publisher,
+                Duration.ofSeconds(properties.invitationLifetimeSeconds()),
+                Duration.ofSeconds(properties.resultRetentionSeconds()));
+    }
+
+    @Bean
+    ExpireGamesUseCase expireGamesUseCase(
+            GameRegistry games,
+            SessionRegistry sessions,
+            SnapshotPublisher publisher,
+            BattleshipProperties properties) {
+        return new ExpireGamesUseCase(
+                games, sessions, publisher, Duration.ofSeconds(properties.resultRetentionSeconds()));
+    }
+
+    @Bean
+    LeaveGameUseCase leaveGameUseCase(
+            GameRegistry games,
+            SessionRegistry sessions,
+            TimeSource time,
+            SnapshotProjector projector,
+            SnapshotPublisher publisher,
+            BattleshipProperties properties) {
+        return new LeaveGameUseCase(
+                games, sessions, time, projector, publisher, Duration.ofSeconds(properties.resultRetentionSeconds()));
+    }
+
+    @Bean
+    SubscribeUseCase subscribeUseCase(
+            GameRegistry games,
+            SessionRegistry sessions,
+            TimeSource time,
+            SnapshotProjector projector,
+            BattleshipProperties properties) {
+        return new SubscribeUseCase(
+                games, sessions, time, projector, Duration.ofSeconds(properties.resultRetentionSeconds()));
+    }
+
+    @Bean
+    CommandUseCase commandUseCase(
+            GameRegistry games,
+            SessionRegistry sessions,
+            TimeSource time,
+            RandomSource random,
+            SnapshotProjector projector,
+            SnapshotPublisher publisher,
+            BattleshipProperties properties) {
+        return new CommandUseCase(
+                games,
+                sessions,
+                time,
+                random,
+                projector,
+                publisher,
+                Duration.ofSeconds(properties.idleTimeoutSeconds()),
+                Duration.ofSeconds(properties.resultRetentionSeconds()));
+    }
+
+    @Bean
+    PresenceUseCase presenceUseCase(
+            GameRegistry games,
+            SessionRegistry sessions,
+            TimeSource time,
+            SnapshotProjector projector,
+            BattleshipProperties properties) {
+        return new PresenceUseCase(
+                games,
+                sessions,
+                time,
+                projector,
+                Duration.ofSeconds(properties.idleTimeoutSeconds()),
+                Duration.ofSeconds(properties.presenceIntervalSeconds()),
+                Duration.ofSeconds(properties.resultRetentionSeconds()));
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(BattleshipApplication.class, args);
+    }
+}

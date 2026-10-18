@@ -91,6 +91,14 @@ user tires. These seven rules are the missing counterweight. They bind the agent
 **Gate.** There is no single repository-wide product gate at this `HEAD` yet. Before BUILD starts, the approved
 technical plan must name the build, test, lint, and local-run commands for the affected module or feature.
 
+**Generation path.** `002-backend` generates the wire DTOs from `contracts/openapi.yaml` into
+`backend/app/target/generated-sources/openapi` (package `ua.kostenko.battleship.app.web.dto`) during
+`generate-sources`. It generates Jackson 2 models and only the whitelisted discriminator/date helpers
+required by the `Command` oneOf model; it emits no API endpoint classes or `ApiClient`. The app declares
+Jackson 2 runtime modules explicitly, and its HTTP converter must use that mapper for generated DTOs. All generated sources are
+build output — never committed, never hand-edited, not formatted by Spotless, and changed only by amending
+the contract and regenerating (constitution § *Scope and Technical Baseline*, Principle VI).
+
 For a registered feature, start by proving the feature artifacts exist:
 
 `bash .specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
@@ -105,11 +113,14 @@ work in a not-fully-verified state.
 
 `master` is historical context for the old application, not the base for new implementation work.
 
-Work from a feature branch with `feature/` names unless the user asks for a different branch strategy. Keep unrelated
-staged or unstaged changes intact.
+At the start of each task, inspect `git status --short --branch` and the local branch list. Confirm the current branch
+exists and is the intended feature branch; check whether a task branch for this work already exists and reuse it when
+appropriate. For a task expected to need multiple commits, create `feature/<feature>--<task>` from the active feature
+integration branch and record that parent before editing. Keep unrelated staged or unstaged changes intact.
 
-Make small, focused commits with concise imperative subjects. The exact naming and formatting standard can be formalized
-later; until then, stay internally consistent within the active task.
+Commit each completed task with a concise imperative subject. At task closeout, verify its changes are committed; if a
+task branch was used, squash-merge it into its recorded parent feature branch and verify the result there. Keep
+`rewrite_prod_ready` for completed feature-level integration, not unfinished task branches.
 
 Do not rewrite history, force-push, or use destructive git cleanup unless the user explicitly asks. Final merges to the
 default branch remain a user-approved step.

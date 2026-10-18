@@ -269,10 +269,14 @@ paths:
         not call this operation: read the secret from the URL fragment, remove the fragment from the
         address bar, keep the secret in memory only, and call join when the visitor confirms a name.
         Success moves the game to `PLACEMENT` and issues the session cookie when the browser has none.
-        A caller who already is this game's guest gets `200` with the current snapshot, so a repeated
-        join is harmless. Every other refusal (unknown game, wrong, used, replaced or expired secret,
-        seat taken, caller is the host) is the same `409 invitation-unavailable`, so the answer reveals
-        nothing about the game. Rate limited per client address (default 20 per minute).
+        A caller who already is this game's guest gets `200` with the current snapshot while the game
+        is live, so a repeated join is harmless. If the game has expired but is still remembered,
+        that guest gets `410 game-expired` regardless of the submitted schema-valid secret. Every
+        other refusal (unknown or forgotten game, wrong, used, replaced or expired secret, seat taken,
+        caller is the host, or an expired game for a non-guest) is the same
+        `409 invitation-unavailable`, so the answer reveals nothing about the game to anyone who did
+        not join as its guest. Rate limited
+        per client address (default 20 per minute).
       security:
         - csrf: []
       requestBody:
@@ -305,6 +309,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
+        '410':
+          $ref: '#/components/responses/Gone'
         '422':
           $ref: '#/components/responses/Unprocessable'
         '429':
@@ -634,7 +640,8 @@ components:
         The request is well formed but the game does not allow it now. Codes: `invitation-unavailable`
         (join), `action-not-allowed` (not in `allowedActions`: wrong phase, not your turn, already
         ready, fleet incomplete, not the host), `placement-out-of-bounds`, `placement-overlap`,
-        `placement-touching`, `target-already-fired`. Nothing changed; except for
+        `placement-touching`, `random-arrangement-failed` (random arrangement exhausted its attempt
+        limit), `target-already-fired`. Nothing changed; except for
         `invitation-unavailable`, fetch the snapshot.
       content:
         application/problem+json:
@@ -645,14 +652,21 @@ components:
               value: { title: Invitation unavailable, status: 409, code: invitation-unavailable, correlationId: 9f2c1d7a4b6e4c1e }
             actionNotAllowed:
               value: { title: Action not allowed, status: 409, code: action-not-allowed, correlationId: 9f2c1d7a4b6e4c1e }
+            placementOutOfBounds:
+              value: { title: Ship is out of bounds, status: 409, code: placement-out-of-bounds, correlationId: 9f2c1d7a4b6e4c1e }
+            placementOverlap:
+              value: { title: Ships may not overlap, status: 409, code: placement-overlap, correlationId: 9f2c1d7a4b6e4c1e }
             placementTouching:
               value: { title: Ships may not touch, status: 409, code: placement-touching, correlationId: 9f2c1d7a4b6e4c1e }
+            randomArrangementFailed:
+              value: { title: Random arrangement failed, status: 409, code: random-arrangement-failed, correlationId: 9f2c1d7a4b6e4c1e }
             targetAlreadyFired:
               value: { title: Target already fired, status: 409, code: target-already-fired, correlationId: 9f2c1d7a4b6e4c1e }
     Gone:
       description: >-
         The game expired and the server still remembers that it did. Code `game-expired`. Once the
-        server forgets the game the answer becomes `404`; clients treat both as gone.
+        server forgets the game, protected game operations answer `404 game-unavailable`; `joinGame`
+        answers `409 invitation-unavailable`. Clients treat these outcomes as gone for that browser.
       content:
         application/problem+json:
           schema:
@@ -721,21 +735,22 @@ components:
       type: string
       pattern: '^[A-Za-z0-9_-]{22}$'
       description: Random 128-bit value, base64url.
-      examples: [Zk3vQ1hYc0a7Tn2LwR9sXg]
+      example: Zk3vQ1hYc0a7Tn2LwR9sXg
     DisplayName:
       type: string
       minLength: 1
       maxLength: 32
       description: >-
-        Name shown to both players. The server trims surrounding whitespace, normalizes to Unicode NFC
-        and rejects control characters; length is counted in code points after that. It is plain
+        Name shown to both players. The server rejects control characters anywhere in the input, including
+        at its edges, then trims surrounding whitespace and normalizes to Unicode NFC; length is
+        counted in code points after that. It is plain
         text, need not be unique, cannot be changed and proves nothing about who the player is.
         Always display it as text, never as markup.
     Instant:
       type: string
       format: date-time
-      description: UTC timestamp, RFC 3339.
-      examples: ['2026-09-20T12:00:00.000Z']
+      description: UTC timestamp, RFC 3339, always written with exactly three fractional digits.
+      example: '2026-09-20T12:00:00.000Z'
     Coordinate:
       type: object
       description: One board cell, zero-based; `rowIndex` 0 is the top row and `columnIndex` 0 the left column.
@@ -764,8 +779,9 @@ components:
       description: |
         - `WAITING`: the host waits for a guest.
         - `PLACEMENT`: both players arrange their fleets privately and declare `READY`.
-        - `PLAYING`: players fire in turns; starts when both are ready. Who fires first is chosen
-          randomly by the server and first visible as `turn`.
+        - `PLAYING`: players fire in turns; starts when both are ready. The server decides who fires
+          first — the player who declared `READY` first, an exact tie broken randomly — and the choice
+          is first visible as `turn`.
         - `FINISHED`: a fleet was destroyed or a player resigned. Both boards and `statistics` are shown.
         - `ABANDONED`: a player left before play started. Nothing is revealed.
     Action:
@@ -1014,8 +1030,9 @@ components:
           type: integer
           minimum: 0
           description: >-
-            Grows whenever anything in either player's snapshot changes. Only for ordering: display a
-            snapshot when its version is greater than the displayed one. Numbers may skip.
+            Grows when either player's **view** changes — that player's snapshot excluding `serverTime`
+            and `expiresAt`, both of which are always current. Only for ordering: display a snapshot
+            when its version is greater than the displayed one. Numbers may skip.
         serverTime:
           allOf:
             - $ref: '#/components/schemas/Instant'
@@ -1225,7 +1242,7 @@ components:
       properties:
         type:
           type: string
-          const: PLACE_SHIP
+          enum: [PLACE_SHIP]
         shipId:
           type: string
           maxLength: 32
@@ -1241,7 +1258,7 @@ components:
       properties:
         type:
           type: string
-          const: REMOVE_SHIP
+          enum: [REMOVE_SHIP]
         shipId:
           type: string
           maxLength: 32
@@ -1255,7 +1272,7 @@ components:
       properties:
         type:
           type: string
-          const: FIRE
+          enum: [FIRE]
         target:
           $ref: '#/components/schemas/Coordinate'
     SimpleCommand:
@@ -1265,7 +1282,9 @@ components:
       description: |
         Commands without further fields.
         - `PLACE_FLEET_RANDOMLY`: the server arranges the whole fleet legally at random, replacing the
-          current arrangement. Clients need no placement rules of their own.
+          current arrangement. If the bounded search exhausts its attempt limit, it answers
+          `409 random-arrangement-failed` and leaves the game state unchanged. Clients need no
+          placement rules of their own.
         - `CLEAR_FLEET`: takes every ship off the board.
         - `READY`: locks the fleet. Cannot be undone. Play starts when both players are ready.
         - `RESIGN`: ends a game in `PLAYING`; the opponent wins and both boards are shown.
@@ -1332,6 +1351,7 @@ components:
         - placement-out-of-bounds
         - placement-overlap
         - placement-touching
+        - random-arrangement-failed
         - target-already-fired
         - game-expired
         - payload-too-large
@@ -2103,4 +2123,3 @@ components:
 
         event: closed
         data: {"reason":"REPLACED"}
-
