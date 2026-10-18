@@ -99,7 +99,8 @@ reopen. `error` with `readyState === CLOSED`, or the tab becoming visible → `g
 While reconnecting, a failed `getGame` without a definite problem (network error, proxy 502, unreadable answer)
 is retried with backoff (1, 2, 4, then every 8 s), and a `429`/`503` after its `retryAfterSeconds`, until it
 succeeds or returns 401/404/410 — the contract's
-"poll every few seconds" fallback. Heartbeats send nothing.
+"poll every few seconds" fallback. A stream that fails again after a successful `getGame` reopens on the same
+backoff, reset by its first received event, so a refused stream open never loops. Heartbeats send nothing.
 
 ### Session store (R01, R02, R05, R16, R19, R21)
 
@@ -253,7 +254,7 @@ list: `smoke`, `settings`, `create`, `waiting`, `invitation`, `placement`, `play
 | One full game per ruleset; statistics as supplied (R36, S1) | `results` |
 | Leave before play, resign, abandoned view, leave results (R28–R30) | `leaving` |
 | Expiry → "expired" then "no longer available" after retention; presence extends expiry; restart → "no longer available" (R16, R27, R50) | `lifetime` |
-| Stream drop and tab return refresh without repeating an action; a second tab in the same context opens the game → the first shows "open in another tab" and opens no new stream; offline disables fire controls and Refresh (R43); `429` with wait hint under a lowered limit (R22, R25, R26) | `recovery` |
+| Stream drop and tab return refresh without repeating an action; a second tab in the same context opens the game → the first shows "open in another tab" and opens no new stream; offline disables fire controls and Refresh (R43); `429` with wait hint under a lowered read limit; reopen backoff under a lowered stream-open limit (R22, R25, R26) | `recovery` |
 | Three layouts at 390×844, 844×390, 1280×800 with no horizontal overflow, tab control, keyboard-only journey, touch-only journey in a `devices['Pixel 7']` context (`hover: none`), axe serious/critical = 0, forced colours and reduced motion via `emulateMedia`, dialogs focus/Escape (R39–R41, R61, S4) | `accessibility` |
 | Screenshots of the 19 surfaces named in tasks T018 (every screen, dialog and status overlay of R38) at the three sizes in dark and light into `frontend/test-results/visual/`; the owner's comparison with the mockup recorded in the task (R58–R60, S8) | `accessibility` |
 | Offline shell ≤ 3 s with "network required" and no request sent; `caches` hold no `/api` URL; update prompt after rebuilding into the served `dist/` while `vite preview` keeps serving the same origin (R42–R44, S6) | `offline` |

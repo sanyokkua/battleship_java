@@ -42,7 +42,7 @@ their own control while pending.
 | — | open game screen | `reconnecting` | open `EventSource` |
 | `reconnecting` | first `snapshot` event | `connected` | — |
 | `connected` | `error`, `readyState` CONNECTING | `reconnecting` | browser retries itself |
-| any but `offline` | `error`, `readyState` CLOSED; or tab visible | `reconnecting` | `getGame`; reopen if OK; on network error, 502 or unreadable answer retry after 1, 2, 4, then every 8 s |
+| any but `offline` | `error`, `readyState` CLOSED; or tab visible | `reconnecting` | `getGame`; reopen if OK; on network error, 502 or unreadable answer retry after 1, 2, 4, then every 8 s; repeated reopen failures use the same backoff, reset by the first received event |
 | any | `offline` event (`navigator.onLine` false) | `offline` | close stream; game actions disabled (R43) |
 | `offline` | `online` event | `reconnecting` | as the CLOSED row |
 | any | `closed` `REPLACED` | terminal (other tab) | close; never reopen |
