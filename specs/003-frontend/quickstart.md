@@ -42,6 +42,8 @@ Expected: stages printed in order (contract, backend, frontend, journeys), exit 
 | Results | Outcome, both boards, server statistics; Leave results → Home |
 | Stop and restart the backend mid-game | "No longer available — … server restarted" screen with New game |
 | Go offline after one load, reopen | Shell opens, says a connection is needed, actions disabled |
+| Compare each screen with the mockup at phone portrait, phone landscape and laptop sizes, dark and light | Same widgets and styling as the mockup (spec R58–R60); narrow shows board tabs, landscape two compact boards |
+| With touch emulation, place a fleet (tap and drag) and fire | Every action works by touch; nothing needs hover |
 
 ## Proof map
 

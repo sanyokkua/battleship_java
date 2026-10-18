@@ -9,20 +9,19 @@
 for tests; if that is not possible, `Planning/06-integration` is part of this feature, so the frontend
 is tested against the real working API. Issues found in the API contract or backend may be fixed."
 
-Owner decisions (2026-10-18): the still-valid scope of `06-integration` is folded into this feature
-and `004-integration` is retired; every optional seed capability (installable shell, drag placement,
-sound, haptics, emoji, QR) stays in scope, built from existing working prior art; tests use the real
-backend only — no recorded game data, no fake engine.
+This feature also owns the root integration layer (there is no separate integration feature). Every
+optional seed capability (installable shell, drag placement, sound, haptics, emoji, QR) is in scope.
 
 ## Authority
 
 `contracts/openapi.yaml` is the source of truth for every wire behaviour; the delivered backend
 (`backend/`, feature `002-backend`) is its implementation. The seed documents under
-`docs/rewrite_context_doc/Planning/05-frontend/` and `06-integration/` are context, not authority. Where
-they describe a different API, `contracts/README.md` § *Supersedes planning inputs* records the delta;
-the seed rules this specification restates on contract terms are listed in § *Superseded seed rules*.
-The Naval Command Center mockup (`docs/rewrite_context_doc/Design/`) is the reference for information
-design and interaction intent, not for its simulated rules or pixels.
+`docs/rewrite_context_doc/Planning/05-frontend/` and `06-integration/` are context, not authority; where
+they describe a different API, `contracts/README.md` § *Supersedes planning inputs* records the delta.
+The Naval Command Center mockup (`docs/rewrite_context_doc/Design/Naval Command Center — Interactive HTML
+Mockup.html`) is the visual and interaction reference: its design tokens (dark and light), component
+styling, screen composition and responsive behaviour are reproduced (R58–R61). Its simulated rules, demo
+data, preview controls and the elements listed in R60 are not. Exact pixels are not asserted automatically.
 
 Requirements are `[user]` unless tagged `[agent]` — proposed by the agent and approved by the owner.
 
@@ -80,9 +79,12 @@ server's refusal reason.
 2. **Given** a ship action is sent, **When** it is pending, **Then** that action is disabled and the
    board changes only to the server's answer; a refusal (out of bounds, overlap, touching) is explained
    in words and the board stays as the server last reported it.
-3. **Given** the server offers Ready, **When** the player readies, **Then** the readiness is shown and is
-   not undoable; **When** Ready is not offered, **Then** the UI says why (fleet incomplete, or already
-   ready and waiting for the opponent).
+3. **Given** the server offers Ready, **When** the player readies and confirms that the fleet is then
+   locked, **Then** the readiness is shown and is not undoable; **When** Ready is not offered, **Then**
+   the UI says why (fleet incomplete, or already ready and waiting for the opponent).
+4. **Given** placement, **When** the player drags an unplaced ship from the fleet tray or a placed ship
+   onto the board, with a mouse or by touch, **Then** one placement action is sent and the board shows
+   the server's answer.
 
 ### User Story 4 — Play to the end and see the results (Priority: P1)
 
@@ -99,8 +101,9 @@ statistics.
 3. **Given** the opponent fires, **When** the update arrives live, **Then** the player's own board,
    turn and a short announcement update without a reload.
 4. **Given** the game finishes, **Then** results show win or loss, both revealed boards, fleet
-   condition, match and placement durations, shots, hits, accuracy, turns and shot-decision timing —
-   all as supplied by the server.
+   condition (intact, damaged, sunk), and three statistic groups — match time (total, placement,
+   gameplay, each player's placement), turns and accuracy (turns, shots, hits, accuracy), and turn
+   timing (total, average, fastest, slowest) — all as supplied by the server.
 5. **Given** results, **When** the player chooses Leave results, **Then** their access to that result
    ends and they return Home.
 
@@ -130,8 +133,8 @@ each ends in an honest, recoverable screen.
 ### User Story 6 — Settings, rules and inclusive use (Priority: P2)
 
 **Independent Test**: Run one full journey at desktop, narrow portrait and short landscape sizes using
-keyboard only and with an accessibility scanner; switch language, theme, emoji, sound and haptics
-mid-game.
+keyboard only, by touch only and with an accessibility scanner; switch language, theme, emoji, sound
+and haptics mid-game; compare the captured screens with the mockup.
 
 **Acceptance Scenarios**:
 
@@ -144,6 +147,10 @@ mid-game.
    compact boards stay usable without horizontal scrolling.
 4. **Given** any dialog (rules, settings, QR, confirmation, ship action, error), **Then** it is
    labelled, keeps focus inside, closes on Escape where safe, and returns focus to its opener.
+5. **Given** each surface at phone portrait, phone landscape and laptop sizes in dark and light themes,
+   **Then** it shows the widgets R59 lists for it, styled with the mockup's tokens.
+6. **Given** a touch-only or a mouse-only device, **Then** every action of the journey is reachable and
+   none depends on hover.
 
 ### User Story 7 — The installed app opens offline honestly (Priority: P3)
 
@@ -196,7 +203,9 @@ development, production-style local run and the single verification gate.
 ### Server authority and data
 
 - **R01** The client is a view: every state shown comes from the latest server snapshot; it never
-  decides placement legality, turn, hits, winner, expiry, statistics or action success locally.
+  decides placement legality, turn, hits, winner, expiry, statistics or action success locally. The only
+  locally derived values are display counts read off the server's board and ruleset (fleet-tray counts,
+  fleet progress, ship cells left — R59); they decide nothing.
 - **R02** An action is offered only when the server's current snapshot lists it as allowed.
 - **R03** Before its first state-changing request the client obtains the anti-forgery token from the
   server's metadata operation and echoes it on every state-changing request. An anti-forgery refusal
@@ -237,8 +246,8 @@ development, production-style local run and the single verification gate.
 - **R13** Creation is sent once per deliberate submit and is never resent automatically; an unknown
   outcome is explained; the player can return Home, where R07 applies.
 - **R14** The host moves from waiting to placement only when a newer snapshot shows the guest joined.
-- **R15** A refused join shows one "invitation unavailable" outcome (the contract does not distinguish
-  causes).
+- **R15** A join refused with a conflict shows one "invitation unavailable" outcome (the contract does
+  not distinguish its causes); a gone answer follows R27.
 - **R16** While the page is visible and the server allows presence, the client sends presence at most
   once per the server's published presence interval; hidden tabs, reconnects and heartbeats send none.
   A changed expiry is shown; an unchanged one is not an error.
@@ -301,20 +310,25 @@ development, production-style local run and the single verification gate.
 - **R35** `[agent]` Ruleset and ship names are translated by the server's ruleset and ship-type
   identifiers, falling back to the raw identifier for an unknown one; the contract has no name field.
 - **R36** Results render the server's outcome, both revealed boards, fleet condition and every
-  statistic the snapshot supplies; no statistic is computed locally.
+  statistic listed in US4 scenario 4 (mapped to fields in `contracts/ui-surface.md`); no statistic is
+  computed locally (R01's display counts are not statistics).
 - **R37** Rules and settings open as dialogs from any screen without leaving the game.
 
 - **R38** The surfaces are Home, Create game, Join invitation, Waiting room, Fleet placement, Gameplay,
-  Results, Session unavailable, and the dialogs/status overlays (rules, settings, QR, confirmations,
-  ship action, checking, error). Home offers create, Return to your game (R07), rules and settings.
+  Results, Session unavailable, and the dialogs/status overlays (rules, settings, QR, confirmations —
+  ready, replace invitation, leave, resign — ship action, checking, error) and toasts. Home offers
+  create, Return to your game (R07), rules and settings. A header on every surface offers Refresh (reads
+  the open game from the server) and Settings; Settings offers Resign match while the server allows
+  resigning.
 
 ### Inclusive responsive interaction
 
-- **R39** Three layouts: desktop shows both boards with turn, players and connection; narrow portrait
-  shows one board behind a keyboard-operable tab control; short landscape shows two compact boards. No
-  layout scrolls horizontally or hides an essential control.
+- **R39** Three layouts, chosen by available size as in the mockup: wide shows both boards side by
+  side with turn, players and connection; narrow shows one board behind a keyboard-operable Enemy
+  waters / Your fleet tab control, with turn and action status outside the tabs; short landscape shows
+  two compact boards without tabs. No layout scrolls horizontally or hides an essential control.
 - **R40** Every essential action works by keyboard, touch, mouse and screen reader, at browser zoom,
-  in forced colours, with reduced motion and enlarged text. Board cells have coordinate labels and
+  in forced colours, with reduced motion (no animation plays) and enlarged text. Board cells have coordinate labels and
   state descriptions.
 - **R41** Every dialog is labelled, traps and restores focus, and closes on Escape where dismissal is
   safe.
@@ -360,13 +374,13 @@ development, production-style local run and the single verification gate.
   proven by browser journeys against the packaged backend, using isolated browser contexts for the two
   players.
 - **R54** Behaviour that involves no game data may be unit-tested alone: translation key parity,
-  preference persistence, sound/haptic no-op on denial, QR rendering of a given string, layout mode
-  selection, rejection of an unreadable answer (R23).
+  preference persistence, sound/haptic no-op on denial, QR rendering of a given string, rejection of an
+  unreadable answer (R23).
 - **R55** Browser journeys cover a named compact matrix rather than every combination: each ruleset's
   defining behaviour once; copy link, QR and replace invitation once; one invitation race; one action
   race; ready once; leave, resign, abandoned view and leave-results once each; expiry, presence
   extension and restart once each; one rate-limit refusal under a lowered limit; stream recovery once;
-  the three layouts and keyboard/screen-reader semantics once; offline shell once.
+  the three layouts, touch-only use and keyboard/screen-reader semantics once; offline shell once.
 - **R56** `[agent]` Wire types come only from the contract; the client adds no second hand-written copy
   of the wire schema. Wire conformance is proven by the backend's contract assertions and by the
   journeys of R53.
@@ -376,6 +390,20 @@ development, production-style local run and the single verification gate.
 - **R57** A gap or defect found in the contract or backend while building this feature is fixed in
   place, with every current dependent and proof updated in the same change.
 
+### Visual design
+
+- **R58** Styling uses the mockup's semantic design tokens for both themes: surfaces, text, borders,
+  accent, danger, warning, success, sea, ship, miss, hit, sunk, focus ring, radii, spacing, control
+  heights and motion durations. Theme `system` follows the operating system's colour scheme.
+- **R59** Each surface presents the mockup's widgets for it, fed only by server data; the per-surface
+  list and each widget's data source are in `contracts/ui-surface.md` § *Surfaces and widgets*.
+- **R60** Not reproduced from the mockup: invitation token text, Copy token, a paste-token join field,
+  Join game on Home (joining is by link or QR only), shading of no-touch zones (the ruleset's touching
+  rule is shown as text), a display game number, the snapshot-version footer, and the mockup's preview,
+  simulation and demo controls.
+- **R61** Mouse, touch and pen reach the same actions; no action or information depends on hover.
+  Controls are at least the mockup's control height; board cells share the available width.
+
 ## Agent-proposed requirements
 
 | Id | Why | Cost | Cheaper alternative | Recommendation |
@@ -384,24 +412,6 @@ development, production-style local run and the single verification gate.
 | R35 | Contract has no ruleset or ship name field | Translation keys per known id | Show raw ids | Now |
 | R44 | An unannounced service-worker update can swap code mid-game | One prompt; reused from prior art | Update silently on next load | Now |
 | R56 | "Real backend only" cannot prove a hand-written schema; it would duplicate the contract | None (removes work) | Hand-written runtime schemas | Now |
-
-## Superseded seed rules
-
-| Seed rule | Contract fact used instead |
-|---|---|
-| Server epoch / epoch boundary | One `version`, ordering only; restart loss appears as session-required or not-found (R05, R27) |
-| `If-Match`, `expectedVersion`, 412 | Action identifier only; conflicts are 409 (R19, R20) |
-| `BATTLESHIP-XSRF-TOKEN` / `X-Battleship-CSRF` | `XSRF-TOKEN` cookie / `X-XSRF-TOKEN` header (R03) |
-| Separate API origin, credentialed CORS, runtime API-origin document, cross-port configuration check | One origin; no CORS (R46, R47) |
-| Invitation URL lost after reload | Host's waiting snapshot carries it unless the invitation expired (R11, R12) |
-| Separate move and rotate commands | One atomic place-ship action relocates or rotates (R17) |
-| Stale/checking connection states | Reconnecting/offline plus checking for an unknown action outcome (R24) |
-| Validated data via hand-written runtime schemas | Contract-generated types; unreadable answers rejected (R23, R56) |
-| Presence `extended: false` | Compare the snapshot's expiry (R16) |
-| `/actuator/health` | Contract health operation (R48) |
-| Versioned leave with receipts | Body-less leave; a later "not found" means already left (R28, R30) |
-| Server-provided ruleset names | Translated by identifier (R35) |
-| Component and gateway tests on fixtures | Real backend only (R53, R54) |
 
 ## Key Entities
 
@@ -429,6 +439,8 @@ development, production-style local run and the single verification gate.
   queued.
 - **S7** From a clean clone, the documented commands start development and production-style runs, and
   the single verification command passes end to end; a deliberately broken stage makes it fail.
+- **S8** Screenshots of every surface at phone portrait, phone landscape and laptop sizes in both themes
+  are captured by the journeys, and the owner's comparison with the mockup is recorded.
 
 ## Assumptions
 
@@ -447,7 +459,7 @@ development, production-style local run and the single verification gate.
 ## Out of scope
 
 Everything the constitution's launch baseline excludes (database, accounts, chat, spectators, rankings,
-payments, analytics, ads, offline play, command queues, scaling, CI, deployment, hosting). Also: pixel
-matching, a cross-browser/device matrix, load testing, and the capabilities the contract defers —
+payments, analytics, ads, offline play, command queues, scaling, CI, deployment, hosting). Also: automated
+pixel comparison, a cross-browser/device matrix, load testing, and the capabilities the contract defers —
 claiming a win against a vanished opponent, rematch, a list of my games, recovering a join whose answer
 was lost, conditional reads and salvo rules.

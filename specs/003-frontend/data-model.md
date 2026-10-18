@@ -11,7 +11,7 @@ The client stores no game model of its own. Wire shapes (`GameSnapshot`, `Meta`,
 | `snapshot` | `GameSnapshot \| undefined` | last accepted snapshot; see *Version rule* |
 | `clockOffsetMs` | number | `serverTime − Date.now()` at receipt; display only |
 | `connection` | `connected \| reconnecting \| offline` | *Connection* below (R24) |
-| `checking` | boolean | an action got no answer within 10 s, or its answer was lost (R24) |
+| `checking` | boolean | the pending action's answer was lost — see *Action slot* (R24) |
 | `action` | `{ commandId: uuid, kind: Action, body } \| undefined` | single-flight slot (R19) |
 | `notice` | `{ messageKey, retryAfterSeconds? } \| undefined` | last refusal, worded (R20, R22) |
 | `lastAnnounced` | `{ by, target } \| undefined` | dedupes announcement/sound per `lastShot` (R31, R32) |
@@ -30,8 +30,8 @@ Applies to every source: command, presence, invitation, join, create, `getGame`,
 
 `idle → pending(commandId)`: user activates an allowed action; new `commandId = crypto.randomUUID()`.
 `pending → idle`: that action's own HTTP answer (snapshot or problem). An SSE snapshot updates the board but
-does not settle the slot. `pending → checking`: network failure without an answer; the
-retry control resends the **same** body and `commandId`. Only one action per game; fire also marks its target cell
+does not settle the slot. `pending → checking`: a network failure, or no answer within 10 s (the request is
+aborted); the retry control resends the **same** body and `commandId`. Only one action per game; fire also marks its target cell
 pending. Presence, invitation replacement and leave are not commands and carry no `commandId`; they still disable
 their own control while pending.
 
@@ -42,10 +42,14 @@ their own control while pending.
 | — | open game screen | `reconnecting` | open `EventSource` |
 | `reconnecting` | first `snapshot` event | `connected` | — |
 | `connected` | `error`, `readyState` CONNECTING | `reconnecting` | browser retries itself |
-| any | `error`, `readyState` CLOSED; or tab visible | `reconnecting` | `getGame`; reopen if OK; on network error, 502 or unreadable answer retry after 1, 2, 4, then every 8 s |
-| any | `navigator` offline / fetch network error | `offline` | game actions disabled (R43) |
+| any but `offline` | `error`, `readyState` CLOSED; or tab visible | `reconnecting` | `getGame`; reopen if OK; on network error, 502 or unreadable answer retry after 1, 2, 4, then every 8 s |
+| any | `offline` event (`navigator.onLine` false) | `offline` | close stream; game actions disabled (R43) |
+| `offline` | `online` event | `reconnecting` | as the CLOSED row |
 | any | `closed` `REPLACED` | terminal (other tab) | close; never reopen |
 | any | `closed` `GAME_UNAVAILABLE` | terminal | close; one `getGame` → outcome table (plan) |
+
+A network error while `navigator.onLine` is true never means `offline`; it keeps or puts the game in
+`reconnecting`.
 
 ### Presence (R16)
 
@@ -69,7 +73,19 @@ rendered, stored, logged or put in a URL.
 Nothing else is persisted: no snapshot, no invitation link, no cookie value. The service worker caches static
 assets only (R42).
 
-## Derived for display only
+## Derived for display only (R01, R59)
 
-Ruleset facts from `listRulesets` (R04); ship/ruleset names by id via i18n (R35); countdown = `expiresAt −
-(Date.now() + clockOffsetMs)`. None of these decides legality, turn, expiry or success (R01).
+| Value | From |
+|---|---|
+| Ruleset facts | `listRulesets` (R04) |
+| Ship and ruleset names | i18n by id, raw id fallback (R35) |
+| Countdowns (game, invitation) | `expiresAt` / `invitationExpiresAt − (Date.now() + clockOffsetMs)` |
+| Invitation meter | remaining invitation time ÷ `meta.limits.invitationLifetimeSeconds` |
+| Fleet tray | unplaced `yourBoard.ships` (empty `cells`) grouped by `length` |
+| Fleet progress | placed ships ÷ `yourBoard.ships.length` |
+| Ships left (player card) | `you`/`opponent.shipsRemaining` ÷ fleet total (Σ `ruleset.fleet[].count`) |
+| Ship cells left (player card) | Σ `length × count` over `ruleset.fleet` − cells in `HIT` or `SUNK` on that player's board |
+| Waiting-room stepper | `phase`: `WAITING` → Waiting, `PLACEMENT` → Placement, `PLAYING`/later → Battle |
+| Result availability note | `expiresAt` of the finished snapshot |
+
+None of these decides legality, turn, expiry or success (R01).

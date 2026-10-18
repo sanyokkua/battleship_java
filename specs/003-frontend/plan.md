@@ -30,9 +30,10 @@ frontend/                      standalone npm project; no root workspace
 │   ├── gateway/               GameGateway, EventStream, decode, problem → message
 │   ├── session/               snapshot store, action slot, presence
 │   ├── screens/               home create join waiting placement gameplay results unavailable
-│   ├── components/            Board, Dialog, Qr, Statistics, ConnectionStatus
+│   ├── components/            Header, Button, Card, Pill, Toasts, Stepper, Meter, Board, FleetTray,
+│   │                          PlayerCard, StatCard, Dialog, Qr, ConnectionStatus (each with its CSS)
 │   ├── i18n/                  translate.ts, en.ts, uk.ts
-│   ├── preferences/  feedback/ (audio, haptics)  pwa/  styles/ (tokens)
+│   ├── preferences/  feedback/ (audio, haptics)  pwa/  styles/ (tokens.css, base.css — from the mockup)
 ├── tests/                     vitest — R54 items only
 └── e2e/                       Playwright journeys + stack fixture
 scripts/   install.sh  stack.mjs  dev.sh  local-prod.sh  verify.sh
@@ -106,7 +107,8 @@ succeeds or returns 401/404/410 — the contract's
 snapshot source (command, presence, invitation, `getGame`, SSE): higher version replaces; equal version merges
 only the fields the contract excludes from `version` (`expiresAt`, `serverTime`, and — after fix 4 below —
 `invitationUrl`/`invitationExpiresAt`); lower is dropped. One action slot: a new `commandId` per user action, the
-same one on retry after a lost answer; controls disabled while it is pending. The slot settles only on that
+same one on retry after a lost answer; controls disabled while it is pending. A command with no answer after
+10 s is aborted and, like a network failure, puts the slot in *checking*. The slot settles only on that
 action's own HTTP answer — an SSE snapshot updates the board but leaves a lost action in *checking* until the
 player retries (R19, R24). Presence does not use the action slot:
 visible tab, `SEND_PRESENCE` allowed, every `limits.presenceIntervalSeconds` from `getMeta`; the timer restarts
@@ -133,27 +135,46 @@ corrected by the `serverTime` offset; they never decide expiry.
 ### Leaving, layouts, dialogs (R28–R30, R39, R41)
 
 - Leave in `WAITING`/`PLACEMENT`: confirmation dialog → `leaveGame`; Home after `204` or `404` (already left).
-  In `PLAYING`: the dialog says it means resigning → `RESIGN` command. Leave results: `leaveGame` from a finished
+  In `PLAYING` the leave path is Settings → Resign match (shown while `RESIGN` is allowed): the dialog says it
+  means resigning → `RESIGN` command. Header Refresh calls `getGame` through the version gate. Leave results: `leaveGame` from a finished
   or abandoned result → Home; forget the remembered id.
-- Layout mode from container width and orientation (`landscape` when height < 520 px and width > height — it
-  wins over the others; else `desktop` ≥ 960 px wide; else `portrait`): portrait shows a `role="tablist"` board switch with turn and action status
-  outside the tab panels; landscape uses compact cell size. CSS only, no horizontal overflow (R39).
+- Layouts are CSS only (D18): below the mockup's `app` container width of 47.5rem a `role="tablist"` Enemy
+  waters / Your fleet switch shows one board, with turn pill, player cards and action status outside the tab
+  panels; `(max-height: 31.25rem) and (orientation: landscape)` shows two compact boards and no tabs; otherwise
+  both boards side by side. No horizontal overflow (R39).
 - One `Dialog` component on native `<dialog>` + `showModal()` (focus containment, Escape → `cancel`), labelled by
   its heading, returns focus to the opener; Escape is disabled where dismissal is unsafe (pending action) (R41).
 
 ### Placement, play, results (R17, R18, R21, R31, R32, R36)
 
-Cell → ship-action dialog (unplaced ship + orientation; or move/rotate/remove for a placed ship). Move and rotate
-are one `PLACE_SHIP`. Drag uses pointer events and sends the same `PLACE_SHIP`; the anchor is clamped to the board
-grid before sending, the dialog path stays. Fire only on `UNKNOWN` opponent cells while `FIRE` is allowed.
-Announcements and sound/haptics trigger once per new `lastShot` (`by` + `target`). Results render
-`outcome`, both boards and `statistics` as supplied.
+- Board: `role="grid"` with one roving tab stop (Arrow keys, Home/End; Enter/Space activates), each cell labelled
+  with coordinate and state ("A1, hit"); fired and read-only cells `aria-disabled`. Tracks and column/row labels
+  come from `ruleset.board` (letters A–Z, then AA…; numbers from 1).
+- Placement: cell → ship-action dialog (unplaced ship chips + Horizontal/Vertical; or move/rotate/remove for a
+  placed ship). Move and rotate are one `PLACE_SHIP`. Drag per D19 from a fleet-tray tile or a placed ship sends
+  the same `PLACE_SHIP`; the dialog path stays. Ready opens a confirmation (the fleet locks) before `READY`.
+- Play: fire only on `UNKNOWN` opponent cells while `FIRE` is allowed. Announcements and sound/haptics trigger once
+  per new `lastShot` (`by` + `target`).
+- Results render `outcome`, both boards, fleet-condition tiles and the three stat cards from `statistics` as
+  supplied; display counts are the data-model's derived values only.
+
+### Visual design (R58–R61, D17)
+
+- `styles/tokens.css`: the mockup's custom properties, dark on `:root`, light on `[data-theme="light"]`;
+  `themeController` sets `data-theme` and resolves `system` via `matchMedia('(prefers-color-scheme: dark)')`,
+  following its changes. `base.css`: system font stack, focus-visible ring, the mockup's `forced-colors` rule, and
+  `prefers-reduced-motion: reduce` disabling transitions and animations.
+- Components and their CSS are ported from the mockup's markup and rules, re-expressed as React components; every
+  surface's widget list and data source is `contracts/ui-surface.md` § *Surfaces and widgets*. Icons are the
+  mockup's Unicode glyphs; emoji only when the emoji preference is on and `aria-hidden`.
+- Interaction: hover styles only inside `@media (hover: hover)`; controls keep the mockup's `--control-h`
+  (2.75rem) and `touch-action: manipulation`; board cells fill the grid width with `aspect-ratio: 1`.
 
 ### Preferences, i18n, feedback, PWA (R32–R35, R42–R44)
 
 - Translator, storage wrapper and theme controller adapted from solitaire `src/i18n/translate.ts`,
   `src/features/persistence/storageGateway.ts`, `src/app/themeController.ts` (Redux removed). Ruleset and ship
-  names by id with raw-id fallback (R35). Theme tokens from the mockup's CSS variables.
+  names by id with raw-id fallback (R35). Theme handling: § *Visual design*.
 - Audio: master `frontend/src/audio/audioRecipes.ts` + `AudioFeedback.ts` (WebAudio, swallow-all failures). Haptics:
   `navigator.vibrate` behind a capability check. Both no-op on denial.
 - PWA: solitaire `src/pwa/` (`registerType: 'prompt'`, update applied only after consent, R44); workbox precaches
@@ -192,7 +213,7 @@ Announcements and sound/haptics trigger once per new `lastShot` (`by` + `target`
 | Production-style (`scripts/local-prod.sh`) | `vite preview` of `dist/` on `localhost:4173`, `strictPort` | JAR on `:8080` | `http://localhost:4173` |
 | Journeys | `vite preview` per stack: default `4173`, short-lifetime `4174`, lowered-limit `4175`, restart `4176` | JAR per stack: `8080`, `8081`, `8082`, `8083` | matching frontend origin |
 
-`vite.config.ts` reads `FRONTEND_PORT` and `BACKEND_PORT` (defaults 5173/4173 and 8080); `stack.mjs` passes `BACKEND_PORT` to the JAR as `SERVER_PORT` (the backend sets no `server.port`).
+`vite.config.ts` reads `FRONTEND_PORT` (default 5173 for `vite`, 4173 for `vite preview`) and `BACKEND_PORT` (default 8080); `stack.mjs` passes `BACKEND_PORT` to the JAR as `SERVER_PORT` (the backend sets no `server.port`).
 
 - Both Vite servers proxy `/api` to `http://127.0.0.1:<backend port>` (SSE streamed, no compression); `vite
   preview` serves `index.html` for deep links (D10). The backend accepts unsafe requests only from that exact
@@ -220,19 +241,20 @@ list: `smoke`, `settings`, `create`, `waiting`, `invitation`, `placement`, `play
 
 | Proof | Owner |
 |---|---|
-| R54: key parity, preference persistence, sound/haptic no-op on denial, QR rendering of a string, layout-mode selection, decode rejection | `frontend/tests/*.test.ts(x)` (vitest, jsdom) |
+| R54: key parity, preference persistence, sound/haptic no-op on denial, QR rendering of a string, decode rejection | `frontend/tests/*.test.ts(x)` (vitest, jsdom) |
 | Proxy, SSE through the proxy, deep-link reload, occupied-port failure message (R46–R48) | `smoke` |
 | Settings apply immediately, survive reload, mid-game toggles of sound/haptics (R33, S5) | `settings` |
-| Each advertised ruleset's facts before submit; single create request (R04, R13) | `create` |
+| Each advertised ruleset's facts before submit; single create request; Home then offers Return to your game; with storage cleared a second create shows the `browser-game-limit` message and is not retried; a create answer hidden by `page.route` → `route.abort()` shows "outcome unknown" and sends no second create (R04, R07, R13) | `create` |
 | Copy link, QR, replace after confirmation, invitation expired without reload on the short-lifetime stack (R11, R12) | `waiting` |
 | Fragment gone before render, explicit join, two-guest race; scan of URL, history, `localStorage`, `sessionStorage`, console and captured `stack.mjs` output for the secret, `Set-Cookie` and cookie values (R08–R10, R15, R51, S2) | `invitation` |
-| Place/move/rotate/remove, refusal wording, random/clear, ready once, one drag (R17, R18) | `placement` |
+| Place/move/rotate/remove, refusal wording, random/clear, ready after confirmation once, one tray drag with a mouse and one ship drag in a touch context (R17, R18, R61) | `placement` |
 | Fire, turn per ruleset, live update, action race; lost answer — `page.route` → `route.fetch()` reaches the real server, `route.abort()` hides the answer, the page shows *checking*, the retry request carries the same `commandId`, the board shows the action applied once (R19–R21, D13) | `play` |
 | One full game per ruleset; statistics as supplied (R36, S1) | `results` |
 | Leave before play, resign, abandoned view, leave results (R28–R30) | `leaving` |
 | Expiry → "expired" then "no longer available" after retention; presence extends expiry; restart → "no longer available" (R16, R27, R50) | `lifetime` |
-| Stream drop and tab return refresh without repeating an action; `429` with wait hint under a lowered limit (R22, R25) | `recovery` |
-| Three layouts, tab control, keyboard-only journey, axe serious/critical = 0, forced colours and reduced motion via `emulateMedia`, dialogs focus/Escape (R39–R41, S4) | `accessibility` |
+| Stream drop and tab return refresh without repeating an action; a second tab in the same context opens the game → the first shows "open in another tab" and opens no new stream; `429` with wait hint under a lowered limit (R22, R25, R26) | `recovery` |
+| Three layouts at 390×844, 844×390, 1280×800 with no horizontal overflow, tab control, keyboard-only journey, touch-only journey in a `hasTouch` context, axe serious/critical = 0, forced colours and reduced motion via `emulateMedia`, dialogs focus/Escape (R39–R41, R61, S4) | `accessibility` |
+| Screenshots of every surface at the three sizes in dark and light into `frontend/test-results/visual/`; the owner's comparison with the mockup recorded in the task (R58–R60, S8) | `accessibility` |
 | Offline shell ≤ 3 s with "network required" and no request sent; `caches` hold no `/api` URL; update prompt after rebuilding into the served `dist/` while `vite preview` keeps serving the same origin (R42–R44, S6) | `offline` |
 | No development address in `dist/` (R47) | `frontend` `npm run check` build step |
 | Contract and backend fixes (R57) | `contracts` `npm run check`; `CapacityIT`; `PackagedArtifactIT`; Failsafe dumpstream |
@@ -247,6 +269,7 @@ list: `smoke`, `settings`, `create`, `waiting`, `invitation`, `placement`, `play
 | S5 sound/haptics never change outcome | `tests/feedback.test.ts` + `settings` |
 | S6 offline shell ≤ 3 s, nothing sent | `offline` |
 | S7 clean-clone commands, gate fails on broken stage | `scripts/verify.sh` evidence |
+| S8 screens compared with the mockup | `accessibility` screenshots + owner review |
 
 ## Gate
 
@@ -261,7 +284,9 @@ Created by this feature. From the repository root:
 
 ## Forecast
 
-20 tasks, ≈110 files (≈75 frontend source, ≈20 unit/e2e, ≈10 scripts/config/docs, ≈5 contract/backend).
+20 tasks, ≈120 files (≈85 frontend source and CSS, ≈20 unit/e2e, ≈10 scripts/config/docs, ≈5 contract/backend).
+Visual work adds no task: tokens and shared components belong to task 6, each screen task delivers its own
+widgets from `contracts/ui-surface.md`, and screenshots belong to task 18.
 At the 20-task line of AGENTS.md rule 3, not above it; any further task needs owner approval.
 
 | # | Task | Proof it carries |
@@ -271,19 +296,19 @@ At the 20-task line of AGENTS.md rule 3, not above it; any further task needs ow
 | 3 | Backend: actuator off the public port (fix 3) | `PackagedArtifactIT` |
 | 4 | `install.sh` + `frontend/` scaffold, pins, lint/format, type generation | clean install; renaming a contract operation fails typecheck |
 | 5 | `stack.mjs`, `dev.sh`, `local-prod.sh`, `config/local.env.example`, Playwright config + stack fixture | `smoke` |
-| 6 | Shell: router, i18n, preferences, theme, dialog primitive, rules/settings | key parity, persistence, layout-mode units; `settings` |
+| 6 | Shell: router, header, i18n, preferences, tokens + theme (incl. system), shared components, dialog primitive, toasts, rules/settings | key parity, persistence units; `settings` |
 | 7 | Gateway + session store + Home + Create | decode unit; `create` |
 | 8 | Waiting room: copy, QR, replace, invitation expired + contract fix 4 | QR unit; `waiting` |
 | 9 | Join: fragment strip, explicit join, race | `invitation` |
-| 10 | Placement: board, ship-action dialog, random/clear/ready, refusals | `placement` |
-| 11 | Drag placement | drag step in `placement` |
-| 12 | Play: fire, turns, live updates, announcements, action race, lost answer | `play` |
-| 13 | Results + one full game per ruleset | `results` (S1) |
+| 10 | Placement: board grid + keyboard model, fleet tray, ship-action dialog, random/clear, ready confirmation, refusals | `placement` |
+| 11 | Drag placement (Pointer Events: tray and placed ship; mouse and touch) | drag steps in `placement` |
+| 12 | Play: player cards, turn pill, fire, turns, live updates, announcements, action race, lost answer | `play` |
+| 13 | Results: hero, fleet tiles, stat cards, boards + one full game per ruleset | `results` (S1) |
 | 14 | Sound + haptics | no-op unit; `settings` mid-game toggles |
 | 15 | Leave, resign, abandoned view, leave results | `leaving` |
 | 16 | Session unavailable, expiry, presence extension, restart | `lifetime` (dedicated stacks) |
 | 17 | Stream recovery with backoff, rate-limit refusal | `recovery` |
-| 18 | Three layouts, tab control, keyboard + a11y | `accessibility` (S4) |
+| 18 | Three layouts, tab control, keyboard, touch, a11y, screenshots for mockup review | `accessibility` (S4, S8) |
 | 19 | PWA: installable shell, offline state, update prompt | `offline` (S6) |
 | 20 | `verify.sh` + `docs/local-operation.md` + AGENTS.md gate/Definition-of-Done update | full run green; broken-stage run red (S7) |
 

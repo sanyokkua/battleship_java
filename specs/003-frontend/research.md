@@ -129,3 +129,31 @@ Each entry: **Decision** · **Rationale** · **Alternatives rejected**. No open 
   amendment makes the contract describe the delivered behaviour; no backend change.
 - **Rejected:** a backend sweeper that bumps the version and publishes on lapse — new scheduled state change, an IT
   and a task, for a display that one read already gives.
+
+## D17 Visual system from the mockup
+
+- **Decision:** port the mockup's CSS custom properties (dark on `:root`, light on `[data-theme="light"]`) into
+  `src/styles/tokens.css` and its component rules into per-component CSS. System font stack (the mockup names Inter
+  but never loads it) and the mockup's Unicode glyphs for icons; no web font, icon font or SVG set.
+- **Rationale:** R58 makes the mockup's tokens the design contract; plain CSS keeps one copy of them and works
+  offline from the precache.
+- **Rejected:** a CSS framework or component library — a second token system plus dependencies.
+
+## D18 Responsive model: CSS only
+
+- **Decision:** the app frame is a size container like the mockup's `app`; below 47.5rem the Enemy waters / Your
+  fleet tabs show one board; `(max-height: 31.25rem) and (orientation: landscape)` selects two compact boards with
+  no tabs and wins over the narrow rule. The tab control is always rendered and hidden by CSS on wide and
+  landscape. Board grid tracks and coordinate labels come from `ruleset.board` (R04), not from the mockup's fixed
+  10 × 10.
+- **Rationale:** the mockup's own breakpoints; no JavaScript state to test or keep in sync; proven at three viewport
+  sizes by the `accessibility` journey.
+- **Rejected:** JavaScript layout-mode detection (duplicates CSS, needs its own unit test).
+
+## D19 Drag with Pointer Events
+
+- **Decision:** one Pointer Events path with pointer capture for mouse, touch and pen. Sources: a fleet-tray tile
+  (the first unplaced ship of that length) and a placed ship. The drop sends one `PLACE_SHIP` with the last chosen
+  orientation (default horizontal; a placed ship keeps its own); rotation is changed in the ship-action dialog only.
+  The anchor is clamped to the board before sending.
+- **Rejected:** the mockup's HTML5 drag-and-drop — no touch support, so it needs a second touch path.
