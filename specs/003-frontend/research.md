@@ -125,7 +125,7 @@ Each entry: **Decision** · **Rationale** · **Alternatives rejected**. No open 
   `invitationExpiresAt` as it already excludes `expiresAt`/`serverTime`. The client merges them at equal version and
   reads `getGame` once at `invitationExpiresAt`.
 - **Rationale:** the backend drops the link at its deadline without a version bump or push
-  (`GameSlot.java:144-153`), so the current contract text is false and the R05 rule would hide the expiry. The
+  (`GameSlot.java:145-163`), so the current contract text is false and the R05 rule would hide the expiry. The
   amendment makes the contract describe the delivered behaviour; no backend change.
 - **Rejected:** a backend sweeper that bumps the version and publishes on lapse — new scheduled state change, an IT
   and a task, for a display that one read already gives.

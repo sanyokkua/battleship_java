@@ -33,5 +33,5 @@ All from the repository root; Node 24 and Java 25 (major checked); no global too
 | `./scripts/verify.sh` | `install.sh` → contract check → backend gate → frontend check + build → journeys vs packaged JAR | journey stacks: UI 4173–4176, backend 8080–8083 | 0 only if every stage ran and passed |
 
 Overrides: any `BATTLESHIP_*` backend key from the environment (example values in `config/local.env.example`);
-`BACKEND_PORT`, `FRONTEND_PORT` (read by `stack.mjs` and `vite.config.ts`). Start-up failures print component, address and a next step (R48). Output never
+`BACKEND_PORT` (passed to the JAR as `SERVER_PORT`), `FRONTEND_PORT` (read by `stack.mjs` and `vite.config.ts`). Start-up failures print component, address and a next step (R48). Output never
 contains cookies, invitation links, boards or request bodies (R51).

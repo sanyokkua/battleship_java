@@ -177,7 +177,7 @@ Announcements and sound/haptics trigger once per new `lastShot` (`by` + `target`
    `management.*` config, contradicting 002 plan ("Actuator stays off the public surface"). Confirm
    `/actuator/health` answers, then remove the dependency (or disable web exposure if something needs it).
    Proof: `PackagedArtifactIT` asserts `404` on `/actuator/health`. Agent-proposed; owner approved 2026-10-18.
-4. **Invitation lapse is invisible to `version`** — `GameSlot.contextFor` (`GameSlot.java:144-153`) drops
+4. **Invitation lapse is invisible to `version`** — `GameSlot.contextFor` (`GameSlot.java:145-163`) drops
    `invitationUrl` once its deadline passes, but no version bump or push happens, while `GameSnapshot.version`
    (`openapi.yaml:1029-1035`) claims it grows on every view change. Fix in the contract only (D16): `version`
    also excludes `invitationUrl` and `invitationExpiresAt`, which — like `expiresAt` — are always current. The
@@ -192,7 +192,7 @@ Announcements and sound/haptics trigger once per new `lastShot` (`by` + `target`
 | Production-style (`scripts/local-prod.sh`) | `vite preview` of `dist/` on `localhost:4173`, `strictPort` | JAR on `:8080` | `http://localhost:4173` |
 | Journeys | `vite preview` per stack: default `4173`, short-lifetime `4174`, lowered-limit `4175`, restart `4176` | JAR per stack: `8080`, `8081`, `8082`, `8083` | matching frontend origin |
 
-`vite.config.ts` reads `FRONTEND_PORT` and `BACKEND_PORT` (defaults 5173/4173 and 8080).
+`vite.config.ts` reads `FRONTEND_PORT` and `BACKEND_PORT` (defaults 5173/4173 and 8080); `stack.mjs` passes `BACKEND_PORT` to the JAR as `SERVER_PORT` (the backend sets no `server.port`).
 
 - Both Vite servers proxy `/api` to `http://127.0.0.1:<backend port>` (SSE streamed, no compression); `vite
   preview` serves `index.html` for deep links (D10). The backend accepts unsafe requests only from that exact
@@ -201,8 +201,9 @@ Announcements and sound/haptics trigger once per new `lastShot` (`by` + `target`
   waits for `GET /api/v1/health` `ready`, prefixes and redacts output (drops `Set-Cookie`, `#invite=`, cookie
   values), names component + address + next step on failure, stops only the processes it started (R48, R51). It is
   the CLI behind `dev.sh`/`local-prod.sh` and is imported by the Playwright fixture (D11).
-- The default journey stack raises `create-game`/`join` rate limits (both keyed by client address, and all
-  proxied traffic shares one). Dedicated stacks set short `idle-timeout-seconds`, `presence-interval-seconds`,
+- The default journey stack raises the `create-game`/`join` rate limits (keyed by client address; all proxied
+  traffic shares one) and the per-session `commands`/`read-game`/`stream-open` limits (a full game sends ~100
+  commands per player against a 60/min default). Dedicated stacks set short `idle-timeout-seconds`, `presence-interval-seconds`,
   `sweep-interval-seconds`, `result-retention-seconds`, `invitation-lifetime-seconds`, or a lowered rate limit,
   through existing env keys only (R50, D12). Restart = stop and start the same JAR.
 - `scripts/install.sh`: checks `java` major 25 and `node` major 24, `npm ci` in `contracts/` and `frontend/`,
