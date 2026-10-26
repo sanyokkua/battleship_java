@@ -645,7 +645,7 @@ components:
         ready, fleet incomplete, not the host), `placement-out-of-bounds`, `placement-overlap`,
         `placement-touching`, `random-arrangement-failed` (random arrangement exhausted its attempt
         limit), `target-already-fired`. Nothing changed; except for
-        `invitation-unavailable`, fetch the snapshot.
+        `invitation-unavailable` and `browser-game-limit`, fetch the snapshot.
       content:
         application/problem+json:
           schema:
