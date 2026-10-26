@@ -91,7 +91,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
   - **Mutation** Revert the fix; the grep must find the line again.
   - **Depends on** T001 (same reactor; avoids concurrent `verify`)
 
-- [ ] T003 Remove Spring Boot Actuator from the public port in `backend/app/pom.xml`
+- [x] T003 Remove Spring Boot Actuator from the public port in `backend/app/pom.xml`
   - **Covers** R57, R48 (health is the contract operation) · plan.md fix 3
   - **Read first** `app/pom.xml:169` · `PackagedArtifactIT` (starts the JAR with `java -jar`)
   - **Files** `backend/app/pom.xml`, `backend/app/src/test/java/ua/kostenko/battleship/app/PackagedArtifactIT.java`
