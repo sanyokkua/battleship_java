@@ -105,7 +105,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
 
 ## Phase 2: Foundation (blocks every story)
 
-- [ ] T004 [P] Scaffold `frontend/`, type generation and `scripts/install.sh`
+- [x] T004 [P] Scaffold `frontend/`, type generation and `scripts/install.sh`
   - **Covers** R45, R47 (no dev address), R56 · research D1, D6 · plan § *Stack*, § *Gateway* (generation)
   - **Read first** plan § *Stack* (exact pins) · solitaire `package.json`, `tsconfig.app.json`, `tsconfig.node.json`, `eslint.config.js`, `.prettierrc.json`, `vitest.config.ts` (paths under `/Users/ok/Development/GitHub/solitaire/`)
   - **Files** `frontend/{package.json,package-lock.json,tsconfig.json,tsconfig.app.json,tsconfig.node.json,eslint.config.js,.prettierrc.json,vite.config.ts,vitest.config.ts,index.html,src/main.tsx,src/app/App.tsx,tests/setup.ts,scripts/check-dist.mjs}`, `scripts/install.sh`, `.gitignore`
