@@ -115,7 +115,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
   - **Mutation** Put a `PATH` shim first whose `node -p process.versions.node` prints `23.0.0`; `install.sh` must exit non-zero naming the runtime step. Remove the `localhost:` pattern from `check-dist.mjs`; (3) must fail.
   - **Depends on** — (parallel with T001; T005 needs T001's contract for generated `ProblemCode`)
 
-- [ ] T005 Build the stack orchestrator, dev/prod commands and the Playwright stack fixture in `scripts/stack.mjs`
+- [x] T005 Build the stack orchestrator, dev/prod commands and the Playwright stack fixture in `scripts/stack.mjs`
   - **Covers** R46, R47, R48, R50, R51 · S7 (dev and prod commands start) · research D10, D11, D12 · decision B3 · US8
   - **Read first** plan § *Local topology* · contracts/ui-surface.md § *Root commands* · Planning/06-integration/specify-input.md (context only)
   - **Files** `scripts/stack.mjs`, `scripts/dev.sh`, `scripts/local-prod.sh`, `config/local.env.example`, `frontend/vite.config.ts`, `frontend/playwright.config.ts`, `frontend/e2e/fixtures/stack.ts`, `frontend/e2e/smoke.spec.ts`, `frontend/tests/redact.test.ts`, `frontend/eslint.config.js` (`route.fulfill` ban in `e2e/**`)

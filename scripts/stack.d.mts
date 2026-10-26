@@ -1,4 +1,5 @@
 import type { Browser, BrowserContext } from '@playwright/test';
+import type { ChildProcess } from 'node:child_process';
 
 export interface StackOptions {
     name: string;
@@ -6,6 +7,7 @@ export interface StackOptions {
     backendPort: number;
     mode: 'dev' | 'preview';
     env?: Record<string, string>;
+    signal?: AbortSignal;
 }
 
 export interface StackHandle {
@@ -24,3 +26,4 @@ export interface TwoPlayers {
 export function startStack(options: StackOptions): Promise<StackHandle>;
 export function redact(line: string): string;
 export function twoPlayers(browser: Browser): Promise<TwoPlayers>;
+export function waitForExit(child: ChildProcess, timeoutMs?: number): Promise<void>;

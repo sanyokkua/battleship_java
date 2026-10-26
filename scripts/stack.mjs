@@ -8,7 +8,27 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const jar = resolve(root, 'backend/app/target/battleship-app-1.0.0-SNAPSHOT.jar');
 const frontendDir = resolve(root, 'frontend');
 
-const delay = (ms) => new Promise((resolveDelay) => setTimeout(resolveDelay, ms));
+function delay(ms, signal) {
+    return new Promise((resolveDelay, rejectDelay) => {
+        if (signal?.aborted) {
+            rejectDelay(new Error('Stack startup interrupted.'));
+            return;
+        }
+        const timer = setTimeout(() => {
+            signal?.removeEventListener('abort', abort);
+            resolveDelay();
+        }, ms);
+        const abort = () => {
+            clearTimeout(timer);
+            rejectDelay(new Error('Stack startup interrupted.'));
+        };
+        signal?.addEventListener('abort', abort, { once: true });
+    });
+}
+
+function throwIfAborted(signal) {
+    if (signal?.aborted) throw new Error('Stack startup interrupted.');
+}
 
 function safeName(name) {
     return basename(name).replace(/[^a-zA-Z0-9_-]/g, '_') || 'stack';
@@ -33,17 +53,22 @@ function childLines(child, prefix, output) {
     });
 }
 
-function waitForExit(child, timeoutMs = 5_000) {
-    if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
+export function waitForExit(child, timeoutMs = 5_000) {
+    if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
     return new Promise((resolveExit) => {
         const timer = setTimeout(() => {
             child.kill('SIGKILL');
-            resolveExit();
         }, timeoutMs);
         timer.unref();
         child.once('close', () => {
             clearTimeout(timer);
             resolveExit();
+        });
+        child.once('error', () => {
+            if (child.pid === undefined) {
+                clearTimeout(timer);
+                resolveExit();
+            }
         });
         child.kill('SIGTERM');
     });
@@ -67,61 +92,93 @@ async function assertPortAvailable(component, port) {
 }
 
 function spawnChild(command, args, options, component, address, output) {
-    const child = spawn(command, args, { ...options, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(command, args, {
+        ...options,
+        stdio: ['ignore', 'pipe', 'pipe'],
+    });
     childLines(child, `[${component}]`, output);
     child.once('error', (error) => output(`[${component}] failed to start at ${address}: ${redact(error.message)}`));
     return child;
 }
 
-function waitForChild(child, component, address) {
+function waitForChild(child, component, address, signal) {
     return new Promise((resolveChild, rejectChild) => {
         if (child.exitCode !== null || child.signalCode !== null) {
-            rejectChild(new Error(`${component} exited before becoming ready at ${address} (exit ${child.exitCode ?? child.signalCode}).`));
+            rejectChild(
+                new Error(
+                    `${component} exited before becoming ready at ${address} (exit ${child.exitCode ?? child.signalCode}).`,
+                ),
+            );
             return;
         }
-        child.once('error', (error) => rejectChild(new Error(`${component} could not start at ${address}: ${error.message}`)));
+        child.once('error', (error) =>
+            rejectChild(new Error(`${component} could not start at ${address}: ${error.message}`)),
+        );
         child.once('exit', (code, signal) =>
             rejectChild(new Error(`${component} exited before becoming ready at ${address} (exit ${code ?? signal}).`)),
         );
+        if (signal?.aborted) {
+            rejectChild(new Error('Stack startup interrupted.'));
+            return;
+        }
+        signal?.addEventListener('abort', () => rejectChild(new Error('Stack startup interrupted.')), { once: true });
         resolveChild();
     });
 }
 
-async function waitForBackend(port, child, output) {
+async function waitForBackend(port, child, output, signal) {
     const address = `http://127.0.0.1:${port}/api/v1/health`;
     const deadline = Date.now() + 60_000;
     while (Date.now() < deadline) {
+        throwIfAborted(signal);
         if (child.exitCode !== null || child.signalCode !== null) {
-            throw new Error(`backend exited before health was ready at localhost:${port}; inspect the [backend] log and run ./scripts/dev.sh after fixing the cause.`);
+            throw new Error(
+                `backend exited before health was ready at localhost:${port}; inspect the [backend] log and run ./scripts/dev.sh after fixing the cause.`,
+            );
         }
         try {
-            const response = await fetch(address, { signal: AbortSignal.timeout(1_000) });
+            const requestSignal = signal
+                ? AbortSignal.any([signal, AbortSignal.timeout(1_000)])
+                : AbortSignal.timeout(1_000);
+            const response = await fetch(address, { signal: requestSignal });
             if (response.ok && (await response.json()).ready === true) return;
         } catch {
+            throwIfAborted(signal);
             // The backend may still be starting; retry until the bounded deadline.
         }
-        await delay(250);
+        await delay(250, signal);
     }
     output(`[backend] health did not become ready at localhost:${port} within 60 seconds`);
-    throw new Error(`backend did not become ready at localhost:${port}; inspect the [backend] log and run ./scripts/dev.sh after fixing the cause.`);
+    throw new Error(
+        `backend did not become ready at localhost:${port}; inspect the [backend] log and run ./scripts/dev.sh after fixing the cause.`,
+    );
 }
 
-async function waitForFrontend(port, child) {
+async function waitForFrontend(port, child, signal) {
     const address = `http://localhost:${port}/`;
     const deadline = Date.now() + 60_000;
     while (Date.now() < deadline) {
+        throwIfAborted(signal);
         if (child.exitCode !== null || child.signalCode !== null) {
-            throw new Error(`frontend exited before becoming ready at localhost:${port}; inspect the [frontend] log and run npm --prefix frontend run build.`);
+            throw new Error(
+                `frontend exited before becoming ready at localhost:${port}; inspect the [frontend] log and run npm --prefix frontend run build.`,
+            );
         }
         try {
-            const response = await fetch(address, { signal: AbortSignal.timeout(1_000) });
+            const requestSignal = signal
+                ? AbortSignal.any([signal, AbortSignal.timeout(1_000)])
+                : AbortSignal.timeout(1_000);
+            const response = await fetch(address, { signal: requestSignal });
             if (response.ok) return;
         } catch {
+            throwIfAborted(signal);
             // Vite is still binding its configured port; retry until the bounded deadline.
         }
-        await delay(100);
+        await delay(100, signal);
     }
-    throw new Error(`frontend did not become ready at localhost:${port}; inspect the [frontend] log and run npm --prefix frontend run build.`);
+    throw new Error(
+        `frontend did not become ready at localhost:${port}; inspect the [frontend] log and run npm --prefix frontend run build.`,
+    );
 }
 
 export function redact(line) {
@@ -150,7 +207,7 @@ export async function twoPlayers(browser) {
     }
 }
 
-export async function startStack({ name, frontendPort, backendPort, mode, env = {} }) {
+export async function startStack({ name, frontendPort, backendPort, mode, env = {}, signal }) {
     if (!Number.isInteger(frontendPort) || !Number.isInteger(backendPort)) {
         throw new TypeError('frontendPort and backendPort must be integers.');
     }
@@ -196,9 +253,17 @@ export async function startStack({ name, frontendPort, backendPort, mode, env = 
     };
 
     const startBackend = async () => {
-        backend = spawnChild('java', ['-jar', jar], { cwd: root, env: backendEnv }, 'backend', `localhost:${backendPort}`, output);
-        await waitForChild(backend, 'backend', `localhost:${backendPort}`);
-        await waitForBackend(backendPort, backend, output);
+        throwIfAborted(signal);
+        backend = spawnChild(
+            'java',
+            ['-jar', jar],
+            { cwd: root, env: backendEnv },
+            'backend',
+            `localhost:${backendPort}`,
+            output,
+        );
+        await waitForChild(backend, 'backend', `localhost:${backendPort}`, signal);
+        await waitForBackend(backendPort, backend, output, signal);
         output(`[backend] ready at localhost:${backendPort}`);
     };
 
@@ -215,13 +280,16 @@ export async function startStack({ name, frontendPort, backendPort, mode, env = 
     };
 
     try {
+        throwIfAborted(signal);
         await startBackend();
+        throwIfAborted(signal);
         const vite = resolve(frontendDir, 'node_modules/vite/bin/vite.js');
         const args = mode === 'dev' ? [vite, '--host', 'localhost'] : [vite, 'preview', '--host', 'localhost'];
         const address = `localhost:${frontendPort}`;
         frontend = spawnChild(process.execPath, args, { cwd: frontendDir, env: viteEnv }, 'frontend', address, output);
         await waitForChild(frontend, 'frontend', address);
-        await waitForFrontend(frontendPort, frontend);
+        await waitForFrontend(frontendPort, frontend, signal);
+        throwIfAborted(signal);
         output(`[frontend] ready at ${origin}`);
     } catch (error) {
         await stop();
@@ -245,26 +313,46 @@ export async function startStack({ name, frontendPort, backendPort, mode, env = 
 async function runCli(mode) {
     const frontendPort = Number(process.env.FRONTEND_PORT ?? (mode === 'dev' ? 5173 : 4173));
     const backendPort = Number(process.env.BACKEND_PORT ?? 8080);
-    const stack = await startStack({ name: mode, frontendPort, backendPort, mode: mode === 'dev' ? 'dev' : 'preview' });
-    writeLine(process.stdout, `[stack] ready at ${stack.origin}`);
-    await new Promise((resolveSignal) => {
-        let stopping = false;
-        const shutdown = async (signal) => {
-            if (stopping) return;
-            stopping = true;
-            try {
-                await stack.stop();
-                writeLine(process.stdout, `[stack] stopped after ${signal}`);
-                process.exitCode = 0;
-            } catch (error) {
-                writeLine(process.stderr, `[stack] shutdown failed: ${redact(error.message)}`);
-                process.exitCode = 1;
-            }
-            resolveSignal();
-        };
-        process.once('SIGINT', () => void shutdown('SIGINT'));
-        process.once('SIGTERM', () => void shutdown('SIGTERM'));
+    const controller = new AbortController();
+    let stack;
+    let startup;
+    let resolveSignal;
+    let stopping = false;
+    const signalDone = new Promise((resolve) => {
+        resolveSignal = resolve;
     });
+    const shutdown = async (receivedSignal) => {
+        if (stopping) return;
+        stopping = true;
+        controller.abort();
+        try {
+            if (stack) await stack.stop();
+            else if (startup) await startup.catch(() => undefined);
+            writeLine(process.stdout, `[stack] stopped after ${receivedSignal}`);
+            process.exitCode = 0;
+        } catch (error) {
+            writeLine(process.stderr, `[stack] shutdown failed: ${redact(error.message)}`);
+            process.exitCode = 1;
+        }
+        resolveSignal();
+    };
+    process.once('SIGINT', () => void shutdown('SIGINT'));
+    process.once('SIGTERM', () => void shutdown('SIGTERM'));
+    startup = startStack({
+        name: mode,
+        frontendPort,
+        backendPort,
+        mode: mode === 'dev' ? 'dev' : 'preview',
+        signal: controller.signal,
+    });
+    try {
+        stack = await startup;
+        if (controller.signal.aborted) await stack.stop();
+        else writeLine(process.stdout, `[stack] ready at ${stack.origin}`);
+    } catch (error) {
+        if (!controller.signal.aborted) throw error;
+    }
+    await signalDone;
 }
 
 const invokedPath = process.argv[1] && pathToFileURL(resolve(process.argv[1])).href;
