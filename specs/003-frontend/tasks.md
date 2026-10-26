@@ -81,7 +81,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
   - **Mutation** Map `BrowserGameLimitException` back to `service-unavailable` in `CreateGameUseCase`; assertion (1) must fail.
   - **Depends on** —
 
-- [ ] T002 Stop the forked test JVM lingering 30 s after `verify` in `backend/`
+- [x] T002 Stop the forked test JVM lingering 30 s after `verify` in `backend/`
   - **Covers** R57 · spec Assumption 5
   - **Read first** plan.md fix 2 · `backend/app/src/main/resources/application.yaml:7,14` (`server.shutdown: graceful`, `timeout-per-shutdown-phase: ${battleship.shutdown-drain-seconds}s`) · root `backend/pom.xml:92-106` (Surefire/Failsafe, default fork) · `app/pom.xml:17-27` · `GracefulShutdownIT`
   - **Files** determined by the diagnosis (expected: `app/src/test/resources/application*.yaml` or Failsafe config); no production behaviour change
