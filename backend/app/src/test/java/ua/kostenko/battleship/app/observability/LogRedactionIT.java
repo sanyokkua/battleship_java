@@ -65,6 +65,7 @@ import ua.kostenko.battleship.domain.SeededRandomSource;
             "battleship.rate-limit.stream-open-per-minute=1000",
             "battleship.rate-limit.replace-invitation-per-minute=1000",
             "battleship.rate-limit.leave-per-minute=1000",
+            "battleship.max-concurrent-games=1",
             "server.shutdown=immediate"
         })
 @Import(LogRedactionIT.Determinism.class)
@@ -199,12 +200,9 @@ class LogRedactionIT {
                         hostCookie,
                         "{\"commandId\":\"" + UUID.randomUUID() + "\",\"command\":" + simple("READY") + ",\"extra\":\""
                                 + BODY_MARKER + "\"}"));
-        // 503: a browser that already holds a live game asks for a second one
-        track(host.http()
-                .postJson(
-                        "/api/v1/games",
-                        hostCookie,
-                        "{\"rulesetId\":\"" + SEA_BATTLE + "\",\"displayName\":\"" + HOST_NAME + "\"}"));
+        // 503: a distinct browser cannot allocate a game past the server's game ceiling
+        track(anonymous.postJson(
+                "/api/v1/games", null, "{\"rulesetId\":\"" + SEA_BATTLE + "\",\"displayName\":\"Other\"}"));
         // 429: the presence limit is one a minute
         track(host.http().postWithToken(GAMES + game + "/presence", host.http().freshToken(), hostCookie));
         track(host.http().postWithToken(GAMES + game + "/presence", host.http().freshToken(), hostCookie));
@@ -247,6 +245,10 @@ class LogRedactionIT {
                 guest.leave();
             }
         }
+
+        // The completed game's permit remains occupied through result retention; sweep it before the next game.
+        time.advance(Duration.ofSeconds(301));
+        sweeper.tick();
 
         // a game expiring: seen as 410 when asked, then forgotten and reported by the sweep
         Browser lonely = new Browser(port);

@@ -200,6 +200,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Unprocessable'
         '429':
@@ -638,7 +640,8 @@ components:
     Conflict:
       description: >-
         The request is well formed but the game does not allow it now. Codes: `invitation-unavailable`
-        (join), `action-not-allowed` (not in `allowedActions`: wrong phase, not your turn, already
+        (join), `browser-game-limit` (create, join: this browser already holds its live game; do not retry;
+        play again once it ends or expires), `action-not-allowed` (not in `allowedActions`: wrong phase, not your turn, already
         ready, fleet incomplete, not the host), `placement-out-of-bounds`, `placement-overlap`,
         `placement-touching`, `random-arrangement-failed` (random arrangement exhausted its attempt
         limit), `target-already-fired`. Nothing changed; except for
@@ -650,6 +653,8 @@ components:
           examples:
             invitationUnavailable:
               value: { title: Invitation unavailable, status: 409, code: invitation-unavailable, correlationId: 9f2c1d7a4b6e4c1e }
+            browserGameLimit:
+              value: { title: Browser already in a game, status: 409, code: browser-game-limit, correlationId: 9f2c1d7a4b6e4c1e }
             actionNotAllowed:
               value: { title: Action not allowed, status: 409, code: action-not-allowed, correlationId: 9f2c1d7a4b6e4c1e }
             placementOutOfBounds:
@@ -1347,6 +1352,7 @@ components:
         - request-security-rejected
         - game-unavailable
         - invitation-unavailable
+        - browser-game-limit
         - action-not-allowed
         - placement-out-of-bounds
         - placement-overlap

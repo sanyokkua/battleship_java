@@ -55,8 +55,7 @@ public final class SessionRegistry {
         lock.lock();
         try {
             SessionRecord current = records.get(digest);
-            if (current != null && current.liveGames().size() >= maxLiveGames)
-                throw new CapacityExceededException("browser games", 1);
+            if (current != null && current.liveGames().size() >= maxLiveGames) throw new BrowserGameLimitException();
             String evictable = null;
             if (current == null && records.size() == capacity) {
                 evictable = records.entrySet().stream()

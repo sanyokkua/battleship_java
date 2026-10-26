@@ -59,6 +59,7 @@ The table is orientation only. The server decides; clients read `allowedActions`
    pending commands are never stored.
 8. **Text:** `displayName` is untrusted plain text. Problem `code` is localized by the client; `title`
    and `detail` are for developers.
+9. **Browser game limit:** `409 browser-game-limit` on create or join is not retryable; play again once its live game ends or expires.
 
 ## Privacy and security
 

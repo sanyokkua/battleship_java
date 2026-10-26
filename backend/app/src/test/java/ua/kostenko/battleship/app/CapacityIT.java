@@ -25,8 +25,9 @@ import ua.kostenko.battleship.application.MutableTimeSource;
 import ua.kostenko.battleship.application.usecase.ExpireGamesUseCase;
 
 /**
- * Owner of S11: every ceiling (games, streams, live games per browser) refuses with 503 and a matching
- * {@code Retry-After}, never evicts a running game or an open stream, keeps the service ready, and gives each
+ * Owner of S11: server capacity ceilings refuse with 503 and a matching {@code Retry-After}; the per-browser
+ * live-game ceiling refuses with 409 and no retry hint. No running game or open stream is evicted, readiness remains
+ * true, and each
  * allocation back exactly once (R04, R39, R62). A fresh context per test keeps each ceiling's count exact; time is a
  * {@link MutableTimeSource}, so nothing sleeps (R60).
  */
@@ -109,6 +110,14 @@ class CapacityIT {
         int retryAfter = refused.json().get("retryAfterSeconds").asInt();
         assertThat(retryAfter).isGreaterThanOrEqualTo(1);
         assertThat(refused.header("Retry-After")).isEqualTo(String.valueOf(retryAfter));
+    }
+
+    private static void assertBrowserGameLimit(Reply refused) {
+        assertThat(refused.status())
+                .as(String.valueOf(refused.response().body()))
+                .isEqualTo(409);
+        assertThat(refused.json().get("code").asText()).isEqualTo("browser-game-limit");
+        assertThat(refused.header("Retry-After")).isEmpty();
     }
 
     private void assertReady() throws Exception {
@@ -196,8 +205,8 @@ class CapacityIT {
         Browser holder = host("Holder");
         Browser other = host("Other");
 
-        assertServiceUnavailable(tryCreate(holder));
-        assertServiceUnavailable(tryJoin(holder, other));
+        assertBrowserGameLimit(tryCreate(holder));
+        assertBrowserGameLimit(tryJoin(holder, other));
 
         assertThat(holder.read().status()).isEqualTo(200);
         assertThat(other.read().status()).isEqualTo(200);
@@ -210,7 +219,7 @@ class CapacityIT {
     void aFinishedGameNoLongerCountsAgainstTheBrowserCap() throws Exception {
         Browser host = host("Host");
         Browser guest = new Browser(port);
-        assertServiceUnavailable(tryCreate(host));
+        assertBrowserGameLimit(tryCreate(host));
 
         finish(host, guest);
 
@@ -221,7 +230,7 @@ class CapacityIT {
     @Test
     void leavingFreesTheAllocationAtOnce() throws Exception {
         Browser host = host("Host");
-        assertServiceUnavailable(tryCreate(host));
+        assertBrowserGameLimit(tryCreate(host));
 
         assertThat(host.leave().status()).isEqualTo(204);
 

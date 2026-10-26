@@ -115,11 +115,11 @@ class InvitationLifecycleTest {
                 .gameId();
         assertThatThrownBy(() -> fixture.create.execute(CreateGameUseCaseTest.RULESET, "Again", "host"))
                 .isInstanceOfSatisfying(ApplicationFailure.class, failure -> assertThat(failure.code())
-                        .isEqualTo("service-unavailable"));
+                        .isEqualTo("browser-game-limit"));
         fixture.join.execute(first, CreateGameUseCaseTest.INVITATION, "Guest", "guest");
         assertThatThrownBy(() -> fixture.join.execute(second, "B".repeat(43), "Guest", "guest"))
                 .isInstanceOfSatisfying(ApplicationFailure.class, failure -> assertThat(failure.code())
-                        .isEqualTo("service-unavailable"));
+                        .isEqualTo("browser-game-limit"));
         ua.kostenko.battleship.domain.model.PlayerState unclaimedGuest =
                 fixture.games.withSlot(second, slot -> slot.state().guest());
         assertThat(unclaimedGuest).isNull();

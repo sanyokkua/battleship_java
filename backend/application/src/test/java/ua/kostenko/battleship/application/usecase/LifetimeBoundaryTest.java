@@ -260,7 +260,7 @@ class LifetimeBoundaryTest {
         var f = new CommandTestFixture();
         var first = f.create.execute(CommandTestFixture.RULESET, "Host", null);
         assertThat(failureCode(() -> f.create.execute(CommandTestFixture.RULESET, "Host", first.sessionValue())))
-                .isEqualTo("service-unavailable");
+                .isEqualTo("browser-game-limit");
         f.time.set(NOW.plus(IDLE).plusSeconds(5));
         assertThatCode(() -> f.create.execute(CommandTestFixture.RULESET, "Host", first.sessionValue()))
                 .doesNotThrowAnyException();
@@ -275,7 +275,7 @@ class LifetimeBoundaryTest {
         var other = f.newWaitingGame();
         f.time.set(NOW.plus(INVITATION).minusSeconds(1));
         assertThat(failureCode(() -> f.join.execute(other.id(), other.secret(), "Guest", guest)))
-                .isEqualTo("service-unavailable");
+                .isEqualTo("browser-game-limit");
         f.time.set(NOW.plus(IDLE));
         var late = f.create.execute(CommandTestFixture.RULESET, "Host", null);
         String url = late.snapshot().invitationUrl();

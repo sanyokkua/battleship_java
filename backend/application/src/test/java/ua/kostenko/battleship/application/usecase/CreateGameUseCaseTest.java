@@ -202,7 +202,7 @@ class CreateGameUseCaseTest {
             fixture.create.execute(RULESET, "Host", "host");
             return true;
         } catch (ApplicationFailure refused) {
-            assertThat(refused.code()).isEqualTo("service-unavailable");
+            assertThat(refused.code()).isEqualTo("browser-game-limit");
             return false;
         }
     }

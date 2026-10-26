@@ -11,6 +11,7 @@ import ua.kostenko.battleship.application.port.TimeSource;
 import ua.kostenko.battleship.application.projection.SnapshotContext;
 import ua.kostenko.battleship.application.projection.SnapshotProjector;
 import ua.kostenko.battleship.application.projection.SnapshotView;
+import ua.kostenko.battleship.application.registry.BrowserGameLimitException;
 import ua.kostenko.battleship.application.registry.CapacityExceededException;
 import ua.kostenko.battleship.application.registry.GameRegistry;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
@@ -115,6 +116,8 @@ public final class JoinGameUseCase {
                         clearInvitation(slot);
                         return admissionNow;
                     });
+                } catch (BrowserGameLimitException full) {
+                    throw new ApplicationFailure("browser-game-limit", null, null, null);
                 } catch (CapacityExceededException full) {
                     throw new ApplicationFailure("service-unavailable", null, null, full.retryAfterSeconds());
                 }

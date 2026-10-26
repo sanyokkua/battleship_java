@@ -379,7 +379,8 @@ confirm the running service reports the changed value.
   and no open stream is ever evicted to make room, and the service still reports itself ready. Each
   allocation is released exactly once when the game or stream ends.
 - **R62** `[agent]` One browser additionally holds at most the configured number of live games at a
-  time, so a single browser cannot fill the server. Only games that have not ended count, so a finished
+  time, so a single browser cannot fill the server. A create or join refused by this limit answers
+  `409 browser-game-limit` without a retry hint; only games that have not ended count, so a finished
   or abandoned game never blocks a new one, and leaving frees the allocation at once.
 - **R40** `[agent]` A request body larger than the configured ceiling is refused as too large, and a
   request that carries a body whose content type is not the expected one is refused as an unsupported
@@ -562,9 +563,10 @@ deadline equals the current instant has already expired. The same comparison app
   a link fragment, board content or a raw request body.
 - **S10** The packaged artifact starts from default configuration on a developer machine and reports
   itself ready, serving no user-interface assets.
-- **S11** At either configured ceiling, a new game or a new event stream is refused with a retry hint
-  while every running game and open stream continues, and the service still reports itself ready. A
-  browser already at its own game limit is refused too, and a game it has finished never counts.
+- **S11** At either server capacity ceiling, a new game or a new event stream is refused with a retry
+  hint while every running game and open stream continues, and the service still reports itself ready.
+  A browser already at its own game limit is refused with `409 browser-game-limit` and no retry hint,
+  and a game it has finished never counts.
 - **S12** Every limit in R52 can be changed by configuration alone, with no code change, and the running
   service both enforces and publishes the changed value.
 

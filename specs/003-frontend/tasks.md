@@ -71,7 +71,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
 
 ## Phase 1: Contract and backend fixes (R57)
 
-- [ ] T001 [P] Add the `browser-game-limit` 409 refusal in `contracts/openapi.yaml` and `backend/application/src/main/java/ua/kostenko/battleship/application/registry/SessionRegistry.java`
+- [x] T001 [P] Add the `browser-game-limit` 409 refusal in `contracts/openapi.yaml` and `backend/application/src/main/java/ua/kostenko/battleship/application/registry/SessionRegistry.java`
   - **Covers** R07, R57 · research D14 · decision B2
   - **Read first** plan.md § *Contract and backend fixes* item 1 · `openapi.yaml` `ProblemCode` (L1342-1362), `createGame` responses (L180-210), `components.responses.Conflict` (~L638-664) · `SessionRegistry.java:51-60` · `CreateGameUseCase.java:99-100` · `JoinGameUseCase.java:118-119` · `app/web/ProblemAdvice.java:71,115,212`
   - **Files** `contracts/openapi.yaml`, `contracts/README.md` (Client rules: one line), `SessionRegistry.java`, new `application/registry/BrowserGameLimitException.java`, `CreateGameUseCase.java`, `JoinGameUseCase.java`, `ProblemAdvice.java`, `app/src/test/.../CapacityIT.java`, `app/src/test/.../WireConformanceIT.java`, `application/src/test/.../usecase/CreateGameUseCaseTest.java` (L62, L77, L205 — only assertions about the per-browser cap), `application/src/test/.../usecase/InvitationLifecycleTest.java` (L118, L122 — same rule; the games-ceiling assertions in these and `ExpireGamesUseCaseTest`/`LifetimeBoundaryTest` stay `service-unavailable`), `specs/002-backend/spec.md` (R62 L381, S11 L565)

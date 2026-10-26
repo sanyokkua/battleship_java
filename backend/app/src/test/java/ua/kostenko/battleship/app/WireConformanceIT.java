@@ -610,6 +610,7 @@ class WireConformanceIT {
     static Stream<String> conflictCodes() {
         return Stream.of(
                 "invitation-unavailable",
+                "browser-game-limit",
                 "action-not-allowed",
                 "placement-out-of-bounds",
                 "placement-overlap",
@@ -637,6 +638,15 @@ class WireConformanceIT {
                 Browser host = new Browser(port);
                 host.create(SEA, "Captain");
                 yield new SecurityHttp(port).postJson(GAMES + host.gameId() + "/join", null, joinBody(WRONG_SECRET));
+            }
+            case "browser-game-limit" -> {
+                Browser host = new Browser(port);
+                host.create(SEA, "Captain");
+                yield host.http()
+                        .postJson(
+                                "/api/v1/games",
+                                SESSION_COOKIE + "=" + host.sessionValue(),
+                                "{\"rulesetId\":\"" + SEA + "\",\"displayName\":\"Again\"}");
             }
             case "action-not-allowed" -> seated(SEA).host().send(fire(0, 0));
             case "placement-out-of-bounds" -> {
@@ -712,14 +722,7 @@ class WireConformanceIT {
 
     @Test
     void serviceUnavailableCarriesRetryAfterEqualToItsBody() throws Exception {
-        Browser host = new Browser(port);
-        host.create(SEA, "Captain");
-
-        Reply refused = host.http()
-                .postJson(
-                        "/api/v1/games",
-                        SESSION_COOKIE + "=" + host.sessionValue(),
-                        "{\"rulesetId\":\"" + SEA + "\",\"displayName\":\"Captain\"}");
+        Reply refused = new SecurityHttp(port).call("GET", "/probe/fail/service-unavailable?retryAfter=1", null);
 
         assertProblem(refused, 503, "service-unavailable", problemExample("ServiceUnavailable", "serviceUnavailable"));
         assertThat(refused.json().get("retryAfterSeconds").asInt()).isGreaterThanOrEqualTo(1);

@@ -56,6 +56,7 @@ public class ProblemAdvice {
             Map.entry(ProblemCode.REQUEST_SECURITY_REJECTED, new Entry(403, "Request rejected")),
             Map.entry(ProblemCode.GAME_UNAVAILABLE, new Entry(404, "Game unavailable")),
             Map.entry(ProblemCode.INVITATION_UNAVAILABLE, new Entry(409, "Invitation unavailable")),
+            Map.entry(ProblemCode.BROWSER_GAME_LIMIT, new Entry(409, "Browser already in a game")),
             Map.entry(ProblemCode.ACTION_NOT_ALLOWED, new Entry(409, "Action not allowed")),
             Map.entry(ProblemCode.PLACEMENT_OUT_OF_BOUNDS, new Entry(409, "Ship is out of bounds")),
             Map.entry(ProblemCode.PLACEMENT_OVERLAP, new Entry(409, "Ships may not overlap")),
