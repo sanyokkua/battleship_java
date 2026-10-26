@@ -8,7 +8,7 @@
 **Governance**: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) v1.3.2 · [`AGENTS.md`](../../AGENTS.md)
 
 **Assurance level**: Standard (plan.md § *Assurance level*). **Forecast**: 20 tasks — met exactly.
-**Status**: not started.
+**Status**: in progress.
 
 ## How to run these tasks
 
