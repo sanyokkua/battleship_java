@@ -51,6 +51,11 @@ yarn-error.log*
 /frontend/node
 /frontend/build
 /frontend/coverage
+/frontend/dist
+/frontend/dev-dist
+/frontend/src/contract/generated
+/frontend/*.tsbuildinfo
+/frontend/e2e/.logs
 
 # frontend test runner artifacts
 /frontend/playwright-report
