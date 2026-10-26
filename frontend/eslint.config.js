@@ -35,6 +35,26 @@ export default tseslint.config(
         },
     },
     {
+        files: ['e2e/**/*.ts'],
+        rules: {
+            'no-restricted-globals': 'off',
+            'no-empty-pattern': 'off',
+            'react-hooks/rules-of-hooks': 'off',
+        },
+    },
+    {
+        files: ['e2e/**/*.ts'],
+        rules: {
+            'no-restricted-syntax': [
+                'error',
+                {
+                    selector: 'CallExpression[callee.property.name="fulfill"]',
+                    message: 'Use the real backend in browser journeys; route.fulfill is forbidden.',
+                },
+            ],
+        },
+    },
+    {
         files: ['src/gateway/**/*.{ts,tsx}', 'src/preferences/**/*.{ts,tsx}'],
         rules: { 'no-restricted-globals': 'off' },
     },
