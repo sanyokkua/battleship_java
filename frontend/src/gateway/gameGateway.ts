@@ -91,3 +91,33 @@ export async function getGame(gameId: GameId) {
         throw error;
     }
 }
+
+async function snapshotPost(
+    path: '/api/v1/games/{gameId}/invitation' | '/api/v1/games/{gameId}/presence',
+    gameId: GameId,
+) {
+    await getMeta();
+    const send = async () => {
+        const result = await client.POST(path, { params: { path: { gameId } }, parseAs: 'text' });
+        return snapshotResponse(result.response, responseBody(result.data, result.error));
+    };
+    try {
+        const snapshot = await send();
+        getGameStore(gameId).acceptSnapshot(snapshot);
+        return snapshot;
+    } catch (error) {
+        if (!(error instanceof GatewayError) || error.problem.code !== 'request-security-rejected') throw error;
+        await getMeta(true);
+        const snapshot = await send();
+        getGameStore(gameId).acceptSnapshot(snapshot);
+        return snapshot;
+    }
+}
+
+export function replaceInvitation(gameId: GameId) {
+    return snapshotPost('/api/v1/games/{gameId}/invitation', gameId);
+}
+
+export function sendPresence(gameId: GameId) {
+    return snapshotPost('/api/v1/games/{gameId}/presence', gameId);
+}

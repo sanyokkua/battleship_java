@@ -1035,9 +1035,9 @@ components:
           type: integer
           minimum: 0
           description: >-
-            Grows when either player's **view** changes — that player's snapshot excluding `serverTime`
-            and `expiresAt`, both of which are always current. Only for ordering: display a snapshot
-            when its version is greater than the displayed one. Numbers may skip.
+            Grows when either player's **view** changes — that player's snapshot excluding `serverTime`,
+            `expiresAt`, `invitationUrl` and `invitationExpiresAt`, which are always current. Only for
+            ordering: display a snapshot when its version is greater than the displayed one. Numbers may skip.
         serverTime:
           allOf:
             - $ref: '#/components/schemas/Instant'

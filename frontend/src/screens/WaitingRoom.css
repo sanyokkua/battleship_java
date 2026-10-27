@@ -1,0 +1,64 @@
+.waiting-screen {
+    display: grid;
+    gap: var(--space-4);
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: var(--space-5);
+}
+.waiting-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+.waiting-heading h1 {
+    margin: 0;
+}
+.waiting-card {
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-raised);
+}
+.waiting-link-label {
+    font-weight: 700;
+}
+.waiting-link {
+    width: 100%;
+    min-height: var(--control-h);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface-0);
+    color: var(--text-1);
+}
+.waiting-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+.invitation-meter label {
+    display: grid;
+    gap: var(--space-2);
+}
+.invitation-meter progress {
+    width: 100%;
+    accent-color: var(--accent);
+}
+.waiting-qr-body {
+    justify-items: center;
+    text-align: center;
+}
+.waiting-qr-body canvas {
+    width: min(16rem, 100%);
+    height: auto;
+    image-rendering: pixelated;
+    background: white;
+}
+@media (max-width: 35rem) {
+    .waiting-screen {
+        padding: var(--space-3);
+    }
+}

@@ -248,7 +248,7 @@ list: `smoke`, `settings`, `create`, `waiting`, `invitation`, `placement`, `play
 | Proxy, SSE through the proxy, deep-link reload, occupied-port failure message; `stack.mjs dev` (5174/8084) and `stack.mjs prod` (4177/8085) each start, answer health and stream one snapshot, and stop their children (R46–R48, S7) | `smoke` |
 | Settings apply immediately, survive reload, mid-game toggles of sound/haptics (R33, S5) | `settings` |
 | Each advertised ruleset's facts before submit; single create request; a wrong `XSRF-TOKEN` → one 403, one `getMeta`, one resend (R03); Home then offers Return to your game; with storage cleared a second create shows the `browser-game-limit` message and is not retried; a create answer hidden by `page.route` → `route.abort()` shows "outcome unknown" and sends no second create (R04, R07, R13) | `create` |
-| Copy link, QR, replace after confirmation, invitation expired without reload on the short-lifetime stack (R11, R12) | `waiting` |
+| For each advertised ruleset, create in a fresh browser context and compare all five waiting-room facts with `listRulesets`; verify invitation lifetime, copy/QR, replace after confirmation, exact waiting notice, live REPLACED terminal status/no reopen, and invitation expiry without reload on the short-lifetime stack (R11, R12, R24, R26, R59) | `waiting` |
 | Fragment gone before render, explicit join, two-guest race; join refused with `browser-game-limit` shows the R07 message, a join `410` follows R27; scan of URL, history, `localStorage`, `sessionStorage`, console and captured `stack.mjs` output for the secret, `Set-Cookie` and cookie values (R08–R10, R15, R51, S2) | `invitation` |
 | Place/move/rotate/remove, refusal wording, random/clear, ready after confirmation once, one tray drag with a mouse and one ship drag in a touch context (R17, R18, R61) | `placement` |
 | Fire, turn per ruleset, live update, action race (Classic; a `page.request` shot against a stale view); lost answer — `page.route` → `route.fetch()` reaches the real server, `route.abort()` hides the answer, the page shows *checking*, the retry request carries the same `commandId`, the board shows the action applied once (R19–R21, D13) | `play` |
@@ -301,7 +301,7 @@ At the 20-task line of AGENTS.md rule 3, not above it; any further task needs ow
 | 5 | `stack.mjs`, `dev.sh`, `local-prod.sh`, `config/local.env.example`, Playwright config + stack fixture | `smoke` |
 | 6 | Shell: router, header, i18n, preferences, tokens + theme (incl. system), Home, buttons/cards, dialog primitive and Settings | key parity, persistence units; `settings` |
 | 7 | Gateway + session store + Home/Create + server-backed Rules dialog and shared ruleset facts | decode unit; `create` |
-| 8 | Waiting room: copy, QR, replace, invitation expired + shared Pill/Toasts/Stepper/Meter components + contract fix 4 | QR unit; `waiting` |
+| 8 | Waiting room: each advertised ruleset's facts, waiting notice, copy, QR, replace, invitation lifetime/expiry, live replacement and presence + shared Pill/Toasts/Stepper/Meter components + contract fix 4 | QR/Toast/EventSource units; `waiting` |
 | 9 | Join: fragment strip, explicit join, race | `invitation` |
 | 10 | Placement: board grid + keyboard model, fleet tray, ship-action dialog, random/clear, ready confirmation, refusals | `placement` |
 | 11 | Drag placement (Pointer Events: tray and placed ship; mouse and touch) | drag steps in `placement` |

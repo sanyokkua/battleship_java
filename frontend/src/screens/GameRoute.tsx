@@ -5,6 +5,9 @@ import { useGame } from '../session/useGame';
 import { getGameStore, type GameId } from '../session/gameStore';
 import { useT } from '../i18n/useT';
 import { SessionUnavailable } from './SessionUnavailable';
+import { WaitingRoom } from './WaitingRoom';
+import { openGameEventStream } from '../gateway/eventStream';
+import { startPresence } from '../session/presence';
 
 export function GameRoute({ gameId, onTitle }: { gameId: GameId; onTitle: (title: string) => void }) {
     const t = useT();
@@ -12,6 +15,11 @@ export function GameRoute({ gameId, onTitle }: { gameId: GameId; onTitle: (title
     const [rulesets, setRulesets] = useState<Ruleset[]>([]);
     const [failure, setFailure] = useState<number>();
     const [loading, setLoading] = useState(true);
+    const [streamReplaced, setStreamReplaced] = useState(false);
+    const [showCreatedToast] = useState(() => {
+        const historyState = window.history.state as { toast?: unknown } | null;
+        return historyState?.toast === 'game-created';
+    });
     const refresh = useCallback(async () => {
         const [metaResult, rulesResult, gameResult] = await Promise.allSettled([
             getMeta(),
@@ -43,6 +51,22 @@ export function GameRoute({ gameId, onTitle }: { gameId: GameId; onTitle: (title
         };
     }, [refresh]);
     useEffect(() => {
+        if (showCreatedToast) {
+            window.history.replaceState(null, '', window.location.href);
+        }
+    }, [showCreatedToast]);
+    useEffect(() => {
+        getGameStore(gameId).setConnection('reconnecting');
+        return openGameEventStream(gameId, setFailure, () => {
+            setStreamReplaced(true);
+        });
+    }, [gameId]);
+    useEffect(() => {
+        const interval = state.meta?.limits.presenceIntervalSeconds;
+        if (interval === undefined) return;
+        return startPresence(gameId, interval);
+    }, [gameId, state.meta]);
+    useEffect(() => {
         const listener = () => void refresh();
         window.addEventListener('game-refresh', listener);
         return () => {
@@ -55,6 +79,15 @@ export function GameRoute({ gameId, onTitle }: { gameId: GameId; onTitle: (title
         if (ruleset) onTitle(t(`ruleset.${ruleset.id}`));
     }, [ruleset, t, onTitle]);
     if (failure === 401 || failure === 404 || failure === 410) return <SessionUnavailable expired={failure === 410} />;
+    if (snapshot?.phase === 'WAITING' || snapshot?.phase === 'PLACEMENT')
+        return (
+            <WaitingRoom
+                gameId={gameId}
+                ruleset={ruleset}
+                showCreatedToast={showCreatedToast}
+                streamReplaced={streamReplaced}
+            />
+        );
     if (!snapshot && !loading && failure !== undefined) return <p role="alert">{t('problem.serviceUnavailable')}</p>;
     return (
         <section className="home-screen">

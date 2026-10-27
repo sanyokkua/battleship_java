@@ -41,8 +41,9 @@ The table is orientation only. The server decides; clients read `allowedActions`
 
 ## Client rules
 
-1. **Order by `version`.** Show a snapshot only if its `version` is greater than the one on screen. This
-   orders HTTP answers and stream events alike.
+1. **Order by `version`.** Show a snapshot only if its `version` is greater than the one on screen. The
+   `serverTime`, `expiresAt`, `invitationUrl` and `invitationExpiresAt` fields are always current and
+   excluded from that ordering value. This orders HTTP answers and stream events alike.
 2. **One command at a time per game.** If an answer is lost, resend the identical body (same
    `commandId`); it is never applied twice.
 3. **On `409` from a game you play, re-read** `GET /api/v1/games/{gameId}` and show it. `401`, `404` and
