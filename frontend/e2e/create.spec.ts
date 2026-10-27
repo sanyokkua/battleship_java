@@ -52,6 +52,9 @@ test('a host can review server rules and create a game exactly once', async ({ p
     const responseGate = new Promise<void>((resolve) => {
         releaseResponse = resolve;
     });
+    const createResponsePromise = page.waitForResponse(
+        (response) => response.request().method() === 'POST' && response.url().endsWith('/api/v1/games'),
+    );
     await page.route('**/api/v1/games', async (route) => {
         if (route.request().method() !== 'POST') {
             await route.continue();
@@ -74,10 +77,16 @@ test('a host can review server rules and create a game exactly once', async ({ p
     releaseResponse?.();
     await expect(page).toHaveURL(/\/games\//);
     await expect.poll(() => posts.length).toBe(1);
-    await expect(page.getByText('Waiting for an opponent')).toBeVisible();
-    expect(await page.evaluate(() => (window.history.state as { toast?: unknown } | null)?.toast)).toBe('game-created');
-    await expect(page.getByText('Game created.')).toHaveCount(0);
-    expect(await page.locator('html').evaluate((element) => element.outerHTML)).not.toContain('#invite=');
+    await expect(page.getByRole('heading', { name: 'Waiting for an opponent' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Notifications' }).getByRole('status')).toContainText('Game created');
+    expect(await page.evaluate(() => window.history.state)).toBeNull();
+    const createdSnapshot = (await (await createResponsePromise).json()) as components['schemas']['GameSnapshot'];
+    const invitationSecret = createdSnapshot.invitationUrl?.split('#invite=')[1];
+    if (!invitationSecret) throw new Error('Expected the created game response to contain an invitation secret.');
+    const secretIsExposed = await page
+        .locator('html')
+        .evaluate((element, secret) => element.outerHTML.includes(secret), invitationSecret);
+    expect(secretIsExposed).toBe(false);
 });
 
 test('the server-backed game rules dialog opens from Home', async ({ page, stack }) => {
@@ -139,9 +148,9 @@ test('create success survives reload and browser tab reopening', async ({ page, 
     await page.getByLabel('Captain name').fill('Reload Host');
     await page.getByRole('button', { name: 'Create game' }).click();
     await expect(page).toHaveURL(/\/games\//);
-    await expect(page.getByText('Waiting for an opponent')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Waiting for an opponent' })).toBeVisible();
     await page.reload();
-    await expect(page.getByText('Waiting for an opponent')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Waiting for an opponent' })).toBeVisible();
     const reopened = await page.context().newPage();
     await reopened.goto(`${stack.origin}/`);
     await expect(reopened.getByRole('button', { name: 'Return to your game' })).toBeVisible();
@@ -264,7 +273,7 @@ test('GameRoute still retrieves a game when metadata and ruleset reads fail', as
         if (request.method() === 'GET' && /\/api\/v1\/games\/[^/]+$/.test(request.url())) gameGets++;
     });
     await page.goto(route.toString());
-    await expect(page.getByText('Waiting for an opponent')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Waiting for an opponent' })).toBeVisible();
     expect(gameGets).toBeGreaterThan(0);
 });
 
@@ -273,7 +282,7 @@ test('a game transport failure is visible while a previously loaded snapshot rem
     await page.getByLabel('Captain name').fill('Offline Host');
     await page.getByRole('button', { name: 'Create game' }).click();
     await expect(page).toHaveURL(/\/games\//);
-    await expect(page.getByText('Waiting for an opponent')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Waiting for an opponent' })).toBeVisible();
     expect(await page.evaluate(() => navigator.onLine)).toBe(true);
     await page.route('**/api/v1/games/*', async (route) => {
         if (route.request().method() === 'GET' && /\/api\/v1\/games\/[^/]+$/.test(route.request().url())) {
@@ -284,8 +293,8 @@ test('a game transport failure is visible while a previously loaded snapshot rem
         await route.continue();
     });
     await page.getByRole('banner').getByRole('button', { name: 'Refresh' }).click();
-    await expect(page.getByText('Some game details are unavailable. Reconnecting…')).toBeVisible();
-    await expect(page.getByText('Waiting for an opponent')).toBeVisible();
+    await expect(page.getByText('Reconnecting', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Waiting for an opponent' })).toBeVisible();
 });
 
 test('a missing different game does not clear the remembered active game', async ({ page, stack }) => {
