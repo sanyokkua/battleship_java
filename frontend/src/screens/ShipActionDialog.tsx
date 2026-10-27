@@ -36,15 +36,28 @@ export function ShipActionDialog({
     const [orientation, setOrientation] = useState<components['schemas']['Orientation']>(
         selectedShip?.orientation ?? 'HORIZONTAL',
     );
-    const ship = ships.find((entry) => entry.shipId === shipId);
+    const eligible = ships.filter((entry) => entry.cells.length === 0 || entry.shipId === selectedShip?.shipId);
+    const [wasOpen, setWasOpen] = useState(open);
+    // Reset only on reopening; refreshed snapshots must not overwrite an active draft.
+    if (open !== wasOpen) {
+        setWasOpen(open);
+        if (open) {
+            setShipId(
+                eligible.find((entry) => entry.shipId === selectedShip?.shipId)?.shipId ??
+                    eligible.find((entry) => entry.cells.length === 0)?.shipId,
+            );
+            setOrientation(selectedShip?.orientation ?? 'HORIZONTAL');
+        }
+    }
+    const ship = eligible.find((entry) => entry.shipId === shipId);
     // One chip per server ship type; repeated ships retain their server-issued ID.
-    const options = [
-        ...new Map(
-            ships
-                .filter((entry) => entry.cells.length === 0 || entry.shipId === selectedShip?.shipId)
-                .map((entry) => [entry.shipTypeId, entry]),
-        ).values(),
-    ];
+    const optionsByType = new Map<string, Ship>();
+    for (const entry of eligible) {
+        if (!optionsByType.has(entry.shipTypeId) || entry.shipId === selectedShip?.shipId) {
+            optionsByType.set(entry.shipTypeId, entry);
+        }
+    }
+    const options = [...optionsByType.values()];
     const place = (direction = orientation) => {
         if (ship) onCommand({ type: 'PLACE_SHIP', shipId: ship.shipId, anchor, orientation: direction });
     };
@@ -93,7 +106,7 @@ export function ShipActionDialog({
                             {options.map((entry) => (
                                 <Button
                                     key={entry.shipTypeId}
-                                    aria-pressed={ship?.shipTypeId === entry.shipTypeId}
+                                    aria-pressed={ship?.shipId === entry.shipId}
                                     onClick={() => {
                                         setShipId(entry.shipId);
                                     }}

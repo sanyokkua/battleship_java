@@ -177,6 +177,102 @@ test('move and rotate are atomic; touching is refused without changing the board
     }
 });
 
+// Retaining a closed dialog's placed ship ID must fail the original-ship anchor assertion.
+test('reopening an empty cell selects a currently unplaced ship', async ({ page, browser, stack }) => {
+    const { guest, gameId } = await startPlacement(page, browser, stack.origin);
+    try {
+        const original = (await readGame(page, gameId)).yourBoard.ships.find((ship) => ship.length === 4);
+        if (!original) throw new Error('Four-cell ship missing');
+        await page.getByRole('gridcell', { name: 'A1, water', exact: true }).click();
+        await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+        const source = await page.getByRole('button', { name: '4 cells: 1 remaining', exact: true }).boundingBox();
+        const target = await page.getByRole('gridcell', { name: 'C3, water', exact: true }).boundingBox();
+        if (!source || !target) throw new Error('Drag source or target missing');
+        await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+        await page.mouse.down();
+        const dragged = page.waitForResponse((response) => response.url().endsWith('/commands'));
+        await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 6 });
+        await page.mouse.up();
+        expect((await dragged).ok()).toBeTruthy();
+        const before = await boardMatchesServer(page, gameId);
+        expect(before.yourBoard.ships.find((ship) => ship.shipId === original.shipId)?.anchor).toEqual({
+            rowIndex: 2,
+            columnIndex: 2,
+        });
+        const unplacedIds = before.yourBoard.ships.filter((ship) => ship.cells.length === 0).map((ship) => ship.shipId);
+        const commands: CommandRequest[] = [];
+        page.on('request', (request) => {
+            if (request.url().endsWith('/commands')) commands.push(request.postDataJSON() as CommandRequest);
+        });
+        expect((await applyAt(page, 'A1')).ok()).toBeTruthy();
+        const after = await boardMatchesServer(page, gameId);
+        expect(after.yourBoard.ships.find((ship) => ship.shipId === original.shipId)?.anchor).toEqual({
+            rowIndex: 2,
+            columnIndex: 2,
+        });
+        expect(commands).toHaveLength(1);
+        expect(commands[0]?.command).toMatchObject({ type: 'PLACE_SHIP', anchor: { rowIndex: 0, columnIndex: 0 } });
+        const placed = commands[0]?.command;
+        if (placed.type !== 'PLACE_SHIP') throw new Error('Placement command missing');
+        expect(unplacedIds).toContain(placed.shipId);
+        expect(after.yourBoard.ships.find((ship) => ship.shipId === placed.shipId)?.anchor).toEqual({
+            rowIndex: 0,
+            columnIndex: 0,
+        });
+    } finally {
+        await guest.close();
+    }
+});
+
+// Substituting a repeated type's unplaced sibling must fail the exact command shipId assertion.
+test('activating the selected repeated-type chip moves the original ship', async ({ page, browser, stack }) => {
+    const { guest, gameId } = await startPlacement(page, browser, stack.origin);
+    try {
+        await page.getByRole('button', { name: '3 cells: 2 remaining', exact: true }).click();
+        const placed = page.waitForResponse((response) => response.url().endsWith('/commands'));
+        await page.getByRole('button', { name: 'Apply', exact: true }).click();
+        expect((await placed).ok()).toBeTruthy();
+        const before = await boardMatchesServer(page, gameId);
+        const original = before.yourBoard.ships.find((ship) => ship.length === 3 && ship.cells.length > 0);
+        if (!original) throw new Error('Placed three-cell ship missing');
+        const sibling = before.yourBoard.ships.find(
+            (ship) => ship.shipTypeId === original.shipTypeId && ship.shipId !== original.shipId,
+        );
+        if (!sibling) throw new Error('Repeated-type sibling missing');
+        const commands: CommandRequest[] = [];
+        page.on('request', (request) => {
+            if (request.url().endsWith('/commands')) commands.push(request.postDataJSON() as CommandRequest);
+        });
+        await page.getByRole('gridcell', { name: 'A1, ship', exact: true }).click();
+        await page.getByRole('button', { name: 'Move', exact: true }).click();
+        await page.getByRole('gridcell', { name: 'C3, water', exact: true }).click();
+        const chip = page
+            .getByRole('group', { name: 'Choose ship', exact: true })
+            .getByRole('button', { pressed: true });
+        await expect(chip).toHaveCount(1);
+        await chip.click();
+        const moved = page.waitForResponse((response) => response.url().endsWith('/commands'));
+        await page.getByRole('button', { name: 'Apply', exact: true }).click();
+        expect((await moved).ok()).toBeTruthy();
+        const after = await boardMatchesServer(page, gameId);
+        expect(commands.map((request) => request.command)).toEqual([
+            {
+                type: 'PLACE_SHIP',
+                shipId: original.shipId,
+                anchor: { rowIndex: 2, columnIndex: 2 },
+                orientation: 'HORIZONTAL',
+            },
+        ]);
+        expect(after.yourBoard.ships.find((ship) => ship.shipId === original.shipId)?.anchor).toEqual({
+            rowIndex: 2,
+            columnIndex: 2,
+        });
+        expect(after.yourBoard.ships.find((ship) => ship.shipId === sibling.shipId)?.cells).toEqual([]);
+    } finally {
+        await guest.close();
+    }
+});
+
 // Incorrect tray derivation, ungated Ready, or sending READY before confirmation fails here.
 test('random and clear update tray counts; ready requires confirmation and locks the fleet', async ({
     page,
