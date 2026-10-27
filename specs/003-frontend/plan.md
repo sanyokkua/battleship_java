@@ -25,7 +25,7 @@ frontend/                      standalone npm project; no root workspace
 ├── vitest.config.ts  playwright.config.ts  index.html  public/ (manifest, icons)
 ├── src/
 │   ├── main.tsx               fragment strip, then render (R08)
-│   ├── app/                   router, shell, status bar, error boundary
+│   ├── app/                   router, shell and header
 │   ├── contract/generated/    openapi-typescript output — git-ignored build output
 │   ├── gateway/               GameGateway, EventStream, decode, problem → message
 │   ├── session/               snapshot store, action slot, presence
@@ -73,6 +73,7 @@ fixture/fake backend (R53), Firefox/WebKit projects (spec Assumption 2).
 `main.tsx` reads `#invite=` on `/join/:gameId` into a module-scoped variable and calls `history.replaceState`
 with the fragmentless URL **before** `createRoot().render`. A History-API router serves `/`, `/create`,
 `/join/:gameId`, `/games/:gameId`; anything else renders Home. Reload of a game route rebuilds from `getGame`.
+The Shell persists across routes; its global Game rules action loads `listRulesets` through the gateway on demand (T007), and Settings remains available in the Header.
 
 ### Gateway (R03, R13, R22, R23, R56)
 
@@ -287,7 +288,7 @@ Created by this feature. From the repository root:
 ## Forecast
 
 20 tasks, ≈120 files (≈85 frontend source and CSS, ≈20 unit/e2e, ≈10 scripts/config/docs, ≈5 contract/backend).
-Visual work adds no task: tokens and shared components belong to task 6, each screen task delivers its own
+Visual work adds no task: tokens and initial shared components belong to task 6, task 8 introduces Pill, Toasts, Stepper and Meter at their first callers, and each screen task delivers its own
 widgets from `contracts/ui-surface.md`, and screenshots belong to task 18.
 At the 20-task line of AGENTS.md rule 3, not above it; any further task needs owner approval.
 
@@ -298,9 +299,9 @@ At the 20-task line of AGENTS.md rule 3, not above it; any further task needs ow
 | 3 | Backend: actuator off the public port (fix 3) | `PackagedArtifactIT` |
 | 4 | `install.sh` + `frontend/` scaffold, pins, lint/format, type generation | clean install; renaming a contract operation fails typecheck |
 | 5 | `stack.mjs`, `dev.sh`, `local-prod.sh`, `config/local.env.example`, Playwright config + stack fixture | `smoke` |
-| 6 | Shell: router, header, i18n, preferences, tokens + theme (incl. system), shared components, dialog primitive, toasts, rules/settings | key parity, persistence units; `settings` |
-| 7 | Gateway + session store + Home + Create | decode unit; `create` |
-| 8 | Waiting room: copy, QR, replace, invitation expired + contract fix 4 | QR unit; `waiting` |
+| 6 | Shell: router, header, i18n, preferences, tokens + theme (incl. system), Home, buttons/cards, dialog primitive and Settings | key parity, persistence units; `settings` |
+| 7 | Gateway + session store + Home/Create + server-backed Rules dialog and shared ruleset facts | decode unit; `create` |
+| 8 | Waiting room: copy, QR, replace, invitation expired + shared Pill/Toasts/Stepper/Meter components + contract fix 4 | QR unit; `waiting` |
 | 9 | Join: fragment strip, explicit join, race | `invitation` |
 | 10 | Placement: board grid + keyboard model, fleet tray, ship-action dialog, random/clear, ready confirmation, refusals | `placement` |
 | 11 | Drag placement (Pointer Events: tray and placed ship; mouse and touch) | drag steps in `placement` |

@@ -19,8 +19,8 @@ checking, error) have no route (R37).
 ## Surfaces and widgets (R38, R58–R61)
 
 Widgets follow the mockup; data comes only from the listed source (derived values: [data-model.md](../data-model.md)
-§ *Derived for display only*). Every surface has the header: brand, translated ruleset name on game surfaces,
-Refresh (`getGame`, game surfaces only), Settings.
+§ *Derived for display only*). Every surface has the header: brand, Game rules, translated ruleset name on game surfaces,
+Refresh (`getGame`, game surfaces only), Settings. Game rules opens the shared rules dialog from any route; Home also offers its dedicated Game rules action.
 
 | Surface | Mockup widgets | Source |
 |---|---|---|

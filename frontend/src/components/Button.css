@@ -1,0 +1,34 @@
+.btn {
+    min-height: var(--control-h);
+    padding: 0 var(--space-4);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--text-1);
+    cursor: pointer;
+    font: inherit;
+    touch-action: manipulation;
+}
+.btn-primary {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--accent-contrast);
+    font-weight: 700;
+}
+.btn-ghost {
+    background: transparent;
+}
+.btn-danger {
+    border-color: var(--danger);
+    background: var(--danger);
+    color: white;
+}
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+@media (hover: hover) {
+    .btn:hover:not(:disabled) {
+        filter: brightness(1.08);
+    }
+}
