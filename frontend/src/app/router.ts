@@ -1,6 +1,10 @@
 export type Route =
     { name: 'home' } | { name: 'create' } | { name: 'join'; gameId: string } | { name: 'game'; gameId: string };
 
+export interface NavigationState {
+    toast?: 'game-created';
+}
+
 function decodeId(value: string): string | undefined {
     try {
         return decodeURIComponent(value);
@@ -25,7 +29,7 @@ export function getRoute(pathname: string): Route {
     return { name: 'home' };
 }
 
-export function navigate(path: string): void {
-    window.history.pushState({}, '', path);
+export function navigate(path: string, state: NavigationState = {}): void {
+    window.history.pushState(state, '', path);
     window.dispatchEvent(new PopStateEvent('popstate'));
 }

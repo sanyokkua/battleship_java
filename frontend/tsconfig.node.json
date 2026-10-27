@@ -9,5 +9,14 @@
         "noEmit": true,
         "types": ["node"]
     },
-    "include": ["vite.config.ts", "vitest.config.ts", "playwright.config.ts", "e2e/**/*.ts"]
+    "include": [
+        "vite.config.ts",
+        "vitest.config.ts",
+        "playwright.config.ts",
+        "e2e/**/*.ts",
+        "src/contract/generated/api.ts",
+        "src/i18n/en.ts",
+        "src/i18n/uk.ts",
+        "src/i18n/translate.ts"
+    ]
 }

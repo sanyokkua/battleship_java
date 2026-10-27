@@ -1,0 +1,16 @@
+.ruleset-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: var(--space-3);
+}
+.ruleset-card {
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    cursor: pointer;
+}
+.ruleset-card.selected {
+    border-color: var(--accent);
+    box-shadow: var(--focus-ring);
+}

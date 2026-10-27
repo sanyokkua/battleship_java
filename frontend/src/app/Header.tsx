@@ -6,9 +6,10 @@ interface Props {
     title?: string;
     refresh?: ReactNode;
     onSettings: () => void;
+    onRules: () => void;
 }
 
-export function Header({ title, refresh, onSettings }: Props) {
+export function Header({ title, refresh, onSettings, onRules }: Props) {
     const t = useT();
     return (
         <header className="app-bar">
@@ -19,6 +20,9 @@ export function Header({ title, refresh, onSettings }: Props) {
             <div className="app-bar-title">{title}</div>
             <div className="app-bar-actions">
                 {refresh}
+                <Button variant="ghost" onClick={onRules}>
+                    {t('home.rules')}
+                </Button>
                 <Button variant="ghost" aria-label={t('app.settings')} onClick={onSettings}>
                     <span aria-hidden="true">⚙</span>
                     <span className="button-label">{t('app.settings')}</span>

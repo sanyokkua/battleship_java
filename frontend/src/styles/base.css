@@ -116,6 +116,46 @@ a {
     margin: 0;
     font-size: clamp(1.7rem, 5vw, 2.5rem);
 }
+.create-card {
+    display: grid;
+    width: min(48rem, 100%);
+    gap: var(--space-3);
+}
+.game-card {
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+}
+.create-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+.game-card {
+    display: grid;
+    gap: var(--space-3);
+    width: min(40rem, 100%);
+}
+.game-card input,
+#captain-name {
+    width: 100%;
+    padding: var(--space-2);
+}
+.status-badge {
+    color: var(--accent-strong);
+    font-weight: 700;
+}
+.toast {
+    position: fixed;
+    z-index: 10;
+    right: var(--space-4);
+    bottom: var(--space-4);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    box-shadow: var(--shadow-lg);
+}
 .eyebrow {
     color: var(--accent-strong);
     font-size: 0.8rem;
