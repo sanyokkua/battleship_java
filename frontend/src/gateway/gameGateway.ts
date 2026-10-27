@@ -55,6 +55,18 @@ async function createRequest(
     return snapshotResponse(result.response, body);
 }
 
+async function joinRequest(
+    gameId: GameId,
+    request: components['schemas']['JoinGameRequest'],
+): Promise<ReturnType<typeof decodeSnapshotBody>> {
+    const result = await client.POST('/api/v1/games/{gameId}/join', {
+        params: { path: { gameId } },
+        body: request,
+        parseAs: 'text',
+    });
+    return snapshotResponse(result.response, responseBody(result.data, result.error));
+}
+
 export async function createGame(
     request: components['schemas']['CreateGameRequest'],
 ): Promise<ReturnType<typeof decodeSnapshotBody>> {
@@ -68,6 +80,24 @@ export async function createGame(
         result = await createRequest(request);
     }
     const gameId = result.gameId;
+    rememberCurrentGame(gameId);
+    getGameStore(gameId).acceptSnapshot(result);
+    return result;
+}
+
+export async function joinGame(
+    gameId: GameId,
+    request: components['schemas']['JoinGameRequest'],
+): Promise<ReturnType<typeof decodeSnapshotBody>> {
+    await getMeta();
+    let result: Awaited<ReturnType<typeof joinRequest>>;
+    try {
+        result = await joinRequest(gameId, request);
+    } catch (error) {
+        if (!(error instanceof GatewayError) || error.problem.code !== 'request-security-rejected') throw error;
+        await getMeta(true);
+        result = await joinRequest(gameId, request);
+    }
     rememberCurrentGame(gameId);
     getGameStore(gameId).acceptSnapshot(result);
     return result;

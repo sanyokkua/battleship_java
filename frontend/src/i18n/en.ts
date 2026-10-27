@@ -8,6 +8,8 @@ export const en = {
     'home.rules': 'Game rules',
     'home.returnToGame': 'Return to your game',
     'create.title': 'Create game',
+    'join.title': 'Join game',
+    'join.submit': 'Join game',
     'create.name': 'Captain name',
     'create.nameHelp': '1–32 characters',
     'create.submit': 'Create game',

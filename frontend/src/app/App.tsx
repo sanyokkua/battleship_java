@@ -7,9 +7,9 @@ import { CreateGame } from '../screens/CreateGame';
 import { getMeta } from '../gateway/gameGateway';
 import { GameRoute } from '../screens/GameRoute';
 import { Home } from '../screens/Home';
+import { JoinInvitation } from '../screens/JoinInvitation';
 import { RulesDialog } from '../screens/RulesDialog';
 import { SettingsDialog } from '../screens/SettingsDialog';
-import { SessionUnavailable } from '../screens/SessionUnavailable';
 import { getRoute } from './router';
 import { Shell } from './Shell';
 
@@ -71,7 +71,7 @@ export function App() {
                 )}
                 {route.name === 'create' && <CreateGame />}
                 {route.name === 'game' && <GameRoute gameId={route.gameId} onTitle={setTitle} />}
-                {route.name === 'join' && <SessionUnavailable expired={false} />}
+                {route.name === 'join' && <JoinInvitation gameId={route.gameId} />}
             </Shell>
             <RulesDialog
                 open={rulesOpen}

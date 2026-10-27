@@ -8,6 +8,8 @@ export const uk = {
     'home.rules': 'Правила гри',
     'home.returnToGame': 'Повернутися до своєї гри',
     'create.title': 'Створити гру',
+    'join.title': 'Приєднатися до гри',
+    'join.submit': 'Приєднатися до гри',
     'create.name': 'Ім’я капітана',
     'create.nameHelp': 'Від 1 до 32 символів',
     'create.submit': 'Створити гру',

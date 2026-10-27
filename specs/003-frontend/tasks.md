@@ -165,7 +165,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
 
 ## Phase 4: US2 — Guest joins (P1)
 
-- [ ] T009 [US2] Strip the invitation fragment before render and join explicitly in `frontend/src/main.tsx`
+- [x] T009 [US2] Strip the invitation fragment before render and join explicitly in `frontend/src/main.tsx`
   - **Covers** R07 (join path), R08, R09, R10, R15, R27 (join 410), R51, US2 · S2
   - **Read first** plan § *Boot and routing* · data-model § *Invitation secret* · `openapi.yaml` `joinGame` (L264, body `{invitationSecret (43 chars), displayName}`, 409 `invitation-unavailable`, 410)
   - **Files** `src/main.tsx`, `src/session/inviteSecret.ts`, `src/screens/JoinInvitation.tsx`, `e2e/invitation.spec.ts`
