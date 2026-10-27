@@ -59,3 +59,9 @@
         background: var(--sea-cell-hover);
     }
 }
+
+.board-cell.is-drag-target {
+    border-color: var(--accent-strong);
+    background: var(--sea-cell-hover);
+    box-shadow: inset 0 0 0 0.15rem var(--accent);
+}

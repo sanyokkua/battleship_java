@@ -18,6 +18,7 @@ export function ShipActionDialog({
     onClose,
     onPickAnchor,
     onCommand,
+    onOrientationChange,
 }: {
     open: boolean;
     anchor: Coordinate;
@@ -28,6 +29,7 @@ export function ShipActionDialog({
     onClose: () => void;
     onPickAnchor: (ship: Ship) => void;
     onCommand: (command: Command) => void;
+    onOrientationChange?: (orientation: components['schemas']['Orientation']) => void;
 }) {
     const t = useT();
     const [shipId, setShipId] = useState(selectedShip?.shipId ?? ships.find((ship) => ship.cells.length === 0)?.shipId);
@@ -107,6 +109,7 @@ export function ShipActionDialog({
                                     aria-pressed={orientation === direction}
                                     onClick={() => {
                                         setOrientation(direction);
+                                        onOrientationChange?.(direction);
                                     }}
                                 >
                                     {t(`placement.${direction.toLowerCase()}`)}

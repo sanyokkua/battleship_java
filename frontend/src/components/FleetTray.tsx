@@ -1,3 +1,4 @@
+import type { PointerEvent } from 'react';
 import type { components } from '../contract/generated/api';
 import { useT } from '../i18n/useT';
 import './FleetTray.css';
@@ -7,10 +8,12 @@ export function FleetTray({
     ships,
     onSelect,
     disabled,
+    onShipPointerDown,
 }: {
     ships: Ship[];
     onSelect: (ship: Ship) => void;
     disabled: boolean;
+    onShipPointerDown?: (event: PointerEvent<HTMLButtonElement>, ship: Ship) => void;
 }) {
     const t = useT();
     const lengths = [...new Set(ships.map((ship) => ship.length))].sort((a, b) => b - a);
@@ -26,6 +29,12 @@ export function FleetTray({
                         key={length}
                         disabled={disabled || unplaced.length === 0}
                         aria-label={`${String(length)} ${t('placement.cells')}: ${String(unplaced.length)} ${t('placement.remainingCount')}`}
+                        style={
+                            !disabled && unplaced.length > 0 && onShipPointerDown ? { touchAction: 'none' } : undefined
+                        }
+                        onPointerDown={(event) => {
+                            if (unplaced[0]) onShipPointerDown?.(event, unplaced[0]);
+                        }}
                         onClick={() => {
                             const ship = unplaced[0];
                             if (ship) onSelect(ship);

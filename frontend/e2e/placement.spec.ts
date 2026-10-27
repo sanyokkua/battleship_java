@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures/stack.js';
-import type { Page, Browser } from '@playwright/test';
+import { devices, type Page, type Browser } from '@playwright/test';
 import type { components } from '../src/contract/generated/api';
 
 type Snapshot = components['schemas']['GameSnapshot'];
@@ -229,5 +229,124 @@ test('random and clear update tray counts; ready requires confirmation and locks
         await expect(page.getByRole('grid')).toHaveCount(0); // server transitioned to PLAYING
     } finally {
         await guest.close();
+    }
+});
+
+// Removing the clamp must send an invalid anchor or leave the server board unchanged.
+test('mouse tray drag clamps a drop past the board edge into one placement', async ({ page, browser, stack }) => {
+    const { guest, gameId } = await startPlacement(page, browser, stack.origin);
+    try {
+        const ship = (await readGame(page, gameId)).yourBoard.ships.find((s) => s.length === 4);
+        if (!ship) throw new Error('Four-cell ship missing');
+        const commands: CommandRequest[] = [];
+        page.on('request', (r) => {
+            if (r.url().endsWith('/commands')) commands.push(r.postDataJSON() as CommandRequest);
+        });
+        const source = await page.getByRole('button', { name: '4 cells: 1 remaining', exact: true }).boundingBox();
+        const edge = await page.getByRole('gridcell', { name: 'J10, water', exact: true }).boundingBox();
+        if (!source || !edge) throw new Error('Drag source or edge missing');
+        await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+        await page.mouse.down();
+        const middle = await page.getByRole('gridcell', { name: 'C3, water', exact: true }).boundingBox();
+        if (!middle) throw new Error('Preview cell missing');
+        await page.mouse.move(middle.x + middle.width / 2, middle.y + middle.height / 2, { steps: 6 });
+        await expect(page.locator('.is-drag-target')).toHaveAttribute('aria-label', 'C3, water');
+        await page.mouse.move(edge.x + edge.width * 2, edge.y + edge.height * 2, { steps: 12 });
+        await page.mouse.up();
+        await expect.poll(() => commands.length).toBe(1);
+        expect(commands[0]?.command).toEqual({
+            type: 'PLACE_SHIP',
+            shipId: ship.shipId,
+            anchor: { rowIndex: 9, columnIndex: 6 },
+            orientation: 'HORIZONTAL',
+        });
+        await expect
+            .poll(
+                async () =>
+                    (await readGame(page, gameId)).yourBoard.ships.find((s) => s.shipId === ship.shipId)?.anchor,
+            )
+            .toEqual({ rowIndex: 9, columnIndex: 6 });
+        await boardMatchesServer(page, gameId);
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+        expect(commands).toHaveLength(1);
+        await page.getByRole('gridcell', { name: 'A1, water', exact: true }).click();
+        await expect(page.getByRole('dialog')).toBeVisible();
+    } finally {
+        await guest.close();
+    }
+});
+
+// Mouse-only handlers must fail this native touch journey; a grabbed ship cell keeps its offset.
+test('touch drag moves a placed ship with one placement and preserves orientation and grab offset', async ({
+    browser,
+    stack,
+}) => {
+    const context = await browser.newContext({ ...devices['Pixel 7'] });
+    const page = await context.newPage();
+    const { guest, gameId } = await startPlacement(page, browser, stack.origin);
+    try {
+        expect((await applyAt(page, 'A1')).ok()).toBeTruthy();
+        const before = await boardMatchesServer(page, gameId);
+        const ship = before.yourBoard.ships.find((s) => s.cells.length > 0);
+        if (!ship) throw new Error('Placed ship missing');
+        await page.getByRole('gridcell', { name: 'A1, ship', exact: true }).click();
+        const rotated = page.waitForResponse((r) => r.url().endsWith('/commands'));
+        await page.getByRole('button', { name: 'Rotate', exact: true }).click();
+        expect((await rotated).ok()).toBeTruthy();
+        await boardMatchesServer(page, gameId);
+        await page.getByRole('gridcell', { name: 'A2, ship', exact: true }).scrollIntoViewIfNeeded();
+        const source = await page.getByRole('gridcell', { name: 'A2, ship', exact: true }).boundingBox();
+        const target = await page.getByRole('gridcell', { name: 'C5, water', exact: true }).boundingBox();
+        const commands: CommandRequest[] = [];
+        page.on('request', (r) => {
+            if (r.url().endsWith('/commands')) commands.push(r.postDataJSON() as CommandRequest);
+        });
+        if (!source || !target) throw new Error('Touch source or target missing');
+        const cdp = await context.newCDPSession(page);
+        const from = { x: source.x + source.width / 2, y: source.y + source.height / 2 };
+        const to = { x: target.x + target.width / 2, y: target.y + target.height / 2 };
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [from] });
+        for (let i = 1; i <= 10; i++) {
+            await cdp.send('Input.dispatchTouchEvent', {
+                type: 'touchMove',
+                touchPoints: [
+                    {
+                        x: from.x + ((to.x - from.x) * i) / 10,
+                        y: from.y + ((to.y - from.y) * i) / 10,
+                    },
+                ],
+            });
+        }
+        await expect(page.locator('.is-drag-target')).toHaveAttribute('aria-label', 'C4, water');
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+        await expect(page.locator('.is-drag-target')).toHaveCount(0);
+        expect(commands).toHaveLength(0);
+        expect((await readGame(page, gameId)).yourBoard.ships.find((s) => s.shipId === ship.shipId)?.anchor).toEqual({
+            rowIndex: 0,
+            columnIndex: 0,
+        });
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [from] });
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [to] });
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await expect.poll(() => commands.length).toBe(1);
+        expect(commands[0]?.command).toEqual({
+            type: 'PLACE_SHIP',
+            shipId: ship.shipId,
+            anchor: { rowIndex: 3, columnIndex: 2 },
+            orientation: 'VERTICAL',
+        });
+        await expect
+            .poll(
+                async () =>
+                    (await readGame(page, gameId)).yourBoard.ships.find((s) => s.shipId === ship.shipId)?.anchor,
+            )
+            .toEqual({ rowIndex: 3, columnIndex: 2 });
+        const after = await boardMatchesServer(page, gameId);
+        expect(after.yourBoard.ships.find((s) => s.shipId === ship.shipId)?.orientation).toBe('VERTICAL');
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+        expect(commands).toHaveLength(1);
+    } finally {
+        await guest.close();
+        await context.close();
     }
 });

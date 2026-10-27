@@ -13,6 +13,7 @@ import type { GameId } from '../session/gameStore';
 import { useT } from '../i18n/useT';
 import { ShipActionDialog } from './ShipActionDialog';
 import './Placement.css';
+import { usePlacementDrag } from './usePlacementDrag';
 
 type Ship = components['schemas']['Ship'];
 type Coordinate = components['schemas']['Coordinate'];
@@ -34,11 +35,12 @@ export function Placement({
     const [confirmReady, setConfirmReady] = useState(false);
     const [pending, setPending] = useState(false);
     const [error, setError] = useState<string>();
-    if (!snapshot) return null;
-    const allowed = snapshot.allowedActions;
+    const [orientation, setOrientation] = useState<components['schemas']['Orientation']>('HORIZONTAL');
+    const allowed = snapshot?.allowedActions ?? [];
     const disabled = pending || state.connection !== 'connected' || streamReplaced;
     const command = async (action: components['schemas']['Command']) => {
         if (disabled) return;
+        if (action.type === 'PLACE_SHIP') setOrientation(action.orientation);
         setPending(true);
         setError(undefined);
         // Close while the opener still exists, so Dialog can restore focus.
@@ -53,6 +55,14 @@ export function Placement({
             setPending(false);
         }
     };
+    const { boardRef, preview, start, handlers } = usePlacementDrag({
+        dimensions: ruleset.board,
+        disabled: disabled || !allowed.includes('PLACE_SHIP'),
+        onPlace: (ship, direction, anchor) => {
+            void command({ type: 'PLACE_SHIP', shipId: ship.shipId, orientation: direction, anchor });
+        },
+    });
+    if (!snapshot) return null;
     const activate = (anchor: Coordinate) => {
         const placedShip = snapshot.yourBoard.ships.find((ship) =>
             ship.cells.some((cell) => cell.rowIndex === anchor.rowIndex && cell.columnIndex === anchor.columnIndex),
@@ -63,7 +73,7 @@ export function Placement({
         setTarget({ anchor: editing && ship?.anchor ? ship.anchor : anchor, ship, editing });
     };
     return (
-        <section className="placement-screen">
+        <section className="placement-screen" {...handlers}>
             <div className="placement-heading">
                 <div>
                     <p className="eyebrow">{t('placement.label')}</p>
@@ -79,13 +89,16 @@ export function Placement({
             <FleetTray
                 ships={snapshot.yourBoard.ships}
                 disabled={disabled || !allowed.includes('PLACE_SHIP')}
+                onShipPointerDown={(event, ship) => {
+                    start(event, ship, orientation);
+                }}
                 onSelect={(ship) => {
                     setShipDialogOpen(true);
                     setTarget({ anchor: { rowIndex: 0, columnIndex: 0 }, ship, editing: false });
                 }}
             />
             <div className="placement-stage">
-                <div className="board-panel">
+                <div className="board-panel" ref={boardRef}>
                     <h2>{t('placement.yourSea')}</h2>
                     <Board
                         board={snapshot.yourBoard}
@@ -93,6 +106,21 @@ export function Placement({
                         label={t('placement.yourSea')}
                         disabled={disabled || (!allowed.includes('PLACE_SHIP') && !allowed.includes('REMOVE_SHIP'))}
                         onActivate={activate}
+                        dragTarget={preview}
+                        onShipPointerDown={
+                            allowed.includes('PLACE_SHIP')
+                                ? (event, coordinate) => {
+                                      const ship = snapshot.yourBoard.ships.find((entry) =>
+                                          entry.cells.some(
+                                              (cell) =>
+                                                  cell.rowIndex === coordinate.rowIndex &&
+                                                  cell.columnIndex === coordinate.columnIndex,
+                                          ),
+                                      );
+                                      if (ship) start(event, ship, ship.orientation ?? 'HORIZONTAL', coordinate);
+                                  }
+                                : undefined
+                        }
                     />
                 </div>
                 <div className="placement-status">
@@ -163,7 +191,9 @@ export function Placement({
                     onClose={() => {
                         setShipDialogOpen(false);
                     }}
+                    onOrientationChange={setOrientation}
                     onPickAnchor={(ship) => {
+                        setOrientation(ship.orientation ?? 'HORIZONTAL');
                         setMoving(ship);
                         setShipDialogOpen(false);
                     }}

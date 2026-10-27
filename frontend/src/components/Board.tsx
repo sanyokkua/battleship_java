@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { Fragment, useRef, useState, type CSSProperties, type PointerEvent, type KeyboardEvent } from 'react';
 import type { components } from '../contract/generated/api';
 import { useT } from '../i18n/useT';
 import './Board.css';
@@ -32,12 +32,16 @@ export function Board({
     label,
     onActivate,
     disabled = false,
+    onShipPointerDown,
+    dragTarget,
 }: {
     board: components['schemas']['Board'];
     dimensions: components['schemas']['Ruleset']['board'];
     label: string;
     onActivate?: (coordinate: Coordinate) => void;
     disabled?: boolean;
+    onShipPointerDown?: ((event: PointerEvent<HTMLButtonElement>, coordinate: Coordinate) => void) | undefined;
+    dragTarget?: Coordinate | undefined;
 }) {
     const t = useT();
     const [active, setActive] = useState(0);
@@ -108,7 +112,16 @@ export function Board({
                                 key={column}
                                 type="button"
                                 role="gridcell"
-                                className="board-cell"
+                                className={`board-cell${dragTarget?.rowIndex === row && dragTarget.columnIndex === column ? ' is-drag-target' : ''}`}
+                                style={
+                                    !inactive && state === 'SHIP' && onShipPointerDown
+                                        ? { touchAction: 'none' }
+                                        : undefined
+                                }
+                                onPointerDown={(event) => {
+                                    if (!inactive && state === 'SHIP')
+                                        onShipPointerDown?.(event, { rowIndex: row, columnIndex: column });
+                                }}
                                 data-state={state.toLowerCase()}
                                 ref={(element) => {
                                     cells.current[index] = element;
