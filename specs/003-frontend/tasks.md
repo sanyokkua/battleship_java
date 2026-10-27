@@ -189,7 +189,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
   - **Mutation** Implement rotate as remove + place; (2) must fail. Make Arrow keys a no-op in `Board`; (1) must fail.
   - **Depends on** T009
 
-- [ ] T011 [US3] Add mouse and touch drag placement in `frontend/src/screens/Placement.tsx`
+- [x] T011 [US3] Add mouse and touch drag placement in `frontend/src/screens/Placement.tsx`
   - **Covers** R18, R61, US3 scenario 4 · research D19 · decision B4
   - **Read first** plan § *Placement, play, results* (drag) · research D19 · mockup drag target style `.is-drag-target` (L2869-2887)
   - **Files** `src/screens/usePlacementDrag.ts`, `src/screens/Placement.tsx`, `src/components/FleetTray.tsx`, `e2e/placement.spec.ts` (two steps)
