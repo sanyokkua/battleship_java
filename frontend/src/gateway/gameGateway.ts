@@ -151,3 +151,30 @@ export function replaceInvitation(gameId: GameId) {
 export function sendPresence(gameId: GameId) {
     return snapshotPost('/api/v1/games/{gameId}/presence', gameId);
 }
+
+export async function sendCommand(gameId: GameId, request: components['schemas']['CommandRequest']) {
+    await getMeta();
+    const send = async () => {
+        const result = await client.POST('/api/v1/games/{gameId}/commands', {
+            params: { path: { gameId } },
+            body: request,
+            parseAs: 'text',
+        });
+        return snapshotResponse(result.response, responseBody(result.data, result.error));
+    };
+    try {
+        let snapshot;
+        try {
+            snapshot = await send();
+        } catch (error) {
+            if (!(error instanceof GatewayError) || error.problem.code !== 'request-security-rejected') throw error;
+            await getMeta(true);
+            snapshot = await send();
+        }
+        getGameStore(gameId).acceptSnapshot(snapshot);
+        return snapshot;
+    } catch (error) {
+        if (error instanceof GatewayError && error.problem.status === 409) await getGame(gameId);
+        throw error;
+    }
+}

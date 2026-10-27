@@ -179,7 +179,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
 
 ## Phase 5: US3 — Fleet placement (P1)
 
-- [ ] T010 [US3] Build the placement board, fleet tray and ship-action dialog in `frontend/src/screens/Placement.tsx`
+- [x] T010 [US3] Build the placement board, fleet tray and ship-action dialog in `frontend/src/screens/Placement.tsx`
   - **Covers** R01 (display counts), R02, R17, R19, R20, R31, R40 (cells), R59, US3 scenarios 1–3
   - **Read first** plan § *Placement, play, results* · README phase table (`PLACEMENT` actions) · `openapi.yaml` `PlaceShipCommand {type, shipId, anchor, orientation}`, `RemoveShipCommand`, `SimpleCommand` (`PLACE_FLEET_RANDOMLY`, `CLEAR_FLEET`, `READY`), `Board {grid: CellState[][], ships}`, `CellState` (L804-814), `Player.ready`
   - **Files** `src/components/{Board,FleetTray}.tsx` (+ `.css`), `src/screens/{Placement.tsx,ShipActionDialog.tsx}`, i18n keys, `e2e/placement.spec.ts`

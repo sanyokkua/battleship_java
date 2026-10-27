@@ -20,7 +20,7 @@ const messages: Record<ProblemCode, MessageKey> = {
     'action-not-allowed': 'problem.actionNotAllowed',
     'placement-out-of-bounds': 'problem.placementInvalid',
     'placement-overlap': 'problem.placementInvalid',
-    'placement-touching': 'problem.placementInvalid',
+    'placement-touching': 'problem.placementTouching',
     'random-arrangement-failed': 'problem.placementInvalid',
     'target-already-fired': 'problem.actionNotAllowed',
     'game-expired': 'problem.gameExpired',

@@ -1,0 +1,61 @@
+.board-grid {
+    display: grid;
+    gap: clamp(0.12rem, 0.28cqw, 0.25rem);
+    width: min(100%, 36rem);
+    margin-inline: auto;
+}
+.board-row {
+    display: grid;
+    grid-template-columns: 1.15rem repeat(var(--board-columns), minmax(0, 1fr));
+    gap: inherit;
+}
+.coord {
+    display: grid;
+    place-items: center;
+    color: var(--coord);
+    font-family: var(--font-mono);
+    font-size: clamp(0.58rem, 1cqw, 0.75rem);
+}
+.board-cell {
+    display: grid;
+    place-items: center;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    aspect-ratio: 1;
+    border: 1px solid var(--sea-line);
+    border-radius: clamp(0.18rem, 0.45cqw, 0.35rem);
+    background:
+        linear-gradient(145deg, color-mix(in srgb, var(--sea-glint) 5%, transparent), transparent 55%), var(--sea-cell);
+    color: var(--sea-foam);
+    cursor: pointer;
+}
+.board-cell[aria-disabled='true'] {
+    cursor: default;
+}
+.board-cell[data-state='ship'] {
+    border-color: var(--ship-edge);
+    background: linear-gradient(145deg, color-mix(in srgb, var(--ship) 86%, white 9%), var(--ship));
+}
+.board-cell[data-state='miss'],
+.board-cell[data-state='revealed_water'] {
+    border-color: var(--miss);
+    background: color-mix(in srgb, var(--sea-deep) 72%, var(--miss));
+}
+.board-cell[data-state='hit'] {
+    background: var(--hit);
+}
+.board-cell[data-state='sunk'] {
+    background: var(--sunk);
+}
+.board-cell[data-state='hit'],
+.board-cell[data-state='sunk'] {
+    color: white;
+    font-weight: 900;
+}
+@media (hover: hover) {
+    .board-cell:hover:not([aria-disabled='true']) {
+        border-color: var(--accent);
+        background: var(--sea-cell-hover);
+    }
+}

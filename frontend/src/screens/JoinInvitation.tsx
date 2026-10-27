@@ -55,7 +55,12 @@ export function JoinInvitation({ gameId }: { gameId: string }) {
             <section className="home-screen">
                 <Card className="card-pad">
                     <h1>{t(error)}</h1>
-                    <Button variant="primary" onClick={() => navigate('/')}>
+                    <Button
+                        variant="primary"
+                        onClick={() => {
+                            navigate('/');
+                        }}
+                    >
                         {t('app.returnHome')}
                     </Button>
                 </Card>
@@ -68,7 +73,14 @@ export function JoinInvitation({ gameId }: { gameId: string }) {
             <Card className="card-pad create-card">
                 <h1>{t('join.title')}</h1>
                 <label htmlFor="guest-name">{t('create.name')}</label>
-                <input id="guest-name" maxLength={32} value={name} onChange={(event) => setName(event.target.value)} />
+                <input
+                    id="guest-name"
+                    maxLength={32}
+                    value={name}
+                    onChange={(event) => {
+                        setName(event.target.value);
+                    }}
+                />
                 {error && (
                     <p role="alert">
                         {t(error)}
@@ -77,7 +89,11 @@ export function JoinInvitation({ gameId }: { gameId: string }) {
                     </p>
                 )}
                 {error === 'problem.browserGameLimit' && rememberedGame && (
-                    <Button onClick={() => navigate(`/games/${encodeURIComponent(rememberedGame)}`)}>
+                    <Button
+                        onClick={() => {
+                            navigate(`/games/${encodeURIComponent(rememberedGame)}`);
+                        }}
+                    >
                         {t('home.returnToGame')}
                     </Button>
                 )}

@@ -125,7 +125,7 @@ test('two guests race for one invitation and only one joins', async ({ page, bro
     await Promise.all(
         guests.map(async (guest, index) => {
             await guest.goto(`${stack.origin}/join/${host.gameId}#invite=${secret}`);
-            await guest.getByLabel('Captain name').fill(`Guest ${index + 1}`);
+            await guest.getByLabel('Captain name').fill(`Guest ${String(index + 1)}`);
         }),
     );
     await Promise.all(guests.map((guest) => guest.getByRole('button', { name: 'Join game' }).click()));
@@ -149,7 +149,6 @@ test('two guests race for one invitation and only one joins', async ({ page, bro
     expect([...outcomes].sort()).toEqual(['joined', 'unavailable']);
     const joinedGuest = guests[outcomes.indexOf('joined')];
     const unavailableGuest = guests[outcomes.indexOf('unavailable')];
-    if (!joinedGuest || !unavailableGuest) throw new Error('Race did not produce both expected outcomes.');
     await expect(unavailableGuest.locator('body')).toContainText('This invitation is unavailable.');
     await expect(joinedGuest.locator('body')).toContainText('Place your fleet');
     await expect(page.getByRole('heading', { name: 'Place your fleet' })).toBeVisible();
@@ -190,28 +189,41 @@ test('an expired game invitation shows the expired session outcome', async ({ br
             BATTLESHIP_RESULTRETENTIONSECONDS: '60',
         },
     );
-    const hostPage = await browser.newPage();
-    const host = await invitation(hostPage, shortStack.origin);
-    const secret = host.invitationUrl?.split('#invite=')[1];
-    if (!secret) throw new Error('Host response did not contain an invitation secret.');
-    const guest = await browser.newPage();
-    await guest.goto(`${shortStack.origin}/join/${host.gameId}#invite=${secret}`);
-    await guest.getByLabel('Captain name').fill('Guest');
-    await guest.getByRole('button', { name: 'Join game' }).click();
-    await expect(guest).toHaveURL(new RegExp(`/games/${host.gameId}$`));
-    await Promise.all(
-        [hostPage, guest].map((hiddenPage) =>
-            hiddenPage.evaluate(() => {
-                Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
-            }),
-        ),
-    );
-    await new Promise((resolve) => setTimeout(resolve, 10000));
-    await guest.goto(`${shortStack.origin}/join/${host.gameId}#invite=${secret}`);
-    await guest.getByLabel('Captain name').fill('Guest');
-    await guest.getByRole('button', { name: 'Join game' }).click();
-    await expect(guest.getByRole('heading', { name: 'This game has expired.' })).toBeVisible();
-    expect(await guest.evaluate(() => localStorage.getItem('battleship.currentGameId'))).toBeNull();
-    await hostPage.close();
-    await guest.close();
+    try {
+        const hostPage = await browser.newPage();
+        try {
+            const guest = await browser.newPage();
+            try {
+                const host = await invitation(hostPage, shortStack.origin);
+                const secret = host.invitationUrl?.split('#invite=')[1];
+                if (!secret) throw new Error('Host response did not contain an invitation secret.');
+                await guest.goto(`${shortStack.origin}/join/${host.gameId}#invite=${secret}`);
+                await guest.getByLabel('Captain name').fill('Guest');
+                await guest.getByRole('button', { name: 'Join game' }).click();
+                await expect(guest).toHaveURL(new RegExp(`/games/${host.gameId}$`));
+                await Promise.all(
+                    [hostPage, guest].map((hiddenPage) =>
+                        hiddenPage.evaluate(() => {
+                            Object.defineProperty(document, 'visibilityState', {
+                                configurable: true,
+                                get: () => 'hidden',
+                            });
+                        }),
+                    ),
+                );
+                await new Promise((resolve) => setTimeout(resolve, 10000));
+                await guest.goto(`${shortStack.origin}/join/${host.gameId}#invite=${secret}`);
+                await guest.getByLabel('Captain name').fill('Guest');
+                await guest.getByRole('button', { name: 'Join game' }).click();
+                await expect(guest.getByRole('heading', { name: 'This game has expired.' })).toBeVisible();
+                expect(await guest.evaluate(() => localStorage.getItem('battleship.currentGameId'))).toBeNull();
+            } finally {
+                await guest.close();
+            }
+        } finally {
+            await hostPage.close();
+        }
+    } finally {
+        await shortStack.stop();
+    }
 });

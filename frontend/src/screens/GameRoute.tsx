@@ -5,6 +5,7 @@ import { useGame } from '../session/useGame';
 import { getGameStore, type GameId } from '../session/gameStore';
 import { useT } from '../i18n/useT';
 import { SessionUnavailable } from './SessionUnavailable';
+import { Placement } from './Placement';
 import { WaitingRoom } from './WaitingRoom';
 import { openGameEventStream } from '../gateway/eventStream';
 import { startPresence } from '../session/presence';
@@ -79,7 +80,9 @@ export function GameRoute({ gameId, onTitle }: { gameId: GameId; onTitle: (title
         if (ruleset) onTitle(t(`ruleset.${ruleset.id}`));
     }, [ruleset, t, onTitle]);
     if (failure === 401 || failure === 404 || failure === 410) return <SessionUnavailable expired={failure === 410} />;
-    if (snapshot?.phase === 'WAITING' || snapshot?.phase === 'PLACEMENT')
+    if (snapshot?.phase === 'PLACEMENT' && ruleset)
+        return <Placement gameId={gameId} ruleset={ruleset} streamReplaced={streamReplaced} />;
+    if (snapshot?.phase === 'WAITING')
         return (
             <WaitingRoom
                 gameId={gameId}

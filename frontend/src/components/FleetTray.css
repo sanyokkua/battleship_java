@@ -1,0 +1,35 @@
+.fleet-inventory {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+.inventory-ship {
+    display: grid;
+    flex: 1 1 7rem;
+    min-width: 0;
+    min-height: var(--control-h);
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    text-align: left;
+}
+button.inventory-ship {
+    cursor: pointer;
+}
+button.inventory-ship:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+.fleet-segments {
+    display: flex;
+    gap: 0.2rem;
+}
+.fleet-segments i {
+    width: 1rem;
+    height: 0.65rem;
+    border: 1px solid var(--ship-edge);
+    border-radius: var(--radius-xs);
+    background: var(--ship);
+}

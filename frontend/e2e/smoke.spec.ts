@@ -59,7 +59,12 @@ async function verifyLocalProdWrapper() {
     const origin = `http://localhost:${String(frontendPort)}`;
     const child = spawn(`${root}/scripts/local-prod.sh`, [], {
         cwd: '/tmp',
-        env: { ...process.env, FRONTEND_PORT: String(frontendPort), BACKEND_PORT: String(backendPort) },
+        env: {
+            ...process.env,
+            BATTLESHIP_E2E_USE_PREBUILT: '1',
+            FRONTEND_PORT: String(frontendPort),
+            BACKEND_PORT: String(backendPort),
+        },
         stdio: ['ignore', 'pipe', 'pipe'],
     });
     let output = '';
@@ -141,7 +146,7 @@ async function firstSnapshot(page: Page, gameId: string) {
 
 test('preview serves the shell and proxies health, game snapshots, and deep links', async ({ page, stack }) => {
     await page.goto(stack.origin);
-    await expect(page.getByRole('heading', { name: 'Battleship' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     const health = await page.request.get(`${stack.origin}/api/v1/health`);
     expect(health.status()).toBe(200);

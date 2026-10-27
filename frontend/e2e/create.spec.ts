@@ -79,7 +79,7 @@ test('a host can review server rules and create a game exactly once', async ({ p
     await expect.poll(() => posts.length).toBe(1);
     await expect(page.getByRole('heading', { name: 'Waiting for an opponent' })).toBeVisible();
     await expect(page.getByRole('region', { name: 'Notifications' }).getByRole('status')).toContainText('Game created');
-    expect(await page.evaluate(() => window.history.state)).toBeNull();
+    expect(await page.evaluate((): unknown => window.history.state)).toBeNull();
     const createdSnapshot = (await (await createResponsePromise).json()) as components['schemas']['GameSnapshot'];
     const invitationSecret = createdSnapshot.invitationUrl?.split('#invite=')[1];
     if (!invitationSecret) throw new Error('Expected the created game response to contain an invitation secret.');

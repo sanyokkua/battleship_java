@@ -74,19 +74,20 @@ export function waitForExit(child, timeoutMs = 5_000) {
     });
 }
 
-async function portAvailable(port) {
+async function portAvailable(port, host) {
     return new Promise((resolvePort, rejectPort) => {
         const server = net.createServer();
         server.once('error', (error) => {
             if (error.code === 'EADDRINUSE') resolvePort(false);
+            else if (['EAFNOSUPPORT', 'EADDRNOTAVAIL'].includes(error.code)) resolvePort(true);
             else rejectPort(error);
         });
-        server.listen(port, '127.0.0.1', () => server.close(() => resolvePort(true)));
+        server.listen(port, host, () => server.close(() => resolvePort(true)));
     });
 }
 
 async function assertPortAvailable(component, port) {
-    if (!(await portAvailable(port))) {
+    if (!(await portAvailable(port, '127.0.0.1')) || !(await portAvailable(port, '::1'))) {
         throw new Error(`${component} port localhost:${port} is already in use; inspect it with lsof -i :${port}.`);
     }
 }
