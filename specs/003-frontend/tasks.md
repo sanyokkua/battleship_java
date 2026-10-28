@@ -214,7 +214,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
   - **Evidence** `npm run check` passed (29 unit tests); `npm run build && npm run e2e -- e2e/play.spec.ts e2e/placement.spec.ts` passed (13 journeys). Retry-UUID mutation failed at the same-body assertion (see `/private/tmp/t012-mutation-final.log`).
   - **Depends on** T011
 
-- [ ] T013 [US4] Build the results screen and play one full game per ruleset in `frontend/src/screens/Results.tsx`
+- [x] T013 [US4] Build the results screen and play one full game per ruleset in `frontend/src/screens/Results.tsx`
   - **Covers** R30, R36, R59, US4 scenarios 4–5 · S1
   - **Read first** contracts/ui-surface.md § *Surfaces and widgets* (Results rows and the stat-card field table) · mockup results screen (L2261) · `openapi.yaml` `outcome {winner, reason}`, `statistics` (`match`, `you`, `opponent`; `PlayerStatistics` with optional `accuracy`; `DurationAggregate`; `FleetSummary`) L909-1009
   - **Files** `src/screens/Results.tsx` (+ `.css`), `src/components/StatCard.tsx` (+ `.css`), `e2e/helpers/playGame.ts`, `e2e/results.spec.ts`
@@ -222,6 +222,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
   - **Proof** `results.spec.ts` per ruleset: (1) both players reach results; winner/loser shown; (2) each stat-card row and fleet tile shown equals its `getGame` `statistics` field read via `page.request`; (3) Leave results returns Home and `getGame` then answers 404.
   - **Verify** `cd frontend && npm run build && npm run e2e -- e2e/results.spec.ts`
   - **Mutation** Compute accuracy locally as hits/shots rounded differently; (2) must fail.
+  - **Evidence** `npm run check` passed (29 unit tests); `npm run build && npm run e2e -- e2e/results.spec.ts e2e/play.spec.ts` passed (9 journeys). Accuracy recomputation mutation failed: expected server-formatted `18.18%`, received `18.2%` (see `/private/tmp/t013-mutation.log`).
   - **Depends on** T012
 
 ---

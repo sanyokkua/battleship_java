@@ -152,6 +152,32 @@ export function sendPresence(gameId: GameId) {
     return snapshotPost('/api/v1/games/{gameId}/presence', gameId);
 }
 
+export async function leaveGame(gameId: GameId): Promise<void> {
+    await getMeta();
+    const send = async () => {
+        const result = await client.POST('/api/v1/games/{gameId}/leave', {
+            params: { path: { gameId } },
+            parseAs: 'text',
+        });
+        if (result.response.status === 204 || result.response.status === 404) return;
+        throw new GatewayError(
+            decodeProblem(
+                result.response.status,
+                responseBody(result.data, result.error),
+                result.response.headers.get('content-type') ?? '',
+            ),
+        );
+    };
+    try {
+        await send();
+    } catch (error) {
+        if (!(error instanceof GatewayError) || error.problem.code !== 'request-security-rejected') throw error;
+        await getMeta(true);
+        await send();
+    }
+    if (readCurrentGame() === gameId) rememberCurrentGame(undefined);
+}
+
 export async function sendCommand(
     gameId: GameId,
     request: components['schemas']['CommandRequest'],

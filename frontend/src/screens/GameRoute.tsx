@@ -8,6 +8,7 @@ import { getGameStore, type GameId, type GameState } from '../session/gameStore'
 import { useT } from '../i18n/useT';
 import { SessionUnavailable } from './SessionUnavailable';
 import { Gameplay } from './Gameplay';
+import { Results } from './Results';
 import { Placement } from './Placement';
 import { WaitingRoom } from './WaitingRoom';
 import { openGameEventStream } from '../gateway/eventStream';
@@ -99,6 +100,8 @@ export function GameRoute({ gameId, onTitle }: { gameId: GameId; onTitle: (title
         content = <SessionUnavailable expired={failure === 410} />;
     else if (snapshot?.phase === 'PLAYING' && ruleset)
         content = <Gameplay gameId={gameId} ruleset={ruleset} streamReplaced={streamReplaced} onCommand={send} />;
+    else if (snapshot?.phase === 'FINISHED' && ruleset)
+        content = <Results gameId={gameId} ruleset={ruleset} streamReplaced={streamReplaced} />;
     else if (snapshot?.phase === 'PLACEMENT' && ruleset)
         content = <Placement gameId={gameId} ruleset={ruleset} streamReplaced={streamReplaced} />;
     else if (snapshot?.phase === 'WAITING')
