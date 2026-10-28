@@ -5,15 +5,13 @@ import { translate } from '../src/i18n/translate';
 type Snapshot = components['schemas']['GameSnapshot'];
 type Ruleset = components['schemas']['Ruleset'];
 
-function advertisedFacts(ruleset: Ruleset): { label: string; value: string }[] {
-    const fleet = ruleset.fleet
-        .map((entry) => {
-            const ship = entry.shipTypeId.startsWith('ship-')
-                ? `${String(entry.length)} ${translate('en', 'rules.cellShip')}`
-                : translate('en', `ship.${entry.shipTypeId}`);
-            return `${String(entry.count)} × ${ship} (${String(entry.length)})`;
-        })
-        .join(', ');
+function advertisedFacts(ruleset: Ruleset): { label: string; value: string | string[] }[] {
+    const fleet = ruleset.fleet.map((entry) => {
+        const ship = entry.shipTypeId.startsWith('ship-')
+            ? `${String(entry.length)} ${translate('en', 'rules.cellShip')}`
+            : translate('en', `ship.${entry.shipTypeId}`);
+        return `${String(entry.count)} × ${ship} (${String(entry.length)})`;
+    });
     return [
         {
             label: translate('en', 'rules.field'),
@@ -70,7 +68,12 @@ test('a host shares, replaces, and watches an invitation live', async ({ page, b
     const facts = page.locator('section.waiting-screen dl.rules-facts');
     const expectedFacts = advertisedFacts(selectedRuleset);
     await expect(facts.locator('dt')).toHaveText(expectedFacts.map(({ label }) => label));
-    await expect(facts.locator('dd')).toHaveText(expectedFacts.map(({ value }) => value));
+    await expect(facts.locator('dd')).toHaveCount(expectedFacts.length);
+    for (const [index, fact] of expectedFacts.entries()) {
+        const value = facts.locator('dd').nth(index);
+        if (Array.isArray(fact.value)) await expect(value.locator('.fleet-composition > span')).toHaveText(fact.value);
+        else await expect(value).toHaveText(fact.value);
+    }
     await expect(
         page.getByRole('status').filter({ hasText: 'Waiting for an opponent. This page updates automatically.' }),
     ).toBeVisible();
@@ -174,7 +177,13 @@ test('waiting-room facts, lifetime, copy, and QR match each advertised ruleset',
             const facts = rulesPage.locator('section.waiting-screen dl.rules-facts');
             const expectedFacts = advertisedFacts(ruleset);
             await expect(facts.locator('dt')).toHaveText(expectedFacts.map(({ label }) => label));
-            await expect(facts.locator('dd')).toHaveText(expectedFacts.map(({ value }) => value));
+            await expect(facts.locator('dd')).toHaveCount(expectedFacts.length);
+            for (const [index, fact] of expectedFacts.entries()) {
+                const value = facts.locator('dd').nth(index);
+                if (Array.isArray(fact.value))
+                    await expect(value.locator('.fleet-composition > span')).toHaveText(fact.value);
+                else await expect(value).toHaveText(fact.value);
+            }
             await expect(rulesPage.getByText('Invitation lifetime:', { exact: false })).toBeVisible();
             await rulesPage.getByRole('button', { name: 'Copy link' }).click();
             await expect

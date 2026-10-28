@@ -1,20 +1,21 @@
-import { Fragment, useRef, useState, type CSSProperties, type PointerEvent, type KeyboardEvent } from 'react';
+import {
+    Fragment,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    useSyncExternalStore,
+    type CSSProperties,
+    type PointerEvent,
+    type KeyboardEvent,
+} from 'react';
 import type { components } from '../contract/generated/api';
 import { useT } from '../i18n/useT';
+import { usePreferences } from '../preferences/preferences';
 import './Board.css';
 
 type Coordinate = components['schemas']['Coordinate'];
 type CellState = components['schemas']['CellState'];
-const symbols: Record<CellState, string> = {
-    UNKNOWN: '?',
-    WATER: '≈',
-    SHIP: '■',
-    MISS: '•',
-    HIT: '×',
-    SUNK: '✕',
-    REVEALED_WATER: '·',
-};
-
 export function columnLabel(index: number): string {
     let value = index + 1;
     let label = '';
@@ -36,6 +37,7 @@ export function Board({
     dragTarget,
     activeStates,
     pendingTarget,
+    shot,
 }: {
     board: components['schemas']['Board'];
     dimensions: components['schemas']['Ruleset']['board'];
@@ -46,11 +48,69 @@ export function Board({
     dragTarget?: Coordinate | undefined;
     activeStates?: CellState[];
     pendingTarget?: Coordinate | undefined;
+    shot?: components['schemas']['Shot'] | undefined;
 }) {
     const t = useT();
+    const preferences = usePreferences();
+    const motion = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)'), []);
+    const reducedMotion = useSyncExternalStore(
+        (listener) => {
+            motion.addEventListener('change', listener);
+            return () => {
+                motion.removeEventListener('change', listener);
+            };
+        },
+        () => motion.matches,
+    );
+    const emojiEnabled = preferences.emoji && !reducedMotion;
+    const shotKey = shot ? `${shot.by}:${String(shot.target.rowIndex)}:${String(shot.target.columnIndex)}` : '';
+    const pendingKey = pendingTarget ? `${String(pendingTarget.rowIndex)}:${String(pendingTarget.columnIndex)}` : '';
+    const observedShot = useRef(shotKey);
+    const observedPending = useRef(pendingKey);
+    const animation = useRef<HTMLSpanElement | null>(null);
+    const animationTimer = useRef<number | undefined>(undefined);
     const [active, setActive] = useState(0);
     const cells = useRef<(HTMLButtonElement | null)[]>([]);
     const { rows, columns } = dimensions;
+    const shotResult = shot?.result;
+    const shotRow = shot?.target.rowIndex;
+    const shotColumn = shot?.target.columnIndex;
+    const pendingRow = pendingTarget?.rowIndex;
+    const pendingColumn = pendingTarget?.columnIndex;
+    useEffect(() => {
+        const isNewShot = observedShot.current !== shotKey;
+        const isNewPending = observedPending.current !== pendingKey;
+        observedShot.current = shotKey;
+        observedPending.current = pendingKey;
+        if (!emojiEnabled || isNewShot || (isNewPending && pendingKey !== '')) {
+            animation.current?.remove();
+            window.clearTimeout(animationTimer.current);
+        }
+        if (!emojiEnabled) return;
+        const miss = isNewShot && shotResult === 'MISS';
+        const fire = !isNewShot && isNewPending && pendingKey !== '';
+        if (!miss && !fire) return;
+        const row = miss ? shotRow : pendingRow;
+        const column = miss ? shotColumn : pendingColumn;
+        if (row === undefined || column === undefined) return;
+        // Animation is a presentation effect on the cell, never persistent game content.
+        const element = document.createElement('span');
+        element.className = `cell-emoji is-${miss ? 'miss' : 'fire'}`;
+        element.setAttribute('aria-hidden', 'true');
+        element.textContent = miss ? '💦' : '🚀';
+        cells.current[row * columns + column]?.append(element);
+        animation.current = element;
+        animationTimer.current = window.setTimeout(() => {
+            element.remove();
+        }, 800);
+    }, [shotKey, pendingKey, emojiEnabled, shotResult, shotRow, shotColumn, pendingRow, pendingColumn, columns]);
+    useEffect(
+        () => () => {
+            animation.current?.remove();
+            window.clearTimeout(animationTimer.current);
+        },
+        [],
+    );
     const navigate = (event: KeyboardEvent<HTMLButtonElement>, row: number, column: number) => {
         let nextRow = row;
         let nextColumn = column;
@@ -146,8 +206,11 @@ export function Board({
                                     if (!inactive) onActivate({ rowIndex: row, columnIndex: column });
                                 }}
                             >
-                                <span aria-hidden="true">{symbols[state]}</span>
-                                <span className="sr-only">{stateLabel}</span>
+                                {(state === 'HIT' || state === 'SUNK') && (
+                                    <span className="cell-mark" aria-hidden="true">
+                                        {state === 'HIT' ? '×' : '✕'}
+                                    </span>
+                                )}
                             </button>
                         );
                     })}

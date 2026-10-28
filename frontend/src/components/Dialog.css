@@ -1,6 +1,6 @@
 .dialog {
     width: min(34rem, calc(100vw - 2rem));
-    max-height: min(88vh, 50rem);
+    max-height: min(88dvh, 50rem);
     padding: 0;
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-lg);
@@ -10,6 +10,7 @@
 }
 .dialog::backdrop {
     background: var(--overlay);
+    backdrop-filter: blur(0.2rem);
 }
 .dialog-head,
 .dialog-actions {
@@ -36,4 +37,41 @@
 .dialog-actions {
     justify-content: flex-end;
     border-top: 1px solid var(--border);
+}
+
+.dialog[open] {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.dialog-head,
+.dialog-actions {
+    flex: 0 0 auto;
+}
+.dialog-body {
+    min-height: 0;
+    flex: 1 1 auto;
+}
+.dialog:has(.rules-dialog-body) {
+    width: min(54rem, calc(100vw - 2rem));
+}
+.rules-dialog-body {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    max-height: none;
+}
+.rules-dialog-card {
+    min-width: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+}
+.rules-dialog-card h3 {
+    margin: 0 0 var(--space-4);
+}
+@media (max-width: 47.5rem) {
+    .rules-dialog-body {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }

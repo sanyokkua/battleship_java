@@ -191,3 +191,15 @@ a {
         forced-color-adjust: auto;
     }
 }
+
+input:not([type='checkbox']):not([type='radio']),
+textarea {
+    min-width: 0;
+    width: 100%;
+    min-height: var(--control-h);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface-0);
+    color: var(--text-1);
+}

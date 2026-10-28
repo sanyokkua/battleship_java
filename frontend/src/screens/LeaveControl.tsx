@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { navigate } from '../app/router';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -7,19 +8,17 @@ import { useT } from '../i18n/useT';
 import type { GameId } from '../session/gameStore';
 import { useGame } from '../session/useGame';
 
-export function LeaveControl({ gameId }: { gameId: GameId }) {
+export function LeaveControl({ gameId, target }: { gameId: GameId; target: HTMLDivElement | null }) {
     const t = useT();
     const state = useGame(gameId);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [pending, setPending] = useState(false);
     const [failure, setFailure] = useState<string>();
     const phase = state.snapshot?.phase;
-    if (
-        !state.snapshot ||
-        (phase !== 'WAITING' && phase !== 'PLACEMENT') ||
-        !state.snapshot.allowedActions.includes('LEAVE')
-    )
-        return null;
+    const canLeave =
+        state.snapshot &&
+        (phase === 'WAITING' || phase === 'PLACEMENT') &&
+        state.snapshot.allowedActions.includes('LEAVE');
 
     const leave = async () => {
         if (!navigator.onLine || state.connection !== 'connected') return;
@@ -38,15 +37,34 @@ export function LeaveControl({ gameId }: { gameId: GameId }) {
 
     return (
         <>
-            <Button
-                variant="danger"
-                disabled={pending || state.connection !== 'connected'}
-                onClick={() => {
-                    setConfirmOpen(true);
-                }}
-            >
-                {t('leave.game')}
-            </Button>
+            {canLeave &&
+                target &&
+                createPortal(
+                    <>
+                        <Button
+                            variant="danger"
+                            disabled={pending || state.connection !== 'connected'}
+                            onClick={() => {
+                                setConfirmOpen(true);
+                            }}
+                        >
+                            {t('leave.game')}
+                        </Button>
+                        <ConfirmDialog
+                            open={confirmOpen}
+                            title={t('leave.title')}
+                            message={t('leave.warning')}
+                            confirmLabel={t('leave.game')}
+                            confirmDisabled={pending || state.connection !== 'connected'}
+                            onConfirm={() => void leave()}
+                            onClose={() => {
+                                setConfirmOpen(false);
+                            }}
+                        />
+                    </>,
+                    target,
+                )}
+
             {failure && (
                 <p role="alert">
                     {t(failure)}{' '}
@@ -55,17 +73,6 @@ export function LeaveControl({ gameId }: { gameId: GameId }) {
                     </Button>
                 </p>
             )}
-            <ConfirmDialog
-                open={confirmOpen}
-                title={t('leave.title')}
-                message={t('leave.warning')}
-                confirmLabel={t('leave.game')}
-                confirmDisabled={pending || state.connection !== 'connected'}
-                onConfirm={() => void leave()}
-                onClose={() => {
-                    setConfirmOpen(false);
-                }}
-            />
         </>
     );
 }

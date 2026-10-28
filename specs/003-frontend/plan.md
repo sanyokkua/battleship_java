@@ -168,7 +168,17 @@ corrected by the `serverTime` offset; they never decide expiry.
   `prefers-reduced-motion: reduce` disabling transitions and animations.
 - Components and their CSS are ported from the mockup's markup and rules, re-expressed as React components; every
   surface's widget list and data source is `contracts/ui-surface.md` § *Surfaces and widgets*. Icons are the
-  mockup's Unicode glyphs; emoji only when the emoji preference is on and `aria-hidden`.
+  mockup's Unicode glyphs. Per the user's visual correction, empty water and ship cells have no repeated
+  visible glyphs and no white dot/square marks; hit/sunk use concise non-colour marks and water/ship/miss
+  remain distinguishable through patterns and accessible state labels, including when forced colours suppress
+  background images. Emoji is off by default and limited
+  to a transient fire or miss/empty-cell animation when enabled; there are no static emojis.
+- Modal dialogs use the mockup's padded head/body/actions structure, scroll within short viewports, and blur the
+  full native modal backdrop. Ruleset facts use distinct padded cards and wrapping fleet entries. Shared form
+  controls use themed input styling. Leave controls stay aligned with their owning screen.
+- T018 correction forecast: 1 existing task, approximately 27 affected source/test/design files, no dependencies or
+  API changes. Assurance remains Standard and uses the existing 19-surface × 3-viewport × 2-theme capture matrix;
+  owner review records any remaining intentional deviations.
 - Interaction: hover styles only inside `@media (hover: hover)`; controls keep the mockup's `--control-h`
   (2.75rem) and `touch-action: manipulation`; board cells fill the grid width with `aspect-ratio: 1`.
 

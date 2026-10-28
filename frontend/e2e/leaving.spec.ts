@@ -103,10 +103,19 @@ test('a lost resignation answer can be retried with the same command ID', async 
 
 test('a lost leave answer can be retried and 404 returns home', async ({ page, stack }) => {
     let lost = false;
+    const terminalRead = page.waitForResponse(
+        (response) =>
+            response.request().method() === 'GET' &&
+            /\/api\/v1\/games\/[^/]+$/.test(response.url()) &&
+            response.status() === 404,
+    );
     await page.route('**/api/v1/games/*/leave', async (route) => {
         if (!lost) {
             lost = true;
             await route.fetch();
+            await terminalRead;
+            // Prove recovery survives replacing the heading that owned the leave button.
+            await expect(page.getByRole('heading', { name: /This game is no longer available/ })).toBeVisible();
             await route.abort();
         } else await route.continue();
     });

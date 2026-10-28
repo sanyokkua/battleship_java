@@ -91,7 +91,7 @@ export const uk = {
     'settings.light': 'Світла',
     'settings.system': 'Системна',
     'settings.emoji': 'Емодзі-символи',
-    'settings.emojiHelp': 'Додає декоративні символи до кольорів і позначок.',
+    'settings.emojiHelp': 'Лише короткі анімації пострілу та промаху. Вимкнено за зменшеного руху.',
     'settings.language': 'Мова',
     'settings.english': 'English',
     'settings.ukrainian': 'Українська',

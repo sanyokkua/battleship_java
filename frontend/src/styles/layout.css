@@ -194,3 +194,20 @@
     color: var(--text-2);
     font-size: 0.85rem;
 }
+
+.screen-heading-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+}
+@container app (max-width: 47.5rem) {
+    .waiting-heading,
+    .placement-heading {
+        align-items: flex-start;
+    }
+    .screen-heading-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+}

@@ -6,7 +6,6 @@ import { StatCard } from '../components/StatCard';
 import { GatewayError, leaveGame, type Ruleset } from '../gateway/gameGateway';
 import type { GatewayProblem } from '../gateway/problems';
 import { useT } from '../i18n/useT';
-import { usePreferences } from '../preferences/preferences';
 import type { GameId } from '../session/gameStore';
 import { useGame } from '../session/useGame';
 import './Results.css';
@@ -27,7 +26,6 @@ export function Results({
     streamReplaced: boolean;
 }) {
     const t = useT();
-    const preferences = usePreferences();
     const state = useGame(gameId);
     const [now, setNow] = useState(Date.now);
     const [leaving, setLeaving] = useState(false);
@@ -68,10 +66,7 @@ export function Results({
             <div className={`result-summary${won ? '' : ' is-loss'}`}>
                 <div>
                     <p className="eyebrow">{t('results.complete')}</p>
-                    <h1 id="results-title">
-                        {preferences.emoji && <span aria-hidden="true">{won ? '🏆' : '⚓'} </span>}
-                        {t(won ? 'results.victory' : 'results.defeat')}
-                    </h1>
+                    <h1 id="results-title">{t(won ? 'results.victory' : 'results.defeat')}</h1>
                     <p className="result-copy">
                         {t(outcome.reason === 'FLEET_DESTROYED' ? 'results.fleetDestroyed' : 'results.resignation')}
                     </p>

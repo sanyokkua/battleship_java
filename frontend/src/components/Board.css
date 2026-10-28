@@ -17,6 +17,8 @@
     font-size: clamp(0.58rem, 1cqw, 0.75rem);
 }
 .board-cell {
+    position: relative;
+    overflow: hidden;
     display: grid;
     place-items: center;
     min-width: 0;
@@ -35,12 +37,25 @@
 }
 .board-cell[data-state='ship'] {
     border-color: var(--ship-edge);
-    background: linear-gradient(145deg, color-mix(in srgb, var(--ship) 86%, white 9%), var(--ship));
+    border-style: double;
+    background:
+        repeating-linear-gradient(
+            135deg,
+            transparent 0 0.28rem,
+            color-mix(in srgb, var(--ship-edge) 24%, transparent) 0.28rem 0.34rem
+        ),
+        var(--ship);
 }
-.board-cell[data-state='miss'],
-.board-cell[data-state='revealed_water'] {
+.board-cell[data-state='miss'] {
     border-color: var(--miss);
-    background: color-mix(in srgb, var(--sea-deep) 72%, var(--miss));
+    border-style: dashed;
+    background:
+        repeating-linear-gradient(
+            45deg,
+            transparent 0 0.22rem,
+            color-mix(in srgb, var(--miss) 45%, transparent) 0.22rem 0.3rem
+        ),
+        var(--sea-deep);
 }
 .board-cell[data-state='hit'] {
     background: var(--hit);
@@ -59,19 +74,72 @@
         background: var(--sea-cell-hover);
     }
 }
-
 .board-cell.is-drag-target {
     border-color: var(--accent-strong);
     background: var(--sea-cell-hover);
     box-shadow: inset 0 0 0 0.15rem var(--accent);
 }
-
 .board-cell[data-state='revealed_water'] {
     border-color: var(--sea-line);
-    background: var(--sea-deep);
+    border-style: solid;
+    background:
+        repeating-linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--sea-line) 35%, transparent) 0 1px,
+            transparent 1px 0.5rem
+        ),
+        var(--sea-deep);
     color: var(--sea-foam);
 }
 .board-cell.is-pending {
     outline: 2px solid var(--accent-strong);
     outline-offset: -2px;
+}
+.cell-mark {
+    font-size: clamp(0.8rem, 2.3cqw, 1.4rem);
+    line-height: 1;
+}
+.cell-emoji {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: clamp(0.85rem, 2.4cqw, 1.5rem);
+    pointer-events: none;
+    animation: cell-feedback 800ms ease-out both;
+}
+@keyframes cell-feedback {
+    0% {
+        opacity: 0;
+        transform: translateY(35%) scale(0.6);
+    }
+    25% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-25%) scale(1.15);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .cell-emoji {
+        display: none;
+    }
+}
+@media (forced-colors: active) {
+    .board-cell {
+        border-color: ButtonText;
+    }
+    .board-cell[data-state='ship'] {
+        border-width: 3px;
+    }
+    .board-cell[data-state='revealed_water'] {
+        border-width: 3px;
+        border-style: inset;
+    }
+    .board-cell[data-state='hit'],
+    .board-cell[data-state='sunk'] {
+        color: ButtonText;
+    }
 }

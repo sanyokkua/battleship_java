@@ -110,7 +110,13 @@ export function Gameplay({
                     data-board-role="own"
                 >
                     <h2>{t('play.yourFleet')}</h2>
-                    <Board board={snapshot.yourBoard} dimensions={ruleset.board} label={t('play.yourFleet')} disabled />
+                    <Board
+                        board={snapshot.yourBoard}
+                        dimensions={ruleset.board}
+                        label={t('play.yourFleet')}
+                        shot={snapshot.lastShot?.by === 'OPPONENT' ? snapshot.lastShot : undefined}
+                        disabled
+                    />
                 </div>
                 <div
                     className="board-panel"
@@ -127,6 +133,7 @@ export function Gameplay({
                         disabled={disabled || !snapshot.allowedActions.includes('FIRE')}
                         activeStates={['UNKNOWN']}
                         pendingTarget={pendingTarget}
+                        shot={snapshot.lastShot?.by === 'YOU' ? snapshot.lastShot : undefined}
                         onActivate={fire}
                     />
                 </div>

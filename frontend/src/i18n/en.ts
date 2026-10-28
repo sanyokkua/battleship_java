@@ -90,7 +90,7 @@ export const en = {
     'settings.light': 'Light',
     'settings.system': 'System',
     'settings.emoji': 'Emoji overlays',
-    'settings.emojiHelp': 'Adds decorative symbols alongside existing colors and markers.',
+    'settings.emojiHelp': 'Brief firing and miss animations only. Disabled with reduced motion.',
     'settings.language': 'Language',
     'settings.english': 'English',
     'settings.ukrainian': 'Українська',

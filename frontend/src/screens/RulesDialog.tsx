@@ -18,14 +18,20 @@ export function RulesDialog({ open, onClose }: { open: boolean; onClose: () => v
     }, [open]);
     return (
         <Dialog open={open} titleId="rules-title" onClose={onClose}>
-            <h2 id="rules-title">{t('rules.title')}</h2>
-            {rulesets.map((ruleset) => (
-                <section key={ruleset.id}>
-                    <h3>{t(`ruleset.${ruleset.id}`)}</h3>
-                    <RulesetFacts ruleset={ruleset} />
-                </section>
-            ))}
-            <Button onClick={onClose}>{t('app.close')}</Button>
+            <div className="dialog-head">
+                <h2 id="rules-title">{t('rules.title')}</h2>
+            </div>
+            <div className="dialog-body rules-dialog-body" tabIndex={0} role="region" aria-labelledby="rules-title">
+                {rulesets.map((ruleset) => (
+                    <section className="rules-dialog-card" key={ruleset.id}>
+                        <h3>{t(`ruleset.${ruleset.id}`)}</h3>
+                        <RulesetFacts ruleset={ruleset} />
+                    </section>
+                ))}
+            </div>
+            <div className="dialog-actions">
+                <Button onClick={onClose}>{t('app.close')}</Button>
+            </div>
         </Dialog>
     );
 }

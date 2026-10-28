@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type Ref } from 'react';
 import type { components } from '../contract/generated/api';
 import { Board } from '../components/Board';
 import { FleetTray } from '../components/FleetTray';
@@ -19,10 +19,12 @@ type Ship = components['schemas']['Ship'];
 type Coordinate = components['schemas']['Coordinate'];
 export function Placement({
     gameId,
+    leaveSlotRef,
     ruleset,
     streamReplaced,
 }: {
     gameId: GameId;
+    leaveSlotRef: Ref<HTMLDivElement>;
     ruleset: Ruleset;
     streamReplaced: boolean;
 }) {
@@ -83,6 +85,7 @@ export function Placement({
                 <Pill tone={snapshot.opponent?.ready ? 'good' : 'neutral'}>
                     {t(snapshot.opponent?.ready ? 'placement.opponentReady' : 'placement.opponentPlacing')}
                 </Pill>
+                <div ref={leaveSlotRef} />
             </div>
             <ConnectionStatus connection={state.connection} replaced={streamReplaced} />
             <Stepper current="Placement" />

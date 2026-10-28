@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from 'react';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ConnectionStatus } from '../components/ConnectionStatus';
@@ -17,11 +17,13 @@ import './WaitingRoom.css';
 
 export function WaitingRoom({
     gameId,
+    leaveSlotRef,
     ruleset,
     showCreatedToast = false,
     streamReplaced = false,
 }: {
     gameId: GameId;
+    leaveSlotRef: Ref<HTMLDivElement>;
     ruleset: Ruleset | undefined;
     showCreatedToast?: boolean;
     streamReplaced?: boolean;
@@ -126,7 +128,10 @@ export function WaitingRoom({
         <section className="waiting-screen">
             <div className="waiting-heading">
                 <h1>{t(snapshot?.phase === 'PLACEMENT' ? 'game.placement' : 'game.waiting')}</h1>
-                <ConnectionStatus connection={state.connection} replaced={streamReplaced} />
+                <div className="screen-heading-actions">
+                    <ConnectionStatus connection={state.connection} replaced={streamReplaced} />
+                    <div ref={leaveSlotRef} />
+                </div>
             </div>
             <Stepper current={phase} />
             {ruleset && <RulesetFacts ruleset={ruleset} />}

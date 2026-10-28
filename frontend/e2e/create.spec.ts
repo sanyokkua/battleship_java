@@ -4,15 +4,13 @@ import type { components } from '../src/contract/generated/api';
 
 type Ruleset = components['schemas']['Ruleset'];
 
-function advertisedFacts(ruleset: Ruleset): { label: string; value: string }[] {
-    const fleet = ruleset.fleet
-        .map((entry) => {
-            const ship = entry.shipTypeId.startsWith('ship-')
-                ? `${String(entry.length)} ${translate('en', 'rules.cellShip')}`
-                : translate('en', `ship.${entry.shipTypeId}`);
-            return `${String(entry.count)} × ${ship} (${String(entry.length)})`;
-        })
-        .join(', ');
+function advertisedFacts(ruleset: Ruleset): { label: string; value: string | string[] }[] {
+    const fleet = ruleset.fleet.map((entry) => {
+        const ship = entry.shipTypeId.startsWith('ship-')
+            ? `${String(entry.length)} ${translate('en', 'rules.cellShip')}`
+            : translate('en', `ship.${entry.shipTypeId}`);
+        return `${String(entry.count)} × ${ship} (${String(entry.length)})`;
+    });
     return [
         {
             label: translate('en', 'rules.field'),
@@ -42,7 +40,13 @@ async function expectDialogFacts(page: import('@playwright/test').Page, rulesets
     for (const [index, ruleset] of rulesets.entries()) {
         const facts = advertisedFacts(ruleset);
         expect(await sections.nth(index).locator('dt').allTextContents()).toEqual(facts.map((fact) => fact.label));
-        expect(await sections.nth(index).locator('dd').allTextContents()).toEqual(facts.map((fact) => fact.value));
+        await expect(sections.nth(index).locator('dd')).toHaveCount(facts.length);
+        for (const [factIndex, fact] of facts.entries()) {
+            const value = sections.nth(index).locator('dd').nth(factIndex);
+            if (Array.isArray(fact.value))
+                await expect(value.locator('.fleet-composition > span')).toHaveText(fact.value);
+            else await expect(value).toHaveText(fact.value);
+        }
     }
 }
 
@@ -108,7 +112,13 @@ test('rules cards and details use the advertised ruleset facts', async ({ page, 
     for (const [index, ruleset] of body.rulesets.entries()) {
         const facts = advertisedFacts(ruleset);
         expect(await cards.nth(index).locator('dt').allTextContents()).toEqual(facts.map((fact) => fact.label));
-        expect(await cards.nth(index).locator('dd').allTextContents()).toEqual(facts.map((fact) => fact.value));
+        await expect(cards.nth(index).locator('dd')).toHaveCount(facts.length);
+        for (const [factIndex, fact] of facts.entries()) {
+            const value = cards.nth(index).locator('dd').nth(factIndex);
+            if (Array.isArray(fact.value))
+                await expect(value.locator('.fleet-composition > span')).toHaveText(fact.value);
+            else await expect(value).toHaveText(fact.value);
+        }
     }
     await page.getByRole('button', { name: 'View details' }).click();
     await expectDialogFacts(page, body.rulesets);

@@ -14,7 +14,7 @@ export function Header({ title, refresh, onSettings, onRules }: Props) {
     return (
         <header className="app-bar">
             <a className="brand" href="/" aria-label={t('app.name')}>
-                <span aria-hidden="true">⚓</span>
+                <span aria-hidden="true">⚓︎</span>
                 <strong>{t('app.name')}</strong>
             </a>
             <div className="app-bar-title">{title}</div>
@@ -24,7 +24,7 @@ export function Header({ title, refresh, onSettings, onRules }: Props) {
                     {t('home.rules')}
                 </Button>
                 <Button variant="ghost" aria-label={t('app.settings')} onClick={onSettings}>
-                    <span aria-hidden="true">⚙</span>
+                    <span aria-hidden="true">⚙︎</span>
                     <span className="button-label">{t('app.settings')}</span>
                 </Button>
             </div>

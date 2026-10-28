@@ -40,6 +40,42 @@ async function scan(page: Page) {
     expect(results.violations.filter((issue) => issue.impact === 'serious' || issue.impact === 'critical')).toEqual([]);
 }
 
+// Restoring emoji presentation on the permanent brand/settings symbols must fail.
+test('header symbols use text presentation and static dialogs contain no emoji', async ({ page, stack }) => {
+    await page.goto(stack.origin);
+    await expect(page.locator('.brand [aria-hidden="true"]')).toHaveText('⚓\uFE0E');
+    await expect(
+        page.getByRole('button', { name: 'Settings', exact: true }).locator('[aria-hidden="true"]'),
+    ).toHaveText('⚙\uFE0E');
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    expect(await page.getByRole('dialog', { name: 'Settings', exact: true }).innerText()).not.toMatch(
+        /\p{Extended_Pictographic}/u,
+    );
+});
+
+test('Rules content scrolls from the keyboard and Close stays reachable', async ({ page, stack }) => {
+    for (const size of sizes) {
+        await page.setViewportSize(size);
+        await page.goto(stack.origin);
+        await page.getByRole('button', { name: 'Game rules', exact: true }).first().click();
+        const dialog = page.getByRole('dialog', { name: 'Game rules', exact: true });
+        const body = dialog.locator('.dialog-body');
+        const close = dialog.getByRole('button', { name: 'Close', exact: true });
+        await close.focus();
+        await page.keyboard.press('Shift+Tab');
+        await expect(body).toBeFocused();
+        const overflow = await body.evaluate((node) => node.scrollHeight > node.clientHeight);
+        await page.keyboard.press('End');
+        if (overflow) await expect.poll(() => body.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+        await expect(body.locator('section').last().locator('dd').last()).toBeInViewport({ ratio: 1 });
+        await page.keyboard.press('Tab');
+        await expect(close).toBeFocused();
+        await expect(close).toBeInViewport({ ratio: 1 });
+        await page.keyboard.press('Enter');
+        await expect(dialog).toBeHidden();
+    }
+});
+
 // Removing the narrow container rule must expose both boards and fail the portrait assertions.
 // Giving a board min-width:900px must fail noOverflow at 390×844.
 test('three CSS layouts and tab keyboard navigation survive reflow and enlarged text', async ({
@@ -232,12 +268,11 @@ for (const size of sizes) {
                 const shot = result.lastShot;
                 expect(shot).toBeTruthy();
                 await expect(board.getByRole('gridcell', { name: label, exact: true })).toHaveCount(0);
-                const changed = board
-                    .getByRole('gridcell')
-                    .filter({ hasText: /miss|hit|sunk|revealed water/ })
-                    .first();
+                const changed = board.getByRole('gridcell', {
+                    name: new RegExp(`^${columnName}${rowName}, (miss|hit|sunk)$`),
+                });
                 await expect(changed).toBeVisible();
-                expect(await changed.textContent()).toMatch(/miss|hit|sunk|revealed water/);
+                await expect(changed).toHaveAttribute('data-state', /^(miss|hit|sunk)$/);
                 expect(await shooter.evaluate(() => document.getAnimations().length)).toBe(0);
                 await noOverflow(shooter);
             }
@@ -364,6 +399,100 @@ test('Pixel 7 tap journey, native touch drag and single Refresh read', async ({ 
     }
 });
 
+test('emoji preference gives transient fire and miss feedback only and respects reduced motion', async ({
+    page,
+    browser,
+    stack,
+}) => {
+    const { guest, gameId } = await prepareGame(page, browser, stack.origin, 'Sea Battle');
+    try {
+        for (const mode of ['off', 'on', 'reduced'] as const) {
+            for (const player of [page, guest]) {
+                await player.emulateMedia({ reducedMotion: mode === 'reduced' ? 'reduce' : 'no-preference' });
+                await player.getByRole('button', { name: 'Settings', exact: true }).click();
+                const dialog = player.locator('dialog[open]');
+                await expect(
+                    dialog.getByText('Brief firing and miss animations only. Disabled with reduced motion.', {
+                        exact: true,
+                    }),
+                ).toBeVisible();
+                await dialog.getByRole('checkbox', { name: /Emoji overlays/ }).setChecked(mode !== 'off');
+                await dialog.getByRole('combobox').selectOption('uk');
+                await expect(
+                    dialog.getByText('Лише короткі анімації пострілу та промаху. Вимкнено за зменшеного руху.', {
+                        exact: true,
+                    }),
+                ).toBeVisible();
+                await dialog.locator('select').selectOption('en');
+                await player.getByRole('button', { name: 'Done', exact: true }).click();
+            }
+            const snapshot = await readGame(page, gameId);
+            const shooter = snapshot.turn === 'YOU' ? page : guest;
+            const other = shooter === page ? guest : page;
+            const targetSnapshot = await readGame(other, gameId);
+            let coordinate: { rowIndex: number; columnIndex: number } | undefined;
+            for (let rowIndex = 0; rowIndex < targetSnapshot.yourBoard.grid.length && !coordinate; rowIndex++) {
+                const columnIndex =
+                    targetSnapshot.yourBoard.grid[rowIndex]?.findIndex((state) => state === 'WATER') ?? -1;
+                if (columnIndex >= 0) coordinate = { rowIndex, columnIndex };
+            }
+            if (!coordinate) throw new Error('No empty cell remains');
+            const label = `${String.fromCharCode(65 + coordinate.columnIndex)}${String(coordinate.rowIndex + 1)}, unknown`;
+            let release: () => void = () => {
+                throw new Error('Shot barrier absent');
+            };
+            const barrier = new Promise<void>((resolve) => {
+                release = resolve;
+            });
+            await shooter.route('**/api/v1/games/*/commands', async (route) => {
+                await barrier;
+                await route.continue();
+            });
+            const response = shooter.waitForResponse((entry) => entry.url().endsWith('/commands'));
+            await shooter
+                .getByRole('grid', { name: 'Enemy waters' })
+                .getByRole('gridcell', { name: label, exact: true })
+                .click();
+            if (mode === 'on') await expect(shooter.locator('.cell-emoji')).toHaveText('🚀');
+            else expect(await shooter.locator('.cell-emoji').count()).toBe(0);
+            release();
+            const result = (await (await response).json()) as Snapshot;
+            expect(result.lastShot?.result).toBe('MISS');
+            if (mode === 'on') await expect(shooter.locator('.cell-emoji')).toHaveText('💦');
+            await expect(shooter.locator('.cell-emoji')).toHaveCount(0);
+            await shooter.unroute('**/api/v1/games/*/commands');
+        }
+        const snapshot = await readGame(page, gameId);
+        const shooter = snapshot.turn === 'YOU' ? page : guest;
+        const targetSnapshot = await readGame(shooter === page ? guest : page, gameId);
+        const anchor = targetSnapshot.yourBoard.ships.find((ship) => ship.length === 1)?.anchor;
+        if (!anchor) throw new Error('Single-cell ship absent');
+        const label = `${String.fromCharCode(65 + anchor.columnIndex)}${String(anchor.rowIndex + 1)}, unknown`;
+        await waitCommand(shooter, () =>
+            shooter
+                .getByRole('grid', { name: 'Enemy waters' })
+                .getByRole('gridcell', { name: label, exact: true })
+                .click(),
+        );
+        const revealed = shooter.locator('.board-cell[data-state="revealed_water"]').first();
+        await expect(revealed).toHaveCount(1);
+        expect(await revealed.evaluate((node) => getComputedStyle(node).borderStyle)).toBe('solid');
+        expect(await revealed.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain(
+            'repeating-linear-gradient',
+        );
+        expect(await revealed.locator('[aria-hidden="true"]').count()).toBe(0);
+        await shooter.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
+        expect(await revealed.evaluate((node) => getComputedStyle(node).borderStyle)).toBe('inset');
+        const water = shooter.locator('.board-cell[data-state="water"]').first();
+        expect(await water.evaluate((node) => getComputedStyle(node).borderStyle)).toBe('solid');
+        expect(await revealed.evaluate((node) => getComputedStyle(node).borderWidth)).not.toBe(
+            await water.evaluate((node) => getComputedStyle(node).borderWidth),
+        );
+    } finally {
+        await guest.close();
+    }
+});
+
 // Removing labelled dialogs, focus restoration, screen widgets or responsive tracks fails this real-state matrix.
 for (const size of sizes)
     for (const theme of ['dark', 'light'] as const) {
@@ -387,6 +516,92 @@ for (const size of sizes)
                         await expect(dialog.locator('canvas')).toBeInViewport({ ratio: 1 });
                     }
                 }
+                if (surface === 'rules') {
+                    const dialog = screen.getByRole('dialog', { name: 'Game rules', exact: true });
+                    for (const part of ['head', 'body', 'actions']) {
+                        const element = dialog.locator(`.dialog-${part}`);
+                        await expect(element).toHaveCount(1);
+                        expect(
+                            await element.evaluate((node) => parseFloat(getComputedStyle(node).paddingInlineStart)),
+                        ).toBeGreaterThanOrEqual(16);
+                    }
+                    const backdrop = await dialog.evaluate(
+                        (node) => getComputedStyle(node, '::backdrop').backdropFilter,
+                    );
+                    expect(backdrop).toMatch(/blur\(/);
+                    const cards = dialog.locator('.rules-dialog-card');
+                    await expect(cards).toHaveCount(2);
+                    for (const card of await cards.all()) {
+                        expect(
+                            await card.evaluate((node) => parseFloat(getComputedStyle(node).padding)),
+                        ).toBeGreaterThanOrEqual(12);
+                        expect(await card.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+                    }
+                    await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeInViewport({
+                        ratio: 1,
+                    });
+                }
+                if (surface === 'create' || surface === 'join') {
+                    const input = screen.getByLabel('Captain name');
+                    expect(await input.evaluate((node) => getComputedStyle(node).borderRadius)).not.toBe('0px');
+                    expect(await input.evaluate((node) => getComputedStyle(node).backgroundColor)).toBe(
+                        await screen.locator('.app-bar').evaluate((node) => {
+                            const probe = document.createElement('div');
+                            probe.style.background = 'var(--surface-0)';
+                            node.append(probe);
+                            const color = getComputedStyle(probe).backgroundColor;
+                            probe.remove();
+                            return color;
+                        }),
+                    );
+                }
+                if (surface === 'waiting' || surface === 'placement') {
+                    const leave = screen.getByRole('button', { name: 'Leave game', exact: true });
+                    const heading = screen.getByRole('heading', { level: 1 });
+                    const buttonBox = await leave.boundingBox();
+                    const headingBox = await heading.boundingBox();
+                    if (!buttonBox || !headingBox) throw new Error('Heading or leave control absent');
+                    expect(
+                        buttonBox.x >= headingBox.x + headingBox.width ||
+                            buttonBox.y >= headingBox.y + headingBox.height,
+                    ).toBe(true);
+                    const owner = screen.locator(surface === 'waiting' ? '.waiting-screen' : '.placement-screen');
+                    expect(await owner.getByRole('button', { name: 'Leave game', exact: true }).count()).toBe(1);
+                }
+                if (surface === 'results') {
+                    expect(await screen.locator('.result-summary').textContent()).not.toMatch(
+                        /\p{Extended_Pictographic}/u,
+                    );
+                }
+                if (['placement', 'gameplay', 'results'].includes(surface)) {
+                    const ordinary = screen.locator(
+                        '.board-cell:is([data-state="water"], [data-state="ship"], [data-state="unknown"], [data-state="revealed_water"])',
+                    );
+                    for (const cell of await ordinary.all()) {
+                        expect(await cell.locator('[aria-hidden="true"]').allTextContents()).toEqual([]);
+                        await expect(cell).toHaveAttribute('aria-label', /^[A-Z]+[0-9]+, .+/);
+                    }
+                    for (const state of ['ship', 'miss', 'revealed_water', 'hit', 'sunk']) {
+                        const cell = screen.locator(`.board-cell[data-state="${state}"]`).first();
+                        if ((await cell.count()) === 0) continue;
+                        if (state === 'hit' || state === 'sunk') {
+                            await expect(cell.locator('.cell-mark')).toHaveText(state === 'hit' ? '×' : '✕');
+                        } else {
+                            expect(await cell.evaluate((node) => getComputedStyle(node).borderStyle)).toBe(
+                                state === 'ship' ? 'double' : state === 'miss' ? 'dashed' : 'solid',
+                            );
+                        }
+                    }
+                    expect(await screen.locator('.cell-emoji').count()).toBe(0);
+                }
+                const staticContent = await screen.locator('body').evaluate((node) => {
+                    const copy = node.cloneNode(true) as HTMLElement;
+                    copy.querySelectorAll('.cell-emoji').forEach((element) => {
+                        element.remove();
+                    });
+                    return copy.textContent.replaceAll('⚓\uFE0E', '').replaceAll('⚙\uFE0E', '');
+                });
+                expect(staticContent).not.toMatch(/\p{Extended_Pictographic}/u);
                 await mkdir('test-results/visual', { recursive: true });
                 const file = `${surface}-${size.name}-${theme}.png`;
                 await screen.evaluate(() => {
@@ -415,6 +630,7 @@ for (const size of sizes)
                     await player
                         .getByRole('button', { name: theme === 'dark' ? 'Dark' : 'Light', exact: true })
                         .click();
+                    await player.getByRole('checkbox', { name: /Emoji overlays/ }).check();
                     await player.getByRole('button', { name: 'Done', exact: true }).click();
                 }
                 await capture('home', page, true);

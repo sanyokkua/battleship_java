@@ -13,8 +13,8 @@ import { Placement } from './Placement';
 import { WaitingRoom } from './WaitingRoom';
 import { openGameEventStream } from '../gateway/eventStream';
 import { startPresence } from '../session/presence';
-import { LeaveControl } from './LeaveControl';
 import { Abandoned } from './Abandoned';
+import { LeaveControl } from './LeaveControl';
 import { SettingsDialog } from './SettingsDialog';
 import { useRetryWindow } from '../session/useRetryWindow';
 
@@ -37,6 +37,7 @@ export function GameRoute({
     const state = useGame(gameId);
     const retryBlocked = useRetryWindow(state.notice?.retryAtMs);
     const [rulesets, setRulesets] = useState<Ruleset[]>([]);
+    const [leaveTarget, setLeaveTarget] = useState<HTMLDivElement | null>(null);
     const [failure, setFailure] = useState<number>();
     const [loading, setLoading] = useState(true);
     const [streamReplaced, setStreamReplaced] = useState(false);
@@ -142,12 +143,20 @@ export function GameRoute({
         content = <Results gameId={gameId} ruleset={ruleset} streamReplaced={streamReplaced} />;
     else if (snapshot?.phase === 'ABANDONED') content = <Abandoned gameId={gameId} />;
     else if (snapshot?.phase === 'PLACEMENT' && ruleset)
-        content = <Placement gameId={gameId} ruleset={ruleset} streamReplaced={streamReplaced} />;
+        content = (
+            <Placement
+                gameId={gameId}
+                ruleset={ruleset}
+                streamReplaced={streamReplaced}
+                leaveSlotRef={setLeaveTarget}
+            />
+        );
     else if (snapshot?.phase === 'WAITING')
         content = (
             <WaitingRoom
                 gameId={gameId}
                 ruleset={ruleset}
+                leaveSlotRef={setLeaveTarget}
                 showCreatedToast={showCreatedToast}
                 streamReplaced={streamReplaced}
             />
@@ -172,7 +181,7 @@ export function GameRoute({
         );
     return (
         <>
-            {(snapshot?.phase === 'WAITING' || snapshot?.phase === 'PLACEMENT') && <LeaveControl gameId={gameId} />}
+            <LeaveControl gameId={gameId} target={leaveTarget} />
             {state.notice && <CommandNotice notice={state.notice} />}
             {content}
             <Dialog open={state.checking} titleId="checking-title" dismissible={false} onClose={() => undefined}>

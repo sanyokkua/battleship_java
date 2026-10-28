@@ -300,12 +300,14 @@ development, production-style local run and the single verification gate.
 ### Feedback, settings and results
 
 - **R31** Every board change is understandable without colour or animation: text, symbol or pattern,
-  plus a concise live announcement.
+  plus a concise live announcement. [user] Empty water and ship cells use cell styling/patterns rather than
+  repeated visible glyphs; ordinary water and ships show no white dots or square glyphs.
 - **R32** Optional synthesized sound for miss, hit and sunk, and optional haptics, play once per new
   shot result from the server; failure, denial, background or reduced-motion never blocks anything.
 - **R33** Language (English, Ukrainian), theme (dark, light, system), emoji mode, sound and haptics
   apply immediately and persist; nothing else is persisted except the game id of R07. Emoji is decorative and never the only
-  carrier of meaning.
+  carrier of meaning. [user] Emoji mode is separate and off by default; when enabled, emoji may appear
+  only in a transient firing or miss/empty-cell animation. There are no static emoji elsewhere in the UI.
 - **R34** English and Ukrainian resources have identical keys (Constitution V).
 - **R35** `[agent]` Ruleset and ship names are translated by the server's ruleset and ship-type
   identifiers, falling back to the raw identifier for an unknown one; the contract has no name field.
@@ -397,6 +399,9 @@ development, production-style local run and the single verification gate.
   heights and motion durations. Theme `system` follows the operating system's colour scheme.
 - **R59** Each surface presents the mockup's widgets for it, fed only by server data; the per-surface
   list and each widget's data source are in `contracts/ui-surface.md` § *Surfaces and widgets*.
+  [user] Board water and ship cells have no repeated visible text glyphs; non-colour state cues remain
+  available through cell patterns, hit/sunk marks, accessible names and live announcements. Emoji mode
+  is limited to the transient firing/miss animation described in R33.
 - **R60** Not reproduced from the mockup: invitation token text, Copy token, a paste-token join field,
   Join game on Home (joining is by link or QR only), shading of no-touch zones (the ruleset's touching
   rule is shown as text), a display game number, the snapshot-version footer, and the mockup's preview,

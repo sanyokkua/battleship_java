@@ -138,9 +138,11 @@ test('Sea Battle hits retain the turn, sunk water differs from a miss, and oppon
         const miss = shooter
             .getByRole('grid', { name: 'Enemy waters' })
             .getByRole('gridcell', { name: 'J10, miss', exact: true });
-        expect(await revealed.evaluate((cell) => getComputedStyle(cell).backgroundColor)).not.toBe(
-            await miss.evaluate((cell) => getComputedStyle(cell).backgroundColor),
+        expect(await revealed.evaluate((cell) => getComputedStyle(cell).backgroundImage)).not.toBe(
+            await miss.evaluate((cell) => getComputedStyle(cell).backgroundImage),
         );
+        expect(await revealed.evaluate((cell) => getComputedStyle(cell).borderStyle)).toBe('solid');
+        expect(await miss.evaluate((cell) => getComputedStyle(cell).borderStyle)).toBe('dashed');
         await expect(receiver.getByText('Your turn · Tap an enemy cell', { exact: true })).toBeVisible();
         let loads = 0;
         shooter.on('load', () => {
