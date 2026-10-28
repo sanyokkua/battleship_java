@@ -13,8 +13,21 @@ import { Placement } from './Placement';
 import { WaitingRoom } from './WaitingRoom';
 import { openGameEventStream } from '../gateway/eventStream';
 import { startPresence } from '../session/presence';
+import { LeaveControl } from './LeaveControl';
+import { Abandoned } from './Abandoned';
+import { SettingsDialog } from './SettingsDialog';
 
-export function GameRoute({ gameId, onTitle }: { gameId: GameId; onTitle: (title: string) => void }) {
+export function GameRoute({
+    gameId,
+    onTitle,
+    settingsOpen,
+    onSettingsClose,
+}: {
+    gameId: GameId;
+    onTitle: (title: string) => void;
+    settingsOpen: boolean;
+    onSettingsClose: () => void;
+}) {
     const t = useT();
     const state = useGame(gameId);
     const [rulesets, setRulesets] = useState<Ruleset[]>([]);
@@ -102,6 +115,7 @@ export function GameRoute({ gameId, onTitle }: { gameId: GameId; onTitle: (title
         content = <Gameplay gameId={gameId} ruleset={ruleset} streamReplaced={streamReplaced} onCommand={send} />;
     else if (snapshot?.phase === 'FINISHED' && ruleset)
         content = <Results gameId={gameId} ruleset={ruleset} streamReplaced={streamReplaced} />;
+    else if (snapshot?.phase === 'ABANDONED') content = <Abandoned gameId={gameId} />;
     else if (snapshot?.phase === 'PLACEMENT' && ruleset)
         content = <Placement gameId={gameId} ruleset={ruleset} streamReplaced={streamReplaced} />;
     else if (snapshot?.phase === 'WAITING')
@@ -131,6 +145,7 @@ export function GameRoute({ gameId, onTitle }: { gameId: GameId; onTitle: (title
         );
     return (
         <>
+            {(snapshot?.phase === 'WAITING' || snapshot?.phase === 'PLACEMENT') && <LeaveControl gameId={gameId} />}
             {state.notice && <CommandNotice notice={state.notice} />}
             {content}
             <Dialog open={state.checking} titleId="checking-title" dismissible={false} onClose={() => undefined}>
@@ -152,6 +167,15 @@ export function GameRoute({ gameId, onTitle }: { gameId: GameId; onTitle: (title
                     </Button>
                 </div>
             </Dialog>
+            <SettingsDialog
+                open={settingsOpen}
+                canResign={snapshot?.allowedActions.includes('RESIGN') ?? false}
+                onResign={async () => {
+                    const action = getGameStore(gameId).beginAction({ type: 'RESIGN' });
+                    if (action) await send(action);
+                }}
+                onClose={onSettingsClose}
+            />
         </>
     );
 }

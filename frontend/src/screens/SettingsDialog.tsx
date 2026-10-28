@@ -1,22 +1,28 @@
-import { Button } from '../components/Button';
 import { Dialog } from '../components/Dialog';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { preferenceStore, usePreferences } from '../preferences/preferences';
 import { useT } from '../i18n/useT';
+import { useState } from 'react';
+import { Button } from '../components/Button';
 import './SettingsDialog.css';
 
 interface Props {
     open: boolean;
+    canResign?: boolean;
+    onResign?: () => Promise<void>;
     onClose: () => void;
 }
 
-export function SettingsDialog({ open, onClose }: Props) {
+export function SettingsDialog({ open, canResign = false, onResign, onClose }: Props) {
     const preferences = usePreferences();
     const t = useT();
+    const [confirmResign, setConfirmResign] = useState(false);
+    const [resignFailure, setResignFailure] = useState(false);
     const update = (value: Parameters<typeof preferenceStore.update>[0]) => {
         preferenceStore.update(value);
     };
-    return (
-        <Dialog open={open} onClose={onClose} titleId="settings-title">
+    return [
+        <Dialog key="settings" open={open} onClose={onClose} titleId="settings-title">
             <div className="dialog-head">
                 <h2 id="settings-title">{t('settings.title')}</h2>
                 <Button variant="ghost" aria-label={t('app.close')} onClick={onClose}>
@@ -54,6 +60,17 @@ export function SettingsDialog({ open, onClose }: Props) {
                         }}
                     />
                 </label>
+                {canResign && onResign && (
+                    <Button
+                        variant="danger"
+                        onClick={() => {
+                            setConfirmResign(true);
+                        }}
+                    >
+                        {t('leave.resign')}
+                    </Button>
+                )}
+                {resignFailure && <p role="alert">{t('problem.serviceUnavailable')}</p>}
                 <label className="settings-language" htmlFor="settings-language">
                     {t('settings.language')}
                     <select
@@ -99,6 +116,30 @@ export function SettingsDialog({ open, onClose }: Props) {
                     {t('settings.done')}
                 </Button>
             </div>
-        </Dialog>
-    );
+        </Dialog>,
+        <ConfirmDialog
+            key="resign"
+            open={confirmResign}
+            title={t('leave.resignTitle')}
+            message={t('leave.resignWarning')}
+            confirmLabel={t('leave.resign')}
+            onClose={() => {
+                setConfirmResign(false);
+            }}
+            onConfirm={() => {
+                setResignFailure(false);
+                if (!onResign) return;
+                void onResign().then(
+                    () => {
+                        setConfirmResign(false);
+                        onClose();
+                    },
+                    () => {
+                        setConfirmResign(false);
+                        setResignFailure(true);
+                    },
+                );
+            }}
+        />,
+    ];
 }

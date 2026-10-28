@@ -70,7 +70,16 @@ export function App() {
                     />
                 )}
                 {route.name === 'create' && <CreateGame />}
-                {route.name === 'game' && <GameRoute gameId={route.gameId} onTitle={setTitle} />}
+                {route.name === 'game' && (
+                    <GameRoute
+                        gameId={route.gameId}
+                        onTitle={setTitle}
+                        settingsOpen={settingsOpen}
+                        onSettingsClose={() => {
+                            setSettingsOpen(false);
+                        }}
+                    />
+                )}
                 {route.name === 'join' && <JoinInvitation gameId={route.gameId} />}
             </Shell>
             <RulesDialog
@@ -79,12 +88,14 @@ export function App() {
                     setRulesOpen(false);
                 }}
             />
-            <SettingsDialog
-                open={settingsOpen}
-                onClose={() => {
-                    setSettingsOpen(false);
-                }}
-            />
+            {route.name !== 'game' && (
+                <SettingsDialog
+                    open={settingsOpen}
+                    onClose={() => {
+                        setSettingsOpen(false);
+                    }}
+                />
+            )}
         </>
     );
 }

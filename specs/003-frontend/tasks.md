@@ -229,7 +229,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
 
 ## Phase 7: US5 — Leaving, expiry, restart, connection loss (P2)
 
-- [ ] T014 [US5] Implement leave, resign and the abandoned view in `frontend/src/screens/LeaveControl.tsx`
+- [x] T014 [US5] Implement leave, resign and the abandoned view in `frontend/src/screens/LeaveControl.tsx`
   - **Covers** R28, R29, R30, US5 scenarios 1–3
   - **Read first** plan § *Leaving, layouts, dialogs* · `openapi.yaml` `leaveGame` (L542, 204; 404 after own leave = success) · README phase table
   - **Files** `src/screens/LeaveControl.tsx`, `src/screens/Abandoned.tsx`, `src/screens/SettingsDialog.tsx` (Resign match), `e2e/leaving.spec.ts`
@@ -237,6 +237,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
   - **Proof** `leaving.spec.ts`: (1) cancel keeps placement; confirm → Home; (2) remaining player sees abandoned without reload, no boards; (3) Settings → Resign match in play → opponent's results show a win by `RESIGNATION`; Resign match is absent from Settings outside play; (4) lost leave answer: `page.route('**/leave', r => r.fetch().then(() => r.abort()))` once; the page's retry gets 404 and lands Home, not Session unavailable.
   - **Verify** `cd frontend && npm run build && npm run e2e -- e2e/leaving.spec.ts`
   - **Mutation** Treat 404 after own leave as Session unavailable; (4) must fail.
+  - **Evidence** `npm run format:check && npm run lint && npm test && npm run build && npm run e2e -- e2e/leaving.spec.ts` passed (12 unit files / 29 tests, 4 real-backend journeys). The resignation lost-answer proof failed before the shared action-slot integration, then passed with the same command ID on retry. Treating leave retry 404 as unavailable failed the Home assertion (see `/private/tmp/t014-mutation.log`).
   - **Depends on** T013
 
 - [ ] T015 [US5] Recover the live stream and honour rate limits in `frontend/src/gateway/eventStream.ts`
