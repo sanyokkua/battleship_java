@@ -252,7 +252,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
   - **Evidence** `npm run format:check && npm run lint && npm test` passed (12 files / 31 tests); `npm run build && npm run e2e -- e2e/recovery.spec.ts` passed (7 real-backend journeys). The lowered-read-limit `GAME_UNAVAILABLE` journey verifies that an SSE snapshot does not clear a 429 wait notice, no read occurs before `Retry-After`, then one lookup occurs without reopening the stream. A unit proof verifies a terminal lookup stays pending if its deadline expires offline and runs once after reconnect, without reopening. Mutations failed as required: offline controls (`/private/tmp/t015-mutation-offline.log`), `REPLACED` reopen (`/private/tmp/t015-mutation-replaced.log`), removed stream backoff (`/private/tmp/t015-mutation-backoff.log`), immediate 429 retry (`/private/tmp/t015-mutation-retryafter.log`), and removed absolute retry deadline guard (`/private/tmp/t015-mutation-retryafter-guard.log`). All mutations were restored.
   - **Depends on** T014
 
-- [ ] T016 [US5] Prove expiry, presence extension and restart loss on dedicated stacks in `frontend/e2e/lifetime.spec.ts`
+- [x] T016 [US5] Prove expiry, presence extension and restart loss on dedicated stacks in `frontend/e2e/lifetime.spec.ts`
   - **Covers** R16, R26 (`GAME_UNAVAILABLE`), R27, R50, US5 scenario 4 · S3
   - **Read first** plan § *Outcome → screen* · research D12 · `openapi.yaml` 410 `game-expired` → 404 after forget (L665-676)
   - **Files** `src/screens/Home.tsx`, `src/screens/WaitingRoom.tsx`, `src/i18n/{en.ts,uk.ts}`, `e2e/lifetime.spec.ts`
@@ -261,6 +261,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
   - **Verify** `cd frontend && npm run build && npm run e2e -- e2e/lifetime.spec.ts`
   - **Mutation** Disable the presence timer; (2) must fail.
   - **Evidence** `npm run format:check`, `npm run lint`, `npm run typecheck`, and `npm test` passed (12 files / 31 tests); `npm run build && npm run e2e -- e2e/lifetime.spec.ts` passed (4 real-backend journeys). The visible-presence proof waits past the 8-second idle timeout, confirms a real GET still returns a WAITING game, and observes another expiry advance. With presence delayed by 60 seconds, that proof failed at the expiry-advance assertion (`/private/tmp/t016-mutation-presence-strengthened.log`); the mutation was restored.
+  - **Corrective Evidence (2026-10-28)** Red run reproduced the old live-Home assertion: Return was present while its remembered game was still live. The journey now confirms Return during the live state, then confirms the single terminal lookup clears the remembered id and Home no longer offers Return. `npm run build && npm run e2e -- e2e/lifetime.spec.ts` passed (4 real-backend journeys).
   - **Depends on** T015
 
 ---

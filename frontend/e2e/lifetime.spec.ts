@@ -108,7 +108,7 @@ test('backend restart during placement clears the remembered game and offers a n
     }
 });
 
-test('Home does not offer a remembered game and GAME_UNAVAILABLE reads once without reopening events', async ({
+test('Home keeps a live remembered game and forgets it after GAME_UNAVAILABLE without reopening events', async ({
     page,
     useStack,
 }) => {
@@ -120,7 +120,7 @@ test('Home does not offer a remembered game and GAME_UNAVAILABLE reads once with
     try {
         const { gameId } = await createWaitingGame(page, stack.origin);
         await page.goto(stack.origin);
-        await expect(page.getByRole('button', { name: 'Return to your game' })).toHaveCount(0);
+        await expect(page.getByRole('button', { name: 'Return to your game' })).toBeVisible();
         await page.addInitScript(() => {
             // eslint-disable-next-line @typescript-eslint/unbound-method -- Keep the native method's instance receiver.
             const original = EventSource.prototype.addEventListener;
@@ -187,6 +187,9 @@ test('Home does not offer a remembered game and GAME_UNAVAILABLE reads once with
         expect(gameReadRequests.filter((requestedAt) => requestedAt >= closedAt)).toHaveLength(1);
         await page.waitForTimeout(2_000);
         expect(eventRequests).toBe(initialEventRequests);
+        await expect.poll(() => page.evaluate(() => localStorage.getItem('battleship.currentGameId'))).toBeNull();
+        await page.goto(stack.origin);
+        await expect(page.getByRole('button', { name: 'Return to your game' })).toHaveCount(0);
     } finally {
         await stack.stop();
     }
