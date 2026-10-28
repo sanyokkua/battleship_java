@@ -12,6 +12,8 @@ import { RulesDialog } from '../screens/RulesDialog';
 import { SettingsDialog } from '../screens/SettingsDialog';
 import { getRoute } from './router';
 import { Shell } from './Shell';
+import { getGameStore } from '../session/gameStore';
+import { useRetryWindow } from '../session/useRetryWindow';
 
 export function App() {
     const [settingsOpen, setSettingsOpen] = useState(false);
@@ -28,6 +30,11 @@ export function App() {
         () => '/',
     );
     const route = getRoute(pathname);
+    const gameState = useSyncExternalStore(
+        (notify) => (route.name === 'game' ? getGameStore(route.gameId).subscribe(notify) : () => undefined),
+        () => (route.name === 'game' ? getGameStore(route.gameId).getSnapshot() : undefined),
+        () => undefined,
+    );
     const t = useT();
     const { locale } = usePreferences();
     const setTitle = useCallback((title: string) => {
@@ -46,9 +53,16 @@ export function App() {
         void getMeta().catch(() => undefined);
     }, []);
     const title = route.name === 'game' ? gameTitle : undefined;
+    const retryAtMs = gameState?.notice?.retryAtMs;
+    const retryBlocked = useRetryWindow(retryAtMs);
     const refresh =
         route.name === 'game' ? (
-            <Button onClick={() => window.dispatchEvent(new CustomEvent('game-refresh'))}>{t('game.refresh')}</Button>
+            <Button
+                disabled={gameState?.connection === 'offline' || retryBlocked}
+                onClick={() => window.dispatchEvent(new CustomEvent('game-refresh'))}
+            >
+                {t('game.refresh')}
+            </Button>
         ) : undefined;
     return (
         <>

@@ -19,6 +19,7 @@ export interface GameStore {
     setMeta(meta: Meta): void;
     acceptSnapshot(snapshot: GameSnapshot): void;
     setConnection(connection: GameState['connection']): void;
+    setNotice(notice?: GatewayProblem): void;
     beginAction(command: components['schemas']['Command']): components['schemas']['CommandRequest'] | undefined;
     retryAction(): components['schemas']['CommandRequest'] | undefined;
     checkAction(): void;
@@ -36,6 +37,13 @@ export function createGameStore(): GameStore {
         notice: undefined,
     };
     const listeners = new Set<() => void>();
+    const makeNotice = (notice?: GatewayProblem) =>
+        notice
+            ? {
+                  ...notice,
+                  ...(notice.retryAfterSeconds ? { retryAtMs: Date.now() + notice.retryAfterSeconds * 1000 } : {}),
+              }
+            : undefined;
     const publish = (next: GameState) => {
         state = next;
         for (const listener of listeners) listener();
@@ -74,18 +82,14 @@ export function createGameStore(): GameStore {
                 ...state,
                 action: undefined,
                 checking: false,
-                notice: notice
-                    ? {
-                          ...notice,
-                          ...(notice.retryAfterSeconds
-                              ? { retryAtMs: Date.now() + notice.retryAfterSeconds * 1000 }
-                              : {}),
-                      }
-                    : undefined,
+                notice: makeNotice(notice),
             });
         },
         setConnection(connection) {
             if (connection !== state.connection) publish({ ...state, connection });
+        },
+        setNotice(notice) {
+            publish({ ...state, notice: makeNotice(notice) });
         },
     };
 }

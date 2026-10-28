@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createGameStore } from '../src/session/gameStore';
 import type { components } from '../src/contract/generated/api';
 
@@ -30,5 +30,20 @@ describe('game store', () => {
         expect(store.getSnapshot().clockOffsetMs).toBeGreaterThanOrEqual(serverTime - after);
         expect(store.getSnapshot().clockOffsetMs).toBeLessThanOrEqual(serverTime - before);
         expect(changes).toBe(1);
+    });
+
+    it('stores a retry notice with an absolute retry time', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-10-28T12:00:00.000Z'));
+        const store = createGameStore();
+        store.setNotice({
+            status: 429,
+            code: 'rate-limit-exceeded',
+            messageKey: 'problem.rateLimited',
+            retryAfterSeconds: 3,
+        });
+
+        expect(store.getSnapshot().notice?.retryAtMs).toBe(Date.parse('2026-10-28T12:00:03.000Z'));
+        vi.useRealTimers();
     });
 });

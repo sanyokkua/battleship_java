@@ -16,6 +16,7 @@ import { startPresence } from '../session/presence';
 import { LeaveControl } from './LeaveControl';
 import { Abandoned } from './Abandoned';
 import { SettingsDialog } from './SettingsDialog';
+import { useRetryWindow } from '../session/useRetryWindow';
 
 export function GameRoute({
     gameId,
@@ -30,6 +31,7 @@ export function GameRoute({
 }) {
     const t = useT();
     const state = useGame(gameId);
+    const retryBlocked = useRetryWindow(state.notice?.retryAtMs);
     const [rulesets, setRulesets] = useState<Ruleset[]>([]);
     const [failure, setFailure] = useState<number>();
     const [loading, setLoading] = useState(true);
@@ -39,6 +41,8 @@ export function GameRoute({
         return historyState?.toast === 'game-created';
     });
     const refresh = useCallback(async () => {
+        const retryAtMs = getGameStore(gameId).getSnapshot().notice?.retryAtMs;
+        if (retryAtMs !== undefined && retryAtMs > Date.now()) return;
         const [metaResult, rulesResult, gameResult] = await Promise.allSettled([
             getMeta(),
             listRulesets(),
@@ -54,6 +58,9 @@ export function GameRoute({
         } else {
             const error: unknown = gameResult.reason as unknown;
             const status = error instanceof GatewayError ? error.problem.status : 0;
+            if (error instanceof GatewayError && [429, 503].includes(status)) {
+                getGameStore(gameId).setNotice(error.problem);
+            }
             const reconnectable = [0, 429, 502, 503].includes(status) && navigator.onLine;
             getGameStore(gameId).setConnection(reconnectable ? 'reconnecting' : 'offline');
             setFailure(status);
@@ -139,7 +146,9 @@ export function GameRoute({
                             {t(state.connection === 'offline' ? 'connection.offline' : 'connection.reconnecting')}
                         </p>
                     )}
-                    <Button onClick={() => void refresh()}>{t('game.refresh')}</Button>
+                    <Button disabled={state.connection === 'offline' || retryBlocked} onClick={() => void refresh()}>
+                        {t('game.refresh')}
+                    </Button>
                 </div>
             </section>
         );
