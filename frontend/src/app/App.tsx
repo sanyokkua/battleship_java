@@ -96,7 +96,7 @@ export function App({ pwaGateway, installGateway }: { pwaGateway: PwaGateway; in
                     setSettingsOpen(true);
                 }}
             >
-                {route.name !== 'game' && <OfflineBanner online={online} />}
+                <OfflineBanner online={online} />
                 {route.name === 'home' && (
                     <Home
                         onRules={() => {

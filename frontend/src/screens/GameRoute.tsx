@@ -45,6 +45,13 @@ export function GameRoute({
         return historyState?.toast === 'game-created';
     });
     const refresh = useCallback(async () => {
+        const store = getGameStore(gameId);
+        if (!navigator.onLine) {
+            store.setConnection('offline');
+            setFailure(undefined);
+            setLoading(false);
+            return;
+        }
         const retryAtMs = getGameStore(gameId).getSnapshot().notice?.retryAtMs;
         if (retryAtMs !== undefined && retryAtMs > Date.now()) return;
         const [metaResult, rulesResult, gameResult] = await Promise.allSettled([
@@ -77,6 +84,13 @@ export function GameRoute({
         }, 0);
         return () => {
             window.clearTimeout(timer);
+        };
+    }, [refresh]);
+    useEffect(() => {
+        const listener = () => void refresh();
+        window.addEventListener('online', listener);
+        return () => {
+            window.removeEventListener('online', listener);
         };
     }, [refresh]);
     useEffect(() => {
@@ -185,7 +199,9 @@ export function GameRoute({
                 installAvailable={installAvailable}
                 onInstall={onInstall}
                 canResign={snapshot?.allowedActions.includes('RESIGN') ?? false}
+                resignDisabled={state.connection === 'offline'}
                 onResign={async () => {
+                    if (!navigator.onLine) return;
                     const action = getGameStore(gameId).beginAction({ type: 'RESIGN' });
                     if (action) await send(action);
                 }}

@@ -11,6 +11,7 @@ interface Props {
     installAvailable?: boolean;
     onInstall?: () => void;
     canResign?: boolean;
+    resignDisabled?: boolean;
     onResign?: () => Promise<void>;
     onClose: () => void;
 }
@@ -20,6 +21,7 @@ export function SettingsDialog({
     onInstall,
     open,
     canResign = false,
+    resignDisabled = false,
     onResign,
     onClose,
 }: Props) {
@@ -80,6 +82,7 @@ export function SettingsDialog({
                 {canResign && onResign && (
                     <Button
                         variant="danger"
+                        disabled={resignDisabled}
                         onClick={() => {
                             setConfirmResign(true);
                         }}
@@ -140,10 +143,12 @@ export function SettingsDialog({
             title={t('leave.resignTitle')}
             message={t('leave.resignWarning')}
             confirmLabel={t('leave.resign')}
+            confirmDisabled={resignDisabled}
             onClose={() => {
                 setConfirmResign(false);
             }}
             onConfirm={() => {
+                if (resignDisabled) return;
                 setResignFailure(false);
                 if (!onResign) return;
                 void onResign().then(

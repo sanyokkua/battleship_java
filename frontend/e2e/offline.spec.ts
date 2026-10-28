@@ -1,5 +1,19 @@
 import { execFileSync } from 'node:child_process';
 import { expect, test } from './fixtures/stack';
+import { prepareGame } from './helpers/playGame';
+
+async function createWaitingGame(page: import('@playwright/test').Page, origin: string) {
+    await page.goto(`${origin}/create`);
+    await page.getByRole('radio').filter({ hasText: 'Sea Battle' }).click();
+    await page.getByLabel('Captain name').fill('Offline route');
+    const created = page.waitForResponse(
+        (response) => response.request().method() === 'POST' && response.url().endsWith('/api/v1/games'),
+    );
+    await page.getByRole('button', { name: 'Create game', exact: true }).click();
+    const snapshot = (await (await created).json()) as { gameId: string };
+    await expect(page.getByRole('heading', { name: 'Waiting for an opponent' })).toBeVisible();
+    return snapshot;
+}
 
 test('an installed shell opens offline and explains that games need a connection without sending requests', async ({
     page,
@@ -68,7 +82,124 @@ test('service-worker caches contain no API responses after real game traffic', a
 
     await page.context().setOffline(true);
     await expect(page.getByText('Offline', { exact: true })).toBeVisible();
-    await expect(page.getByRole('status').filter({ hasText: /games need a network connection/i })).toHaveCount(0);
+    await expect(page.getByRole('status').filter({ hasText: /games need a network connection/i })).toBeVisible();
+});
+
+test('replacing an invitation cannot be confirmed after connectivity drops', async ({ page, stack }) => {
+    await createWaitingGame(page, stack.origin);
+    const invitationRequests: string[] = [];
+    page.on('request', (request) => {
+        if (request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/invitation')) {
+            invitationRequests.push(request.url());
+        }
+    });
+    await page.getByRole('button', { name: 'Replace invitation', exact: true }).click();
+    const confirmation = page.getByRole('dialog', { name: 'Replace invitation?' });
+    const beforeOffline = invitationRequests.length;
+    await page.context().setOffline(true);
+    await expect(confirmation.getByRole('button', { name: 'Replace link', exact: true })).toBeDisabled();
+    await expect(page.getByRole('status').filter({ hasText: /games need a network connection/i })).toBeVisible();
+    await confirmation.getByRole('button', { name: 'Replace link', exact: true }).click({ force: true });
+    await expect(confirmation).toBeVisible();
+    expect(invitationRequests).toHaveLength(beforeOffline);
+});
+
+test('leaving a waiting game cannot be confirmed after connectivity drops', async ({ page, stack }) => {
+    await createWaitingGame(page, stack.origin);
+    const leaveRequests: string[] = [];
+    page.on('request', (request) => {
+        if (request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/leave')) {
+            leaveRequests.push(request.url());
+        }
+    });
+    await page.getByRole('button', { name: 'Leave game', exact: true }).click();
+    const confirmation = page.getByRole('dialog', { name: 'Leave game?' });
+    const beforeOffline = leaveRequests.length;
+    await page.context().setOffline(true);
+    await expect(confirmation.getByRole('button', { name: 'Leave game', exact: true })).toBeDisabled();
+    await confirmation.getByRole('button', { name: 'Leave game', exact: true }).click({ force: true });
+    await expect(confirmation).toBeVisible();
+    expect(leaveRequests).toHaveLength(beforeOffline);
+});
+
+test('waiting-room expiry does not refresh offline and recovers on reconnect', async ({ page, useStack }) => {
+    const shortStack = await useStack(
+        'offline-invitation-expiry',
+        { frontendPort: 4174, backendPort: 8081 },
+        { BATTLESHIP_INVITATIONLIFETIMESECONDS: '10' },
+    );
+    try {
+        const { gameId } = await createWaitingGame(page, shortStack.origin);
+        const gameReads: number[] = [];
+        page.on('request', (request) => {
+            const url = new URL(request.url());
+            if (request.method() === 'GET' && url.pathname === `/api/v1/games/${gameId}`) gameReads.push(Date.now());
+        });
+        await page.context().setOffline(true);
+        await expect(page.getByText('Offline', { exact: true })).toBeVisible();
+        await page.waitForTimeout(11_000);
+        expect(gameReads).toEqual([]);
+        await page.context().setOffline(false);
+        await expect.poll(() => gameReads.length, { timeout: 5_000 }).toBeGreaterThan(0);
+    } finally {
+        await page.context().setOffline(false);
+        await shortStack.stop();
+    }
+});
+
+test('an offline deep link explains the network requirement and recovers after reconnecting', async ({
+    page,
+    stack,
+}) => {
+    await page.goto(stack.origin);
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    const { gameId } = await createWaitingGame(page, stack.origin);
+
+    const apiRequests: string[] = [];
+    page.on('request', (request) => {
+        if (new URL(request.url()).pathname.startsWith('/api/')) apiRequests.push(request.url());
+    });
+    await page.context().setOffline(true);
+    await page.goto(`${stack.origin}/games/${gameId}`);
+
+    await expect(page.getByRole('status').filter({ hasText: /games need a network connection/i })).toBeVisible({
+        timeout: 3000,
+    });
+    expect(apiRequests).toEqual([]);
+
+    await page.context().setOffline(false);
+    await expect(page.getByRole('heading', { name: 'Waiting for an opponent' })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+});
+
+test('resignation cannot be confirmed or sent after connectivity drops', async ({ page, browser, stack }) => {
+    const { guest } = await prepareGame(page, browser, stack.origin, 'Sea Battle');
+    try {
+        const commands: string[] = [];
+        page.on('request', (request) => {
+            if (request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/commands')) {
+                commands.push(request.postData() ?? '');
+            }
+        });
+        await page.getByRole('button', { name: 'Settings' }).click();
+        await page.getByRole('button', { name: 'Resign match', exact: true }).click();
+        const confirmation = page.getByRole('dialog', { name: 'Resign match?' });
+        await expect(confirmation.getByRole('button', { name: 'Resign match', exact: true })).toBeEnabled();
+        const requestsBeforeOffline = commands.length;
+
+        await page.context().setOffline(true);
+        await expect(confirmation.getByRole('button', { name: 'Resign match', exact: true })).toBeDisabled();
+        await confirmation.getByRole('button', { name: 'Resign match', exact: true }).click({ force: true });
+        await expect(confirmation).toBeVisible();
+        expect(commands).toHaveLength(requestsBeforeOffline);
+        await confirmation.getByRole('button', { name: 'Cancel' }).click();
+        await expect(
+            page.getByRole('dialog', { name: 'Settings' }).getByRole('button', { name: 'Resign match' }),
+        ).toBeDisabled();
+    } finally {
+        await page.context().setOffline(false);
+        await guest.close();
+    }
 });
 
 test('a detected update waits for consent before reloading', async ({ page, stack }) => {

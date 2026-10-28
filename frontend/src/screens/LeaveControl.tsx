@@ -22,6 +22,7 @@ export function LeaveControl({ gameId }: { gameId: GameId }) {
         return null;
 
     const leave = async () => {
+        if (!navigator.onLine || state.connection !== 'connected') return;
         setPending(true);
         setFailure(undefined);
         setConfirmOpen(false);
@@ -59,6 +60,7 @@ export function LeaveControl({ gameId }: { gameId: GameId }) {
                 title={t('leave.title')}
                 message={t('leave.warning')}
                 confirmLabel={t('leave.game')}
+                confirmDisabled={pending || state.connection !== 'connected'}
                 onConfirm={() => void leave()}
                 onClose={() => {
                     setConfirmOpen(false);

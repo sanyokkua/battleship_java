@@ -10,6 +10,7 @@ export function ConfirmDialog({
     confirmLabel,
     onConfirm,
     onClose,
+    confirmDisabled = false,
 }: {
     open: boolean;
     title: string;
@@ -17,6 +18,7 @@ export function ConfirmDialog({
     confirmLabel: string;
     onConfirm: () => void;
     onClose: () => void;
+    confirmDisabled?: boolean;
 }) {
     const t = useT();
     const titleId = useId();
@@ -30,7 +32,7 @@ export function ConfirmDialog({
             </div>
             <div className="dialog-actions">
                 <Button onClick={onClose}>{t('common.cancel')}</Button>
-                <Button variant="danger" onClick={onConfirm}>
+                <Button variant="danger" disabled={confirmDisabled} onClick={onConfirm}>
                     {confirmLabel}
                 </Button>
             </div>

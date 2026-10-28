@@ -71,18 +71,26 @@ export function WaitingRoom({
             expiresAtMs === undefined ||
             !snapshot ||
             !invitationExpiresAt ||
+            state.connection !== 'connected' ||
             lastRefreshExpiry.current === invitationExpiresAt
         )
             return;
         const delay = Math.max(0, expiresAtMs - (Date.now() + state.clockOffsetMs)) + 250;
         const timer = window.setTimeout(() => {
-            lastRefreshExpiry.current = invitationExpiresAt;
-            void getGame(gameId).catch(() => undefined);
+            if (!navigator.onLine || state.connection !== 'connected') return;
+            void getGame(gameId).then(
+                () => {
+                    lastRefreshExpiry.current = invitationExpiresAt;
+                },
+                () => {
+                    if (navigator.onLine) lastRefreshExpiry.current = invitationExpiresAt;
+                },
+            );
         }, delay);
         return () => {
             window.clearTimeout(timer);
         };
-    }, [expiresAtMs, gameId, invitationExpiresAt, snapshot, state.clockOffsetMs]);
+    }, [expiresAtMs, gameId, invitationExpiresAt, snapshot, state.clockOffsetMs, state.connection]);
 
     const copyLink = async () => {
         if (!invitationUrl) return;
@@ -94,6 +102,7 @@ export function WaitingRoom({
         }
     };
     const doReplace = async () => {
+        if (!navigator.onLine || state.connection !== 'connected') return;
         setConfirmOpen(false);
         setPending(true);
         try {
@@ -161,7 +170,7 @@ export function WaitingRoom({
                 )}
                 {allowed.includes('NEW_INVITATION') && (
                     <Button
-                        disabled={pending}
+                        disabled={pending || state.connection !== 'connected'}
                         onClick={() => {
                             setConfirmOpen(true);
                         }}
@@ -200,6 +209,7 @@ export function WaitingRoom({
                 title={t('game.replaceTitle')}
                 message={t('game.replaceWarning')}
                 confirmLabel={t('game.confirmReplace')}
+                confirmDisabled={pending || state.connection !== 'connected'}
                 onConfirm={() => {
                     void doReplace();
                 }}
