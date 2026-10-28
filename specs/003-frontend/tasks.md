@@ -266,7 +266,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
 
 ## Phase 8: US6 — Settings, feedback and inclusive use (P2)
 
-- [ ] T017 [US6] Add sound and haptics feedback in `frontend/src/feedback/`
+- [x] T017 [US6] Add sound and haptics feedback in `frontend/src/feedback/`
   - **Covers** R32, R33, US6 scenarios 1–2 · S5 · research D8
   - **Read first** master `frontend/src/audio/audioRecipes.ts`, `AudioFeedback.ts` (`git show master:…`; no imports to strip)
   - **Files** `src/feedback/{audioRecipes.ts,audioFeedback.ts,haptics.ts,useShotFeedback.ts}`, `src/screens/Gameplay.tsx` (hook), `tests/feedback.test.ts`, `e2e/settings.spec.ts` (mid-game step)

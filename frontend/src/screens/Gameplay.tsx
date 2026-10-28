@@ -8,6 +8,7 @@ import { ConnectionStatus } from '../components/ConnectionStatus';
 import type { Ruleset } from '../gateway/gameGateway';
 import { getGameStore, type GameId } from '../session/gameStore';
 import { useGame } from '../session/useGame';
+import { useShotFeedback } from '../feedback/useShotFeedback';
 import { useT } from '../i18n/useT';
 import './Gameplay.css';
 
@@ -26,6 +27,7 @@ export function Gameplay({
     const state = useGame(gameId);
     const [now, setNow] = useState(Date.now);
     const [selectedBoard, setSelectedBoard] = useState<'target' | 'own'>('target');
+    const unlockFeedback = useShotFeedback(state.snapshot?.lastShot);
     useEffect(() => {
         const timer = window.setInterval(() => {
             setNow(Date.now());
@@ -46,6 +48,7 @@ export function Gameplay({
             snapshot.opponentBoard.grid[target.rowIndex]?.[target.columnIndex] !== 'UNKNOWN'
         )
             return;
+        unlockFeedback();
         const action = store.beginAction({ type: 'FIRE', target });
         if (action) void onCommand(action);
     };

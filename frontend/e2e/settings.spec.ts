@@ -1,4 +1,42 @@
 import { expect, test } from './fixtures/stack';
+import type { Browser, Page } from '@playwright/test';
+import type { components } from '../src/contract/generated/api';
+
+type Snapshot = components['schemas']['GameSnapshot'];
+
+async function prepareFleet(page: Page) {
+    const placed = page.waitForResponse((response) => response.url().endsWith('/commands'));
+    await page.getByRole('button', { name: 'Random', exact: true }).click();
+    expect((await placed).ok()).toBeTruthy();
+    await page.getByRole('button', { name: 'Ready', exact: true }).click();
+    const ready = page.waitForResponse((response) => response.url().endsWith('/commands'));
+    await page.getByRole('button', { name: 'Commit and wait', exact: true }).click();
+    expect((await ready).ok()).toBeTruthy();
+}
+
+async function startSeaBattle(page: Page, browser: Browser, origin: string) {
+    await page.goto(`${origin}/create`);
+    await page.getByRole('radio').filter({ hasText: 'Sea Battle' }).click();
+    await page.getByLabel('Captain name').fill('Host');
+    const created = page.waitForResponse(
+        (response) => response.request().method() === 'POST' && response.url().endsWith('/api/v1/games'),
+    );
+    await page.getByRole('button', { name: 'Create game', exact: true }).click();
+    const initial = (await (await created).json()) as Snapshot;
+    if (!initial.invitationUrl) throw new Error('Invitation missing');
+    const guest = await browser.newPage();
+    await guest.goto(`${origin}/join/${initial.gameId}${new URL(initial.invitationUrl).hash}`);
+    await guest.getByLabel('Captain name').fill('Guest');
+    const joined = guest.waitForResponse((response) => response.url().endsWith('/join'));
+    await guest.getByRole('button', { name: 'Join game', exact: true }).click();
+    await joined;
+    await expect(page.getByRole('grid', { name: 'Your sea' })).toBeVisible();
+    await prepareFleet(page);
+    await prepareFleet(guest);
+    await expect(page.getByRole('grid', { name: 'Enemy waters' })).toBeVisible();
+    const snapshot = (await (await page.request.get(`/api/v1/games/${initial.gameId}`)).json()) as Snapshot;
+    return { guest, gameId: initial.gameId, shooter: snapshot.turn === 'YOU' ? page : guest };
+}
 
 test('settings apply and persist language and theme, and follow system theme changes', async ({ page, stack }) => {
     await page.goto(stack.origin);
@@ -53,4 +91,48 @@ test('settings apply and persist language and theme, and follow system theme cha
     }));
     expect(Number.parseFloat(control.height)).toBeGreaterThanOrEqual(44);
     expect(control.touchAction).toBe('manipulation');
+});
+
+test('sound and haptics toggled during play leave the server shot result and turn unchanged', async ({
+    page,
+    browser,
+    stack,
+}) => {
+    const { guest, gameId, shooter } = await startSeaBattle(page, browser, stack.origin);
+    let active = shooter;
+    try {
+        for (const enabled of [false, true]) {
+            await active.getByRole('button', { name: 'Settings' }).click();
+            const dialog = active.getByRole('dialog', { name: 'Settings' });
+            const sound = dialog.getByRole('checkbox', { name: /Sound feedback/ });
+            const haptics = dialog.getByRole('checkbox', { name: /Haptic feedback/ });
+            if ((await sound.isChecked()) !== enabled) await sound.setChecked(enabled);
+            if ((await haptics.isChecked()) !== enabled) await haptics.setChecked(enabled);
+            await dialog.getByRole('button', { name: 'Done' }).click();
+
+            const command = active.waitForResponse((response) => response.url().endsWith('/commands'));
+            await active
+                .getByRole('grid', { name: 'Enemy waters' })
+                .getByRole('gridcell', { name: 'J10, unknown', exact: true })
+                .click();
+            expect((await command).ok()).toBeTruthy();
+            const server = (await (await active.request.get(`/api/v1/games/${gameId}`)).json()) as Snapshot;
+            const shot = server.lastShot;
+            expect(shot).toBeDefined();
+            if (!shot) throw new Error('Server snapshot did not include the accepted shot');
+            expect(shot.target).toEqual({ rowIndex: 9, columnIndex: 9 });
+            const cellState = { MISS: 'miss', HIT: 'hit', SUNK: 'sunk' }[shot.result];
+            await expect(
+                active.getByText(server.turn === 'YOU' ? 'Your turn · Tap an enemy cell' : 'Opponent’s turn'),
+            ).toBeVisible();
+            await expect(
+                active
+                    .getByRole('grid', { name: 'Enemy waters' })
+                    .getByRole('gridcell', { name: `J10, ${cellState}`, exact: true }),
+            ).toBeVisible();
+            active = server.turn === 'YOU' ? active : active === page ? guest : page;
+        }
+    } finally {
+        await guest.close();
+    }
 });
