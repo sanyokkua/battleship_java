@@ -10,7 +10,7 @@ import { navigate } from '../app/router';
 import { readCurrentGame } from '../session/currentGame';
 import { RulesDialog } from './RulesDialog';
 
-export function CreateGame() {
+export function CreateGame({ offline = false }: { offline?: boolean }) {
     const t = useT();
     const [rulesets, setRulesets] = useState<Ruleset[]>([]);
     const [selected, setSelected] = useState('');
@@ -23,6 +23,7 @@ export function CreateGame() {
     const [rememberedGame] = useState(readCurrentGame);
     const [rulesOpen, setRulesOpen] = useState(false);
     useEffect(() => {
+        if (offline) return;
         void listRulesets()
             .then((items) => {
                 setRulesets(items);
@@ -31,7 +32,7 @@ export function CreateGame() {
             .catch(() => {
                 setError('problem.serviceUnavailable');
             });
-    }, []);
+    }, [offline]);
     useEffect(() => {
         if (!waitUntil) return;
         const timer = window.setInterval(() => {
@@ -47,7 +48,7 @@ export function CreateGame() {
         };
     }, [waitUntil]);
     async function submit() {
-        if (pending || !selected || Date.now() < waitUntil || name.trim().length < 1) return;
+        if (offline || pending || !selected || Date.now() < waitUntil || name.trim().length < 1) return;
         setPending(true);
         setError('');
         try {
@@ -121,7 +122,7 @@ export function CreateGame() {
                     </Button>
                     <Button
                         variant="primary"
-                        disabled={pending || !selected || !name.trim() || waitActive}
+                        disabled={offline || pending || !selected || !name.trim() || waitActive}
                         onClick={() => void submit()}
                     >
                         {t('create.submit')}

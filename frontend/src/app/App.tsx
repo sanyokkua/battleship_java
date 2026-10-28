@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { Button } from '../components/Button';
+import { OfflineBanner } from '../components/OfflineBanner';
+import { UpdatePrompt } from '../components/UpdatePrompt';
 import { useT } from '../i18n/useT';
 import { preferenceStore, usePreferences } from '../preferences/preferences';
 import { createThemeController } from '../preferences/themeController';
@@ -14,11 +16,15 @@ import { getRoute } from './router';
 import { Shell } from './Shell';
 import { getGameStore } from '../session/gameStore';
 import { useRetryWindow } from '../session/useRetryWindow';
+import type { PwaGateway } from '../pwa/pwaGateway';
+import type { InstallGateway } from '../pwa/installGateway';
 
-export function App() {
+export function App({ pwaGateway, installGateway }: { pwaGateway: PwaGateway; installGateway: InstallGateway }) {
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [rulesOpen, setRulesOpen] = useState(false);
     const [gameTitle, setGameTitle] = useState('');
+    const [installAvailable, setInstallAvailable] = useState(false);
+    const [online, setOnline] = useState(() => navigator.onLine);
     const pathname = useSyncExternalStore(
         (notify) => {
             window.addEventListener('popstate', notify);
@@ -50,8 +56,22 @@ export function App() {
         document.documentElement.lang = locale;
     }, [locale]);
     useEffect(() => {
-        void getMeta().catch(() => undefined);
+        const update = () => {
+            setOnline(navigator.onLine);
+        };
+        window.addEventListener('online', update);
+        window.addEventListener('offline', update);
+        return () => {
+            window.removeEventListener('online', update);
+            window.removeEventListener('offline', update);
+        };
     }, []);
+    useEffect(() => {
+        if (online) void getMeta().catch(() => undefined);
+    }, [online]);
+    useEffect(() => {
+        installGateway.onAvailabilityChange(setInstallAvailable);
+    }, [installGateway]);
     const title = route.name === 'game' ? gameTitle : undefined;
     const retryAtMs = gameState?.notice?.retryAtMs;
     const retryBlocked = useRetryWindow(retryAtMs);
@@ -76,6 +96,7 @@ export function App() {
                     setSettingsOpen(true);
                 }}
             >
+                {route.name !== 'game' && <OfflineBanner online={online} />}
                 {route.name === 'home' && (
                     <Home
                         onRules={() => {
@@ -83,19 +104,24 @@ export function App() {
                         }}
                     />
                 )}
-                {route.name === 'create' && <CreateGame />}
+                {route.name === 'create' && <CreateGame offline={!online} />}
                 {route.name === 'game' && (
                     <GameRoute
                         gameId={route.gameId}
                         onTitle={setTitle}
                         settingsOpen={settingsOpen}
+                        installAvailable={installAvailable}
+                        onInstall={() => {
+                            void installGateway.prompt();
+                        }}
                         onSettingsClose={() => {
                             setSettingsOpen(false);
                         }}
                     />
                 )}
-                {route.name === 'join' && <JoinInvitation gameId={route.gameId} />}
+                {route.name === 'join' && <JoinInvitation gameId={route.gameId} offline={!online} />}
             </Shell>
+            <UpdatePrompt gateway={pwaGateway} />
             <RulesDialog
                 open={rulesOpen}
                 onClose={() => {
@@ -105,6 +131,10 @@ export function App() {
             {route.name !== 'game' && (
                 <SettingsDialog
                     open={settingsOpen}
+                    installAvailable={installAvailable}
+                    onInstall={() => {
+                        void installGateway.prompt();
+                    }}
                     onClose={() => {
                         setSettingsOpen(false);
                     }}

@@ -9,7 +9,7 @@ import { readCurrentGame, rememberCurrentGame } from '../session/currentGame';
 import { clearInvitationSecret, readInvitationSecret } from '../session/inviteSecret';
 import { SessionUnavailable } from './SessionUnavailable';
 
-export function JoinInvitation({ gameId }: { gameId: string }) {
+export function JoinInvitation({ gameId, offline = false }: { gameId: string; offline?: boolean }) {
     const t = useT();
     const [secret, setSecret] = useState(readInvitationSecret);
     const [name, setName] = useState('');
@@ -20,7 +20,7 @@ export function JoinInvitation({ gameId }: { gameId: string }) {
     const [expired, setExpired] = useState(false);
 
     async function join() {
-        if (pending || !secret || !name.trim()) return;
+        if (offline || pending || !secret || !name.trim()) return;
         setPending(true);
         setError('');
         try {
@@ -97,7 +97,11 @@ export function JoinInvitation({ gameId }: { gameId: string }) {
                         {t('home.returnToGame')}
                     </Button>
                 )}
-                <Button variant="primary" disabled={pending || !name.trim() || !secret} onClick={() => void join()}>
+                <Button
+                    variant="primary"
+                    disabled={offline || pending || !name.trim() || !secret}
+                    onClick={() => void join()}
+                >
                     {t('join.submit')}
                 </Button>
             </Card>

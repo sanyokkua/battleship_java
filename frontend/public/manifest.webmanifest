@@ -1,0 +1,18 @@
+{
+    "name": "Battleship — Naval Command Center",
+    "short_name": "Battleship",
+    "description": "Play Battleship with a friend.",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#07131c",
+    "theme_color": "#07131c",
+    "icons": [
+        {
+            "src": "/icons/battleship.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ]
+}

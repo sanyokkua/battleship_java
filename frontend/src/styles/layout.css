@@ -157,3 +157,40 @@
         object-fit: contain;
     }
 }
+.offline-banner,
+.update-prompt {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
+    color: var(--text-1);
+}
+
+.offline-banner {
+    margin: 0 0 1rem;
+    padding: 0.75rem 1rem;
+    border-color: var(--warning);
+}
+
+.update-prompt {
+    position: fixed;
+    z-index: 20;
+    right: max(1rem, env(safe-area-inset-right));
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    max-width: min(34rem, calc(100vw - 2rem));
+    padding: 0.75rem;
+    box-shadow: var(--shadow-lg);
+}
+
+.update-prompt {
+    bottom: max(5rem, calc(env(safe-area-inset-bottom) + 4rem));
+}
+
+.settings-build {
+    margin: 0 0 0.75rem;
+    color: var(--text-2);
+    font-size: 0.85rem;
+}

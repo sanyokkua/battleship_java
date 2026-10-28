@@ -290,14 +290,15 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
 
 ## Phase 9: US7 — Installable shell offline (P3)
 
-- [ ] T019 [US7] Make the app installable with an offline shell and update prompt in `frontend/src/pwa/`
+- [x] T019 [US7] Make the app installable with an offline shell and update prompt in `frontend/src/pwa/`
   - **Covers** R42, R43, R44, US7 · S6 · research D9
   - **Read first** solitaire `src/pwa/{registerPwa.ts,pwaGateway.ts,deferredGateway.ts,installGateway.ts}` and its `VitePWA` block (`registerType:'prompt'`, `injectRegister:false`, `manifest:false`, `navigateFallback:'index.html'`, `cleanupOutdatedCaches:true`)
-  - **Files** `src/pwa/*`, `frontend/vite.config.ts` (VitePWA + `navigateFallbackDenylist: [/^\/api\//]`, no `runtimeCaching`), `public/{manifest.webmanifest,favicon.svg,icons/*}` (Battleship-branded, `start_url: '/'`), `src/components/{OfflineBanner.tsx,UpdatePrompt.tsx}`, `e2e/offline.spec.ts`
+  - **Files** `src/pwa/*`, `src/main.tsx`, `src/app/App.tsx`, `src/components/{OfflineBanner.tsx,UpdatePrompt.tsx}`, `src/screens/{CreateGame.tsx,GameRoute.tsx,JoinInvitation.tsx,SettingsDialog.tsx}`, `src/i18n/{en.ts,uk.ts}`, `src/styles/layout.css`, `src/vite-env.d.ts`, `vite.config.ts` (VitePWA + `navigateFallbackDenylist: [/^\/api\//]`, no `runtimeCaching`), `index.html`, `public/{manifest.webmanifest,favicon.svg,icons/*}` (Battleship-branded, `start_url: '/'`), `tests/pwa.test.ts`, `e2e/offline.spec.ts`
   - **How** Copy the four gateway files; register on load; offline banner from `online`/`offline`; game controls disabled while offline, nothing queued; update prompt calls `updateSW()` only on consent.
   - **Proof** `offline.spec.ts` (preview stack): (1) after one load and SW `ready`, `context.setOffline(true)` + reload renders the shell with "network required" within 3 s; (2) no request to `/api` is attempted while offline (request log); (3) after creating a game and reading it (`createGame`, `getGame`, event stream) online, `caches` entries contain no `/api` URL; (4) after rebuilding into the served `dist/` with `VITE_BUILD_ID=next npm run build` (the id is rendered in Settings, so the precache manifest changes), the page shows the update prompt and does not reload until accepted.
   - **Verify** `cd frontend && npm run build && npm run e2e -- e2e/offline.spec.ts`
   - **Mutation** Remove `navigateFallbackDenylist` and add an `/api` `runtimeCaching` rule; (3) must fail.
+  - **Evidence** `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test` (14 files / 38 tests), and `npm run build` passed; `npm run e2e -- e2e/offline.spec.ts` passed (3 real-backend journeys). With the `/api/` `NetworkFirst` runtime rule and denylist removed, the cache proof failed as required: expected no API URLs but found `/api/v1/meta`, `/api/v1/rulesets`, and `/api/v1/games/<id>`; the mutation was restored.
   - **Depends on** T018 (journeys share fixed ports and `dist/`, so no parallel run)
 
 ---

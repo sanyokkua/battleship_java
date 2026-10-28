@@ -23,11 +23,15 @@ export function GameRoute({
     onTitle,
     settingsOpen,
     onSettingsClose,
+    installAvailable,
+    onInstall,
 }: {
     gameId: GameId;
     onTitle: (title: string) => void;
     settingsOpen: boolean;
     onSettingsClose: () => void;
+    installAvailable: boolean;
+    onInstall: () => void;
 }) {
     const t = useT();
     const state = useGame(gameId);
@@ -178,6 +182,8 @@ export function GameRoute({
             </Dialog>
             <SettingsDialog
                 open={settingsOpen}
+                installAvailable={installAvailable}
+                onInstall={onInstall}
                 canResign={snapshot?.allowedActions.includes('RESIGN') ?? false}
                 onResign={async () => {
                     const action = getGameStore(gameId).beginAction({ type: 'RESIGN' });

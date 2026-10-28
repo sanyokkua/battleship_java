@@ -8,12 +8,21 @@ import './SettingsDialog.css';
 
 interface Props {
     open: boolean;
+    installAvailable?: boolean;
+    onInstall?: () => void;
     canResign?: boolean;
     onResign?: () => Promise<void>;
     onClose: () => void;
 }
 
-export function SettingsDialog({ open, canResign = false, onResign, onClose }: Props) {
+export function SettingsDialog({
+    installAvailable = false,
+    onInstall,
+    open,
+    canResign = false,
+    onResign,
+    onClose,
+}: Props) {
     const preferences = usePreferences();
     const t = useT();
     const [confirmResign, setConfirmResign] = useState(false);
@@ -30,6 +39,14 @@ export function SettingsDialog({ open, canResign = false, onResign, onClose }: P
                 </Button>
             </div>
             <div className="dialog-body">
+                <p className="settings-build">
+                    {t('settings.build')}: {import.meta.env.VITE_BUILD_ID ?? 'local'}
+                </p>
+                {installAvailable && onInstall && (
+                    <Button variant="secondary" onClick={onInstall}>
+                        {t('pwa.install')}
+                    </Button>
+                )}
                 <fieldset className="settings-fieldset">
                     <legend>{t('settings.theme')}</legend>
                     <div className="settings-themes">
