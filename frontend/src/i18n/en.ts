@@ -6,6 +6,7 @@ export const en = {
     'app.settings': 'Settings',
     'app.close': 'Close',
     'home.rules': 'Game rules',
+    'home.returnToGame': 'Return to your game',
     'create.title': 'Create game',
     'join.title': 'Join game',
     'join.submit': 'Join game',

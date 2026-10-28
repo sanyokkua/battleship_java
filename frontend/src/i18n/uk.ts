@@ -6,6 +6,7 @@ export const uk = {
     'app.settings': 'Налаштування',
     'app.close': 'Закрити',
     'home.rules': 'Правила гри',
+    'home.returnToGame': 'Повернутися до своєї гри',
     'create.title': 'Створити гру',
     'join.title': 'Приєднатися до гри',
     'join.submit': 'Приєднатися до гри',
