@@ -152,13 +152,18 @@ export function sendPresence(gameId: GameId) {
     return snapshotPost('/api/v1/games/{gameId}/presence', gameId);
 }
 
-export async function sendCommand(gameId: GameId, request: components['schemas']['CommandRequest']) {
+export async function sendCommand(
+    gameId: GameId,
+    request: components['schemas']['CommandRequest'],
+    signal?: AbortSignal,
+) {
     await getMeta();
     const send = async () => {
         const result = await client.POST('/api/v1/games/{gameId}/commands', {
             params: { path: { gameId } },
             body: request,
             parseAs: 'text',
+            ...(signal ? { signal } : {}),
         });
         return snapshotResponse(result.response, responseBody(result.data, result.error));
     };

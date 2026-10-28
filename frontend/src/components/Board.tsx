@@ -34,6 +34,8 @@ export function Board({
     disabled = false,
     onShipPointerDown,
     dragTarget,
+    activeStates,
+    pendingTarget,
 }: {
     board: components['schemas']['Board'];
     dimensions: components['schemas']['Ruleset']['board'];
@@ -42,6 +44,8 @@ export function Board({
     disabled?: boolean;
     onShipPointerDown?: ((event: PointerEvent<HTMLButtonElement>, coordinate: Coordinate) => void) | undefined;
     dragTarget?: Coordinate | undefined;
+    activeStates?: CellState[];
+    pendingTarget?: Coordinate | undefined;
 }) {
     const t = useT();
     const [active, setActive] = useState(0);
@@ -105,14 +109,16 @@ export function Board({
                         const state = board.grid[row]?.[column];
                         if (!state) return <Fragment key={column} />;
                         const index = row * columns + column;
-                        const inactive = disabled || !onActivate;
+                        const inactive =
+                            disabled || !onActivate || (activeStates !== undefined && !activeStates.includes(state));
+                        const pending = pendingTarget?.rowIndex === row && pendingTarget.columnIndex === column;
                         const stateLabel = t(`cell.${state.toLowerCase()}`);
                         return (
                             <button
                                 key={column}
                                 type="button"
                                 role="gridcell"
-                                className={`board-cell${dragTarget?.rowIndex === row && dragTarget.columnIndex === column ? ' is-drag-target' : ''}`}
+                                className={`board-cell${pending ? ' is-pending' : ''}${dragTarget?.rowIndex === row && dragTarget.columnIndex === column ? ' is-drag-target' : ''}`}
                                 style={
                                     !inactive && state === 'SHIP' && onShipPointerDown
                                         ? { touchAction: 'none' }
@@ -129,6 +135,7 @@ export function Board({
                                 tabIndex={index === active ? 0 : -1}
                                 aria-label={`${columnLabel(column)}${String(row + 1)}, ${stateLabel}`}
                                 aria-disabled={inactive}
+                                aria-busy={pending || undefined}
                                 onFocus={() => {
                                     setActive(index);
                                 }}

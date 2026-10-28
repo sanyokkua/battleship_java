@@ -203,7 +203,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
 
 ## Phase 6: US4 — Play and results (P1)
 
-- [ ] T012 [US4] Build gameplay with live updates, announcements and lost-answer retry in `frontend/src/screens/Gameplay.tsx`
+- [x] T012 [US4] Build gameplay with live updates, announcements and lost-answer retry in `frontend/src/screens/Gameplay.tsx`
   - **Covers** R01 (display counts), R19, R20, R21, R24, R31, R59, US4 scenarios 1–3, US5 scenario 6 · S3 (lost answer) · research D13
   - **Read first** plan § *Session store*, § *Placement, play, results* · data-model § *Action slot* · `openapi.yaml` `FireCommand {type, target}`, `turn` (Side), `lastShot {by, target, result MISS|HIT|SUNK, sunkShipId?}`, `CommandRequest.commandId` ("server remembers at least the last 16")
   - **Files** `src/screens/Gameplay.tsx` (+ `.css`), `src/components/{Announcer.tsx,TurnPill.tsx,PlayerCard.tsx}` (+ `.css`), `src/session/gameStore.ts` (checking state + retry), `e2e/play.spec.ts`
@@ -211,6 +211,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
   - **Proof** `play.spec.ts`: (1) Sea Battle with the opponent's fleet placed at fixed anchors (Conventions): a hit keeps the turn; sinking a `ship-1` renders its surroundings as `REVEALED_WATER`, distinct from `MISS`; (2) Classic: a hit passes the turn; (3) the opponent's shot updates the player's board and announcement without reload; (4) action race (Classic, so any shot passes the turn): install `page.route('**/events', r => r.abort())` before the player's page opens the game, so its view comes from `getGame` only; when that view shows the player's turn, send one `FIRE` at an `UNKNOWN` cell through `page.request` (same session, own `commandId`, `X-XSRF-TOKEN` from the cookie) and, as soon as it answers, click a different `UNKNOWN` cell in the stale view — the page's `FIRE` gets `409 action-not-allowed`, the worded reason is shown, the board refreshes to `getGame`, and `getGame` shows exactly one new shot; (5) lost answer: `page.route('**/commands', r => r.fetch().then(() => r.abort()))` once, page shows checking; Retry's request body has the same `commandId`; the board shows the shot applied once (`getGame` via `page.request` shows one `MISS`/`HIT` at that cell); (6) after a hit, both player cards' ships-left and ship-cells-left values equal those derived from `getGame` via `page.request`.
   - **Verify** `cd frontend && npm run build && npm run e2e -- e2e/play.spec.ts`
   - **Mutation** Generate a new `commandId` on Retry; (5) must fail (second shot refused as `target-already-fired` or a different cell state).
+  - **Evidence** `npm run check` passed (29 unit tests); `npm run build && npm run e2e -- e2e/play.spec.ts e2e/placement.spec.ts` passed (13 journeys). Retry-UUID mutation failed at the same-body assertion (see `/private/tmp/t012-mutation-final.log`).
   - **Depends on** T011
 
 - [ ] T013 [US4] Build the results screen and play one full game per ruleset in `frontend/src/screens/Results.tsx`

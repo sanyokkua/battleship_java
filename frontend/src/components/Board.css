@@ -65,3 +65,13 @@
     background: var(--sea-cell-hover);
     box-shadow: inset 0 0 0 0.15rem var(--accent);
 }
+
+.board-cell[data-state='revealed_water'] {
+    border-color: var(--sea-line);
+    background: var(--sea-deep);
+    color: var(--sea-foam);
+}
+.board-cell.is-pending {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: -2px;
+}

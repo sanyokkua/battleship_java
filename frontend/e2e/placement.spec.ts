@@ -322,7 +322,8 @@ test('random and clear update tray counts; ready requires confirmation and locks
         await guest.getByRole('button', { name: 'Random', exact: true }).click();
         await guest.getByRole('button', { name: 'Ready', exact: true }).click();
         await guest.getByRole('button', { name: 'Commit and wait', exact: true }).click();
-        await expect(page.getByRole('grid')).toHaveCount(0); // server transitioned to PLAYING
+        await expect(page.getByRole('grid', { name: 'Your sea' })).toHaveCount(0);
+        await expect(page.getByRole('grid', { name: 'Enemy waters' })).toBeVisible(); // server transitioned to PLAYING
     } finally {
         await guest.close();
     }

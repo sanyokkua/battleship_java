@@ -1,0 +1,56 @@
+.match-status {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-4);
+    margin-bottom: var(--space-3);
+    padding: 0.4rem 0.65rem;
+    border-bottom: 1px solid var(--border);
+}
+.gameplay-boards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(0.65rem, 1.5cqw, 1.25rem);
+}
+.gameplay-boards h2 {
+    margin: 0 0 0.25rem;
+    color: var(--accent-strong);
+    font-size: 0.88rem;
+    letter-spacing: 0.05em;
+}
+.gameplay-boards [data-board-role='target'] h2 {
+    color: var(--danger-strong);
+}
+.board-tabs {
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    padding: 0.2rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-1);
+}
+.board-tab {
+    min-height: var(--control-h);
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-2);
+}
+.board-tab[aria-selected='true'] {
+    background: var(--surface-3);
+    color: var(--text-1);
+}
+.gameplay-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-top: 0.55rem;
+    color: var(--text-3);
+    font-size: 0.7rem;
+}
+.shot-announcement {
+    min-height: 1.5em;
+    color: var(--text-2);
+}
