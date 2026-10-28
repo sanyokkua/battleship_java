@@ -268,7 +268,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
 
 ## Phase 8: US6 — Settings, feedback and inclusive use (P2)
 
-- [ ] T017 [US6] Add sound and haptics feedback in `frontend/src/feedback/`
+- [x] T017 [US6] Add sound and haptics feedback in `frontend/src/feedback/`
   - **Covers** R32, R33, US6 scenarios 1–2 · S5 · research D8
   - **Read first** master `frontend/src/audio/audioRecipes.ts`, `AudioFeedback.ts` (`git show master:…`; no imports to strip)
   - **Files** `src/feedback/{audioRecipes.ts,audioFeedback.ts,haptics.ts,useShotFeedback.ts}`, `src/screens/Gameplay.tsx` (hook), `tests/feedback.test.ts`, `e2e/settings.spec.ts` (mid-game step)
@@ -276,6 +276,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
   - **Proof** Unit: (1) `AudioContext` constructor throwing, `resume()` rejecting and `vibrate` absent/throwing all resolve without error. `settings.spec.ts`: (2) toggling sound and haptics on/off mid-game leaves the next shot's result and turn identical to `getGame`.
   - **Verify** `cd frontend && npm test -- tests/feedback.test.ts && npm run build && npm run e2e -- e2e/settings.spec.ts`
   - **Mutation** Remove the try/catch around `vibrate`; (1) must fail.
+  - **Evidence** The full-gate run exposed the settings journey reusing `J10` after a hit retained the shooter’s turn. The journey now fires distinct, distant `J10` and `A1` cells, so either a hit (same shooter) or miss (other shooter) leaves the next target actionable. Before each shot, it asserts sound and haptics in the opposite state for the active player, toggles both, and asserts the requested state. `npm test -- tests/feedback.test.ts` passed (1 file / 4 tests), `npm run build` passed, `npm run e2e -- e2e/settings.spec.ts` passed (2 real-backend journeys), `npm run lint` and `npm run format:check` passed; server shot targets, results, and turns remain asserted.
   - **Depends on** T016
 
 - [x] T018 [US6] Make the three layouts, keyboard, touch and screen-reader use pass and capture screens for mockup review in `frontend/src/styles/layout.css`

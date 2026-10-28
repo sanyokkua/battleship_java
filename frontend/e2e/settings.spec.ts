@@ -100,27 +100,37 @@ test('sound and haptics toggled during play leave the server shot result and tur
 }) => {
     const { guest, gameId, shooter } = await startSeaBattle(page, browser, stack.origin);
     let active = shooter;
+    const shots = [
+        { enabled: false, coordinate: 'J10', target: { rowIndex: 9, columnIndex: 9 } },
+        { enabled: true, coordinate: 'A1', target: { rowIndex: 0, columnIndex: 0 } },
+    ] as const;
     try {
-        for (const enabled of [false, true]) {
+        for (const { enabled, coordinate, target } of shots) {
             await active.getByRole('button', { name: 'Settings' }).click();
             const dialog = active.getByRole('dialog', { name: 'Settings' });
             const sound = dialog.getByRole('checkbox', { name: /Sound feedback/ });
             const haptics = dialog.getByRole('checkbox', { name: /Haptic feedback/ });
-            if ((await sound.isChecked()) !== enabled) await sound.setChecked(enabled);
-            if ((await haptics.isChecked()) !== enabled) await haptics.setChecked(enabled);
+            if ((await sound.isChecked()) === enabled) await sound.setChecked(!enabled);
+            if ((await haptics.isChecked()) === enabled) await haptics.setChecked(!enabled);
+            await expect(sound).toBeChecked({ checked: !enabled });
+            await expect(haptics).toBeChecked({ checked: !enabled });
+            await sound.setChecked(enabled);
+            await haptics.setChecked(enabled);
+            await expect(sound).toBeChecked({ checked: enabled });
+            await expect(haptics).toBeChecked({ checked: enabled });
             await dialog.getByRole('button', { name: 'Done' }).click();
 
             const command = active.waitForResponse((response) => response.url().endsWith('/commands'));
             await active
                 .getByRole('grid', { name: 'Enemy waters' })
-                .getByRole('gridcell', { name: 'J10, unknown', exact: true })
+                .getByRole('gridcell', { name: `${coordinate}, unknown`, exact: true })
                 .click();
             expect((await command).ok()).toBeTruthy();
             const server = (await (await active.request.get(`/api/v1/games/${gameId}`)).json()) as Snapshot;
             const shot = server.lastShot;
             expect(shot).toBeDefined();
             if (!shot) throw new Error('Server snapshot did not include the accepted shot');
-            expect(shot.target).toEqual({ rowIndex: 9, columnIndex: 9 });
+            expect(shot.target).toEqual(target);
             const cellState = { MISS: 'miss', HIT: 'hit', SUNK: 'sunk' }[shot.result];
             await expect(
                 active.getByText(server.turn === 'YOU' ? 'Your turn · Tap an enemy cell' : 'Opponent’s turn'),
@@ -128,7 +138,7 @@ test('sound and haptics toggled during play leave the server shot result and tur
             await expect(
                 active
                     .getByRole('grid', { name: 'Enemy waters' })
-                    .getByRole('gridcell', { name: `J10, ${cellState}`, exact: true }),
+                    .getByRole('gridcell', { name: `${coordinate}, ${cellState}`, exact: true }),
             ).toBeVisible();
             active = server.turn === 'YOU' ? active : active === page ? guest : page;
         }
