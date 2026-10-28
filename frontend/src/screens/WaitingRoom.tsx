@@ -43,6 +43,10 @@ export function WaitingRoom({
     const invitationExpiresAt = snapshot?.invitationExpiresAt;
     const expiresAtMs = invitationExpiresAt ? Date.parse(invitationExpiresAt) : undefined;
     const remainingMs = expiresAtMs === undefined ? 0 : Math.max(0, expiresAtMs - (now + state.clockOffsetMs));
+    const sessionExpiresAt = snapshot?.expiresAt;
+    const sessionExpiresAtMs = sessionExpiresAt ? Date.parse(sessionExpiresAt) : undefined;
+    const sessionRemainingMs =
+        sessionExpiresAtMs === undefined ? 0 : Math.max(0, sessionExpiresAtMs - (now + state.clockOffsetMs));
     const totalMs = (state.meta?.limits.invitationLifetimeSeconds ?? 1) * 1000;
     const showToast = useCallback(
         (kind: ToastMessage['kind'], key: string) => {
@@ -118,6 +122,12 @@ export function WaitingRoom({
             <Stepper current={phase} />
             {ruleset && <RulesetFacts ruleset={ruleset} />}
             {snapshot?.phase === 'WAITING' && <p role="status">{t('game.waitingNotice')}</p>}
+            {snapshot?.phase === 'WAITING' && sessionExpiresAt && (
+                <p>
+                    {t('game.sessionLifetime')}: {Math.ceil(sessionRemainingMs / 1000)} s{' '}
+                    <time dateTime={sessionExpiresAt}>{new Date(sessionExpiresAt).toLocaleTimeString()}</time>
+                </p>
+            )}
             <div className="waiting-card">
                 {!invitationUrl ? (
                     <Pill tone={snapshot?.phase === 'WAITING' ? 'warning' : 'good'}>
