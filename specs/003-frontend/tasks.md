@@ -276,7 +276,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
   - **Mutation** Remove the try/catch around `vibrate`; (1) must fail.
   - **Depends on** T016
 
-- [ ] T018 [US6] Make the three layouts, keyboard, touch and screen-reader use pass and capture screens for mockup review in `frontend/src/styles/layout.css`
+- [x] T018 [US6] Make the three layouts, keyboard, touch and screen-reader use pass and capture screens for mockup review in `frontend/src/styles/layout.css`
   - **Covers** R31, R39, R40, R41, R58, R59, R60, R61, US6 scenarios 3–6 · S4, S8 · research D18 · decisions B4, B5
   - **Read first** plan § *Leaving, layouts, dialogs*, § *Visual design* · research D18 · spec R39–R41, R58–R61 · mockup container query (L1728-1886), phone-landscape rules (L1888-1948, translated from `data-device` to the media query), `@media (max-height:31.25rem)` (L1950)
   - **Files** `src/styles/layout.css`, `src/screens/Gameplay.tsx` (tablist wiring), `src/components/Board.tsx` (compact size), `e2e/accessibility.spec.ts`

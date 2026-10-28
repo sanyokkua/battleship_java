@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
 import { useT } from '../i18n/useT';
@@ -18,10 +19,11 @@ export function ConfirmDialog({
     onClose: () => void;
 }) {
     const t = useT();
+    const titleId = useId();
     return (
-        <Dialog open={open} titleId="confirm-title" onClose={onClose}>
+        <Dialog open={open} titleId={titleId} onClose={onClose}>
             <div className="dialog-head">
-                <h2 id="confirm-title">{title}</h2>
+                <h2 id={titleId}>{title}</h2>
             </div>
             <div className="dialog-body">
                 <p>{message}</p>

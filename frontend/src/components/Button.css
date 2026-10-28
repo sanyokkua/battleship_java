@@ -20,8 +20,8 @@
 }
 .btn-danger {
     border-color: var(--danger);
-    background: var(--danger);
-    color: white;
+    background: var(--danger-soft);
+    color: var(--danger-strong);
 }
 .btn:disabled {
     cursor: not-allowed;

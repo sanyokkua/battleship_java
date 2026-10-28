@@ -24,7 +24,7 @@
     border-bottom: 0;
 }
 .stat-row dt {
-    color: var(--text-3);
+    color: var(--text-2);
     font-size: 0.75rem;
 }
 .stat-row dd {

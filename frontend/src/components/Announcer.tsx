@@ -9,7 +9,13 @@ export function Announcer({ shot }: { shot: components['schemas']['Shot'] | unde
         ? `${t(shot.by === 'YOU' ? 'play.youFired' : 'play.opponentFired')} ${columnLabel(shot.target.columnIndex)}${String(shot.target.rowIndex + 1)}: ${t(`cell.${shot.result.toLowerCase()}`)}.`
         : '';
     return (
-        <p className="shot-announcement" aria-live="polite" aria-atomic="true" aria-label={t('play.announcement')}>
+        <p
+            role="status"
+            className="shot-announcement"
+            aria-live="polite"
+            aria-atomic="true"
+            aria-label={t('play.announcement')}
+        >
             {message}
         </p>
     );

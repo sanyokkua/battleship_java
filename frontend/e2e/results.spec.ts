@@ -65,7 +65,9 @@ async function expectResults(page: Page, snapshot: Snapshot) {
     for (const [card, rows] of cards) {
         const region = page.getByRole('region', { name: card, exact: true });
         for (const [label, value] of rows) {
-            await expect(region.getByRole('group', { name: label, exact: true })).toHaveText(`${label}${value}`);
+            await expect(
+                region.locator('.stat-row').filter({ has: page.getByText(label, { exact: true }) }),
+            ).toHaveText(`${label}${value}`);
         }
     }
     for (const label of ['Enemy waters · Revealed', 'Your fleet']) {

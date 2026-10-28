@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { components } from '../contract/generated/api';
 import { Board } from '../components/Board';
 import { Announcer } from '../components/Announcer';
@@ -27,6 +27,7 @@ export function Gameplay({
     const state = useGame(gameId);
     const [now, setNow] = useState(Date.now);
     const [selectedBoard, setSelectedBoard] = useState<'target' | 'own'>('target');
+    const tabs = useRef<Partial<Record<'target' | 'own', HTMLButtonElement>>>({});
     const unlockFeedback = useShotFeedback(state.snapshot?.lastShot);
     useEffect(() => {
         const timer = window.setInterval(() => {
@@ -75,7 +76,21 @@ export function Gameplay({
                         className="board-tab"
                         type="button"
                         role="tab"
+                        ref={(element) => {
+                            if (element) tabs.current[board] = element;
+                        }}
                         aria-controls={`panel-${board}`}
+                        onKeyDown={(event) => {
+                            let next: 'target' | 'own';
+                            if (event.key === 'Home') next = 'target';
+                            else if (event.key === 'End') next = 'own';
+                            else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight')
+                                next = board === 'target' ? 'own' : 'target';
+                            else return;
+                            event.preventDefault();
+                            setSelectedBoard(next);
+                            tabs.current[next]?.focus();
+                        }}
                         aria-selected={selectedBoard === board}
                         tabIndex={selectedBoard === board ? 0 : -1}
                         onClick={() => {
@@ -87,11 +102,23 @@ export function Gameplay({
                 ))}
             </div>
             <div className="gameplay-boards" data-selected-board={selectedBoard}>
-                <div className="board-panel" id="panel-own" data-board-role="own">
+                <div
+                    className="board-panel"
+                    role="tabpanel"
+                    aria-labelledby="tab-own"
+                    id="panel-own"
+                    data-board-role="own"
+                >
                     <h2>{t('play.yourFleet')}</h2>
                     <Board board={snapshot.yourBoard} dimensions={ruleset.board} label={t('play.yourFleet')} disabled />
                 </div>
-                <div className="board-panel" id="panel-target" data-board-role="target">
+                <div
+                    className="board-panel"
+                    role="tabpanel"
+                    aria-labelledby="tab-target"
+                    id="panel-target"
+                    data-board-role="target"
+                >
                     <h2>{t('play.enemyWaters')}</h2>
                     <Board
                         board={snapshot.opponentBoard}
