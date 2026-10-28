@@ -10,6 +10,5 @@ export default defineConfig({
         exclude: ['e2e/**', 'node_modules/**'],
         globals: true,
         css: true,
-        passWithNoTests: true,
     },
 });

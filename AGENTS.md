@@ -11,8 +11,9 @@ commands are defined by the approved spec and technical plan for the active feat
 version only (Java 25, Node 24, newest patch); runtime checks verify the major alone (constitution v1.3.2). npm and
 Maven dependencies stay exact.
 
-**State.** Current workflow state lives in the active Spec Kit feature artifacts and the prerequisite checker. Do not
-assume an application module, build, test, lint, or local-run command exists until the approved plan introduces it.
+**State.** Current workflow state lives in the active Spec Kit feature artifacts and the prerequisite checker. The
+approved `003-frontend` feature supplies the application modules, local commands, and the repository gate;
+`./scripts/verify.sh` is the authoritative product check.
 
 **The spec is the authority.** `.specify/memory/constitution.md` is project governance. For implementation, use the
 active feature's `spec.md`, `plan.md`, and `tasks.md`; if the spec is silent on a behavior that matters, stop and ask
@@ -90,9 +91,10 @@ user tires. These seven rules are the missing counterweight. They bind the agent
 
 ## Definition of Done
 
-**Gate.** There is no single repository-wide product gate at this `HEAD` yet; `003-frontend` creates
-`scripts/verify.sh` as that gate (it also owns the root integration layer — there is no `004-integration`). Until
-then, the approved technical plan must name the build, test, lint, and local-run commands for the affected module.
+**Gate.** `003-frontend` owns the root integration layer and the single repository-wide product gate,
+`./scripts/verify.sh` (there is no `004-integration`). Run this gate before declaring the feature complete. It checks
+runtime and exact installs, the contract, backend, frontend, and browser journeys against the packaged backend; any
+failed or timed-out stage fails the run.
 
 **Backend gate.** `cd backend && ./mvnw -q verify && ./mvnw spotless:check`. Contract gate: see below.
 
@@ -112,11 +114,11 @@ For a registered feature, start by proving the feature artifacts exist:
 
 `bash .specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
 
-Work is done only when the approved tasks are complete, the required verification from the plan has run cleanly, and the
-delivered behavior still matches the governing spec. Do not borrow commands, tests, or success criteria from `master`.
+Work is done only when the approved tasks are complete, `./scripts/verify.sh` has run cleanly, and the delivered
+behavior still matches the governing spec. Do not borrow commands, tests, or success criteria from `master`.
 
-Capture evidence, not just conclusions. If no product verification command exists yet, say that plainly and leave the
-work in a not-fully-verified state.
+Capture evidence, not just conclusions. Report skipped, timed-out, failed, and environment-blocked checks distinctly;
+none count as a passing gate.
 
 ## Git protocol
 
@@ -216,8 +218,8 @@ The block should be short enough to scan quickly and complete enough to survive 
 
 - The old Battleship app on `master` is not the rewrite baseline. Reusing its commands, tests, or architecture
   assumptions will send work down the wrong path even when those artifacts still exist in git history.
-- This `HEAD` may have no product modules or gate yet. Treat that as real project state, not as permission to import
-  conventions from `master` or invent missing commands.
+- The active feature plan defines the current modules and commands; `./scripts/verify.sh` is the product gate. Do not
+  borrow commands or architecture from historical `master`.
 - The Spec Kit prerequisite checker is about feature artifacts, not implementation health. If it fails because tasks or
   a registered feature are missing, fix the workflow state instead of papering over the error.
 - Skills live in two real trees rendered per agent by Spec Kit: `.agents/skills` (Codex) and `.claude/skills` (Claude
@@ -231,6 +233,8 @@ The block should be short enough to scan quickly and complete enough to survive 
 
 - Rewrite context and historical planning inputs: `docs/rewrite_context_doc/`
 - Project governance: `.specify/memory/constitution.md`
+- Durable frontend and integration memory: `.specify/memory/frontend-absorbs-integration.md`
+- Local commands and troubleshooting: `docs/local-operation.md`
 - Spec Kit workflows, templates, and prerequisite scripts: `.specify/`
 - Active feature authority: `specs/<feature-id>/spec.md`, `plan.md`, and `tasks.md`
 - Agent skill sync check: `scripts/sync-agent-files.py`

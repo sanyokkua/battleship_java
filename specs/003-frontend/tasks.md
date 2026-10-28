@@ -308,7 +308,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
 
 ## Phase 10: US8 — One gate and local operation (P2)
 
-- [ ] T020 [US8] Create the single gate `scripts/verify.sh`, the local guide and the durable-doc updates
+- [x] T020 [US8] Create the single gate `scripts/verify.sh`, the local guide and the durable-doc updates
   - **Covers** R45, R49, R52, US8 · S7
   - **Read first** plan § *Gate* · AGENTS.md § *Definition of Done*, § *Where this stands* · constitution VII
   - **Files** `scripts/verify.sh`, `frontend/vitest.config.ts` (remove `passWithNoTests`, set in T004 for the empty app), `docs/local-operation.md`, `AGENTS.md` (Gate + Definition of Done: `./scripts/verify.sh`), memory `frontend-absorbs-integration.md` (gate now exists)
@@ -316,6 +316,7 @@ One task per session, in ID order unless marked `[P]`. Each block is self-contai
   - **Proof** (1) `./scripts/verify.sh` exits 0 with all five stages listed; (2) for n in 1–4, `VERIFY_FAIL_STAGE=n ./scripts/verify.sh` exits non-zero and names stage n; `VERIFY_STAGE_TIMEOUT=1 ./scripts/verify.sh` exits non-zero naming a timeout; (3) `python3 scripts/sync-agent-files.py --check` passes.
   - **Verify** `./scripts/verify.sh && for n in 1 2 3 4; do ! VERIFY_FAIL_STAGE=$n ./scripts/verify.sh || exit 1; done`
   - **Mutation** Make `run_stage` ignore a non-zero exit when n=4; proof (2) for n=4 must fail.
+  - **Evidence** `./scripts/verify.sh` passed all five stages, including 79 browser journeys (7.9m); `VERIFY_FAIL_STAGE=1..4` each ran its real command and reported the injected stage failure (exit 97 through `run_stage`); `VERIFY_STAGE_TIMEOUT=1` reported stage 0 timed out after 1s; `python3 scripts/sync-agent-files.py --check`, `git diff --check`, `bash -n scripts/verify.sh`, and `node --check scripts/verify-timeout.mjs` passed. With stage 4's non-zero exit temporarily ignored, the full gate logged the injected stage-4 failure but returned 0; the mutation was restored.
   - **Depends on** T019
 
 ---
