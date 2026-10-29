@@ -125,6 +125,7 @@ export const en = {
     'ship.patrol': 'Patrol boat',
     'cell.unknown': 'unknown',
     'cell.water': 'water',
+    'cell.unavailableForPlacement': 'unavailable for placement',
     'cell.ship': 'ship',
     'cell.miss': 'miss',
     'cell.hit': 'hit',

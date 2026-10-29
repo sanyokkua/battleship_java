@@ -46,6 +46,17 @@
         ),
         var(--ship);
 }
+.board-cell[data-placement='blocked'] {
+    background:
+        repeating-linear-gradient(
+            135deg,
+            transparent 0 0.2rem,
+            color-mix(in srgb, var(--text-3) 16%, transparent) 0.2rem 0.3rem
+        ),
+        var(--sea-cell);
+    cursor: not-allowed;
+    opacity: 0.68;
+}
 .board-cell[data-state='miss'] {
     border-color: var(--miss);
     border-style: dashed;
@@ -133,6 +144,10 @@
     }
     .board-cell[data-state='ship'] {
         border-width: 3px;
+    }
+    .board-cell[data-placement='blocked'] {
+        border-width: 3px;
+        border-style: dashed;
     }
     .board-cell[data-state='revealed_water'] {
         border-width: 3px;

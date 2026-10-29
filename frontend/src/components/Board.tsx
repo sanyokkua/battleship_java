@@ -32,7 +32,9 @@ export function Board({
     dimensions,
     label,
     onActivate,
+    onBlockedActivate,
     disabled = false,
+    placementBlockedCells,
     onShipPointerDown,
     dragTarget,
     activeStates,
@@ -43,7 +45,9 @@ export function Board({
     dimensions: components['schemas']['Ruleset']['board'];
     label: string;
     onActivate?: (coordinate: Coordinate) => void;
+    onBlockedActivate?: (coordinate: Coordinate) => void;
     disabled?: boolean;
+    placementBlockedCells?: Coordinate[] | undefined;
     onShipPointerDown?: ((event: PointerEvent<HTMLButtonElement>, coordinate: Coordinate) => void) | undefined;
     dragTarget?: Coordinate | undefined;
     activeStates?: CellState[];
@@ -72,6 +76,11 @@ export function Board({
     const [active, setActive] = useState(0);
     const cells = useRef<(HTMLButtonElement | null)[]>([]);
     const { rows, columns } = dimensions;
+    const blockedCells = useMemo(
+        () =>
+            new Set(placementBlockedCells?.map((cell) => `${String(cell.rowIndex)}:${String(cell.columnIndex)}`) ?? []),
+        [placementBlockedCells],
+    );
     const shotResult = shot?.result;
     const shotRow = shot?.target.rowIndex;
     const shotColumn = shot?.target.columnIndex;
@@ -173,6 +182,7 @@ export function Board({
                             disabled || !onActivate || (activeStates !== undefined && !activeStates.includes(state));
                         const pending = pendingTarget?.rowIndex === row && pendingTarget.columnIndex === column;
                         const stateLabel = t(`cell.${state.toLowerCase()}`);
+                        const blocked = state === 'WATER' && blockedCells.has(`${String(row)}:${String(column)}`);
                         return (
                             <button
                                 key={column}
@@ -189,12 +199,13 @@ export function Board({
                                         onShipPointerDown?.(event, { rowIndex: row, columnIndex: column });
                                 }}
                                 data-state={state.toLowerCase()}
+                                data-placement={blocked ? 'blocked' : undefined}
                                 ref={(element) => {
                                     cells.current[index] = element;
                                 }}
                                 tabIndex={index === active ? 0 : -1}
-                                aria-label={`${columnLabel(column)}${String(row + 1)}, ${stateLabel}`}
-                                aria-disabled={inactive}
+                                aria-label={`${columnLabel(column)}${String(row + 1)}, ${stateLabel}${blocked ? `, ${t('cell.unavailableForPlacement')}` : ''}`}
+                                aria-disabled={inactive || blocked}
                                 aria-busy={pending || undefined}
                                 onFocus={() => {
                                     setActive(index);
@@ -203,7 +214,9 @@ export function Board({
                                     navigate(event, row, column);
                                 }}
                                 onClick={() => {
-                                    if (!inactive) onActivate({ rowIndex: row, columnIndex: column });
+                                    if (inactive) return;
+                                    if (blocked) onBlockedActivate?.({ rowIndex: row, columnIndex: column });
+                                    else onActivate({ rowIndex: row, columnIndex: column });
                                 }}
                             >
                                 {(state === 'HIT' || state === 'SUNK') && (

@@ -323,9 +323,32 @@ public final class GameRules {
     }
 
     private static boolean touches(Ship first, Ship second) {
-        return first.cells().stream().anyMatch(a -> second.cells().stream()
-                .anyMatch(b -> Math.abs(a.rowIndex() - b.rowIndex()) <= 1
-                        && Math.abs(a.columnIndex() - b.columnIndex()) <= 1));
+        return first.cells().stream().anyMatch(a -> second.cells().stream().anyMatch(b -> adjacent(a, b)));
+    }
+
+    public static Set<Coordinate> placementBlockedCells(Ruleset ruleset, List<Ship> fleet) {
+        if (ruleset.shipsMayTouch()) return Set.of();
+        Set<Coordinate> occupied = new HashSet<>();
+        fleet.forEach(ship -> occupied.addAll(ship.cells()));
+        Set<Coordinate> blocked = new HashSet<>();
+        for (Coordinate cell : occupied) {
+            for (int row = Math.max(0, cell.rowIndex() - 1);
+                    row <= Math.min(ruleset.rows() - 1, cell.rowIndex() + 1);
+                    row++) {
+                for (int column = Math.max(0, cell.columnIndex() - 1);
+                        column <= Math.min(ruleset.columns() - 1, cell.columnIndex() + 1);
+                        column++) {
+                    Coordinate neighbour = new Coordinate(row, column);
+                    if (!occupied.contains(neighbour) && adjacent(cell, neighbour)) blocked.add(neighbour);
+                }
+            }
+        }
+        return Set.copyOf(blocked);
+    }
+
+    private static boolean adjacent(Coordinate first, Coordinate second) {
+        return Math.abs(first.rowIndex() - second.rowIndex()) <= 1
+                && Math.abs(first.columnIndex() - second.columnIndex()) <= 1;
     }
 
     private static int indexOf(List<Ship> fleet, String shipId) {

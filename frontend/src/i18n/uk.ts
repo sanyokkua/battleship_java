@@ -126,6 +126,7 @@ export const uk = {
     'ship.patrol': 'Патрульний катер',
     'cell.unknown': 'невідомо',
     'cell.water': 'вода',
+    'cell.unavailableForPlacement': 'недоступна для розташування',
     'cell.ship': 'корабель',
     'cell.miss': 'промах',
     'cell.hit': 'влучання',

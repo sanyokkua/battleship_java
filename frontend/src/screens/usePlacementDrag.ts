@@ -28,9 +28,11 @@ export function usePlacementDrag({
     const active = useRef<Drag | undefined>(undefined);
     const suppressClick = useRef(false);
     const [preview, setPreview] = useState<Coordinate>();
+    const [draggingPlacedShip, setDraggingPlacedShip] = useState(false);
     const release = () => {
         const drag = active.current;
         active.current = undefined;
+        setDraggingPlacedShip(false);
         if (drag?.source.hasPointerCapture(drag.pointerId)) drag.source.releasePointerCapture(drag.pointerId);
     };
     useEffect(() => {
@@ -80,6 +82,7 @@ export function usePlacementDrag({
             y: event.clientY,
             moved: false,
         };
+        setDraggingPlacedShip(grabbed !== undefined);
         event.currentTarget.setPointerCapture(event.pointerId);
     };
     const cancel = (event: PointerEvent) => {
@@ -91,6 +94,7 @@ export function usePlacementDrag({
     return {
         boardRef,
         preview: disabled ? undefined : preview,
+        draggingPlacedShip: disabled ? false : draggingPlacedShip,
         start,
         handlers: {
             onPointerDownCapture: () => {

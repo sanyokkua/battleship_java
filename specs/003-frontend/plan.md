@@ -154,13 +154,16 @@ corrected by the `serverTime` offset; they never decide expiry.
   come from `ruleset.board` (letters A–Z, then AA…; numbers from 1).
 - Placement: cell → ship-action dialog (unplaced ship chips + Horizontal/Vertical; or move/rotate/remove for a
   placed ship). Move and rotate are one `PLACE_SHIP`. Drag per D19 from a fleet-tray tile or a placed ship sends
-  the same `PLACE_SHIP`; the dialog path stays. Ready opens a confirmation (the fleet locks) before `READY`.
+  the same `PLACE_SHIP`; the dialog path stays. During placement, the server supplies `placementBlockedCells`
+  from the same no-contact rule used to validate commands; the frontend only renders the supplied cells with the
+  mockup's unavailable hatch and accessible label. The overlay is hidden while moving a placed ship so its old
+  halo is not shown as a restriction on itself. Ready opens a confirmation (the fleet locks) before `READY`.
 - Play: fire only on `UNKNOWN` opponent cells while `FIRE` is allowed. Announcements and sound/haptics trigger once
   per new `lastShot` (`by` + `target`).
 - Results render `outcome`, both boards, fleet-condition tiles and the three stat cards from `statistics` as
   supplied; display counts are the data-model's derived values only.
 
-### Visual design (R58–R61, D17)
+### Visual design (R58–R62, D17)
 
 - `styles/tokens.css`: the mockup's custom properties, dark on `:root`, light on `[data-theme="light"]`;
   `themeController` sets `data-theme` and resolves `system` via `matchMedia('(prefers-color-scheme: dark)')`,
@@ -175,10 +178,16 @@ corrected by the `serverTime` offset; they never decide expiry.
   to a transient fire or miss/empty-cell animation when enabled; there are no static emojis.
 - Modal dialogs use the mockup's padded head/body/actions structure, scroll within short viewports, and blur the
   full native modal backdrop. Ruleset facts use distinct padded cards and wrapping fleet entries. Shared form
-  controls use themed input styling. Leave controls stay aligned with their owning screen.
+  controls use themed input styling. Leave controls stay aligned with their owning screen. Placement cells named
+  by `placementBlockedCells` use the mockup's diagonal hatch and an accessible unavailable-for-placement label.
 - T018 correction forecast: 1 existing task, approximately 27 affected source/test/design files, no dependencies or
   API changes. Assurance remains Standard and uses the existing 19-surface × 3-viewport × 2-theme capture matrix;
   owner review records any remaining intentional deviations.
+- T010 placement-hint correction forecast: 1 reopened task (the task count remains 20), 21 changed files
+  total (17 contract/backend/frontend implementation and proof files plus 4 planning artifacts), and one
+  optional response property in API v1; no dependency changes.
+  Assurance remains Standard and uses domain tests, backend wire/integration tests, and the existing real-backend
+  Playwright placement journey.
 - Interaction: hover styles only inside `@media (hover: hover)`; controls keep the mockup's `--control-h`
   (2.75rem) and `touch-action: manipulation`; board cells fill the grid width with `aspect-ratio: 1`.
 

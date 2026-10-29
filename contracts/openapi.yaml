@@ -1090,6 +1090,16 @@ components:
           description: >-
             The caller's own board. `grid` never contains `UNKNOWN`. From `PLACEMENT` on, `ships` lists
             the whole fleet, including ships that are not placed yet.
+        placementBlockedCells:
+          type: array
+          uniqueItems: true
+          description: >-
+            Present only in `PLACEMENT`. Empty, in-bounds cells adjacent horizontally, vertically or
+            diagonally to the caller's placed ships when this ruleset forbids ship contact. Empty when
+            ships may touch or no ship has been placed. This is a display hint, not a complete list of
+            valid placements for any ship; the server still validates every placement command.
+          items:
+            $ref: '#/components/schemas/Coordinate'
         opponentBoard:
           allOf:
             - $ref: '#/components/schemas/Board'
@@ -1488,6 +1498,7 @@ components:
         you: { displayName: Rival, ready: false, connected: false, shipsRemaining: 10 }
         opponent: { displayName: Captain, ready: false, connected: true, shipsRemaining: 10 }
         allowedActions: [PLACE_SHIP, REMOVE_SHIP, PLACE_FLEET_RANDOMLY, CLEAR_FLEET, SEND_PRESENCE, LEAVE]
+        placementBlockedCells: []
         expiresAt: '2026-09-20T12:17:00.000Z'
         yourBoard:
           grid:
@@ -1556,6 +1567,26 @@ components:
         you: { displayName: Captain, ready: false, connected: true, shipsRemaining: 10 }
         opponent: { displayName: Rival, ready: true, connected: true, shipsRemaining: 10 }
         allowedActions: [PLACE_SHIP, REMOVE_SHIP, PLACE_FLEET_RANDOMLY, CLEAR_FLEET, SEND_PRESENCE, LEAVE]
+        placementBlockedCells:
+          - {rowIndex: 0, columnIndex: 4}
+          - {rowIndex: 1, columnIndex: 0}
+          - {rowIndex: 1, columnIndex: 1}
+          - {rowIndex: 1, columnIndex: 2}
+          - {rowIndex: 1, columnIndex: 3}
+          - {rowIndex: 1, columnIndex: 4}
+          - {rowIndex: 1, columnIndex: 5}
+          - {rowIndex: 1, columnIndex: 6}
+          - {rowIndex: 1, columnIndex: 7}
+          - {rowIndex: 2, columnIndex: 3}
+          - {rowIndex: 2, columnIndex: 7}
+          - {rowIndex: 3, columnIndex: 0}
+          - {rowIndex: 3, columnIndex: 1}
+          - {rowIndex: 3, columnIndex: 2}
+          - {rowIndex: 3, columnIndex: 3}
+          - {rowIndex: 3, columnIndex: 4}
+          - {rowIndex: 3, columnIndex: 5}
+          - {rowIndex: 3, columnIndex: 6}
+          - {rowIndex: 3, columnIndex: 7}
         expiresAt: '2026-09-20T12:18:10.000Z'
         yourBoard:
           grid:

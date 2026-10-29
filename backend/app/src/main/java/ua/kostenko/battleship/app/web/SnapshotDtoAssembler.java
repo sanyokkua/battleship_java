@@ -59,6 +59,10 @@ public final class SnapshotDtoAssembler {
                 .invitationUrl(view.invitationUrl() == null ? null : URI.create(view.invitationUrl()))
                 .invitationExpiresAt(view.invitationExpiresAt() == null ? null : utc(view.invitationExpiresAt()))
                 .yourBoard(board(view.yourBoard()))
+                .placementBlockedCells(
+                        view.placementBlockedCells() == null
+                                ? null
+                                : new LinkedHashSet<>(coordinates(view.placementBlockedCells())))
                 .opponentBoard(board(view.opponentBoard()))
                 .lastShot(view.lastShot() == null ? null : shot(view.lastShot()))
                 .outcome(view.outcome() == null ? null : outcome(view.outcome()))

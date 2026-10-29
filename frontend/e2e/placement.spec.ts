@@ -5,9 +5,9 @@ import type { components } from '../src/contract/generated/api';
 type Snapshot = components['schemas']['GameSnapshot'];
 type CommandRequest = components['schemas']['CommandRequest'];
 
-async function startPlacement(page: Page, browser: Browser, origin: string) {
+async function startPlacement(page: Page, browser: Browser, origin: string, ruleset = 'Sea Battle') {
     await page.goto(`${origin}/create`);
-    await page.getByRole('radio').filter({ hasText: 'Sea Battle' }).click();
+    await page.getByRole('radio').filter({ hasText: ruleset }).click();
     await page.getByLabel('Captain name').fill('Placement host');
     const created = page.waitForResponse((r) => r.request().method() === 'POST' && r.url().endsWith('/api/v1/games'));
     await page.getByRole('button', { name: 'Create game', exact: true }).click();
@@ -22,13 +22,16 @@ async function startPlacement(page: Page, browser: Browser, origin: string) {
 }
 
 async function readGame(page: Page, gameId: string) {
-    const response = await page.request.get(`/api/v1/games/${gameId}`);
+    const response = await page.request.get(`${new URL(page.url()).origin}/api/v1/games/${gameId}`);
     expect(response.ok()).toBeTruthy();
     return (await response.json()) as Snapshot;
 }
 
 async function boardMatchesServer(page: Page, gameId: string) {
     const snapshot = await readGame(page, gameId);
+    const blocked = new Set(
+        snapshot.placementBlockedCells?.map((cell) => `${String(cell.rowIndex)}:${String(cell.columnIndex)}`) ?? [],
+    );
     const labels: Record<string, string> = {
         WATER: 'water',
         SHIP: 'ship',
@@ -39,13 +42,23 @@ async function boardMatchesServer(page: Page, gameId: string) {
         REVEALED_WATER: 'revealed water',
     };
     const expected = snapshot.yourBoard.grid.flatMap((row, r) =>
-        row.map((state, c) => `${String.fromCharCode(65 + c)}${String(r + 1)}, ${labels[state]}`),
+        row.map(
+            (state, c) =>
+                `${String.fromCharCode(65 + c)}${String(r + 1)}, ${labels[state]}${blocked.has(`${String(r)}:${String(c)}`) ? ', unavailable for placement' : ''}`,
+        ),
     );
     await expect
         .poll(() =>
             page.getByRole('gridcell').evaluateAll((cells) => cells.map((cell) => cell.getAttribute('aria-label'))),
         )
         .toEqual(expected);
+    await expect
+        .poll(() =>
+            page
+                .locator('[data-placement="blocked"]')
+                .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('aria-label'))),
+        )
+        .toEqual(expected.filter((label) => label.endsWith(', unavailable for placement')));
     return snapshot;
 }
 
@@ -55,6 +68,55 @@ async function applyAt(page: Page, coordinate: string) {
     await page.getByRole('button', { name: 'Apply', exact: true }).click();
     return response;
 }
+
+test('server-projected no-touch cells use the mockup hatch and clear with the fleet', async ({
+    page,
+    browser,
+    stack,
+}) => {
+    const { guest, gameId } = await startPlacement(page, browser, stack.origin);
+    try {
+        expect((await readGame(page, gameId)).placementBlockedCells).toEqual([]);
+        await expect(page.locator('[data-placement="blocked"]')).toHaveCount(0);
+        expect((await applyAt(page, 'A1')).ok()).toBeTruthy();
+        const placed = await boardMatchesServer(page, gameId);
+        expect(placed.placementBlockedCells).toEqual([
+            { rowIndex: 0, columnIndex: 4 },
+            { rowIndex: 1, columnIndex: 0 },
+            { rowIndex: 1, columnIndex: 1 },
+            { rowIndex: 1, columnIndex: 2 },
+            { rowIndex: 1, columnIndex: 3 },
+            { rowIndex: 1, columnIndex: 4 },
+        ]);
+        const unavailable = page.getByRole('gridcell', {
+            name: 'E1, water, unavailable for placement',
+            exact: true,
+        });
+        await expect(unavailable).toHaveAttribute('aria-disabled', 'true');
+        await expect(unavailable).toHaveCSS('cursor', 'not-allowed');
+        await expect(unavailable).toHaveCSS('background-image', /repeating-linear-gradient/);
+        await unavailable.click({ force: true });
+        await expect(page.getByRole('alert')).toContainText('Ships cannot touch, including diagonally.');
+        const cleared = page.waitForResponse((response) => response.url().endsWith('/commands'));
+        await page.getByRole('button', { name: 'Clear', exact: true }).click();
+        expect((await cleared).ok()).toBeTruthy();
+        expect((await boardMatchesServer(page, gameId)).placementBlockedCells).toEqual([]);
+        await expect(page.locator('[data-placement="blocked"]')).toHaveCount(0);
+    } finally {
+        await guest.close();
+    }
+});
+
+test('contact-allowed ruleset has no unavailable placement cells', async ({ page, browser, stack }) => {
+    const { guest, gameId } = await startPlacement(page, browser, stack.origin, 'Battleship Classic 2002');
+    try {
+        expect((await applyAt(page, 'A1')).ok()).toBeTruthy();
+        expect((await boardMatchesServer(page, gameId)).placementBlockedCells).toEqual([]);
+        await expect(page.locator('[data-placement="blocked"]')).toHaveCount(0);
+    } finally {
+        await guest.close();
+    }
+});
 
 // Disabling arrow navigation must place at the wrong anchor and fail this journey.
 test('keyboard placement uses the selected coordinate and renders the server board', async ({
@@ -106,7 +168,9 @@ test('keyboard placement uses the selected coordinate and renders the server boa
         await page.keyboard.press('End');
         await expect(page.getByRole('gridcell', { name: 'J2, water', exact: true })).toBeFocused();
         await page.keyboard.press('Home');
-        await expect(page.getByRole('gridcell', { name: 'A2, water', exact: true })).toBeFocused();
+        await expect(
+            page.getByRole('gridcell', { name: 'A2, water, unavailable for placement', exact: true }),
+        ).toBeFocused();
     } finally {
         await guest.close();
     }
@@ -126,6 +190,7 @@ test('move and rotate are atomic; touching is refused without changing the board
         });
         await page.getByRole('gridcell', { name: 'A1, ship', exact: true }).click();
         await page.getByRole('button', { name: 'Move', exact: true }).click();
+        await expect(page.locator('[data-placement="blocked"]')).toHaveCount(0);
         expect((await applyAt(page, 'C3')).ok()).toBeTruthy();
         snapshot = await boardMatchesServer(page, gameId);
         expect(commands.map((r) => r.command)).toEqual([
@@ -159,7 +224,7 @@ test('move and rotate are atomic; touching is refused without changing the board
         const refresh = page.waitForResponse(
             (r) => r.request().method() === 'GET' && r.url().endsWith(`/games/${gameId}`),
         );
-        const refused = await applyAt(page, 'D3');
+        const refused = await applyAt(page, 'A2');
         expect(refused.status()).toBe(409);
         expect(((await refused.json()) as { code: string }).code).toBe('placement-touching');
         await refresh;
@@ -376,12 +441,16 @@ test('mouse tray drag clamps a drop past the board edge into one placement', asy
 // Mouse-only handlers must fail this native touch journey; a grabbed ship cell keeps its offset.
 test('touch drag moves a placed ship with one placement and preserves orientation and grab offset', async ({
     browser,
-    stack,
+    useStack,
 }) => {
+    const stack = await useStack('placed-ship-touch-drag', { frontendPort: 4197, backendPort: 8197 });
     const context = await browser.newContext({ ...devices['Pixel 7'] });
     const page = await context.newPage();
-    const { guest, gameId } = await startPlacement(page, browser, stack.origin);
+    let guest: Page | undefined;
     try {
+        const started = await startPlacement(page, browser, stack.origin);
+        guest = started.guest;
+        const gameId = started.gameId;
         expect((await applyAt(page, 'A1')).ok()).toBeTruthy();
         const before = await boardMatchesServer(page, gameId);
         const ship = before.yourBoard.ships.find((s) => s.cells.length > 0);
@@ -390,7 +459,8 @@ test('touch drag moves a placed ship with one placement and preserves orientatio
         const rotated = page.waitForResponse((r) => r.url().endsWith('/commands'));
         await page.getByRole('button', { name: 'Rotate', exact: true }).click();
         expect((await rotated).ok()).toBeTruthy();
-        await boardMatchesServer(page, gameId);
+        const rotatedSnapshot = await boardMatchesServer(page, gameId);
+        expect(rotatedSnapshot.placementBlockedCells?.length).toBeGreaterThan(0);
         await page.getByRole('gridcell', { name: 'A2, ship', exact: true }).scrollIntoViewIfNeeded();
         const source = await page.getByRole('gridcell', { name: 'A2, ship', exact: true }).boundingBox();
         const target = await page.getByRole('gridcell', { name: 'C5, water', exact: true }).boundingBox();
@@ -414,9 +484,13 @@ test('touch drag moves a placed ship with one placement and preserves orientatio
                 ],
             });
         }
+        await expect(page.locator('[data-placement="blocked"]')).toHaveCount(0);
         await expect(page.locator('.is-drag-target')).toHaveAttribute('aria-label', 'C4, water');
         await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
         await expect(page.locator('.is-drag-target')).toHaveCount(0);
+        await expect(page.locator('[data-placement="blocked"]')).toHaveCount(
+            rotatedSnapshot.placementBlockedCells?.length ?? 0,
+        );
         expect(commands).toHaveLength(0);
         expect((await readGame(page, gameId)).yourBoard.ships.find((s) => s.shipId === ship.shipId)?.anchor).toEqual({
             rowIndex: 0,
@@ -443,7 +517,8 @@ test('touch drag moves a placed ship with one placement and preserves orientatio
         await expect(page.getByRole('dialog')).toHaveCount(0);
         expect(commands).toHaveLength(1);
     } finally {
-        await guest.close();
+        await guest?.close();
         await context.close();
+        await stack.stop();
     }
 });

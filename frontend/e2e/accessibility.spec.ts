@@ -706,13 +706,11 @@ for (const size of sizes)
                 );
                 await page.getByRole('gridcell', { name: 'A1, water', exact: true }).click();
                 await waitCommand(page, () => page.getByRole('button', { name: 'Apply', exact: true }).click());
-                await page.getByRole('gridcell', { name: 'A2, water', exact: true }).click();
-                const refused = page.waitForResponse((r) => r.url().endsWith('/commands'));
-                await page.getByRole('button', { name: 'Apply', exact: true }).click();
-                const refusal = await refused;
-                expect(refusal.status()).toBe(409);
-                expect(((await refusal.json()) as { code: string }).code).toBe('placement-touching');
-                await expect(page.getByRole('alert')).toContainText('touch');
+                await page
+                    .getByRole('gridcell', { name: 'A2, water, unavailable for placement', exact: true })
+                    .click({ force: true });
+                await expect(page.getByRole('alert')).toContainText('Ships cannot touch, including diagonally.');
+                await expect(page.getByRole('dialog')).toHaveCount(0);
                 await capture('refusal');
                 await waitCommand(page, () => page.getByRole('button', { name: 'Random', exact: true }).click());
                 await dialogRoundTrip(

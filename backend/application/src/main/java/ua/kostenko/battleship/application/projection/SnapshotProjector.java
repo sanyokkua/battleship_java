@@ -1,6 +1,7 @@
 package ua.kostenko.battleship.application.projection;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import ua.kostenko.battleship.application.projection.BoardView.CellState;
@@ -8,6 +9,7 @@ import ua.kostenko.battleship.application.projection.BoardView.ShipView;
 import ua.kostenko.battleship.application.projection.SnapshotView.Side;
 import ua.kostenko.battleship.domain.model.*;
 import ua.kostenko.battleship.domain.rules.AllowedActions;
+import ua.kostenko.battleship.domain.rules.GameRules;
 import ua.kostenko.battleship.domain.rules.Ruleset;
 import ua.kostenko.battleship.domain.rules.Rulesets;
 
@@ -47,6 +49,12 @@ public class SnapshotProjector {
                 invitation ? context.invitationUrl() : null,
                 invitation ? context.invitationExpiresAt() : null,
                 board(own.board(), ruleset, true, false),
+                state.phase() == Phase.PLACEMENT
+                        ? GameRules.placementBlockedCells(ruleset, own.board().fleet()).stream()
+                                .sorted(Comparator.comparingInt(Coordinate::rowIndex)
+                                        .thenComparingInt(Coordinate::columnIndex))
+                                .toList()
+                        : null,
                 board(
                         opponent == null ? Board.empty() : opponent.board(),
                         ruleset,

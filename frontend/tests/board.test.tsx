@@ -37,6 +37,20 @@ it('keeps ordinary cells free of visible glyphs while preserving coordinate and 
     expect(screen.getByRole('gridcell', { name: 'F1, sunk' }).querySelector('.cell-mark')).toHaveTextContent('✕');
 });
 
+it('marks only server-supplied placement water as unavailable', () => {
+    render(<Board {...props} placementBlockedCells={[{ rowIndex: 0, columnIndex: 1 }]} />);
+    expect(screen.getByRole('gridcell', { name: 'B1, water, unavailable for placement' })).toHaveAttribute(
+        'data-placement',
+        'blocked',
+    );
+    expect(screen.getByRole('gridcell', { name: 'B1, water, unavailable for placement' })).toHaveAttribute(
+        'data-state',
+        'water',
+    );
+    expect(screen.getByRole('gridcell', { name: 'C1, ship' })).not.toHaveAttribute('data-placement');
+    expect(screen.getByRole('gridcell', { name: 'D1, miss' })).not.toHaveAttribute('data-placement');
+});
+
 it('shows only temporary preference-gated firing and new miss feedback', () => {
     const { container, rerender } = render(<Board {...props} />);
     rerender(<Board {...props} pendingTarget={{ rowIndex: 0, columnIndex: 0 }} />);

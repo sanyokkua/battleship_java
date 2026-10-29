@@ -168,6 +168,43 @@ class GameJourneyIT {
         leaveFromBoth(game);
     }
 
+    @Test
+    void placementSnapshotProjectsNoTouchWaterOnlyForTheCallerAndRefreshesAfterEdits() throws Exception {
+        Game game = open(SEA_BATTLE);
+        Browser host = game.host();
+        Browser guest = game.guest();
+        assertThat(blocked(host.snapshot())).isEmpty();
+        assertThat(blocked(guest.snapshot())).isEmpty();
+        String shipId = host.snapshot().at("/yourBoard/ships/0/shipId").asText();
+
+        JsonNode placed = host.accept(placeShip(shipId, 0, 0, "HORIZONTAL"));
+        assertThat(blocked(placed)).containsExactlyInAnyOrder("0:4", "1:0", "1:1", "1:2", "1:3", "1:4");
+        assertThat(blocked(host.reloaded().snapshot())).isEqualTo(blocked(placed));
+        assertThat(blocked(guest.snapshot())).isEmpty();
+
+        JsonNode moved = host.accept(placeShip(shipId, 3, 0, "HORIZONTAL"));
+        assertThat(blocked(moved)).contains("2:0", "3:4", "4:3").doesNotContain("0:4", "1:0");
+        JsonNode removed = host.accept("{\"type\":\"REMOVE_SHIP\",\"shipId\":\"" + shipId + "\"}");
+        assertThat(blocked(removed)).isEmpty();
+        host.accept(placeShip(shipId, 0, 0, "HORIZONTAL"));
+        assertThat(blocked(host.accept(simple("CLEAR_FLEET")))).isEmpty();
+
+        Game classic = open(HASBRO);
+        String classicShip =
+                classic.host().snapshot().at("/yourBoard/ships/0/shipId").asText();
+        assertThat(blocked(classic.host().accept(placeShip(classicShip, 0, 0, "HORIZONTAL"))))
+                .isEmpty();
+    }
+
+    private static Set<String> blocked(JsonNode snapshot) {
+        assertThat(snapshot.has("placementBlockedCells")).isTrue();
+        Set<String> values = new TreeSet<>();
+        snapshot.get("placementBlockedCells")
+                .forEach(cell -> values.add(cell.get("rowIndex").asInt() + ":"
+                        + cell.get("columnIndex").asInt()));
+        return values;
+    }
+
     // ------------------------------------------------------------------ setup and placement
 
     /** S1 steps 1-3 and the first S3 point: the host waits, a guest joins, and a reload shows each in full. */
@@ -178,6 +215,7 @@ class GameJourneyIT {
         JsonNode created = host.create(rulesetId, "Captain");
 
         assertThat(created.get("phase").asText()).isEqualTo("WAITING");
+        assertThat(created.has("placementBlockedCells")).isFalse();
         assertReload(host, created, "WAITING", ruleset);
         assertThat(allowed(created)).containsExactlyInAnyOrder("NEW_INVITATION", "SEND_PRESENCE", "LEAVE");
         assertThat(created.has("opponent")).isFalse();
@@ -253,6 +291,7 @@ class GameJourneyIT {
         }
         JsonNode view = game.host().snapshot();
         assertThat(view.get("phase").asText()).isEqualTo("PLAYING");
+        assertThat(view.has("placementBlockedCells")).isFalse();
         assertThat(view.has("turn")).isTrue();
     }
 

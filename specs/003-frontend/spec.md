@@ -403,11 +403,15 @@ development, production-style local run and the single verification gate.
   available through cell patterns, hit/sunk marks, accessible names and live announcements. Emoji mode
   is limited to the transient firing/miss animation described in R33.
 - **R60** Not reproduced from the mockup: invitation token text, Copy token, a paste-token join field,
-  Join game on Home (joining is by link or QR only), shading of no-touch zones (the ruleset's touching
-  rule is shown as text), a display game number, the snapshot-version footer, and the mockup's preview,
+  Join game on Home (joining is by link or QR only), a display game number, the snapshot-version footer, and the mockup's preview,
   simulation and demo controls.
 - **R61** Mouse, touch and pen reach the same actions; no action or information depends on hover.
   Controls are at least the mockup's control height; board cells share the available width.
+- **R62** [user] During `PLACEMENT`, the caller's snapshot includes `placementBlockedCells`: the server-projected
+  in-bounds empty cells adjacent horizontally, vertically or diagonally to placed ships when that ruleset forbids
+  ship contact. It is an empty list when contact is allowed or no ship has been placed, and absent outside
+  `PLACEMENT`. The frontend renders those exact cells as unavailable, including in their accessible names; it
+  does not calculate the list or substitute it for the server's placement validation.
 
 ## Agent-proposed requirements
 

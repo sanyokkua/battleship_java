@@ -57,7 +57,7 @@ export function Placement({
             setPending(false);
         }
     };
-    const { boardRef, preview, start, handlers } = usePlacementDrag({
+    const { boardRef, preview, draggingPlacedShip, start, handlers } = usePlacementDrag({
         dimensions: ruleset.board,
         disabled: disabled || !allowed.includes('PLACE_SHIP'),
         onPlace: (ship, direction, anchor) => {
@@ -107,8 +107,14 @@ export function Placement({
                         board={snapshot.yourBoard}
                         dimensions={ruleset.board}
                         label={t('placement.yourSea')}
+                        placementBlockedCells={
+                            moving || draggingPlacedShip ? undefined : snapshot.placementBlockedCells
+                        }
                         disabled={disabled || (!allowed.includes('PLACE_SHIP') && !allowed.includes('REMOVE_SHIP'))}
                         onActivate={activate}
+                        onBlockedActivate={() => {
+                            setError('problem.placementTouching');
+                        }}
                         dragTarget={preview}
                         onShipPointerDown={
                             allowed.includes('PLACE_SHIP')
