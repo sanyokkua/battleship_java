@@ -23,7 +23,7 @@ final class CommandTestFixture {
     static final Duration ABSOLUTE = Duration.ofSeconds(120);
     static final Duration INVITATION = Duration.ofSeconds(30);
     static final Duration RETENTION = Duration.ofSeconds(30);
-    static final Duration PRESENCE = Duration.ofSeconds(10);
+    static final Duration PRESENCE_INTERVAL = Duration.ofSeconds(10);
     static final int[][] ANCHORS = {{0, 0}, {2, 0}, {2, 4}, {4, 0}, {4, 3}, {4, 6}, {6, 0}, {6, 2}, {6, 4}, {6, 6}};
 
     final GameRegistry games;
@@ -62,7 +62,7 @@ final class CommandTestFixture {
     }
 
     CommandTestFixture(SnapshotProjector projector) {
-        this(projector, 20, IDLE, ABSOLUTE, INVITATION, RETENTION, PRESENCE);
+        this(projector, 20, IDLE, ABSOLUTE, INVITATION, RETENTION, PRESENCE_INTERVAL);
     }
 
     CommandTestFixture(

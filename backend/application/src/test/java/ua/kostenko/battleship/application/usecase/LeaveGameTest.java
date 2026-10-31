@@ -23,7 +23,7 @@ class LeaveGameTest {
                 CommandTestFixture.ABSOLUTE,
                 CommandTestFixture.INVITATION,
                 CommandTestFixture.RETENTION,
-                CommandTestFixture.PRESENCE);
+                CommandTestFixture.PRESENCE_INTERVAL);
     }
 
     private boolean liveGamesEmpty(CommandTestFixture f, String session) {

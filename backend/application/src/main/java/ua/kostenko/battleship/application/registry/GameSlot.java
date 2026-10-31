@@ -150,7 +150,7 @@ public final class GameSlot {
         Instant invitationExpiry = invitationDeadline.isBefore(expiry) ? invitationDeadline : expiry;
         String invitationUrl =
                 seat == Seat.HOST && unusedInvitationSecret != null && !ExpiryPolicy.reached(invitationExpiry, now)
-                        ? publicBaseUrl.replaceAll("/+$", "") + "/join/" + gameId + "#invite=" + unusedInvitationSecret
+                        ? invitationBaseUrl() + "/join/" + gameId + "#invite=" + unusedInvitationSecret
                         : null;
         return new SnapshotContext(
                 gameId,
@@ -160,5 +160,11 @@ public final class GameSlot {
                 invitationUrl == null ? null : invitationExpiry,
                 connectedStreams.containsKey(Seat.HOST),
                 connectedStreams.containsKey(Seat.GUEST));
+    }
+
+    private String invitationBaseUrl() {
+        int end = publicBaseUrl.length();
+        while (end > 0 && publicBaseUrl.charAt(end - 1) == '/') end--;
+        return publicBaseUrl.substring(0, end);
     }
 }

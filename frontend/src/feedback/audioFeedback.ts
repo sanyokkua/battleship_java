@@ -243,13 +243,13 @@ export function createAudioFeedback(options: AudioFeedbackOptions = {}): AudioFe
     const resume = (allowCreation: boolean): void => {
         const audioContext = allowCreation ? ensureContext() : context;
         if (!audioContext || disposed || unavailable || audioContext.state === 'closed') return;
-        try {
-            void audioContext.resume().catch(() => {
+        void (async () => {
+            try {
+                await audioContext.resume();
+            } catch {
                 unavailable = true;
-            });
-        } catch {
-            unavailable = true;
-        }
+            }
+        })();
     };
 
     const port: AudioFeedbackLifecyclePort = {
@@ -285,11 +285,14 @@ export function createAudioFeedback(options: AudioFeedbackOptions = {}): AudioFe
                 // Cleanup is intentionally best effort.
             }
             if (context) {
-                try {
-                    void context.close().catch(() => undefined);
-                } catch {
-                    // Cleanup is intentionally best effort.
-                }
+                const closingContext = context;
+                void (async () => {
+                    try {
+                        await closingContext.close();
+                    } catch {
+                        // Cleanup is intentionally best effort.
+                    }
+                })();
             }
             context = null;
             masterGain = null;

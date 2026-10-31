@@ -20,23 +20,32 @@ import java.util.stream.Stream;
  */
 public final class SseStream implements AutoCloseable {
     private static final Duration WAIT = Duration.ofSeconds(10);
-    private static final String END = new String("<end of stream>");
 
     /** One event as received: its raw lines (without the blank terminator) and the parsed fields. */
     public record Event(List<String> lines, String name, String id, String data) {}
 
-    private final HttpResponse<Stream<String>> response;
-    private final BlockingQueue<String> lines = new LinkedBlockingQueue<>();
+    private sealed interface QueueItem {
+        record Line(String text) implements QueueItem {}
 
-    private SseStream(HttpResponse<Stream<String>> response) {
+        enum End implements QueueItem {
+            INSTANCE
+        }
+    }
+
+    private final HttpResponse<Stream<String>> response;
+    private final HttpClient client;
+    private final BlockingQueue<QueueItem> lines = new LinkedBlockingQueue<>();
+
+    private SseStream(HttpClient client, HttpResponse<Stream<String>> response) {
+        this.client = client;
         this.response = response;
         Thread.ofVirtual().start(() -> {
             try (Stream<String> body = response.body()) {
-                body.forEach(lines::add);
+                body.forEach(line -> lines.add(new QueueItem.Line(line)));
             } catch (RuntimeException closed) {
                 // the reader closed the stream or the server ended it; either way it is over
             } finally {
-                lines.add(END);
+                lines.add(QueueItem.End.INSTANCE);
             }
         });
     }
@@ -52,10 +61,17 @@ public final class SseStream implements AutoCloseable {
         if (headers.length > 0) {
             request.headers(headers);
         }
-        HttpResponse<Stream<String>> response = HttpClient.newHttpClient()
-                .sendAsync(request.build(), HttpResponse.BodyHandlers.ofLines())
-                .get(WAIT.toMillis(), TimeUnit.MILLISECONDS);
-        return new SseStream(response);
+        HttpClient client = HttpClient.newHttpClient();
+        try {
+            HttpResponse<Stream<String>> response = client.sendAsync(
+                            request.build(), HttpResponse.BodyHandlers.ofLines())
+                    .get(WAIT.toMillis(), TimeUnit.MILLISECONDS);
+            return new SseStream(client, response);
+        } catch (Exception | Error failure) {
+            client.shutdownNow();
+            client.close();
+            throw failure;
+        }
     }
 
     public int status() {
@@ -97,10 +113,11 @@ public final class SseStream implements AutoCloseable {
     private Event read(Duration wait, boolean comments) throws InterruptedException {
         List<String> raw = new ArrayList<>();
         while (true) {
-            String line = lines.poll((raw.isEmpty() ? wait : WAIT).toMillis(), TimeUnit.MILLISECONDS);
-            if (line == null && raw.isEmpty()) return null;
-            if (line == null) throw new AssertionError("no complete event within " + WAIT + "; partial lines " + raw);
-            if (line == END) throw new AssertionError("the stream ended; partial lines " + raw);
+            QueueItem next = lines.poll((raw.isEmpty() ? wait : WAIT).toMillis(), TimeUnit.MILLISECONDS);
+            if (next == null && raw.isEmpty()) return null;
+            if (next == null) throw new AssertionError("no complete event within " + WAIT + "; partial lines " + raw);
+            if (next instanceof QueueItem.End) throw new AssertionError("the stream ended; partial lines " + raw);
+            String line = ((QueueItem.Line) next).text();
             if (!line.isEmpty()) {
                 raw.add(line);
             } else if (!raw.isEmpty()) {
@@ -117,9 +134,10 @@ public final class SseStream implements AutoCloseable {
     /** True when the server ends the stream before any further event; comment lines are not events. */
     public boolean ended() throws InterruptedException {
         while (true) {
-            String line = lines.poll(WAIT.toMillis(), TimeUnit.MILLISECONDS);
-            if (line == null) throw new AssertionError("the stream neither ended nor sent anything within " + WAIT);
-            if (line == END) return true;
+            QueueItem next = lines.poll(WAIT.toMillis(), TimeUnit.MILLISECONDS);
+            if (next == null) throw new AssertionError("the stream neither ended nor sent anything within " + WAIT);
+            if (next instanceof QueueItem.End) return true;
+            String line = ((QueueItem.Line) next).text();
             if (!line.isEmpty() && !isComment(line)) return false;
         }
     }
@@ -149,6 +167,10 @@ public final class SseStream implements AutoCloseable {
 
     @Override
     public void close() {
-        response.body().close();
+        try {
+            response.body().close();
+        } finally {
+            client.close();
+        }
     }
 }

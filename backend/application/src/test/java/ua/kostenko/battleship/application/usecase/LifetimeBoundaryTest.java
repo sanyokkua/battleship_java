@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.IDLE;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.INVITATION;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.NOW;
-import static ua.kostenko.battleship.application.usecase.CommandTestFixture.PRESENCE;
+import static ua.kostenko.battleship.application.usecase.CommandTestFixture.PRESENCE_INTERVAL;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.RETENTION;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.failureCode;
 
@@ -36,7 +36,7 @@ class LifetimeBoundaryTest {
     @Test
     void absoluteLifetimeEndsPlayAtItsDeadlineWhateverTheActivity() {
         var f = new CommandTestFixture(
-                5, Duration.ofSeconds(100), Duration.ofSeconds(60), INVITATION, RETENTION, PRESENCE);
+                5, Duration.ofSeconds(100), Duration.ofSeconds(60), INVITATION, RETENTION, PRESENCE_INTERVAL);
         Game active = f.newGame();
         Game other = f.newGame();
         f.time.set(NOW.plusSeconds(30));
@@ -87,11 +87,11 @@ class LifetimeBoundaryTest {
         Game game = f.newGame();
         var first = f.presence.execute(game.id(), game.host());
         assertThat(first.expiresAt()).isEqualTo(NOW.plus(IDLE));
-        f.time.set(NOW.plus(PRESENCE).minus(MS));
+        f.time.set(NOW.plus(PRESENCE_INTERVAL).minus(MS));
         assertThat(f.presence.execute(game.id(), game.host()).expiresAt()).isEqualTo(NOW.plus(IDLE));
-        f.time.set(NOW.plus(PRESENCE));
+        f.time.set(NOW.plus(PRESENCE_INTERVAL));
         assertThat(f.presence.execute(game.id(), game.host()).expiresAt())
-                .isEqualTo(NOW.plus(PRESENCE).plus(IDLE));
+                .isEqualTo(NOW.plus(PRESENCE_INTERVAL).plus(IDLE));
     }
 
     @Test
@@ -157,7 +157,7 @@ class LifetimeBoundaryTest {
     @Test
     void gameFinishedJustBeforeTheAbsoluteCeilingKeepsItsResultForTheFullRetention() {
         var f = new CommandTestFixture(
-                5, Duration.ofSeconds(100), Duration.ofSeconds(60), INVITATION, RETENTION, PRESENCE);
+                5, Duration.ofSeconds(100), Duration.ofSeconds(60), INVITATION, RETENTION, PRESENCE_INTERVAL);
         Game game = f.newGame();
         f.startPlaying(game);
         f.time.set(NOW.plusSeconds(60).minus(MS));

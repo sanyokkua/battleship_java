@@ -152,6 +152,9 @@ class GracefulShutdownIT {
                                     "{\"invitationSecret\":\"" + "x".repeat(22) + "\",\"displayName\":\"Late\"}"));
                     seen.commandAtFlip = within(() -> seen.host.send(Browser.simple("CLEAR_FLEET")));
                     seen.readAtFlip = within(seen.host::read);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    seen.failure = interrupted;
                 } catch (Throwable failure) {
                     seen.failure = failure;
                 } finally {

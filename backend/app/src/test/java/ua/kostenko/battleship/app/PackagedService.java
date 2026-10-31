@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -57,20 +58,35 @@ public final class PackagedService implements AutoCloseable {
         try (ServerSocket free = new ServerSocket(0)) {
             port = free.getLocalPort();
         }
-        Path output = Files.createTempFile("packaged-service", ".log");
-        ProcessBuilder builder = new ProcessBuilder(
-                        Path.of(System.getProperty("java.home"), "bin", "java").toString(),
-                        "-jar",
-                        jar().toString(),
-                        "--server.port=" + port)
-                .redirectErrorStream(true)
-                .redirectOutput(output.toFile());
-        builder.environment()
-                .keySet()
-                .removeIf(name ->
-                        name.startsWith("SPRING_") || name.startsWith("SERVER_") || name.startsWith("BATTLESHIP_"));
-        builder.environment().putAll(environment);
-        PackagedService service = new PackagedService(builder.start(), output, port);
+        Path directory = Files.createTempDirectory(
+                "packaged-service-",
+                PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")));
+        Path output = directory.resolve("service.log");
+        PackagedService service;
+        try {
+            ProcessBuilder builder = new ProcessBuilder(
+                            Path.of(System.getProperty("java.home"), "bin", "java")
+                                    .toString(),
+                            "-jar",
+                            jar().toString(),
+                            "--server.port=" + port)
+                    .redirectErrorStream(true)
+                    .redirectOutput(output.toFile());
+            builder.environment()
+                    .keySet()
+                    .removeIf(name ->
+                            name.startsWith("SPRING_") || name.startsWith("SERVER_") || name.startsWith("BATTLESHIP_"));
+            builder.environment().putAll(environment);
+            service = new PackagedService(builder.start(), output, port);
+        } catch (Throwable failure) {
+            try {
+                Files.deleteIfExists(output);
+                Files.deleteIfExists(directory);
+            } catch (IOException cleanupFailure) {
+                failure.addSuppressed(cleanupFailure);
+            }
+            throw failure;
+        }
         try {
             service.awaitReady();
         } catch (Throwable failure) {
@@ -121,6 +137,10 @@ public final class PackagedService implements AutoCloseable {
         } catch (IllegalStateException shuttingDown) {
             // the hook is already running
         }
-        Files.deleteIfExists(output);
+        try {
+            Files.deleteIfExists(output);
+        } finally {
+            Files.deleteIfExists(output.getParent());
+        }
     }
 }

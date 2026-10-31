@@ -3,7 +3,7 @@ package ua.kostenko.battleship.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.IDLE;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.NOW;
-import static ua.kostenko.battleship.application.usecase.CommandTestFixture.PRESENCE;
+import static ua.kostenko.battleship.application.usecase.CommandTestFixture.PRESENCE_INTERVAL;
 
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
@@ -55,12 +55,13 @@ class PresenceThrottleTest {
         var f = new CommandTestFixture();
         Game game = f.newGame();
         f.presence.execute(game.id(), game.host());
-        f.time.set(NOW.plus(PRESENCE).minus(MS));
+        f.time.set(NOW.plus(PRESENCE_INTERVAL).minus(MS));
         f.presence.execute(game.id(), game.host());
         assertThat(f.idleDeadline(game.id())).isEqualTo(NOW.plus(IDLE));
-        f.time.set(NOW.plus(PRESENCE));
+        f.time.set(NOW.plus(PRESENCE_INTERVAL));
         f.presence.execute(game.id(), game.host());
-        assertThat(f.idleDeadline(game.id())).isEqualTo(NOW.plus(PRESENCE).plus(IDLE));
+        assertThat(f.idleDeadline(game.id()))
+                .isEqualTo(NOW.plus(PRESENCE_INTERVAL).plus(IDLE));
     }
 
     @Test

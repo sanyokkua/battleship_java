@@ -21,7 +21,12 @@ export function RulesDialog({ open, onClose }: { open: boolean; onClose: () => v
             <div className="dialog-head">
                 <h2 id="rules-title">{t('rules.title')}</h2>
             </div>
-            <div className="dialog-body rules-dialog-body" tabIndex={0} role="region" aria-labelledby="rules-title">
+            <div
+                className="dialog-body rules-dialog-body"
+                tabIndex={0 /* NOSONAR: keyboard access to the scrollable region */}
+                role="region"
+                aria-labelledby="rules-title"
+            >
                 {rulesets.map((ruleset) => (
                     <section className="rules-dialog-card" key={ruleset.id}>
                         <h3>{t(`ruleset.${ruleset.id}`)}</h3>

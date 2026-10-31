@@ -66,7 +66,7 @@ export function SettingsDialog({
                         ))}
                     </div>
                 </fieldset>
-                <label className="settings-row">
+                <label className="settings-row" aria-label={t('settings.emoji')}>
                     <span>
                         <strong>{t('settings.emoji')}</strong>
                         <small>{t('settings.emojiHelp')}</small>
@@ -104,7 +104,7 @@ export function SettingsDialog({
                         <option value="uk">{t('settings.ukrainian')}</option>
                     </select>
                 </label>
-                <label className="settings-row">
+                <label className="settings-row" aria-label={t('settings.sound')}>
                     <span>
                         <strong>{t('settings.sound')}</strong>
                         <small>{t('settings.soundHelp')}</small>
@@ -117,7 +117,7 @@ export function SettingsDialog({
                         }}
                     />
                 </label>
-                <label className="settings-row">
+                <label className="settings-row" aria-label={t('settings.haptics')}>
                     <span>
                         <strong>{t('settings.haptics')}</strong>
                         <small>{t('settings.hapticsHelp')}</small>

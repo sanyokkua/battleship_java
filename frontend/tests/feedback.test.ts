@@ -40,6 +40,32 @@ describe('optional shot feedback', () => {
         feedback.dispose();
     });
 
+    // Removing the unavailable flag after a synchronous resume failure must schedule audio and fail this test.
+    it('disables audio after a synchronous resume failure and tolerates a synchronous close failure', () => {
+        const createOscillator = vi.fn();
+        const context = {
+            state: 'running' as const,
+            currentTime: 0,
+            sampleRate: 44100,
+            destination: {},
+            resume: () => {
+                throw new Error('audio denied');
+            },
+            close: () => {
+                throw new Error('close denied');
+            },
+            createGain: () => ({ gain: {}, connect: () => undefined }),
+            createOscillator,
+        };
+        const feedback = createAudioFeedback({ contextFactory: () => context as never });
+        expect(() => {
+            feedback.unlockFromUserGesture();
+            feedback.play('MISS');
+            feedback.dispose();
+        }).not.toThrow();
+        expect(createOscillator).not.toHaveBeenCalled();
+    });
+
     it('stops scheduled audio when sound is disabled', () => {
         const stopOscillator = vi.fn();
         const oscillator = {

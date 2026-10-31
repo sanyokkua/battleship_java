@@ -74,7 +74,7 @@ public final class GameRules {
         if (target.columnIndex() >= ruleset.columns()) {
             return refused(state, Rejection.validation("/command/target/columnIndex", "OUT_OF_RANGE"));
         }
-        PlayerState defender = player(state, other(actor));
+        PlayerState defender = requiredPlayer(state, other(actor));
         Board board = defender.board();
         if (board.incomingShots().contains(target) || board.revealedWater().contains(target)) {
             return refused(state, Rejection.problem(ProblemCode.TARGET_ALREADY_FIRED));
@@ -102,7 +102,7 @@ public final class GameRules {
             break;
         }
         Shot shot = new Shot(actor, target, result, sunkId);
-        PlayerState attacker = player(state, actor);
+        PlayerState attacker = requiredPlayer(state, actor);
         List<Shot> history = new ArrayList<>(attacker.shotsFired());
         history.add(shot);
         PlayerState updatedAttacker =
@@ -201,7 +201,7 @@ public final class GameRules {
             return refused(state, Rejection.validation("/command/anchor/columnIndex", "OUT_OF_RANGE"));
         }
 
-        PlayerState player = player(state, actor);
+        PlayerState player = requiredPlayer(state, actor);
         List<Ship> fleet = player.board().fleet();
         int shipIndex = indexOf(fleet, command.shipId());
         if (shipIndex < 0) {
@@ -230,7 +230,7 @@ public final class GameRules {
     }
 
     private static Transition removeShip(GameState state, Seat actor, GameCommand.RemoveShip command) {
-        PlayerState player = player(state, actor);
+        PlayerState player = requiredPlayer(state, actor);
         List<Ship> fleet = player.board().fleet();
         int shipIndex = indexOf(fleet, command.shipId());
         if (shipIndex < 0) {
@@ -250,7 +250,7 @@ public final class GameRules {
     private static Transition placeFleetRandomly(
             GameState state, Seat actor, GameCommand.PlaceFleetRandomly command, RandomSource random) {
         Ruleset ruleset = Rulesets.byId(state.rulesetId()).orElseThrow();
-        PlayerState player = player(state, actor);
+        PlayerState player = requiredPlayer(state, actor);
         List<Ship> replacement = new ArrayList<>(unplacedFleet(player.board().fleet()));
         List<Integer> placementOrder = new ArrayList<>();
         for (int index = 0; index < replacement.size(); index++) {
@@ -284,7 +284,7 @@ public final class GameRules {
     }
 
     private static Transition clearFleet(GameState state, Seat actor) {
-        PlayerState player = player(state, actor);
+        PlayerState player = requiredPlayer(state, actor);
         List<Ship> replacement = unplacedFleet(player.board().fleet());
         if (replacement.equals(player.board().fleet())) {
             return acceptedNoOp(state);
@@ -365,6 +365,10 @@ public final class GameRules {
             case HOST -> state.host();
             case GUEST -> state.guest() == null ? null : state.guest();
         };
+    }
+
+    private static PlayerState requiredPlayer(GameState state, Seat seat) {
+        return Objects.requireNonNull(player(state, seat), "player for " + seat);
     }
 
     private static PlayerState playerWithFleet(PlayerState player, List<Ship> fleet) {

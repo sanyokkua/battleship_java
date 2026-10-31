@@ -56,6 +56,9 @@ final class RecordingPublisher implements SnapshotPublisher {
                         }
                     })
                     .get(2, TimeUnit.SECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return false;
         } catch (Exception heldOrFailed) {
             return false;
         }

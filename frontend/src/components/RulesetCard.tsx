@@ -21,7 +21,7 @@ export function RulesetCard({
         }
     };
     return (
-        <article
+        <div
             role="radio"
             aria-checked={selected}
             tabIndex={0}
@@ -31,6 +31,6 @@ export function RulesetCard({
         >
             <h2>{t(`ruleset.${ruleset.id}`)}</h2>
             <RulesetFacts ruleset={ruleset} />
-        </article>
+        </div>
     );
 }

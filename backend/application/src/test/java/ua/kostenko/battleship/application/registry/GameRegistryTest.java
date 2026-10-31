@@ -285,6 +285,24 @@ class GameRegistryTest {
         assertThat(slot.contextFor(Seat.GUEST, NOW).invitationUrl()).isNull();
     }
 
+    @Test
+    void invitationUrlRemovesOnlyTrailingSlashesFromBaseUrl() {
+        for (String base :
+                List.of("https://example.test/path", "https://example.test/path/", "https://example.test/path///")) {
+            GameSlot slot = new GameSlot(
+                    "game-one",
+                    GameState.create(Rulesets.byId("sea-battle-10-ship.v1").orElseThrow(), "Host"),
+                    "host-digest",
+                    NOW.plusSeconds(60),
+                    NOW.plusSeconds(120),
+                    NOW.plusSeconds(30),
+                    base);
+            slot.unusedInvitationSecret("invitation");
+            assertThat(slot.contextFor(Seat.HOST, NOW).invitationUrl())
+                    .isEqualTo("https://example.test/path/join/game-one#invite=invitation");
+        }
+    }
+
     private static List<String> retainedStrings(Object root) throws IllegalAccessException {
         List<String> strings = new ArrayList<>();
         var visited = Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>());
