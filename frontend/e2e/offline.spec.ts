@@ -122,6 +122,97 @@ test('leaving a waiting game cannot be confirmed after connectivity drops', asyn
     expect(leaveRequests).toHaveLength(beforeOffline);
 });
 
+test('a completed refresh cannot restore connected status after going offline', async ({ page, stack }) => {
+    await page.goto(`${stack.origin}/create`);
+    await page.getByRole('radio').filter({ hasText: 'Sea Battle' }).click();
+    await page.getByLabel('Captain name').fill('Offline race');
+
+    let releaseResponse!: () => void;
+    let responseReady!: () => void;
+    const responseHeld = new Promise<void>((resolve) => {
+        responseReady = resolve;
+    });
+    const release = new Promise<void>((resolve) => {
+        releaseResponse = resolve;
+    });
+    await page.route('**/api/v1/rulesets', async (route) => {
+        responseReady();
+        await release;
+        await route.continue();
+    });
+    try {
+        await page.getByRole('button', { name: 'Create game', exact: true }).click();
+        await expect(page.getByRole('heading', { name: 'Waiting for an opponent' })).toBeVisible();
+        await responseHeld;
+        await page.context().setOffline(true);
+        await expect(page.getByText('Offline', { exact: true })).toBeVisible();
+        const refreshFailure = page.waitForEvent('requestfailed', (request) =>
+            request.url().endsWith('/api/v1/rulesets'),
+        );
+        releaseResponse();
+        await refreshFailure;
+        await page.waitForTimeout(250);
+        await expect(page.getByText('Offline', { exact: true })).toBeVisible();
+    } finally {
+        releaseResponse();
+        await page.context().setOffline(false);
+    }
+});
+
+test('a stale refresh cannot replace the recovered connection state', async ({ page, stack }) => {
+    await page.goto(`${stack.origin}/create`);
+    await page.getByRole('radio').filter({ hasText: 'Sea Battle' }).click();
+    await page.getByLabel('Captain name').fill('Reconnect race');
+
+    let releaseResponse!: () => void;
+    let responseReady!: () => void;
+    const responseHeld = new Promise<void>((resolve) => {
+        responseReady = resolve;
+    });
+    const release = new Promise<void>((resolve) => {
+        releaseResponse = resolve;
+    });
+    let first = true;
+    await page.route('**/api/v1/rulesets', async (route) => {
+        if (!first) return route.continue();
+        first = false;
+        responseReady();
+        await release;
+        await route.abort();
+    });
+    try {
+        await page.getByRole('button', { name: 'Create game', exact: true }).click();
+        await expect(page.getByRole('heading', { name: 'Waiting for an opponent' })).toBeVisible();
+        await responseHeld;
+        await page.context().setOffline(true);
+        await expect(page.getByText('Offline', { exact: true })).toBeVisible();
+        const recoveredRules = page.waitForResponse(
+            (response) => response.url().endsWith('/api/v1/rulesets') && response.ok(),
+        );
+        await page.context().setOffline(false);
+        await recoveredRules;
+        await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+        await page.evaluate(() => {
+            (window as unknown as { connectionChanges: string[] }).connectionChanges = [];
+            const changes = (window as unknown as { connectionChanges: string[] }).connectionChanges;
+            new MutationObserver(() => {
+                if (document.body.textContent.includes('Reconnecting')) changes.push('Reconnecting');
+            }).observe(document.body, { childList: true, subtree: true, characterData: true });
+        });
+        const oldFailure = page.waitForEvent('requestfailed', (request) => request.url().endsWith('/api/v1/rulesets'));
+        releaseResponse();
+        await oldFailure;
+        await page.waitForTimeout(250);
+        expect(
+            await page.evaluate(() => (window as unknown as { connectionChanges: string[] }).connectionChanges),
+        ).toEqual([]);
+        await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+    } finally {
+        releaseResponse();
+        await page.context().setOffline(false);
+    }
+});
+
 test('waiting-room expiry does not refresh offline and recovers on reconnect', async ({ page, useStack }) => {
     const shortStack = await useStack(
         'offline-invitation-expiry',

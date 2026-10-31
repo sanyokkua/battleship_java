@@ -20,6 +20,26 @@ Run the repository gate with `./scripts/verify.sh`. It performs, in order:
 
 Every stage has a 30-minute timeout by default. Set `VERIFY_STAGE_TIMEOUT` to a different positive number of seconds. Any failed or timed-out stage stops the gate with its stage number and name. `VERIFY_FAIL_STAGE=1`, `2`, `3`, or `4` runs the selected stage command and then injects a failure, for checking the gate's failure path.
 
+## Local SonarQube analysis
+
+SonarQube is a supplementary static analysis, not part of `./scripts/verify.sh`. Start the existing local server and provide `SONAR_HOST_URL` and `SONAR_TOKEN` in the environment; never commit credentials. Check availability with `sonar-local status`. From the repository root run:
+
+```sh
+(cd backend && ./mvnw verify org.sonarsource.scanner.maven:sonar-maven-plugin:5.1.0.4751:sonar -Dsonar.qualitygate.wait=true)
+(cd frontend && sonar-local scan)
+```
+
+The backend Maven reactor supplies Java bytecode, dependencies, source and test roots; generated OpenAPI sources are excluded. The frontend configuration analyzes `src`, excluding generated contract types, and identifies `tests` and `e2e` as test code. Dependencies and build outputs are outside these scopes. Neither build currently generates a coverage report for SonarQube, so coverage is not imported.
+
+After each scan, export results from the repository root with a separate output directory per project:
+
+```sh
+SONAR_PROJECT_KEY=local:battleship-backend SONAR_OUTPUT_DIR=.sonar-reports/backend sonar-local report
+SONAR_PROJECT_KEY=local:battleship-frontend SONAR_OUTPUT_DIR=.sonar-reports/frontend sonar-local report
+```
+
+Scans wait for server processing and the Quality Gate. If the gate fails, still export the report to distinguish a completed analysis from a scanner failure. Inspect findings against the source and run relevant tests after fixes. Reports and scanner work files are ignored by Git.
+
 ## Ports and host name
 
 Use `localhost` in the browser so the request origin matches the backend security policy. The Vite proxy uses `127.0.0.1` only for its private backend connection.

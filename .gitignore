@@ -63,3 +63,7 @@ yarn-error.log*
 
 # superpowers subagent-driven-development scratch workspace
 /.superpowers/
+
+# Local SonarQube output
+.scannerwork/
+.sonar-reports/

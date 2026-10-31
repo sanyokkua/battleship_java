@@ -98,6 +98,8 @@ failed or timed-out stage fails the run.
 
 **Backend gate.** `cd backend && ./mvnw -q verify && ./mvnw spotless:check`. Contract gate: see below.
 
+For substantial implementation, refactoring, or a requested quality audit, run the supplementary local SonarQube scans described in `docs/local-operation.md`. Review findings in context and report scan or server failures; do not suppress findings merely to improve metrics. These scans do not replace the product gate.
+
 **Local topology.** UI and API share one origin (no CORS): Vite proxy in development, a same-origin static
 server in production-style local runs. Frontend tests run against the real packaged backend; no recorded game
 data and no fake engine.

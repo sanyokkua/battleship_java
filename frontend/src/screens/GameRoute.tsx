@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { components } from '../contract/generated/api';
 import { Dialog } from '../components/Dialog';
 import { Button } from '../components/Button';
@@ -40,12 +40,14 @@ export function GameRoute({
     const [leaveTarget, setLeaveTarget] = useState<HTMLDivElement | null>(null);
     const [failure, setFailure] = useState<number>();
     const [loading, setLoading] = useState(true);
+    const refreshGeneration = useRef(0);
     const [streamReplaced, setStreamReplaced] = useState(false);
     const [showCreatedToast] = useState(() => {
         const historyState = window.history.state as { toast?: unknown } | null;
         return historyState?.toast === 'game-created';
     });
     const refresh = useCallback(async () => {
+        const generation = ++refreshGeneration.current;
         const store = getGameStore(gameId);
         if (!navigator.onLine) {
             store.setConnection('offline');
@@ -60,6 +62,7 @@ export function GameRoute({
             listRulesets(),
             getGame(gameId),
         ]);
+        if (generation !== refreshGeneration.current) return;
         if (metaResult.status === 'fulfilled') getGameStore(gameId).setMeta(metaResult.value);
         if (rulesResult.status === 'fulfilled') setRulesets(rulesResult.value);
         if (gameResult.status === 'fulfilled') {
@@ -88,10 +91,17 @@ export function GameRoute({
         };
     }, [refresh]);
     useEffect(() => {
+        const generationRef = refreshGeneration;
         const listener = () => void refresh();
+        const offline = () => {
+            generationRef.current++;
+        };
         window.addEventListener('online', listener);
+        window.addEventListener('offline', offline);
         return () => {
+            generationRef.current++;
             window.removeEventListener('online', listener);
+            window.removeEventListener('offline', offline);
         };
     }, [refresh]);
     useEffect(() => {
