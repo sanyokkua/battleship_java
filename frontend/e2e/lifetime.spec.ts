@@ -182,7 +182,7 @@ test('Home keeps a live remembered game and forgets it after GAME_UNAVAILABLE wi
         const closedAt = await page.evaluate(() => (window as Window & { streamClosedAt?: number }).streamClosedAt);
         if (closedAt === undefined) throw new Error('The stream close timestamp was not recorded.');
         await expect.poll(() => reads.length, { timeout: 10_000 }).toBeGreaterThan(0);
-        expect([404, 410]).toContain(reads[0].status());
+        expect([404, 410]).toContain(reads[0]?.status());
         await page.waitForTimeout(250);
         expect(gameReadRequests.filter((requestedAt) => requestedAt >= closedAt)).toHaveLength(1);
         await page.waitForTimeout(2_000);

@@ -170,10 +170,11 @@ test('a 429 recovery waits for Retry-After before reading the game again', async
 
             await returnToVisible(page);
             await expect.poll(() => reads.length, { timeout: 5000 }).toBe(1);
-            expect(reads[0].status()).toBe(200);
+            expect(reads[0]?.status()).toBe(200);
             await returnToVisible(page);
             await expect.poll(() => reads.length, { timeout: 5000 }).toBe(2);
             const refused = reads[1];
+            if (!refused) throw new Error('Expected the second game read response.');
             expect(refused.status()).toBe(429);
             const body = (await refused.json()) as { retryAfterSeconds: number };
             const waitSeconds = body.retryAfterSeconds;
@@ -216,7 +217,7 @@ test('a 429 recovery waits for Retry-After before reading the game again', async
             await page.waitForTimeout(Math.max(0, retryDeadline - Date.now() - 1000));
             expect(reads).toHaveLength(2);
             await expect.poll(() => reads.length, { timeout: 5000 }).toBe(3);
-            expect(reads[2].status()).toBe(200);
+            expect(reads[2]?.status()).toBe(200);
         } finally {
             await guest.close();
         }
@@ -238,14 +239,16 @@ test('manual Refresh honors Retry-After without retrying automatically', async (
         try {
             await returnToVisible(page);
             await expect.poll(() => reads.length, { timeout: 5000 }).toBe(1);
-            expect(reads[0].status()).toBe(200);
+            expect(reads[0]?.status()).toBe(200);
 
             const refresh = page.getByRole('banner').getByRole('button', { name: 'Refresh' });
             await expect(refresh).toBeEnabled();
             await refresh.click();
             await expect.poll(() => reads.length, { timeout: 5000 }).toBe(2);
-            expect(reads[1].status()).toBe(429);
-            const body = (await reads[1].json()) as { retryAfterSeconds: number };
+            expect(reads[1]?.status()).toBe(429);
+            const refused = reads[1];
+            if (!refused) throw new Error('Expected the second game read response.');
+            const body = (await refused.json()) as { retryAfterSeconds: number };
             const waitSeconds = body.retryAfterSeconds;
             const retryDeadline = Date.now() + waitSeconds * 1000;
             const waitHintVisible = await page
@@ -267,7 +270,7 @@ test('manual Refresh honors Retry-After without retrying automatically', async (
             await expect(refresh).toBeEnabled();
             await refresh.click();
             await expect.poll(() => reads.length, { timeout: 5000 }).toBe(3);
-            expect(reads[2].status()).toBe(200);
+            expect(reads[2]?.status()).toBe(200);
         } finally {
             await guest.close();
         }
@@ -327,16 +330,18 @@ test('GAME_UNAVAILABLE defers its single lookup until Retry-After expires', asyn
         try {
             const refresh = page.getByRole('banner').getByRole('button', { name: 'Refresh' });
             await expect.poll(() => reads.length, { timeout: 5000 }).toBeGreaterThan(0);
-            expect(reads[0].status()).toBe(200);
+            expect(reads[0]?.status()).toBe(200);
 
             await refresh.click();
             await expect.poll(() => reads.length, { timeout: 5000 }).toBe(2);
-            expect(reads[1].status()).toBe(200);
+            expect(reads[1]?.status()).toBe(200);
 
             await refresh.click();
             await expect.poll(() => reads.length, { timeout: 5000 }).toBe(3);
-            expect(reads[2].status()).toBe(429);
-            const body = (await reads[2].json()) as { retryAfterSeconds: number };
+            expect(reads[2]?.status()).toBe(429);
+            const refused = reads[2];
+            if (!refused) throw new Error('Expected the third game read response.');
+            const body = (await refused.json()) as { retryAfterSeconds: number };
             await expect(page.getByRole('alert').filter({ hasText: 'Wait ' })).toBeVisible();
             const retryDeadline = Date.now() + body.retryAfterSeconds * 1000;
             const initialStreamOpens = streamOpens;
@@ -376,7 +381,7 @@ test('GAME_UNAVAILABLE defers its single lookup until Retry-After expires', asyn
             expect(streamOpens).toBe(initialStreamOpens);
 
             await expect.poll(() => reads.length, { timeout: 5000 }).toBe(4);
-            expect([404, 410]).toContain(reads[3].status());
+            expect([404, 410]).toContain(reads[3]?.status());
             await page.waitForTimeout(1000);
             expect(reads).toHaveLength(4);
             expect(streamOpens).toBe(initialStreamOpens);
@@ -410,13 +415,13 @@ test('a rate-limited stream reopens with bounded backoff', async ({ page, browse
             await toggleOffline(page, false);
             await expect.poll(() => streams.length, { timeout: 5000 }).toBe(1);
             await expect.poll(() => streamResponses.length, { timeout: 5000 }).toBe(1);
-            expect(streamResponses[0].status()).toBe(200);
+            expect(streamResponses[0]?.status()).toBe(200);
             await toggleOffline(page, true);
             await expect(page.getByText('Offline', { exact: true })).toBeVisible();
             await toggleOffline(page, false);
             await expect.poll(() => streams.length, { timeout: 5000 }).toBe(2);
             await expect.poll(() => streamResponses.length, { timeout: 5000 }).toBe(2);
-            expect(streamResponses[1].status()).toBe(429);
+            expect(streamResponses[1]?.status()).toBe(429);
             const afterLimitHit = streams.length;
             await page.waitForTimeout(10_000);
             expect(streams.length - afterLimitHit).toBeLessThanOrEqual(4);

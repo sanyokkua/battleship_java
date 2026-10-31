@@ -124,11 +124,11 @@ final class Contract {
     /** Every enum the contract lists, by label: a named enum schema, or {@code Schema.property} for an inline one. */
     Map<String, List<String>> enums() {
         Map<String, List<String>> all = new TreeMap<>();
-        root.at("/components/schemas").fields().forEachRemaining(entry -> {
+        root.at("/components/schemas").properties().forEach(entry -> {
             if (entry.getValue().has("enum")) {
                 all.put(entry.getKey(), strings(entry.getValue().get("enum")));
             }
-            entry.getValue().path("properties").fields().forEachRemaining(property -> {
+            entry.getValue().path("properties").properties().forEach(property -> {
                 if (property.getValue().has("enum")) {
                     all.put(
                             entry.getKey() + "." + property.getKey(),
@@ -198,7 +198,7 @@ final class Contract {
                 required.forEach(name -> expected.add(name.asText()));
             }
             Set<String> actual = new TreeSet<>();
-            node.fields().forEachRemaining(field -> {
+            node.properties().forEach(field -> {
                 if (field.getValue().isNull()) {
                     problems.add(label(at + "/" + field.getKey()) + " is an explicit null");
                 } else {
@@ -287,7 +287,7 @@ final class Contract {
                 problems.add(label(at + "/" + name) + " is not defined by " + label);
             }
         });
-        properties.fields().forEachRemaining(property -> {
+        properties.properties().forEach(property -> {
             if (value.has(property.getKey())) {
                 walk(
                         value.get(property.getKey()),

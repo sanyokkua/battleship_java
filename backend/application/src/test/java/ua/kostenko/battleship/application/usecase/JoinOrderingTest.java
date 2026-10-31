@@ -32,12 +32,12 @@ class JoinOrderingTest {
                 created.snapshot().gameId(), slot -> slot.state().timeline().guestJoinedAt());
         assertThat(joinedAt).isEqualTo(CreateGameUseCaseTest.NOW);
         ApplicationFailure used = catchThrowableOfType(
+                ApplicationFailure.class,
                 () -> fixture.join.execute(
-                        created.snapshot().gameId(), CreateGameUseCaseTest.INVITATION, "Third", "third"),
-                ApplicationFailure.class);
+                        created.snapshot().gameId(), CreateGameUseCaseTest.INVITATION, "Third", "third"));
         ApplicationFailure wrong = catchThrowableOfType(
-                () -> fixture.join.execute(created.snapshot().gameId(), "B".repeat(43), "Third", "third"),
-                ApplicationFailure.class);
+                ApplicationFailure.class,
+                () -> fixture.join.execute(created.snapshot().gameId(), "B".repeat(43), "Third", "third"));
         assertSameRefusal(used, wrong);
         assertThat(fixture.sessions.find("third")).isEmpty();
     }
@@ -113,13 +113,13 @@ class JoinOrderingTest {
         String id = created.snapshot().gameId();
         List<ApplicationFailure> failures = new ArrayList<>();
         failures.add(catchThrowableOfType(
-                () -> fixture.join.execute("missing", CreateGameUseCaseTest.INVITATION, "Guest", "guest"),
-                ApplicationFailure.class));
+                ApplicationFailure.class,
+                () -> fixture.join.execute("missing", CreateGameUseCaseTest.INVITATION, "Guest", "guest")));
         failures.add(catchThrowableOfType(
-                () -> fixture.join.execute(id, "B".repeat(43), "Guest", "guest"), ApplicationFailure.class));
+                ApplicationFailure.class, () -> fixture.join.execute(id, "B".repeat(43), "Guest", "guest")));
         failures.add(catchThrowableOfType(
-                () -> fixture.join.execute(id, CreateGameUseCaseTest.INVITATION, "Host", "host"),
-                ApplicationFailure.class));
+                ApplicationFailure.class,
+                () -> fixture.join.execute(id, CreateGameUseCaseTest.INVITATION, "Host", "host")));
         var usedFixture = CreateGameUseCaseTest.fixture(2, 2);
         String usedId = usedFixture
                 .create
@@ -128,15 +128,15 @@ class JoinOrderingTest {
                 .gameId();
         usedFixture.join.execute(usedId, CreateGameUseCaseTest.INVITATION, "Guest", "guest");
         failures.add(catchThrowableOfType(
-                () -> usedFixture.join.execute(usedId, CreateGameUseCaseTest.INVITATION, "Third", "third"),
-                ApplicationFailure.class));
+                ApplicationFailure.class,
+                () -> usedFixture.join.execute(usedId, CreateGameUseCaseTest.INVITATION, "Third", "third")));
         fixture.replace.execute(id, "host");
         failures.add(catchThrowableOfType(
-                () -> fixture.join.execute(id, CreateGameUseCaseTest.INVITATION, "Guest", "guest"),
-                ApplicationFailure.class));
+                ApplicationFailure.class,
+                () -> fixture.join.execute(id, CreateGameUseCaseTest.INVITATION, "Guest", "guest")));
         fixture.time.advance(Duration.ofSeconds(30));
         failures.add(catchThrowableOfType(
-                () -> fixture.join.execute(id, "B".repeat(43), "Guest", "guest"), ApplicationFailure.class));
+                ApplicationFailure.class, () -> fixture.join.execute(id, "B".repeat(43), "Guest", "guest")));
         for (ApplicationFailure failure : failures) assertSameRefusal(failures.getFirst(), failure);
     }
 

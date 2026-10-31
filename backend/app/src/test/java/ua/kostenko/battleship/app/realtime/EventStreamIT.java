@@ -291,7 +291,8 @@ class EventStreamIT {
         try (SseStream before = host.events()) {
             assertThat(json(before.next()).get("serverTime").isTextual()).isTrue();
         }
-        wireMapper.configure(com.fasterxml.jackson.core.JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
+        wireMapper.configure(
+                com.fasterxml.jackson.core.json.JsonWriteFeature.WRITE_NUMBERS_AS_STRINGS.mappedFeature(), true);
         try (SseStream after = host.events()) {
             Event first = after.next();
             Reply read = host.read();
@@ -299,7 +300,8 @@ class EventStreamIT {
             assertThat(read.json().get("version").isTextual()).isTrue();
             assertThat(first.data()).isEqualTo(read.response().body());
         } finally {
-            wireMapper.configure(com.fasterxml.jackson.core.JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, false);
+            wireMapper.configure(
+                    com.fasterxml.jackson.core.json.JsonWriteFeature.WRITE_NUMBERS_AS_STRINGS.mappedFeature(), false);
         }
     }
 

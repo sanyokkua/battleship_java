@@ -12,7 +12,7 @@ async function readGame(page: Page, gameId: string): Promise<Snapshot> {
 }
 
 async function fixedFleet(page: Page, classic: boolean) {
-    const fleet = classic
+    const fleet: [string, string][] = classic
         ? [
               ['Carrier', 'A1'],
               ['Battleship', 'A3'],

@@ -74,6 +74,8 @@ class JacksonConfig implements WebMvcConfigurer {
     }
 
     @Override
+    // The builder hook did not retain wire converter precedence with Boot 4.1.1; the integration tests prove it.
+    @SuppressWarnings("removal")
     public void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
         converters.addFirst(new WireDtoConverter(wire));
     }

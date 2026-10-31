@@ -149,6 +149,7 @@ test('two guests race for one invitation and only one joins', async ({ page, bro
     expect([...outcomes].sort()).toEqual(['joined', 'unavailable']);
     const joinedGuest = guests[outcomes.indexOf('joined')];
     const unavailableGuest = guests[outcomes.indexOf('unavailable')];
+    if (!joinedGuest || !unavailableGuest) throw new Error('Both guest outcomes must identify a guest.');
     await expect(unavailableGuest.locator('body')).toContainText('This invitation is unavailable.');
     await expect(joinedGuest.locator('body')).toContainText('Place your fleet');
     await expect(page.getByRole('heading', { name: 'Place your fleet' })).toBeVisible();

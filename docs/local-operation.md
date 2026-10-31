@@ -18,6 +18,13 @@ Run the repository gate with `./scripts/verify.sh`. It performs, in order:
 4. Frontend formatting, lint, typecheck, unit tests, build, and distribution checks.
 5. Browser journeys against the packaged backend.
 
+The backend compiler enables removal warnings and treats compiler warnings as errors in production
+and test sources. Detailed ordinary deprecation diagnostics are not enabled by default because the
+generated OpenAPI sources use a deprecated API. To inspect them, run `cd backend && ./mvnw clean
+test-compile -Dmaven.compiler.showDeprecation=true`; this diagnostic build can fail on those warnings.
+Frontend type checking also covers the browser tests and tool configuration with strict indexed
+access and unused-code checks.
+
 Every stage has a 30-minute timeout by default. Set `VERIFY_STAGE_TIMEOUT` to a different positive number of seconds. Any failed or timed-out stage stops the gate with its stage number and name. `VERIFY_FAIL_STAGE=1`, `2`, `3`, or `4` runs the selected stage command and then injects a failure, for checking the gate's failure path.
 
 ## Local SonarQube analysis

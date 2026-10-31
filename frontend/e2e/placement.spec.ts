@@ -32,7 +32,7 @@ async function boardMatchesServer(page: Page, gameId: string) {
     const blocked = new Set(
         snapshot.placementBlockedCells?.map((cell) => `${String(cell.rowIndex)}:${String(cell.columnIndex)}`) ?? [],
     );
-    const labels: Record<string, string> = {
+    const labels = {
         WATER: 'water',
         SHIP: 'ship',
         UNKNOWN: 'unknown',
@@ -40,7 +40,7 @@ async function boardMatchesServer(page: Page, gameId: string) {
         HIT: 'hit',
         SUNK: 'sunk',
         REVEALED_WATER: 'revealed water',
-    };
+    } as const;
     const expected = snapshot.yourBoard.grid.flatMap((row, r) =>
         row.map(
             (state, c) =>
@@ -278,7 +278,7 @@ test('reopening an empty cell selects a currently unplaced ship', async ({ page,
         expect(commands).toHaveLength(1);
         expect(commands[0]?.command).toMatchObject({ type: 'PLACE_SHIP', anchor: { rowIndex: 0, columnIndex: 0 } });
         const placed = commands[0]?.command;
-        if (placed.type !== 'PLACE_SHIP') throw new Error('Placement command missing');
+        if (placed?.type !== 'PLACE_SHIP') throw new Error('Placement command missing');
         expect(unplacedIds).toContain(placed.shipId);
         expect(after.yourBoard.ships.find((ship) => ship.shipId === placed.shipId)?.anchor).toEqual({
             rowIndex: 0,
