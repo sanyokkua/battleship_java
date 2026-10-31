@@ -42,7 +42,7 @@ public final class SseStream implements AutoCloseable {
         Thread.ofVirtual().start(() -> {
             try (Stream<String> body = response.body()) {
                 body.forEach(line -> lines.add(new QueueItem.Line(line)));
-            } catch (RuntimeException closed) {
+            } catch (RuntimeException _) {
                 // the reader closed the stream or the server ended it; either way it is over
             } finally {
                 lines.add(QueueItem.End.INSTANCE);
@@ -159,7 +159,9 @@ public final class SseStream implements AutoCloseable {
                     data = data == null
                             ? new StringBuilder(value)
                             : data.append('\n').append(value);
-                default -> {}
+                default -> {
+                    // Unknown event fields are ignored by the SSE protocol.
+                }
             }
         }
         return new Event(List.copyOf(raw), name, id, data == null ? null : data.toString());

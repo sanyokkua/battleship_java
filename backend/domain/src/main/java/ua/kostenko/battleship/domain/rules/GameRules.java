@@ -176,7 +176,13 @@ public final class GameRules {
             int order = timeline.readyAt()
                     .get(Seat.HOST)
                     .compareTo(timeline.readyAt().get(Seat.GUEST));
-            turn = order < 0 ? Seat.HOST : order > 0 ? Seat.GUEST : random.nextInt(2) == 0 ? Seat.HOST : Seat.GUEST;
+            if (order < 0) {
+                turn = Seat.HOST;
+            } else if (order > 0) {
+                turn = Seat.GUEST;
+            } else {
+                turn = random.nextInt(2) == 0 ? Seat.HOST : Seat.GUEST;
+            }
             timeline = timeline.withPlayStartedAt(now, turn);
         }
         GameState next = new GameState(

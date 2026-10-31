@@ -57,7 +57,9 @@ class ExpireGamesUseCaseTest {
                 f.sessions,
                 new SnapshotPublisher() {
                     @Override
-                    public void publish(String gameId, Seat seat, SnapshotView view) {}
+                    public void publish(String gameId, Seat seat, SnapshotView view) {
+                        // Only unavailable notifications are relevant to this failure case.
+                    }
 
                     @Override
                     public void unavailable(String gameId, Seat seat) {

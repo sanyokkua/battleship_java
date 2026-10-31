@@ -36,8 +36,8 @@ class GameRegistryTest {
         GameRegistry registry = new GameRegistry(1);
         GameSlot first = slot("first");
         registry.insert("first", first);
-        assertThatThrownBy(() -> registry.insert("second", slot("second")))
-                .isInstanceOf(CapacityExceededException.class);
+        GameSlot second = slot("second");
+        assertThatThrownBy(() -> registry.insert("second", second)).isInstanceOf(CapacityExceededException.class);
         GameState retained = registry.withSlot("first", s -> s.state());
         assertThat(retained).isSameAs(first.state());
     }
@@ -52,7 +52,8 @@ class GameRegistryTest {
             registry.remove(id);
         }
         registry.insert("last", slot("last"));
-        assertThatThrownBy(() -> registry.insert("over", slot("over"))).isInstanceOf(CapacityExceededException.class);
+        GameSlot over = slot("over");
+        assertThatThrownBy(() -> registry.insert("over", over)).isInstanceOf(CapacityExceededException.class);
     }
 
     @Test
@@ -71,7 +72,7 @@ class GameRegistryTest {
                         try {
                             registry.insert(id, candidate);
                             return true;
-                        } catch (CapacityExceededException refused) {
+                        } catch (CapacityExceededException _) {
                             return false;
                         }
                     }));
@@ -117,7 +118,7 @@ class GameRegistryTest {
                 entered.countDown();
                 try {
                     release.await();
-                } catch (InterruptedException e) {
+                } catch (InterruptedException _) {
                     Thread.currentThread().interrupt();
                 }
                 return null;
@@ -134,7 +135,7 @@ class GameRegistryTest {
                         secondCallbackEntered.countDown();
                         return null;
                     });
-                } catch (IllegalArgumentException removedFirst) {
+                } catch (IllegalArgumentException _) {
                     // Removing the slot first is an allowed outcome.
                 }
             });
@@ -218,7 +219,7 @@ class GameRegistryTest {
                     start.await(5, TimeUnit.SECONDS);
                     try {
                         sessions.register("invented-secret", NOW);
-                    } catch (CapacityExceededException refused) {
+                    } catch (CapacityExceededException _) {
                         // The owner associated first; refusing an invented caller is expected.
                     }
                     return null;

@@ -25,24 +25,16 @@ public class SnapshotProjector {
                 Rulesets.byId(state.rulesetId()).orElseThrow(() -> new IllegalArgumentException("unknown ruleset"));
         boolean invitation = seat == Seat.HOST && state.phase() == Phase.WAITING;
         Shot shot = state.lastShot();
+        boolean ownConnected = seat == Seat.HOST ? context.hostConnected() : context.guestConnected();
+        boolean opponentConnected = seat == Seat.HOST ? context.guestConnected() : context.hostConnected();
         return new SnapshotView(
                 context.gameId(),
                 state.version(),
                 context.serverTime(),
                 state.rulesetId(),
                 state.phase(),
-                player(
-                        own,
-                        seat == Seat.HOST ? context.hostConnected() : context.guestConnected(),
-                        ruleset,
-                        state.phase()),
-                opponent == null
-                        ? null
-                        : player(
-                                opponent,
-                                seat == Seat.HOST ? context.guestConnected() : context.hostConnected(),
-                                ruleset,
-                                state.phase()),
+                player(own, ownConnected, ruleset, state.phase()),
+                opponent == null ? null : player(opponent, opponentConnected, ruleset, state.phase()),
                 state.phase() == Phase.PLAYING ? side(state.turn(), seat) : null,
                 AllowedActions.of(state, seat),
                 context.expiresAt(),

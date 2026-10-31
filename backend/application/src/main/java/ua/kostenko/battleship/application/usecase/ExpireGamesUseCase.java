@@ -40,20 +40,7 @@ public final class ExpireGamesUseCase {
         RuntimeException first = null;
         for (String gameId : games.gameIds()) {
             try {
-                boolean[] unfinished = {false};
-                var status = games.withSlot(gameId, slot -> {
-                    var current = ExpiryPolicy.status(slot, now, resultRetention);
-                    if (current != ExpiryPolicy.Status.LIVE) ExpiryPolicy.settle(slot, sessions, resultRetention);
-                    Phase phase = slot.state().phase();
-                    unfinished[0] = phase != Phase.FINISHED && phase != Phase.ABANDONED;
-                    return current;
-                });
-                if (status == ExpiryPolicy.Status.FORGOTTEN) {
-                    games.remove(gameId);
-                    if (unfinished[0]) expired.accept(gameId);
-                }
-                if (status != ExpiryPolicy.Status.LIVE)
-                    for (Seat seat : Seat.values()) publisher.unavailable(gameId, seat);
+                sweepGame(gameId, now, expired);
             } catch (UnknownGameException reclaimedMeanwhile) {
                 // already removed by another path; nothing left to do
             } catch (RuntimeException failed) {
@@ -61,5 +48,21 @@ public final class ExpireGamesUseCase {
             }
         }
         if (first != null) throw first;
+    }
+
+    private void sweepGame(String gameId, Instant now, Consumer<String> expired) {
+        boolean[] unfinished = {false};
+        var status = games.withSlot(gameId, slot -> {
+            var current = ExpiryPolicy.status(slot, now, resultRetention);
+            if (current != ExpiryPolicy.Status.LIVE) ExpiryPolicy.settle(slot, sessions, resultRetention);
+            Phase phase = slot.state().phase();
+            unfinished[0] = phase != Phase.FINISHED && phase != Phase.ABANDONED;
+            return current;
+        });
+        if (status == ExpiryPolicy.Status.FORGOTTEN) {
+            games.remove(gameId);
+            if (unfinished[0]) expired.accept(gameId);
+        }
+        if (status != ExpiryPolicy.Status.LIVE) for (Seat seat : Seat.values()) publisher.unavailable(gameId, seat);
     }
 }

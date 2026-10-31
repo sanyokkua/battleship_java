@@ -33,8 +33,7 @@ class SecurityConfig {
             ObjectMapper wireMapper,
             FixedWindowBuckets buckets,
             GracefulShutdownConfig shutdown,
-            BattleshipProperties properties)
-            throws Exception {
+            BattleshipProperties properties) {
         CookieCsrfTokenRepository csrfTokens = new CookieCsrfTokenRepository();
         csrfTokens.setCookiePath("/");
         csrfTokens.setCookieCustomizer(

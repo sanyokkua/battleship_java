@@ -51,15 +51,15 @@ final class RecordingPublisher implements SnapshotPublisher {
             return CompletableFuture.supplyAsync(() -> {
                         try {
                             return games.withSlot(gameId, slot -> true);
-                        } catch (UnknownGameException removed) {
+                        } catch (UnknownGameException _) {
                             return true;
                         }
                     })
                     .get(2, TimeUnit.SECONDS);
-        } catch (InterruptedException interrupted) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             return false;
-        } catch (Exception heldOrFailed) {
+        } catch (Exception _) {
             return false;
         }
     }

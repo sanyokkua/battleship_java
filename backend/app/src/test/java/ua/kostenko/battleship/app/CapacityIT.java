@@ -241,9 +241,8 @@ class CapacityIT {
 
     @Test
     void permitsSurviveFiveHundredCreateAndRemoveCycles() throws Exception {
-        List<Browser> holders = new ArrayList<>();
         for (int i = 0; i < GAMES_CEILING - 1; i++) {
-            holders.add(host("Holder" + i)); // only one permit stays free
+            host("Holder" + i); // only one permit stays free
         }
         Browser cycler = new Browser(port);
         for (int cycle = 1; cycle <= CYCLES; cycle++) {

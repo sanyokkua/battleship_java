@@ -61,11 +61,10 @@ class ConfigurationValidationIT {
 
     @Test
     void absentIdleTimeoutStopsStartupAndNamesSetting() {
-        var failure = assertThrows(RuntimeException.class, () -> new SpringApplicationBuilder(
-                        ua.kostenko.battleship.app.BattleshipApplication.class)
+        var application = new SpringApplicationBuilder(ua.kostenko.battleship.app.BattleshipApplication.class)
                 .web(WebApplicationType.NONE)
-                .properties("spring.config.name=configuration-validation-missing")
-                .run());
+                .properties("spring.config.name=configuration-validation-missing");
+        var failure = assertThrows(RuntimeException.class, application::run);
 
         assertTrue(causeMessages(failure).contains("idle-timeout-seconds"), causeMessages(failure));
     }

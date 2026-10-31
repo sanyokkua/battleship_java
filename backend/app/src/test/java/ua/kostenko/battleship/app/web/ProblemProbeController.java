@@ -31,7 +31,7 @@ public class ProblemProbeController {
     public static class PermitAllSecurity {
         @Bean
         @Order(Ordered.HIGHEST_PRECEDENCE)
-        SecurityFilterChain probes(HttpSecurity http) throws Exception {
+        SecurityFilterChain probes(HttpSecurity http) {
             return http.securityMatcher("/probe/**")
                     .authorizeHttpRequests(a -> a.anyRequest().permitAll())
                     .csrf(c -> c.disable())

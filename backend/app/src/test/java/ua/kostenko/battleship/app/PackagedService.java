@@ -42,7 +42,7 @@ public final class PackagedService implements AutoCloseable {
     public static PackagedService start(Map<String, String> environment) throws Exception {
         try {
             return launch(environment);
-        } catch (PortTaken taken) {
+        } catch (PortTaken _) {
             return launch(environment); // the free port was taken between probing and binding
         }
     }
@@ -107,7 +107,7 @@ public final class PackagedService implements AutoCloseable {
             }
             try {
                 if (get("/api/v1/health").status() == 200) return;
-            } catch (IOException notYet) {
+            } catch (IOException _) {
                 // not listening yet
             }
             Thread.sleep(200);
@@ -129,12 +129,12 @@ public final class PackagedService implements AutoCloseable {
         process.destroyForcibly();
         try {
             process.waitFor(10, TimeUnit.SECONDS);
-        } catch (InterruptedException interrupted) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
         }
         try {
             Runtime.getRuntime().removeShutdownHook(killOnExit);
-        } catch (IllegalStateException shuttingDown) {
+        } catch (IllegalStateException _) {
             // the hook is already running
         }
         try {

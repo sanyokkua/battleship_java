@@ -183,7 +183,9 @@ public class ProblemAdvice {
      * committed, so there is nothing to answer and nothing went wrong on our side. Streams never time out.
      */
     @ExceptionHandler(AsyncRequestNotUsableException.class)
-    void streamEnded() {}
+    void streamEnded() {
+        // The response is already committed; there is no response left to write.
+    }
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<Problem> unexpected(HttpServletRequest request, Exception failure) {

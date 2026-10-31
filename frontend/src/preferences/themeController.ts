@@ -14,7 +14,8 @@ export function createThemeController(
     const media = matchMedia === null ? null : matchMedia('(prefers-color-scheme: dark)');
     const apply = () => {
         const preference = store.get().theme;
-        root.dataset.theme = preference === 'system' ? (media?.matches ? 'dark' : 'light') : preference;
+        const systemTheme = media?.matches ? 'dark' : 'light';
+        root.dataset.theme = preference === 'system' ? systemTheme : preference;
     };
     apply();
     const unsubscribe = store.subscribe(apply);

@@ -30,7 +30,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter.DataWithMediaType;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import ua.kostenko.battleship.app.config.BattleshipProperties;
 import ua.kostenko.battleship.app.security.SecurityHttp.Reply;
@@ -309,7 +308,7 @@ class EventStreamIT {
     void aCommandRacingBeforeTheLockedCaptureIsInTheFirstSnapshot() throws Exception {
         Game game = game();
         long before = version(game.host().snapshot());
-        hub.afterPendingInstalled = once(() -> game.host().accept(simple("PLACE_FLEET_RANDOMLY")));
+        hub.afterPendingInstalled.set(once(() -> game.host().accept(simple("PLACE_FLEET_RANDOMLY"))));
         try (SseStream stream = game.host().events()) {
             Event first = stream.next();
             assertThat(first.id())
@@ -330,10 +329,10 @@ class EventStreamIT {
     void commandsRacingAfterTheCaptureArriveAfterTheFirstSnapshotAndIdsOnlyIncrease() throws Exception {
         Game game = game();
         long captured = version(game.host().snapshot()) + 1; // the stream connecting the host bumps once
-        hub.afterCapture = once(() -> {
+        hub.afterCapture.set(once(() -> {
             game.host().accept(simple("PLACE_FLEET_RANDOMLY"));
             game.host().accept(simple("PLACE_FLEET_RANDOMLY"));
-        });
+        }));
         try (SseStream stream = game.host().events()) {
             assertThat(stream.next().id()).isEqualTo(String.valueOf(captured));
             Event raced = stream.next();
@@ -460,10 +459,10 @@ class EventStreamIT {
 
         Browser pending = hostOnly("Captain");
         String deadline = pending.snapshot().get("expiresAt").asText();
-        hub.afterCapture = once(() -> {
+        hub.afterCapture.set(once(() -> {
             time.set(Instant.parse(deadline));
             expire.sweep(time.now());
-        });
+        }));
         try (SseStream stream = pending.events()) {
             assertThat(stream.next().name())
                     .as("the snapshot captured before the expiry")
@@ -721,10 +720,10 @@ class EventStreamIT {
             guest.next();
             // The host's stream is opened on the hub with an emitter whose writes block after the first snapshot,
             // as when its client stops reading and the socket buffer is full.
-            hub.newEmitter = () -> stalling;
+            hub.newEmitter.set(() -> stalling);
             assertThat(hub.open(game.host().gameId(), game.host().sessionValue()))
                     .isSameAs(stalling);
-            hub.newEmitter = () -> new SseEmitter(0L);
+            hub.newEmitter.set(() -> new SseEmitter(0L));
             assertThat(connected(json(guest.next()), "opponent")).isTrue();
 
             // Both streams are due a keep-alive: the host's write blocks, and that must hold up neither the thread
@@ -887,9 +886,9 @@ class EventStreamIT {
     @AfterEach
     void removeRaceSeams() {
         hub.closing = false;
-        hub.afterPendingInstalled = () -> {};
-        hub.afterCapture = () -> {};
-        hub.newEmitter = () -> new SseEmitter(0L);
+        hub.afterPendingInstalled.set(() -> {});
+        hub.afterCapture.set(() -> {});
+        hub.newEmitter.set(() -> new SseEmitter(0L));
     }
 
     private interface Step {

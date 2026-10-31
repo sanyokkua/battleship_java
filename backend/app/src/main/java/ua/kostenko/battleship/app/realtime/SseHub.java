@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -61,12 +62,12 @@ public class SseHub implements SnapshotPublisher {
     volatile boolean closing;
 
     /** Race seams for EventStreamIT only: run after the pending install and after the capture; no-ops otherwise. */
-    volatile Runnable afterPendingInstalled = () -> {};
+    final AtomicReference<Runnable> afterPendingInstalled = new AtomicReference<>(() -> {});
 
-    volatile Runnable afterCapture = () -> {};
+    final AtomicReference<Runnable> afterCapture = new AtomicReference<>(() -> {});
 
     /** Emitter seam for EventStreamIT only: lets a proof open a stream whose writes it can stall. */
-    volatile Supplier<SseEmitter> newEmitter = () -> new SseEmitter(0L);
+    final AtomicReference<Supplier<SseEmitter>> newEmitter = new AtomicReference<>(() -> new SseEmitter(0L));
 
     SseHub(
             SubscribeUseCase subscribe,
@@ -90,7 +91,7 @@ public class SseHub implements SnapshotPublisher {
      */
     public SseEmitter open(String gameId, String sessionValue) {
         if (!streams.tryAcquire()) throw new ApplicationFailure("service-unavailable", null, null, RETRY_AFTER_SECONDS);
-        SseEmitter emitter = newEmitter.get();
+        SseEmitter emitter = newEmitter.get().get();
         Subscriber subscriber = new Subscriber(gameId, emitter, time.now());
         subscribers.compute(gameId, (id, present) -> {
             Set<Subscriber> set = present == null ? ConcurrentHashMap.newKeySet() : present;
@@ -104,7 +105,7 @@ public class SseHub implements SnapshotPublisher {
             drop(subscriber);
             throw new ApplicationFailure("service-unavailable", null, null, drainRetryAfterSeconds);
         }
-        afterPendingInstalled.run();
+        afterPendingInstalled.get().run();
         SubscribeUseCase.Subscription subscription;
         try {
             subscription = subscribe.open(gameId, sessionValue);
@@ -112,7 +113,7 @@ public class SseHub implements SnapshotPublisher {
             drop(subscriber);
             throw refused;
         }
-        afterCapture.run();
+        afterCapture.get().run();
         Seat seat = subscription.seat();
         long stream = subscription.stream();
         Subscriber[] replaced = {null};

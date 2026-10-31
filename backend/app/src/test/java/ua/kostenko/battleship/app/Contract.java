@@ -261,7 +261,9 @@ final class Contract {
             case "boolean" -> {
                 if (!value.isBoolean()) problems.add(label(at) + " must be a boolean, was " + value);
             }
-            default -> {}
+            default -> {
+                // Schema types without a dedicated validator require no extra check.
+            }
         }
     }
 
@@ -365,7 +367,9 @@ final class Contract {
                     problems.add(label(at) + " is not a URI: " + text);
                 }
             }
-            default -> {}
+            default -> {
+                // Formats without a dedicated validator require no extra check.
+            }
         }
     }
 

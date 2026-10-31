@@ -78,7 +78,7 @@ class GracefulShutdownIT {
                     entered.countDown();
                     try {
                         release.await(LONG.toSeconds(), TimeUnit.SECONDS);
-                    } catch (InterruptedException interrupted) {
+                    } catch (InterruptedException _) {
                         Thread.currentThread().interrupt();
                     }
                 }
@@ -203,7 +203,7 @@ class GracefulShutdownIT {
                     event = stream.poll(Duration.ofMillis(300));
                 }
                 return true;
-            } catch (AssertionError ended) {
+            } catch (AssertionError _) {
                 return false;
             }
         }

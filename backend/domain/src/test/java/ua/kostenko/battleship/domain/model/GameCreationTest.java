@@ -174,9 +174,10 @@ class GameCreationTest {
 
     @Test
     void shotRequiresSunkShipIdExactlyForSunkResult() {
-        assertThatThrownBy(() -> new Shot(Seat.HOST, new Coordinate(0, 0), ShotResult.SUNK, null))
+        Coordinate target = new Coordinate(0, 0);
+        assertThatThrownBy(() -> new Shot(Seat.HOST, target, ShotResult.SUNK, null))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new Shot(Seat.HOST, new Coordinate(0, 0), ShotResult.HIT, "s01"))
+        assertThatThrownBy(() -> new Shot(Seat.HOST, target, ShotResult.HIT, "s01"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

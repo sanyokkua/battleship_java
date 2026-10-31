@@ -14,6 +14,7 @@ import ua.kostenko.battleship.application.projection.SnapshotView;
 import ua.kostenko.battleship.application.registry.BrowserGameLimitException;
 import ua.kostenko.battleship.application.registry.CapacityExceededException;
 import ua.kostenko.battleship.application.registry.GameRegistry;
+import ua.kostenko.battleship.application.registry.GameSlot;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
 import ua.kostenko.battleship.application.registry.UnknownGameException;
 import ua.kostenko.battleship.application.result.ApplicationFailure;
@@ -77,50 +78,13 @@ public final class JoinGameUseCase {
                     return new Captured(presentedSessionValue, slot.state(), slot.contextFor(Seat.GUEST, now), null);
                 }
                 if (presentedDigest != null && presentedDigest.equals(slot.hostSessionDigest())) throw unavailable();
-                if (status != ExpiryPolicy.Status.LIVE
-                        || slot.state().phase() != Phase.WAITING
-                        || slot.state().guest() != null
-                        || ExpiryPolicy.reached(slot.invitationDeadline(), now)) {
-                    if (ExpiryPolicy.reached(slot.invitationDeadline(), now)) clearInvitation(slot);
-                    throw unavailable();
-                }
-                if (invitationSecret == null
-                        || slot.invitationDigest() == null
-                        || !matches(slot.invitationDigest(), invitationSecret)) throw unavailable();
-                String name;
-                try {
-                    name = DisplayNameNormalizer.normalize(displayName);
-                } catch (DisplayNameNormalizer.InvalidNameException invalid) {
-                    throw new ApplicationFailure(
-                            "validation-failed",
-                            "/displayName",
-                            invalid.reason().name(),
-                            null);
-                }
+                requireAvailableInvitation(slot, status, now, invitationSecret);
+                String name = normalizeName(displayName);
                 String sessionValue = presentedSessionValue != null
                                 && sessions.find(presentedSessionValue).isPresent()
                         ? presentedSessionValue
                         : secrets.sessionValue();
-                Instant admittedAt;
-                try {
-                    admittedAt = sessions.admitGame(sessionValue, gameId, maxLiveGames, () -> {
-                        Instant admissionNow = time.now();
-                        if (ExpiryPolicy.status(slot, admissionNow, resultRetention) != ExpiryPolicy.Status.LIVE
-                                || ExpiryPolicy.reached(slot.invitationDeadline(), admissionNow)) {
-                            clearInvitation(slot);
-                            throw unavailable();
-                        }
-                        slot.replace(slot.state().withGuest(name, admissionNow));
-                        slot.guestSessionDigest(SessionRegistry.digest(sessionValue));
-                        slot.idleDeadline(admissionNow.plus(idleTimeout));
-                        clearInvitation(slot);
-                        return admissionNow;
-                    });
-                } catch (BrowserGameLimitException full) {
-                    throw new ApplicationFailure("browser-game-limit", null, null, null);
-                } catch (CapacityExceededException full) {
-                    throw new ApplicationFailure("service-unavailable", null, null, full.retryAfterSeconds());
-                }
+                Instant admittedAt = admit(slot, gameId, sessionValue, name);
                 return new Captured(
                         sessionValue,
                         slot.state(),
@@ -137,13 +101,58 @@ public final class JoinGameUseCase {
         }
     }
 
+    private static void requireAvailableInvitation(
+            GameSlot slot, ExpiryPolicy.Status status, Instant now, String invitationSecret) {
+        if (status != ExpiryPolicy.Status.LIVE
+                || slot.state().phase() != Phase.WAITING
+                || slot.state().guest() != null
+                || ExpiryPolicy.reached(slot.invitationDeadline(), now)) {
+            if (ExpiryPolicy.reached(slot.invitationDeadline(), now)) clearInvitation(slot);
+            throw unavailable();
+        }
+        if (invitationSecret == null
+                || slot.invitationDigest() == null
+                || !matches(slot.invitationDigest(), invitationSecret)) throw unavailable();
+    }
+
+    private static String normalizeName(String displayName) {
+        try {
+            return DisplayNameNormalizer.normalize(displayName);
+        } catch (DisplayNameNormalizer.InvalidNameException invalid) {
+            throw new ApplicationFailure(
+                    "validation-failed", "/displayName", invalid.reason().name(), null);
+        }
+    }
+
+    private Instant admit(GameSlot slot, String gameId, String sessionValue, String name) {
+        try {
+            return sessions.admitGame(sessionValue, gameId, maxLiveGames, () -> {
+                Instant admissionNow = time.now();
+                if (ExpiryPolicy.status(slot, admissionNow, resultRetention) != ExpiryPolicy.Status.LIVE
+                        || ExpiryPolicy.reached(slot.invitationDeadline(), admissionNow)) {
+                    clearInvitation(slot);
+                    throw unavailable();
+                }
+                slot.replace(slot.state().withGuest(name, admissionNow));
+                slot.guestSessionDigest(SessionRegistry.digest(sessionValue));
+                slot.idleDeadline(admissionNow.plus(idleTimeout));
+                clearInvitation(slot);
+                return admissionNow;
+            });
+        } catch (BrowserGameLimitException full) {
+            throw new ApplicationFailure("browser-game-limit", null, null, null);
+        } catch (CapacityExceededException full) {
+            throw new ApplicationFailure("service-unavailable", null, null, full.retryAfterSeconds());
+        }
+    }
+
     private static boolean matches(String storedDigest, String presentedSecret) {
         byte[] expected = HexFormat.of().parseHex(storedDigest);
         byte[] actual = HexFormat.of().parseHex(SessionRegistry.digest(presentedSecret));
         return MessageDigest.isEqual(expected, actual);
     }
 
-    private static void clearInvitation(ua.kostenko.battleship.application.registry.GameSlot slot) {
+    private static void clearInvitation(GameSlot slot) {
         slot.invitationDigest(null);
         slot.unusedInvitationSecret(null);
     }
