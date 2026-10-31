@@ -40,7 +40,9 @@ public record StatisticsView(MatchStatistics match, PlayerStatistics you, Player
                         .divide(BigDecimal.valueOf(shots), 4, RoundingMode.HALF_UP)
                         .doubleValue();
         List<Ship> fleet = player.board().fleet();
-        int intact = 0, damaged = 0, sunk = 0;
+        int intact = 0;
+        int damaged = 0;
+        int sunk = 0;
         for (Ship ship : fleet) {
             switch (ship.status()) {
                 case INTACT -> intact++;

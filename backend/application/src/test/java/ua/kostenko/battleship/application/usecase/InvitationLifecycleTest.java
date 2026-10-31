@@ -123,7 +123,7 @@ class InvitationLifecycleTest {
         ua.kostenko.battleship.domain.model.PlayerState unclaimedGuest =
                 fixture.games.withSlot(second, slot -> slot.state().guest());
         assertThat(unclaimedGuest).isNull();
-        assertThat(fixture.sessions.find("guest")).get().satisfies(record -> assertThat(record.liveGames())
+        assertThat(fixture.sessions.find("guest")).get().satisfies(session -> assertThat(session.liveGames())
                 .containsExactly(first));
     }
 

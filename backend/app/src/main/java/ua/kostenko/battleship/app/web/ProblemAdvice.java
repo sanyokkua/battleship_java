@@ -252,15 +252,15 @@ public class ProblemAdvice {
         }
         Violation.RuleEnum rule =
                 switch (violation.getConstraintDescriptor().getAnnotation()) {
-                    case NotNull ignored -> Violation.RuleEnum.REQUIRED;
-                    case Min ignored -> Violation.RuleEnum.OUT_OF_RANGE;
-                    case Max ignored -> Violation.RuleEnum.OUT_OF_RANGE;
+                    case NotNull _ -> Violation.RuleEnum.REQUIRED;
+                    case Min _ -> Violation.RuleEnum.OUT_OF_RANGE;
+                    case Max _ -> Violation.RuleEnum.OUT_OF_RANGE;
                     case Size size ->
                         violation.getInvalidValue() instanceof CharSequence text
                                         && text.toString().codePointCount(0, text.length()) < size.min()
                                 ? Violation.RuleEnum.TOO_SHORT
                                 : Violation.RuleEnum.TOO_LONG;
-                    case Pattern ignored -> Violation.RuleEnum.INVALID_FORMAT;
+                    case Pattern _ -> Violation.RuleEnum.INVALID_FORMAT;
                     default -> Violation.RuleEnum.INVALID_TYPE;
                 };
         return new Violation().field(pointer.toString()).rule(rule);

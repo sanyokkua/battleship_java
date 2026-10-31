@@ -41,7 +41,7 @@ public final class ExpireGamesUseCase {
         for (String gameId : games.gameIds()) {
             try {
                 sweepGame(gameId, now, expired);
-            } catch (UnknownGameException reclaimedMeanwhile) {
+            } catch (UnknownGameException _) {
                 // already removed by another path; nothing left to do
             } catch (RuntimeException failed) {
                 if (first == null) first = failed;

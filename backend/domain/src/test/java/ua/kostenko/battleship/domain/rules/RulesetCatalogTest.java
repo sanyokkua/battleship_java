@@ -2,6 +2,7 @@ package ua.kostenko.battleship.domain.rules;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -52,9 +53,9 @@ class RulesetCatalogTest {
                         new FleetEntry("submarine", 3, 1),
                         new FleetEntry("patrol-boat", 2, 1)),
                 hasbro.fleet());
-        assertFalse(seaBattle.shipsMayTouch() == hasbro.shipsMayTouch());
-        assertFalse(seaBattle.extraTurnOnHit() == hasbro.extraTurnOnHit());
-        assertFalse(seaBattle.revealWaterAroundSunk() == hasbro.revealWaterAroundSunk());
+        assertNotEquals(seaBattle.shipsMayTouch(), hasbro.shipsMayTouch());
+        assertNotEquals(seaBattle.extraTurnOnHit(), hasbro.extraTurnOnHit());
+        assertNotEquals(seaBattle.revealWaterAroundSunk(), hasbro.revealWaterAroundSunk());
         assertTrue(hasbro.shipsMayTouch());
         assertFalse(hasbro.extraTurnOnHit());
         assertFalse(hasbro.revealWaterAroundSunk());

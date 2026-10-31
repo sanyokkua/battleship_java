@@ -63,7 +63,7 @@ public final class PresenceUseCase {
                 }
                 return new Captured(slot.state(), seat, slot.contextFor(seat, now));
             });
-        } catch (UnknownGameException unknown) {
+        } catch (UnknownGameException _) {
             throw ExpiryPolicy.unavailable();
         }
         return projector.project(captured.state(), captured.seat(), captured.context());

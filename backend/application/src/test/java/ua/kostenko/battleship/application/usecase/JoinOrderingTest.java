@@ -57,7 +57,7 @@ class JoinOrderingTest {
         assertThat(joined.sessionValue()).isEqualTo("session-2");
         assertThat(fixture.sessions.find(joined.sessionValue()))
                 .get()
-                .satisfies(record -> assertThat(record.liveGames()).containsExactly(id));
+                .satisfies(session -> assertThat(session.liveGames()).containsExactly(id));
     }
 
     @Test
@@ -305,8 +305,8 @@ class JoinOrderingTest {
         java.time.Instant joinedAt =
                 fixture.games.withSlot(id, slot -> slot.state().timeline().guestJoinedAt());
         assertThat(joinedAt).isEqualTo(CreateGameUseCaseTest.NOW.plusSeconds(10));
-        assertThat(fixture.sessions.find(joined.sessionValue())).get().satisfies(record -> assertThat(
-                        record.createdAt())
+        assertThat(fixture.sessions.find(joined.sessionValue())).get().satisfies(session -> assertThat(
+                        session.createdAt())
                 .isEqualTo(CreateGameUseCaseTest.NOW.plusSeconds(10)));
     }
 

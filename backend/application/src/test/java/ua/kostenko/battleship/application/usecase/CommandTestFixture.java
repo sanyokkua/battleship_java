@@ -33,16 +33,16 @@ final class CommandTestFixture {
     final RecordingPublisher published = new RecordingPublisher();
     final AtomicInteger commandIds = new AtomicInteger();
     final SecretGenerator secrets = new SecretGenerator() {
-        final AtomicInteger games = new AtomicInteger();
-        final AtomicInteger sessions = new AtomicInteger();
+        final AtomicInteger gameIds = new AtomicInteger();
+        final AtomicInteger sessionIds = new AtomicInteger();
         final AtomicInteger invitations = new AtomicInteger();
 
         public String gameId() {
-            return "game-" + games.incrementAndGet();
+            return "game-" + gameIds.incrementAndGet();
         }
 
         public String sessionValue() {
-            return "session-" + sessions.incrementAndGet();
+            return "session-" + sessionIds.incrementAndGet();
         }
 
         public String invitationSecret() {

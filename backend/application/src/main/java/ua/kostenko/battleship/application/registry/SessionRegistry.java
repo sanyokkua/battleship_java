@@ -39,9 +39,9 @@ public final class SessionRegistry {
     public SessionRecord registerForGame(String sessionValue, String gameId, Instant now) {
         lock.lock();
         try {
-            SessionRecord record = registerDigest(digest(sessionValue), now);
-            record.attachGame(gameId);
-            return record;
+            SessionRecord session = registerDigest(digest(sessionValue), now);
+            session.attachGame(gameId);
+            return session;
         } finally {
             lock.unlock();
         }
@@ -117,8 +117,8 @@ public final class SessionRegistry {
     /** Terminal ownership release deliberately avoids the admission lock while a game slot is held. */
     public void releaseGame(String digest, String gameId) {
         if (digest == null) return;
-        SessionRecord record = records.get(digest);
-        if (record != null) record.detachGame(gameId);
+        SessionRecord session = records.get(digest);
+        if (session != null) session.detachGame(gameId);
     }
 
     public void touch(String sessionValue, Instant now) {

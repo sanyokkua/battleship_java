@@ -73,16 +73,16 @@ public final class ExpiryPolicy {
             TimeSource time,
             Duration resultRetention) {
         if (sessionValue == null) return;
-        sessions.find(sessionValue).ifPresent(record -> {
-            if (record.liveGames().isEmpty()) return;
+        sessions.find(sessionValue).ifPresent(session -> {
+            if (session.liveGames().isEmpty()) return;
             Instant now = time.now();
-            for (String gameId : record.liveGames()) {
+            for (String gameId : session.liveGames()) {
                 try {
                     games.withSlot(gameId, slot -> {
                         if (status(slot, now, resultRetention) != Status.LIVE) settle(slot, sessions, resultRetention);
                         return null;
                     });
-                } catch (UnknownGameException reclaimed) {
+                } catch (UnknownGameException _) {
                     // the sweep settled it before removing it, so nothing is left to release
                 }
             }

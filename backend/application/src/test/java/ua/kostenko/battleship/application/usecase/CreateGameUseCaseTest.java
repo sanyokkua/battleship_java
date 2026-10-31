@@ -42,12 +42,12 @@ class CreateGameUseCaseTest {
         assertThat(first.snapshot().expiresAt()).isEqualTo(NOW.plusSeconds(60));
         assertThat(first.snapshot().invitationExpiresAt()).isEqualTo(NOW.plusSeconds(30));
         assertThat(first.snapshot().invitationUrl()).isEqualTo("https://example.test/join/game-1#invite=" + INVITATION);
-        assertThat(fixture.sessions.find("session-1")).get().satisfies(record -> assertThat(record.liveGames())
+        assertThat(fixture.sessions.find("session-1")).get().satisfies(session -> assertThat(session.liveGames())
                 .containsExactly("game-1"));
 
         var second = fixture.create.execute(RULESET, "Grace", first.sessionValue());
         assertThat(second.sessionValue()).isEqualTo(first.sessionValue());
-        assertThat(fixture.sessions.find("session-1")).get().satisfies(record -> assertThat(record.liveGames())
+        assertThat(fixture.sessions.find("session-1")).get().satisfies(session -> assertThat(session.liveGames())
                 .containsExactlyInAnyOrder("game-1", "game-2"));
         assertThat(fixture.sessions.digests()).hasSize(1);
     }
@@ -60,11 +60,11 @@ class CreateGameUseCaseTest {
         assertThatThrownBy(() -> fixture.create.execute(RULESET, "Grace", "host-session"))
                 .isInstanceOfSatisfying(ApplicationFailure.class, failure -> assertThat(failure.code())
                         .isEqualTo("service-unavailable"));
-        assertThat(fixture.sessions.find("host-session")).get().satisfies(record -> assertThat(record.liveGames())
+        assertThat(fixture.sessions.find("host-session")).get().satisfies(session -> assertThat(session.liveGames())
                 .containsExactly("game-1"));
         fixture.games.remove("game-1");
         fixture.create.execute(RULESET, "Grace", "host-session");
-        assertThat(fixture.sessions.find("host-session")).get().satisfies(record -> assertThat(record.liveGames())
+        assertThat(fixture.sessions.find("host-session")).get().satisfies(session -> assertThat(session.liveGames())
                 .containsExactlyInAnyOrder("game-1", "game-3"));
     }
 
@@ -151,7 +151,7 @@ class CreateGameUseCaseTest {
         assertThat(created.get().snapshot().invitationExpiresAt()).isEqualTo(NOW.plusSeconds(40));
         assertThat(fixture.sessions.find(created.get().sessionValue()))
                 .get()
-                .satisfies(record -> assertThat(record.createdAt()).isEqualTo(NOW.plusSeconds(10)));
+                .satisfies(session -> assertThat(session.createdAt()).isEqualTo(NOW.plusSeconds(10)));
     }
 
     private static ReentrantLock sessionLock(SessionRegistry sessions) {
@@ -189,7 +189,7 @@ class CreateGameUseCaseTest {
             Future<Boolean> second = workers.submit(() -> createAfterBarrier(fixture, barrier));
             assertThat((first.get(5, TimeUnit.SECONDS) ? 1 : 0) + (second.get(5, TimeUnit.SECONDS) ? 1 : 0))
                     .isEqualTo(1);
-            assertThat(fixture.sessions.find("host")).get().satisfies(record -> assertThat(record.liveGames())
+            assertThat(fixture.sessions.find("host")).get().satisfies(session -> assertThat(session.liveGames())
                     .hasSize(1));
         } finally {
             workers.shutdownNow();
@@ -213,7 +213,7 @@ class CreateGameUseCaseTest {
         final MutableTimeSource time = new MutableTimeSource(NOW);
         final SecretGenerator secrets = new SecretGenerator() {
             final AtomicInteger ids = new AtomicInteger();
-            final AtomicInteger sessions = new AtomicInteger();
+            final AtomicInteger sessionIds = new AtomicInteger();
             final AtomicInteger invitations = new AtomicInteger();
 
             public String gameId() {
@@ -221,7 +221,7 @@ class CreateGameUseCaseTest {
             }
 
             public String sessionValue() {
-                return "session-" + sessions.incrementAndGet();
+                return "session-" + sessionIds.incrementAndGet();
             }
 
             public String invitationSecret() {

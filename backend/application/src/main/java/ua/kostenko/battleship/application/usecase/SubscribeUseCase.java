@@ -62,7 +62,7 @@ public final class SubscribeUseCase {
                         slot.contextFor(seat, now),
                         connecting ? opponentContext(slot, seat, now) : null);
             });
-        } catch (UnknownGameException unknown) {
+        } catch (UnknownGameException _) {
             throw ExpiryPolicy.unavailable();
         }
         return new Subscription(
@@ -88,7 +88,7 @@ public final class SubscribeUseCase {
                 slot.replace(slot.state().withBumpedVersion());
                 return new Captured(slot.state(), seat, stream, null, opponentContext(slot, seat, now));
             });
-        } catch (UnknownGameException removed) {
+        } catch (UnknownGameException _) {
             return null;
         }
         return captured == null ? null : opponentView(captured);

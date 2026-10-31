@@ -1,7 +1,7 @@
 package ua.kostenko.battleship.app.web.dto;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -165,7 +165,7 @@ class GeneratedModelSpikeTest {
         assertThrows(ClassNotFoundException.class, () -> Class.forName("ua.kostenko.battleship.app.web.ApiClient"));
 
         Class<?> rulesetBoard = Ruleset.class.getMethod("getBoard").getReturnType();
-        assertFalse(rulesetBoard.equals(Object.class));
+        assertNotEquals(Object.class, rulesetBoard);
         assertEquals(Integer.class, rulesetBoard.getMethod("getRows").getReturnType());
         assertEquals(Integer.class, rulesetBoard.getMethod("getColumns").getReturnType());
     }

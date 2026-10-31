@@ -178,7 +178,7 @@ public class SseHub implements SnapshotPublisher {
             if (next == null) return;
             try {
                 subscriber.emitter().send(Set.of(new DataWithMediaType(text(next), FRAME)));
-            } catch (IOException | RuntimeException failed) {
+            } catch (IOException | RuntimeException _) {
                 // Only the failure that wins the close claim says so, once, and before the stream's end becomes
                 // visible to anyone, so whoever sees it gone also finds the record.
                 if (subscriber.close()) {

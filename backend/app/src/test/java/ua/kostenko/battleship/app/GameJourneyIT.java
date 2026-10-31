@@ -459,7 +459,7 @@ class GameJourneyIT {
         assertThat(guestView.at("/outcome/winner").asText()).isEqualTo(hostSide.equals("YOU") ? "OPPONENT" : "YOU");
         Shot lastShot = shots.getLast();
         Browser winner = lastShot.shooter();
-        assertThat((winner == game.host()) == hostSide.equals("YOU")).isTrue();
+        assertThat(hostSide).isEqualTo(winner == game.host() ? "YOU" : "OPPONENT");
         assertThat(allowed(hostView)).containsExactly("LEAVE");
         assertThat(allowed(guestView)).containsExactly("LEAVE");
 

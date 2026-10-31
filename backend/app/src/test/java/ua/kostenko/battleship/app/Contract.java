@@ -363,7 +363,7 @@ final class Contract {
             case "uri" -> {
                 try {
                     if (!URI.create(text).isAbsolute()) problems.add(label(at) + " is not an absolute URI: " + text);
-                } catch (IllegalArgumentException malformed) {
+                } catch (IllegalArgumentException _) {
                     problems.add(label(at) + " is not a URI: " + text);
                 }
             }
@@ -378,7 +378,7 @@ final class Contract {
         try {
             return OffsetDateTime.parse(text).getOffset().equals(ZoneOffset.UTC)
                     && MILLIS_UTC.matcher(text).matches();
-        } catch (RuntimeException malformed) {
+        } catch (RuntimeException _) {
             return false;
         }
     }

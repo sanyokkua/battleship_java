@@ -198,7 +198,7 @@ class GameRegistryTest {
         sessions.registerForGame("host-secret", "game-one", NOW);
         assertThatThrownBy(() -> sessions.register("invented-secret", NOW.plusSeconds(1)))
                 .isInstanceOf(CapacityExceededException.class);
-        assertThat(sessions.find("host-secret")).get().satisfies(record -> assertThat(record.liveGames())
+        assertThat(sessions.find("host-secret")).get().satisfies(session -> assertThat(session.liveGames())
                 .containsExactly("game-one"));
         assertThat(sessions.find("invented-secret")).isEmpty();
     }
@@ -226,7 +226,7 @@ class GameRegistryTest {
                 });
                 owner.get(5, TimeUnit.SECONDS);
                 invented.get(5, TimeUnit.SECONDS);
-                assertThat(sessions.find("host-secret")).get().satisfies(record -> assertThat(record.liveGames())
+                assertThat(sessions.find("host-secret")).get().satisfies(session -> assertThat(session.liveGames())
                         .containsExactly("game-one"));
             }
         } finally {
@@ -237,8 +237,8 @@ class GameRegistryTest {
     @Test
     void callersCannotMutateSessionOwnershipOutsideRegistryLock() {
         SessionRegistry sessions = new SessionRegistry(1);
-        SessionRecord record = sessions.registerForGame("host-secret", "game-one", NOW);
-        assertThatThrownBy(() -> record.liveGames().clear()).isInstanceOf(UnsupportedOperationException.class);
+        SessionRecord session = sessions.registerForGame("host-secret", "game-one", NOW);
+        assertThatThrownBy(() -> session.liveGames().clear()).isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test

@@ -41,7 +41,7 @@ final class RequestSizeFilter extends OncePerRequestFilter {
             byte[] body;
             try {
                 body = request.getInputStream().readNBytes(maxBytes + 1);
-            } catch (IOException unreadable) {
+            } catch (IOException _) {
                 // A body that cannot be read (a malformed chunk, a dropped connection) is not a body to pass on.
                 ProblemAdvice.writeProblem(request, response, ProblemCode.MALFORMED_REQUEST, wireMapper);
                 return;

@@ -97,7 +97,7 @@ public final class CreateGameUseCase {
                 games.insert(gameId, slot);
                 return admittedAt;
             });
-        } catch (BrowserGameLimitException full) {
+        } catch (BrowserGameLimitException _) {
             throw new ApplicationFailure("browser-game-limit", null, null, null);
         } catch (CapacityExceededException full) {
             throw new ApplicationFailure("service-unavailable", null, null, full.retryAfterSeconds());

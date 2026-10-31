@@ -36,13 +36,13 @@ public final class GameRules {
         Objects.requireNonNull(random, "random");
         AllowedActions.Action action =
                 switch (command) {
-                    case GameCommand.PlaceShip ignored -> AllowedActions.Action.PLACE_SHIP;
-                    case GameCommand.RemoveShip ignored -> AllowedActions.Action.REMOVE_SHIP;
-                    case GameCommand.PlaceFleetRandomly ignored -> AllowedActions.Action.PLACE_FLEET_RANDOMLY;
-                    case GameCommand.ClearFleet ignored -> AllowedActions.Action.CLEAR_FLEET;
-                    case GameCommand.Ready ignored -> AllowedActions.Action.READY;
-                    case GameCommand.Fire ignored -> AllowedActions.Action.FIRE;
-                    case GameCommand.Resign ignored -> AllowedActions.Action.RESIGN;
+                    case GameCommand.PlaceShip _ -> AllowedActions.Action.PLACE_SHIP;
+                    case GameCommand.RemoveShip _ -> AllowedActions.Action.REMOVE_SHIP;
+                    case GameCommand.PlaceFleetRandomly _ -> AllowedActions.Action.PLACE_FLEET_RANDOMLY;
+                    case GameCommand.ClearFleet _ -> AllowedActions.Action.CLEAR_FLEET;
+                    case GameCommand.Ready _ -> AllowedActions.Action.READY;
+                    case GameCommand.Fire _ -> AllowedActions.Action.FIRE;
+                    case GameCommand.Resign _ -> AllowedActions.Action.RESIGN;
                 };
         if (!AllowedActions.of(state, actor).contains(action)) {
             return refused(state, Rejection.problem(ProblemCode.ACTION_NOT_ALLOWED));
@@ -51,10 +51,10 @@ public final class GameRules {
             case GameCommand.PlaceShip placeShip -> placeShip(state, actor, placeShip);
             case GameCommand.RemoveShip removeShip -> removeShip(state, actor, removeShip);
             case GameCommand.PlaceFleetRandomly arrange -> placeFleetRandomly(state, actor, arrange, random);
-            case GameCommand.ClearFleet ignored -> clearFleet(state, actor);
-            case GameCommand.Ready ignored -> ready(state, actor, now, random);
+            case GameCommand.ClearFleet _ -> clearFleet(state, actor);
+            case GameCommand.Ready _ -> ready(state, actor, now, random);
             case GameCommand.Fire fire -> fire(state, actor, fire, now);
-            case GameCommand.Resign ignored -> resign(state, actor, now);
+            case GameCommand.Resign _ -> resign(state, actor, now);
         };
     }
 

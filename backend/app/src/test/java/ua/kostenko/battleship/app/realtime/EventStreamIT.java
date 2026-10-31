@@ -704,7 +704,7 @@ class EventStreamIT {
             stalled.countDown();
             try {
                 released.await();
-            } catch (InterruptedException interrupted) {
+            } catch (InterruptedException _) {
                 Thread.currentThread().interrupt();
             }
             throw new IOException("the client stopped reading");

@@ -359,8 +359,8 @@ class LogRedactionIT {
         assertThat(ours).as("application records were captured").isNotEmpty();
         assertThat(ours)
                 .as("(8) every application record after start-up has a 16-hex correlation id")
-                .allSatisfy(record ->
-                        assertThat(record.correlationId()).as(record.line()).matches(HEX16));
+                .allSatisfy(entry ->
+                        assertThat(entry.correlationId()).as(entry.line()).matches(HEX16));
         for (Reply problem : replies.stream()
                 .filter(r -> r.status() >= 400 && r.json() != null && r.json().has("correlationId"))
                 .toList()) {
@@ -368,9 +368,9 @@ class LogRedactionIT {
             assertThat(records)
                     .as("(8) a record of the request that answered %s carries its id %s"
                             .formatted(problem.status(), id))
-                    .anySatisfy(record -> {
-                        assertThat(record.correlationId()).isEqualTo(id);
-                        assertThat(record.message()).contains("status=" + problem.status());
+                    .anySatisfy(entry -> {
+                        assertThat(entry.correlationId()).isEqualTo(id);
+                        assertThat(entry.message()).contains("status=" + problem.status());
                     });
         }
     }
@@ -384,18 +384,16 @@ class LogRedactionIT {
                 .as(
                         "(9) the only lines that are not JSON are the test bootstrap's, written before logging is configured")
                 .allMatch("before-logging-init"::equals);
-        assertThat(records).allSatisfy(record -> {
-            assertThat(record.json().isObject()).as(record.line()).isTrue();
-            assertThat(record.json().has("@timestamp")).as(record.line()).isTrue();
-            assertThat(record.json().at("/log/level").asText())
-                    .as(record.line())
-                    .isNotEmpty();
-            assertThat(record.logger()).as(record.line()).isNotEmpty();
-            assertThat(record.json().has("message")).as(record.line()).isTrue();
+        assertThat(records).allSatisfy(entry -> {
+            assertThat(entry.json().isObject()).as(entry.line()).isTrue();
+            assertThat(entry.json().has("@timestamp")).as(entry.line()).isTrue();
+            assertThat(entry.json().at("/log/level").asText()).as(entry.line()).isNotEmpty();
+            assertThat(entry.logger()).as(entry.line()).isNotEmpty();
+            assertThat(entry.json().has("message")).as(entry.line()).isTrue();
         });
         assertThat(applicationRecords())
                 .as("application records of one kind keep the same field names")
-                .allSatisfy(record -> assertThat(record.json().fieldNames())
+                .allSatisfy(entry -> assertThat(entry.json().fieldNames())
                         .toIterable()
                         .contains("@timestamp", "log", "message", "correlationId"));
     }
@@ -410,10 +408,10 @@ class LogRedactionIT {
             assertThat(ofRequest)
                     .as("records of the request answered %s".formatted(status))
                     .isNotEmpty();
-            assertThat(ofRequest).allSatisfy(record -> assertThat(
-                            record.json().path("gameId").asText())
-                    .as(record.line())
-                    .matches("[A-Za-z0-9_-]{22}"));
+            assertThat(ofRequest)
+                    .allSatisfy(entry -> assertThat(entry.json().path("gameId").asText())
+                            .as(entry.line())
+                            .matches("[A-Za-z0-9_-]{22}"));
         }
     }
 
@@ -421,18 +419,18 @@ class LogRedactionIT {
 
     @Test
     void aRejectedCommandIsOneDiagnosticRecordAndTheCallerGetsA409() {
-        assertThat(events("command-rejected")).hasSize(1).allSatisfy(record -> {
-            assertThat(record.correlationId()).matches(HEX16);
-            assertThat(record.json().path("gameId").asText()).matches("[A-Za-z0-9_-]{22}");
+        assertThat(events("command-rejected")).hasSize(1).allSatisfy(entry -> {
+            assertThat(entry.correlationId()).matches(HEX16);
+            assertThat(entry.json().path("gameId").asText()).matches("[A-Za-z0-9_-]{22}");
         });
         assertThat(rejectedCommandStatus).isEqualTo(409);
     }
 
     @Test
     void anExpiringGameIsOneDiagnosticRecordAndAskersAreTold410ThenNothing() {
-        assertThat(events("game-expired")).hasSize(1).allSatisfy(record -> {
-            assertThat(record.json().path("gameId").asText()).isEqualTo(expiredGameId);
-            assertThat(record.correlationId()).matches(HEX16);
+        assertThat(events("game-expired")).hasSize(1).allSatisfy(entry -> {
+            assertThat(entry.json().path("gameId").asText()).isEqualTo(expiredGameId);
+            assertThat(entry.correlationId()).matches(HEX16);
         });
         assertThat(expiredGameStatusBeforeSweep).isEqualTo(410);
         assertThat(expiredGameStatusAfterSweep).isEqualTo(404);
@@ -440,9 +438,9 @@ class LogRedactionIT {
 
     @Test
     void lostStateOnRestartIsOneStartupRecordThatNeverImpliesAGameSurvives() {
-        assertThat(events("state-lost-on-restart")).hasSize(1).allSatisfy(record -> {
-            assertThat(record.correlationId()).matches(HEX16);
-            assertThat(record.message())
+        assertThat(events("state-lost-on-restart")).hasSize(1).allSatisfy(entry -> {
+            assertThat(entry.correlationId()).matches(HEX16);
+            assertThat(entry.message())
                     .containsIgnoringCase("no state")
                     .containsIgnoringCase("gone")
                     .doesNotContainIgnoringCase("recovered from")
@@ -456,9 +454,9 @@ class LogRedactionIT {
     @Test
     void aFailedRealtimeDeliveryIsOneDiagnosticRecordAndTheGameCarriesOn() {
         assertThat(guestSawHostDisconnected).isTrue();
-        assertThat(events("realtime-delivery-failed")).hasSize(1).allSatisfy(record -> {
-            assertThat(record.correlationId()).matches(HEX16);
-            assertThat(record.json().path("gameId").asText()).matches("[A-Za-z0-9_-]{22}");
+        assertThat(events("realtime-delivery-failed")).hasSize(1).allSatisfy(entry -> {
+            assertThat(entry.correlationId()).matches(HEX16);
+            assertThat(entry.json().path("gameId").asText()).matches("[A-Za-z0-9_-]{22}");
         });
         assertThat(hostReadAfterDeliveryFailure).isEqualTo(200);
         assertThat(reopenedStreamStatus).isEqualTo(200);

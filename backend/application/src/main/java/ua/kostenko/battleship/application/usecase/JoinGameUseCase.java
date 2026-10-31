@@ -96,7 +96,7 @@ public final class JoinGameUseCase {
                         gameId, Seat.HOST, projector.project(captured.state(), Seat.HOST, captured.hostContext()));
             return new JoinedGame(
                     captured.sessionValue(), projector.project(captured.state(), Seat.GUEST, captured.context()));
-        } catch (UnknownGameException unknown) {
+        } catch (UnknownGameException _) {
             throw unavailable();
         }
     }
@@ -139,7 +139,7 @@ public final class JoinGameUseCase {
                 clearInvitation(slot);
                 return admissionNow;
             });
-        } catch (BrowserGameLimitException full) {
+        } catch (BrowserGameLimitException _) {
             throw new ApplicationFailure("browser-game-limit", null, null, null);
         } catch (CapacityExceededException full) {
             throw new ApplicationFailure("service-unavailable", null, null, full.retryAfterSeconds());
