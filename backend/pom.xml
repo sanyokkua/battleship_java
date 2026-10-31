@@ -27,13 +27,34 @@
     <maven-surefire-plugin.version>3.5.6</maven-surefire-plugin.version>
     <maven-failsafe-plugin.version>3.5.6</maven-failsafe-plugin.version>
     <spotless-maven-plugin.version>3.9.0</spotless-maven-plugin.version>
+    <jacoco-maven-plugin.version>0.8.16</jacoco-maven-plugin.version>
     <sonar.projectKey>local:battleship-backend</sonar.projectKey>
     <sonar.projectName>Battleship Backend</sonar.projectName>
     <sonar.exclusions>**/target/generated-sources/**</sonar.exclusions>
+    <sonar.coverage.jacoco.xmlReportPaths>${maven.multiModuleProjectDirectory}/app/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
   </properties>
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco-maven-plugin.version}</version>
+        <configuration>
+          <excludes>
+            <exclude>ua/kostenko/battleship/app/web/dto/**</exclude>
+            <exclude>ua/kostenko/battleship/app/web/JSON*</exclude>
+            <exclude>ua/kostenko/battleship/app/web/RFC3339DateFormat*</exclude>
+          </excludes>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>com.diffplug.spotless</groupId>
         <artifactId>spotless-maven-plugin</artifactId>

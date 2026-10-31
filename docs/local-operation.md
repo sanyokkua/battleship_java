@@ -25,11 +25,13 @@ Every stage has a 30-minute timeout by default. Set `VERIFY_STAGE_TIMEOUT` to a 
 SonarQube is a supplementary static analysis, not part of `./scripts/verify.sh`. Start the existing local server and provide `SONAR_HOST_URL` and `SONAR_TOKEN` in the environment; never commit credentials. Check availability with `sonar-local status`. From the repository root run:
 
 ```sh
-(cd backend && ./mvnw verify org.sonarsource.scanner.maven:sonar-maven-plugin:5.1.0.4751:sonar -Dsonar.qualitygate.wait=true)
-(cd frontend && sonar-local scan)
+(cd backend && ./mvnw clean install org.sonarsource.scanner.maven:sonar-maven-plugin:5.1.0.4751:sonar -Dsonar.qualitygate.wait=true)
+(cd frontend && npm run test:coverage && sonar-local scan)
 ```
 
-The backend Maven reactor supplies Java bytecode, dependencies, source and test roots; generated OpenAPI sources are excluded. The frontend configuration analyzes `src`, excluding generated contract types, and identifies `tests` and `e2e` as test code. Dependencies and build outputs are outside these scopes. Neither build currently generates a coverage report for SonarQube, so coverage is not imported.
+The backend Maven reactor supplies Java bytecode, dependencies, source and test roots; generated OpenAPI sources are excluded. JaCoCo instruments the Maven test JVMs and aggregates coverage across the three modules, including integration tests. The clean build keeps coverage fresh, and `install` updates the local reactor dependencies used by analysis; separately launched application JVMs are not instrumented. The frontend configuration analyzes `src`, excluding generated contract types, and identifies `tests` and `e2e` as test code. `test:coverage` creates LCOV coverage and a test-execution report from Vitest unit and component tests; browser journeys are not included in that coverage. Dependencies and build outputs are outside the analysis scopes. SonarQube imports these reports; it does not run the tests itself.
+
+The dashboard's **Overall Code** tab shows project-wide coverage. **New Code** shows only the current new-code period and can have too few changed lines for a percentage. Local Community Build records one main-branch history per Sonar project; scans of different Git branches share that history. Its edition also limits certain security and branch-analysis features.
 
 After each scan, export results from the repository root with a separate output directory per project:
 
