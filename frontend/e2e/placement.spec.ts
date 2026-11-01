@@ -346,6 +346,7 @@ test('random and clear update tray counts; ready requires confirmation and locks
 }) => {
     const { guest, gameId } = await startPlacement(page, browser, stack.origin);
     try {
+        const readiness = page.locator('.placement-status').getByRole('status');
         const checkTray = async () => {
             const snapshot = await boardMatchesServer(page, gameId);
             for (const length of [4, 3, 2, 1]) {
@@ -365,11 +366,13 @@ test('random and clear update tray counts; ready requires confirmation and locks
             );
         };
         await checkTray();
+        await expect(readiness).toHaveText('Fleet incomplete');
         await page.getByRole('button', { name: 'Random', exact: true }).click();
         await expect(page.getByRole('button', { name: 'Ready', exact: true })).toBeVisible();
+        await expect(readiness).toHaveText('Fleet placed. Ready to commit.');
         await checkTray();
         await page.getByRole('button', { name: 'Clear', exact: true }).click();
-        await expect(page.getByText('Fleet incomplete', { exact: true })).toBeVisible();
+        await expect(readiness).toHaveText('Fleet incomplete');
         await checkTray();
         await page.getByRole('button', { name: 'Random', exact: true }).click();
         await page.getByRole('button', { name: 'Ready', exact: true }).click();
@@ -380,7 +383,7 @@ test('random and clear update tray counts; ready requires confirmation and locks
         expect((await readGame(page, gameId)).you.ready).toBe(false);
         await page.getByRole('button', { name: 'Ready', exact: true }).click();
         await confirmation.getByRole('button', { name: 'Commit and wait', exact: true }).click();
-        await expect(page.getByText('Waiting for opponent', { exact: true })).toBeVisible();
+        await expect(readiness).toHaveText('Waiting for opponent');
         expect((await readGame(page, gameId)).you.ready).toBe(true);
         await expect(page.getByRole('button', { name: /^(Ready|Unready|Random|Clear)$/ })).toHaveCount(0);
         await expect(guest.getByText('Opponent ready', { exact: true })).toBeVisible();

@@ -299,23 +299,34 @@ class LogRedactionIT {
 
     @Test
     void noSessionCookieValueOrRawSessionStringIsLogged() {
-        assertThat(output).as("(1) host session value").doesNotContain(hostCookieValue);
-        assertThat(output).as("(1) guest session value").doesNotContain(guestCookieValue);
-        assertThat(output).as("(1) cookie name").doesNotContain(SESSION_COOKIE);
-        assertThat(output).as("(1) cookie header").doesNotContainIgnoringCase("set-cookie");
+        assertThat(output)
+                .as("(1) host session value")
+                .doesNotContain(hostCookieValue)
+                .as("(1) guest session value")
+                .doesNotContain(guestCookieValue)
+                .as("(1) cookie name")
+                .doesNotContain(SESSION_COOKIE)
+                .as("(1) cookie header")
+                .doesNotContainIgnoringCase("set-cookie");
     }
 
     @Test
     void noInvitationSecretFragmentOrSecretBearingUrlIsLogged() {
-        assertThat(output).as("(2) invitation secret").doesNotContain(invitationSecret);
-        assertThat(output).as("(3) fragment").doesNotContain("#invite=").doesNotContain("invite=");
-        assertThat(output).as("(3) invitation URL").doesNotContain(invitationUrl);
+        assertThat(output)
+                .as("(2) invitation secret")
+                .doesNotContain(invitationSecret)
+                .as("(3) fragment")
+                .doesNotContain("#invite=")
+                .doesNotContain("invite=")
+                .as("(3) invitation URL")
+                .doesNotContain(invitationUrl);
     }
 
     @Test
     void noBoardContentIsLogged() {
-        assertThat(output).as("(4) ship word").doesNotContain("SHIP");
         assertThat(output)
+                .as("(4) ship word")
+                .doesNotContain("SHIP")
                 .as("(4) board cells and coordinates")
                 .doesNotContain("rowIndex")
                 .doesNotContain("columnIndex")
@@ -326,10 +337,13 @@ class LogRedactionIT {
 
     @Test
     void noRawRequestBodyIsLogged() {
-        assertThat(output).as("(5) marker bodies").doesNotContain(BODY_MARKER);
-        assertThat(output).as("(5) the rejected command's body").doesNotContain(REJECTED_BODY);
-        assertThat(output).as("(5) its command id").doesNotContain(REJECTED_COMMAND_ID.toString());
         assertThat(output)
+                .as("(5) marker bodies")
+                .doesNotContain(BODY_MARKER)
+                .as("(5) the rejected command's body")
+                .doesNotContain(REJECTED_BODY)
+                .as("(5) its command id")
+                .doesNotContain(REJECTED_COMMAND_ID.toString())
                 .as("(5) body field names")
                 .doesNotContain("commandId")
                 .doesNotContain("displayName");
@@ -337,9 +351,13 @@ class LogRedactionIT {
 
     @Test
     void noPlayerDisplayNameIsLogged() {
-        assertThat(output).as("(6) host name").doesNotContain(HOST_NAME);
-        assertThat(output).as("(6) guest name").doesNotContain(GUEST_NAME);
-        assertThat(output).as("(6) third name").doesNotContain("Solitary-Narwhal");
+        assertThat(output)
+                .as("(6) host name")
+                .doesNotContain(HOST_NAME)
+                .as("(6) guest name")
+                .doesNotContain(GUEST_NAME)
+                .as("(6) third name")
+                .doesNotContain("Solitary-Narwhal");
     }
 
     @Test
@@ -356,8 +374,9 @@ class LogRedactionIT {
     @Test
     void everyApplicationRecordCarriesACorrelationIdAndAProblemBodyMatchesItsRequestsRecords() {
         List<Record> ours = applicationRecords();
-        assertThat(ours).as("application records were captured").isNotEmpty();
         assertThat(ours)
+                .as("application records were captured")
+                .isNotEmpty()
                 .as("(8) every application record after start-up has a 16-hex correlation id")
                 .allSatisfy(entry ->
                         assertThat(entry.correlationId()).as(entry.line()).matches(HEX16));

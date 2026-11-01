@@ -101,7 +101,7 @@ class CommandIdempotencyTest {
         java.time.Instant after = f.games.withSlot(game.id(), GameSlot::idleDeadline);
         assertThat(after).isEqualTo(deadline);
         Set<java.util.UUID> accepted = f.games.withSlot(game.id(), slot -> Set.copyOf(slot.acceptedCommandIds()));
-        assertThat(accepted).doesNotContain(refusedId);
+        assertThat(accepted).isEmpty();
         var retried = f.send(game, Seat.HOST, refusedId, place(0, 0));
         assertThat(retried.snapshot().version()).isEqualTo(before.version() + 1);
     }

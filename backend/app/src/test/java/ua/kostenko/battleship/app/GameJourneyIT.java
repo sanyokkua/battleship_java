@@ -109,8 +109,7 @@ class GameJourneyIT {
         assertFinished(game, shots, "FLEET_DESTROYED");
         assertThat(shots)
                 .anySatisfy(shot ->
-                        assertThat(shot.reply().at("/lastShot/result").asText()).isEqualTo("SUNK"));
-        assertThat(shots)
+                        assertThat(shot.reply().at("/lastShot/result").asText()).isEqualTo("SUNK"))
                 .as("a hit grants another shot, so a hit leaves the shooter on turn")
                 .anySatisfy(shot ->
                         assertThat(shot.reply().at("/lastShot/result").asText()).isEqualTo("HIT"));

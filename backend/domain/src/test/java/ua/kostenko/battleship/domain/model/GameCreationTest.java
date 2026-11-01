@@ -198,7 +198,7 @@ class GameCreationTest {
 
     private static List<String> ids(int count) {
         return java.util.stream.IntStream.rangeClosed(1, count)
-                .mapToObj(index -> "s%02d".formatted(index))
+                .mapToObj("s%02d"::formatted)
                 .toList();
     }
 

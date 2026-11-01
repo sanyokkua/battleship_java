@@ -101,12 +101,12 @@ public class SnapshotProjector {
 
     private static CellState cell(Board board, Coordinate coordinate, boolean complete, boolean abandoned) {
         if (abandoned) return CellState.UNKNOWN;
-        for (Ship ship : board.fleet())
-            if (ship.cells().contains(coordinate)) {
-                if (ship.status() == Ship.ShipStatus.SUNK) return CellState.SUNK;
-                if (ship.hits().contains(coordinate)) return CellState.HIT;
-                return complete ? CellState.SHIP : CellState.UNKNOWN;
-            }
+        for (Ship ship : board.fleet()) {
+            if (!ship.cells().contains(coordinate)) continue;
+            if (ship.status() == Ship.ShipStatus.SUNK) return CellState.SUNK;
+            if (ship.hits().contains(coordinate)) return CellState.HIT;
+            return complete ? CellState.SHIP : CellState.UNKNOWN;
+        }
         if (board.incomingShots().contains(coordinate)) return CellState.MISS;
         if (board.revealedWater().contains(coordinate)) return CellState.REVEALED_WATER;
         return complete ? CellState.WATER : CellState.UNKNOWN;
