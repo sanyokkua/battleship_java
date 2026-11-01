@@ -4,7 +4,7 @@ import { useT } from '../i18n/useT';
 const steps = ['Created', 'Waiting', 'Placement', 'Battle'] as const;
 export type WaitingStep = (typeof steps)[number];
 
-export function Stepper({ current }: { current: WaitingStep }) {
+export function Stepper({ current }: Readonly<{ current: WaitingStep }>) {
     const t = useT();
     const keys: Record<WaitingStep, string> = {
         Created: 'game.createdStep',

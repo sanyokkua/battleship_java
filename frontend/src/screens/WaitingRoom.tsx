@@ -21,13 +21,13 @@ export function WaitingRoom({
     ruleset,
     showCreatedToast = false,
     streamReplaced = false,
-}: {
+}: Readonly<{
     gameId: GameId;
     leaveSlotRef: Ref<HTMLDivElement>;
     ruleset: Ruleset | undefined;
     showCreatedToast?: boolean;
     streamReplaced?: boolean;
-}) {
+}>) {
     const t = useT();
     const state = useGame(gameId);
     const snapshot = state.snapshot;
@@ -115,14 +115,11 @@ export function WaitingRoom({
             setPending(false);
         }
     };
-    const phase: WaitingStep =
-        snapshot?.phase === 'WAITING'
-            ? 'Waiting'
-            : snapshot?.phase === 'PLACEMENT'
-              ? 'Placement'
-              : snapshot?.phase === 'PLAYING' || snapshot?.phase === 'FINISHED' || snapshot?.phase === 'ABANDONED'
-                ? 'Battle'
-                : 'Created';
+    let phase: WaitingStep = 'Created';
+    if (snapshot?.phase === 'WAITING') phase = 'Waiting';
+    else if (snapshot?.phase === 'PLACEMENT') phase = 'Placement';
+    else if (snapshot?.phase === 'PLAYING' || snapshot?.phase === 'FINISHED' || snapshot?.phase === 'ABANDONED')
+        phase = 'Battle';
     const allowed = snapshot?.allowedActions ?? [];
     return (
         <section className="waiting-screen">

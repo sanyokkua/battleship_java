@@ -9,6 +9,7 @@ import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.RequestBodyAdviceAdapter;
 import ua.kostenko.battleship.app.web.dto.CommandRequest;
+import ua.kostenko.battleship.app.web.dto.Violation;
 import ua.kostenko.battleship.application.result.ApplicationFailure;
 
 /**
@@ -41,7 +42,7 @@ class CommandVariantValidation extends RequestBodyAdviceAdapter {
                 && request.getCommand().getActualInstance() != null) {
             validator.validate(request.getCommand().getActualInstance()).stream()
                     .map(violation -> ProblemAdvice.violationOf(violation, "/command"))
-                    .min(Comparator.comparing(violation -> violation.getField()))
+                    .min(Comparator.comparing(Violation::getField))
                     .ifPresent(violation -> {
                         throw new ApplicationFailure(
                                 "validation-failed",

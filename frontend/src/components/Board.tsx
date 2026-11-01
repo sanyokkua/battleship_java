@@ -40,7 +40,7 @@ export function Board({
     activeStates,
     pendingTarget,
     shot,
-}: {
+}: Readonly<{
     board: components['schemas']['Board'];
     dimensions: components['schemas']['Ruleset']['board'];
     label: string;
@@ -53,7 +53,7 @@ export function Board({
     activeStates?: CellState[];
     pendingTarget?: Coordinate | undefined;
     shot?: components['schemas']['Shot'] | undefined;
-}) {
+}>) {
     const t = useT();
     const preferences = usePreferences();
     const motion = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)'), []);

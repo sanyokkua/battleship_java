@@ -19,7 +19,10 @@ import { useRetryWindow } from '../session/useRetryWindow';
 import type { PwaGateway } from '../pwa/pwaGateway';
 import type { InstallGateway } from '../pwa/installGateway';
 
-export function App({ pwaGateway, installGateway }: { pwaGateway: PwaGateway; installGateway: InstallGateway }) {
+export function App({
+    pwaGateway,
+    installGateway,
+}: Readonly<{ pwaGateway: PwaGateway; installGateway: InstallGateway }>) {
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [rulesOpen, setRulesOpen] = useState(false);
     const [gameTitle, setGameTitle] = useState('');

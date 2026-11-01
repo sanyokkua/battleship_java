@@ -20,11 +20,11 @@ export function Results({
     gameId,
     ruleset,
     streamReplaced,
-}: {
+}: Readonly<{
     gameId: GameId;
     ruleset: Ruleset;
     streamReplaced: boolean;
-}) {
+}>) {
     const t = useT();
     const state = useGame(gameId);
     const [now, setNow] = useState(Date.now);

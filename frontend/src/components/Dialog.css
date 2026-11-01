@@ -19,6 +19,7 @@
     justify-content: space-between;
     gap: var(--space-3);
     padding: var(--space-4) var(--space-5);
+    flex: 0 0 auto;
 }
 .dialog-head {
     border-bottom: 1px solid var(--border);
@@ -33,6 +34,8 @@
     max-height: 65vh;
     overflow: auto;
     padding: var(--space-5);
+    min-height: 0;
+    flex: 1 1 auto;
 }
 .dialog-actions {
     justify-content: flex-end;
@@ -43,14 +46,6 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-}
-.dialog-head,
-.dialog-actions {
-    flex: 0 0 auto;
-}
-.dialog-body {
-    min-height: 0;
-    flex: 1 1 auto;
 }
 .dialog:has(.rules-dialog-body) {
     width: min(54rem, calc(100vw - 2rem));

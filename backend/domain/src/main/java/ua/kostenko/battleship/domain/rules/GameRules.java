@@ -26,6 +26,8 @@ import ua.kostenko.battleship.domain.transition.Rejection.ProblemCode;
 import ua.kostenko.battleship.domain.transition.Transition;
 
 public final class GameRules {
+    private static final String OUT_OF_RANGE = "OUT_OF_RANGE";
+
     private GameRules() {}
 
     public static Transition apply(GameState state, Seat actor, GameCommand command, Instant now, RandomSource random) {
@@ -69,10 +71,10 @@ public final class GameRules {
         Ruleset ruleset = Rulesets.byId(state.rulesetId()).orElseThrow();
         Coordinate target = command.target();
         if (target.rowIndex() >= ruleset.rows()) {
-            return refused(state, Rejection.validation("/command/target/rowIndex", "OUT_OF_RANGE"));
+            return refused(state, Rejection.validation("/command/target/rowIndex", OUT_OF_RANGE));
         }
         if (target.columnIndex() >= ruleset.columns()) {
-            return refused(state, Rejection.validation("/command/target/columnIndex", "OUT_OF_RANGE"));
+            return refused(state, Rejection.validation("/command/target/columnIndex", OUT_OF_RANGE));
         }
         PlayerState defender = requiredPlayer(state, other(actor));
         Board board = defender.board();
@@ -201,10 +203,10 @@ public final class GameRules {
     private static Transition placeShip(GameState state, Seat actor, GameCommand.PlaceShip command) {
         Ruleset ruleset = Rulesets.byId(state.rulesetId()).orElseThrow();
         if (command.anchor().rowIndex() >= ruleset.rows()) {
-            return refused(state, Rejection.validation("/command/anchor/rowIndex", "OUT_OF_RANGE"));
+            return refused(state, Rejection.validation("/command/anchor/rowIndex", OUT_OF_RANGE));
         }
         if (command.anchor().columnIndex() >= ruleset.columns()) {
-            return refused(state, Rejection.validation("/command/anchor/columnIndex", "OUT_OF_RANGE"));
+            return refused(state, Rejection.validation("/command/anchor/columnIndex", OUT_OF_RANGE));
         }
 
         PlayerState player = requiredPlayer(state, actor);

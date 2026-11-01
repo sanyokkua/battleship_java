@@ -176,6 +176,7 @@
     z-index: 20;
     right: max(1rem, env(safe-area-inset-right));
     bottom: max(1rem, env(safe-area-inset-bottom));
+    bottom: max(5rem, calc(env(safe-area-inset-bottom) + 4rem));
     display: flex;
     align-items: center;
     flex-wrap: wrap;
@@ -183,10 +184,6 @@
     max-width: min(34rem, calc(100vw - 2rem));
     padding: 0.75rem;
     box-shadow: var(--shadow-lg);
-}
-
-.update-prompt {
-    bottom: max(5rem, calc(env(safe-area-inset-bottom) + 4rem));
 }
 
 .settings-build {

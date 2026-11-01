@@ -341,7 +341,7 @@ class GracefulShutdownIT {
         Reply health = Seams.OBSERVED.startupHealth;
 
         assertThat(health.status()).isEqualTo(503);
-        assertThat(health.json().toString()).isEqualTo("{\"live\":true,\"ready\":false,\"reason\":\"STARTING\"}");
+        assertThat(health.json()).hasToString("{\"live\":true,\"ready\":false,\"reason\":\"STARTING\"}");
     }
 
     // (2)
@@ -450,7 +450,7 @@ class GracefulShutdownIT {
         assertThat(body.has("code")).isFalse();
         assertThat(body.has("title")).isFalse();
         assertThat(body.has("status")).isFalse();
-        assertThat(body.toString()).isEqualTo("{\"live\":true,\"ready\":false,\"reason\":\"DRAINING\"}");
+        assertThat(body).hasToString("{\"live\":true,\"ready\":false,\"reason\":\"DRAINING\"}");
     }
 
     // the drain window is one setting

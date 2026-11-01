@@ -8,7 +8,7 @@ import { useT } from '../i18n/useT';
 import type { GameId } from '../session/gameStore';
 import { useGame } from '../session/useGame';
 
-export function LeaveControl({ gameId, target }: { gameId: GameId; target: HTMLDivElement | null }) {
+export function LeaveControl({ gameId, target }: Readonly<{ gameId: GameId; target: HTMLDivElement | null }>) {
     const t = useT();
     const state = useGame(gameId);
     const [confirmOpen, setConfirmOpen] = useState(false);

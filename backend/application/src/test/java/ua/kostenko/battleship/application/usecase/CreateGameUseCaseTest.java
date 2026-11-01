@@ -174,7 +174,7 @@ class CreateGameUseCaseTest {
                     assertThat(failure.rule()).isEqualTo("TOO_SHORT");
                 });
         assertThat(fixture.sessions.digests()).isEmpty();
-        assertThatThrownBy(() -> fixture.games.withSlot("game-1", slot -> slot.state()))
+        assertThatThrownBy(() -> fixture.games.withSlot("game-1", GameSlot::state))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

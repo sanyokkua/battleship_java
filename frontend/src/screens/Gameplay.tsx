@@ -17,12 +17,12 @@ export function Gameplay({
     ruleset,
     streamReplaced,
     onCommand,
-}: {
+}: Readonly<{
     gameId: GameId;
     ruleset: Ruleset;
     streamReplaced: boolean;
     onCommand: (request: components['schemas']['CommandRequest']) => Promise<void>;
-}) {
+}>) {
     const t = useT();
     const state = useGame(gameId);
     const [now, setNow] = useState(Date.now);

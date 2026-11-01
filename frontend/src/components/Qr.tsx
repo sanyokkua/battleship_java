@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-export function Qr({ value, label }: { value: string; label: string }) {
+export function Qr({ value, label }: Readonly<{ value: string; label: string }>) {
     const canvas = useRef<HTMLCanvasElement>(null);
     useEffect(() => {
         let active = true;

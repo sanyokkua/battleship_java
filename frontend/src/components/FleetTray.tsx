@@ -9,12 +9,12 @@ export function FleetTray({
     onSelect,
     disabled,
     onShipPointerDown,
-}: {
+}: Readonly<{
     ships: Ship[];
     onSelect: (ship: Ship) => void;
     disabled: boolean;
     onShipPointerDown?: (event: PointerEvent<HTMLButtonElement>, ship: Ship) => void;
-}) {
+}>) {
     const t = useT();
     const lengths = [...new Set(ships.map((ship) => ship.length))].sort((a, b) => b - a);
     const placed = ships.filter((ship) => ship.cells.length > 0).length;

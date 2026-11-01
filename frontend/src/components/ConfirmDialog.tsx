@@ -11,7 +11,7 @@ export function ConfirmDialog({
     onConfirm,
     onClose,
     confirmDisabled = false,
-}: {
+}: Readonly<{
     open: boolean;
     title: string;
     message: string;
@@ -19,7 +19,7 @@ export function ConfirmDialog({
     onConfirm: () => void;
     onClose: () => void;
     confirmDisabled?: boolean;
-}) {
+}>) {
     const t = useT();
     const titleId = useId();
     return (

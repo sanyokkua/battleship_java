@@ -7,7 +7,7 @@ import { useT } from '../i18n/useT';
 import type { GameId } from '../session/gameStore';
 import { useGame } from '../session/useGame';
 
-export function Abandoned({ gameId }: { gameId: GameId }) {
+export function Abandoned({ gameId }: Readonly<{ gameId: GameId }>) {
     const t = useT();
     const state = useGame(gameId);
     const [pending, setPending] = useState(false);

@@ -70,9 +70,10 @@ class RulesetCatalogTest {
             assertEquals(ruleset, Rulesets.byId(ruleset.id()).orElseThrow());
         }
 
-        assertThrows(
-                UnsupportedOperationException.class, () -> seaBattle.fleet().add(new FleetEntry("extra", 1, 1)));
-        assertThrows(UnsupportedOperationException.class, () -> Rulesets.all().clear());
+        var seaBattleFleet = seaBattle.fleet();
+        var extraShip = new FleetEntry("extra", 1, 1);
+        assertThrows(UnsupportedOperationException.class, () -> seaBattleFleet.add(extraShip));
+        assertThrows(UnsupportedOperationException.class, rulesets::clear);
     }
 
     @Test
@@ -101,7 +102,9 @@ class RulesetCatalogTest {
         Ruleset ruleset = new Ruleset("test-rules.v1", 1, 100, sourceFleet, false, false, false);
         sourceFleet.add(new FleetEntry("ship-2", 2, 1));
         assertEquals(List.of(new FleetEntry("ship-1", 1, 1)), ruleset.fleet());
-        assertThrows(UnsupportedOperationException.class, () -> ruleset.fleet().add(new FleetEntry("ship-2", 2, 1)));
+        var fleet = ruleset.fleet();
+        var ship = new FleetEntry("ship-2", 2, 1);
+        assertThrows(UnsupportedOperationException.class, () -> fleet.add(ship));
 
         assertThrows(
                 IllegalArgumentException.class,

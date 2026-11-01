@@ -293,7 +293,7 @@ class LogRedactionIT {
 
     @Test
     void theJourneyProvokedEveryFailureClass() {
-        assertThat(firstReplyByStatus.keySet()).contains(401, 403, 404, 409, 410, 413, 415, 422, 429, 503);
+        assertThat(firstReplyByStatus).containsKeys(401, 403, 404, 409, 410, 413, 415, 422, 429, 503);
         assertThat(rejectedCommandStatus).isEqualTo(409);
     }
 

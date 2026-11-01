@@ -181,7 +181,8 @@ class GameSerializationTest {
             assertThat(captured.deliveries().get(Seat.GUEST).version()).isEqualTo(before + 1);
             assertThat(captured.deliveries().get(Seat.GUEST).lastShot().target())
                     .isEqualTo(targets.get(0));
-            assertThatThrownBy(() -> captured.deliveries().clear()).isInstanceOf(UnsupportedOperationException.class);
+            var deliveries = captured.deliveries();
+            assertThatThrownBy(deliveries::clear).isInstanceOf(UnsupportedOperationException.class);
         } finally {
             release.countDown();
             workers.shutdownNow();

@@ -1,7 +1,10 @@
 import { Card } from './Card';
 import './StatCard.css';
 
-export function StatCard({ title, rows }: { title: string; rows: readonly { label: string; value: string }[] }) {
+export function StatCard({
+    title,
+    rows,
+}: Readonly<{ title: string; rows: readonly { label: string; value: string }[] }>) {
     return (
         <Card className="stat-card" role="region" aria-label={title}>
             <h2>{title}</h2>

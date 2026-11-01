@@ -3,7 +3,7 @@ import { Card } from '../components/Card';
 import { useT } from '../i18n/useT';
 import { navigate } from '../app/router';
 
-export function SessionUnavailable({ expired }: { expired: boolean }) {
+export function SessionUnavailable({ expired }: Readonly<{ expired: boolean }>) {
     const t = useT();
     return (
         <section className="home-screen">

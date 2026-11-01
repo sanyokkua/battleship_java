@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.*;
 import java.time.Duration;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import ua.kostenko.battleship.application.registry.GameSlot;
 import ua.kostenko.battleship.application.result.ApplicationFailure;
 import ua.kostenko.battleship.domain.command.GameCommand;
 import ua.kostenko.battleship.domain.model.Coordinate;
@@ -25,7 +26,8 @@ class CommandIdempotencyTest {
         var placed = f.send(game, Seat.HOST, firstId, place(0, 0));
         assertThat(placed.snapshot().version()).isEqualTo(2);
         assertThat(placed.deliveries()).containsOnlyKeys(Seat.HOST);
-        assertThatThrownBy(() -> placed.deliveries().clear()).isInstanceOf(UnsupportedOperationException.class);
+        var deliveries = placed.deliveries();
+        assertThatThrownBy(deliveries::clear).isInstanceOf(UnsupportedOperationException.class);
         f.time.advance(Duration.ofSeconds(1));
         var immediate = f.send(game, Seat.HOST, firstId, place(2, 0));
         assertThat(immediate.snapshot().version()).isEqualTo(2);
@@ -50,7 +52,7 @@ class CommandIdempotencyTest {
 
         var refusedId = f.id();
         long before = f.state(game).version();
-        var deadline = f.games.withSlot(game.id(), slot -> slot.idleDeadline());
+        var deadline = f.games.withSlot(game.id(), GameSlot::idleDeadline);
         assertThatThrownBy(() -> f.send(game, Seat.HOST, refusedId, new GameCommand.Ready()))
                 .isInstanceOfSatisfying(ApplicationFailure.class, failure -> {
                     assertThat(failure.code()).isEqualTo("action-not-allowed");
@@ -58,7 +60,7 @@ class CommandIdempotencyTest {
                     assertThat(failure.rule()).isNull();
                 });
         assertThat(f.state(game).version()).isEqualTo(before);
-        java.time.Instant afterRefusal = f.games.withSlot(game.id(), slot -> slot.idleDeadline());
+        java.time.Instant afterRefusal = f.games.withSlot(game.id(), GameSlot::idleDeadline);
         assertThat(afterRefusal).isEqualTo(deadline);
         for (int i = 1; i < CommandTestFixture.ANCHORS.length; i++) {
             int[] anchor = CommandTestFixture.ANCHORS[i];
@@ -82,7 +84,7 @@ class CommandIdempotencyTest {
         var f = new CommandTestFixture();
         var game = f.newGame();
         var before = f.state(game);
-        var deadline = f.games.withSlot(game.id(), slot -> slot.idleDeadline());
+        var deadline = f.games.withSlot(game.id(), GameSlot::idleDeadline);
         var refusedId = f.id();
         assertThatThrownBy(() -> f.send(
                         game,
@@ -96,7 +98,7 @@ class CommandIdempotencyTest {
                 });
         assertThat(f.state(game)).isSameAs(before);
         assertThat(f.state(game).version()).isEqualTo(before.version());
-        java.time.Instant after = f.games.withSlot(game.id(), slot -> slot.idleDeadline());
+        java.time.Instant after = f.games.withSlot(game.id(), GameSlot::idleDeadline);
         assertThat(after).isEqualTo(deadline);
         Set<java.util.UUID> accepted = f.games.withSlot(game.id(), slot -> Set.copyOf(slot.acceptedCommandIds()));
         assertThat(accepted).doesNotContain(refusedId);
@@ -186,7 +188,7 @@ class CommandIdempotencyTest {
         var accepted = f.id();
         f.send(game, Seat.HOST, accepted, place(0, 0));
         long version = f.state(game).version();
-        f.time.set(f.games.withSlot(game.id(), slot -> slot.idleDeadline()));
+        f.time.set(f.games.withSlot(game.id(), GameSlot::idleDeadline));
         assertThatThrownBy(() -> f.send(game, Seat.HOST, accepted, place(0, 0)))
                 .isInstanceOfSatisfying(ApplicationFailure.class, failure -> assertThat(failure.code())
                         .isEqualTo("game-expired"));

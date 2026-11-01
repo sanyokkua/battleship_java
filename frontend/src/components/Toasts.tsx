@@ -9,7 +9,7 @@ export interface ToastMessage {
     message: string;
 }
 
-export function Toasts({ toast, onDismiss }: { toast: ToastMessage | undefined; onDismiss: () => void }) {
+export function Toasts({ toast, onDismiss }: Readonly<{ toast: ToastMessage | undefined; onDismiss: () => void }>) {
     const t = useT();
     useEffect(() => {
         if (!toast) return;

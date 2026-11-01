@@ -5,8 +5,8 @@ export function ConnectionStatus({
     connection,
     replaced = false,
 }: {
-    connection: 'connected' | 'reconnecting' | 'offline';
-    replaced?: boolean;
+    readonly connection: 'connected' | 'reconnecting' | 'offline';
+    readonly replaced?: boolean;
 }) {
     const t = useT();
     if (replaced)
@@ -16,15 +16,8 @@ export function ConnectionStatus({
             </Pill>
         );
     const tone = connection === 'connected' ? 'good' : 'warning';
-    return (
-        <Pill tone={tone}>
-            {t(
-                connection === 'connected'
-                    ? 'connection.connected'
-                    : connection === 'offline'
-                      ? 'connection.offlineShort'
-                      : 'connection.reconnectingShort',
-            )}
-        </Pill>
-    );
+    let messageKey = 'connection.reconnectingShort';
+    if (connection === 'connected') messageKey = 'connection.connected';
+    else if (connection === 'offline') messageKey = 'connection.offlineShort';
+    return <Pill tone={tone}>{t(messageKey)}</Pill>;
 }

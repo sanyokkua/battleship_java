@@ -9,7 +9,7 @@ interface Props {
     dismissible?: boolean;
 }
 
-export function Dialog({ open, titleId, onClose, children, dismissible = true }: Props) {
+export function Dialog({ open, titleId, onClose, children, dismissible = true }: Readonly<Props>) {
     const ref = useRef<HTMLDialogElement>(null);
     const opener = useRef<HTMLElement | null>(null);
     useEffect(() => {

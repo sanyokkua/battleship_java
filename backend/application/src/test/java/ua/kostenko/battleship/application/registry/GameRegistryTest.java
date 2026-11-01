@@ -196,7 +196,8 @@ class GameRegistryTest {
     void registrationAttachesGameBeforeAnotherSessionCanEvictIt() {
         SessionRegistry sessions = new SessionRegistry(1);
         sessions.registerForGame("host-secret", "game-one", NOW);
-        assertThatThrownBy(() -> sessions.register("invented-secret", NOW.plusSeconds(1)))
+        Instant registrationTime = NOW.plusSeconds(1);
+        assertThatThrownBy(() -> sessions.register("invented-secret", registrationTime))
                 .isInstanceOf(CapacityExceededException.class);
         assertThat(sessions.find("host-secret")).get().satisfies(session -> assertThat(session.liveGames())
                 .containsExactly("game-one"));
@@ -238,7 +239,8 @@ class GameRegistryTest {
     void callersCannotMutateSessionOwnershipOutsideRegistryLock() {
         SessionRegistry sessions = new SessionRegistry(1);
         SessionRecord session = sessions.registerForGame("host-secret", "game-one", NOW);
-        assertThatThrownBy(() -> session.liveGames().clear()).isInstanceOf(UnsupportedOperationException.class);
+        var liveGames = session.liveGames();
+        assertThatThrownBy(liveGames::clear).isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test

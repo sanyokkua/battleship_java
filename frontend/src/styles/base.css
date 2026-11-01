@@ -122,6 +122,9 @@ a {
     gap: var(--space-3);
 }
 .game-card {
+    display: grid;
+    gap: var(--space-3);
+    width: min(40rem, 100%);
     padding: var(--space-4);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
@@ -131,11 +134,6 @@ a {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
-}
-.game-card {
-    display: grid;
-    gap: var(--space-3);
-    width: min(40rem, 100%);
 }
 .game-card input,
 #captain-name {

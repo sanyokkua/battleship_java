@@ -10,7 +10,7 @@ import { navigate } from '../app/router';
 import { readCurrentGame } from '../session/currentGame';
 import { RulesDialog } from './RulesDialog';
 
-export function CreateGame({ offline = false }: { offline?: boolean }) {
+export function CreateGame({ offline = false }: Readonly<{ offline?: boolean }>) {
     const t = useT();
     const [rulesets, setRulesets] = useState<Ruleset[]>([]);
     const [selected, setSelected] = useState('');

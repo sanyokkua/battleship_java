@@ -5,7 +5,7 @@ import { useT } from '../i18n/useT';
 import { navigate } from '../app/router';
 import { readCurrentGame } from '../session/currentGame';
 
-export function Home({ onRules }: { onRules: () => void }) {
+export function Home({ onRules }: Readonly<{ onRules: () => void }>) {
     const t = useT();
     const [rememberedGame] = useState(readCurrentGame);
     return (

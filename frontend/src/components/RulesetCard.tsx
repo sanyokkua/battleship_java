@@ -8,11 +8,11 @@ export function RulesetCard({
     ruleset,
     selected,
     onSelect,
-}: {
+}: Readonly<{
     ruleset: Ruleset;
     selected: boolean;
     onSelect: () => void;
-}) {
+}>) {
     const t = useT();
     const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
         if (event.key === 'Enter' || event.key === ' ') {

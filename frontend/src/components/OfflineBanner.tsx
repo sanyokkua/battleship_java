@@ -1,6 +1,6 @@
 import { useT } from '../i18n/useT';
 
-export function OfflineBanner({ online }: { online: boolean }) {
+export function OfflineBanner({ online }: Readonly<{ online: boolean }>) {
     const t = useT();
 
     if (online) return null;

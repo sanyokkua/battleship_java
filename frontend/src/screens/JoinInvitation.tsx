@@ -3,13 +3,12 @@ import { navigate } from '../app/router';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { GatewayError, joinGame } from '../gateway/gameGateway';
-import { TransportFailure } from '../gateway/decode';
 import { useT } from '../i18n/useT';
 import { readCurrentGame, rememberCurrentGame } from '../session/currentGame';
 import { clearInvitationSecret, readInvitationSecret } from '../session/inviteSecret';
 import { SessionUnavailable } from './SessionUnavailable';
 
-export function JoinInvitation({ gameId, offline = false }: { gameId: string; offline?: boolean }) {
+export function JoinInvitation({ gameId, offline = false }: { readonly gameId: string; readonly offline?: boolean }) {
     const t = useT();
     const [secret, setSecret] = useState(readInvitationSecret);
     const [name, setName] = useState('');
@@ -37,8 +36,6 @@ export function JoinInvitation({ gameId, offline = false }: { gameId: string; of
                     setError(cause.problem.messageKey);
                     if (cause.problem.retryAfterSeconds) setRetryAfterSeconds(cause.problem.retryAfterSeconds);
                 }
-            } else if (cause instanceof TransportFailure || cause instanceof TypeError) {
-                setError('problem.invitationUnavailable');
             } else {
                 setError('problem.invitationUnavailable');
             }

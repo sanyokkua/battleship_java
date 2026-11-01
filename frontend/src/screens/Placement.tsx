@@ -22,12 +22,12 @@ export function Placement({
     leaveSlotRef,
     ruleset,
     streamReplaced,
-}: {
+}: Readonly<{
     gameId: GameId;
     leaveSlotRef: Ref<HTMLDivElement>;
     ruleset: Ruleset;
     streamReplaced: boolean;
-}) {
+}>) {
     const t = useT();
     const state = useGame(gameId);
     const snapshot = state.snapshot;
@@ -65,6 +65,9 @@ export function Placement({
         },
     });
     if (!snapshot) return null;
+    let readinessMessage = 'placement.incomplete';
+    if (snapshot.you.ready) readinessMessage = 'placement.waiting';
+    else if (allowed.includes('READY')) readinessMessage = 'placement.fleetComplete';
     const activate = (anchor: Coordinate) => {
         const placedShip = snapshot.yourBoard.ships.find((ship) =>
             ship.cells.some((cell) => cell.rowIndex === anchor.rowIndex && cell.columnIndex === anchor.columnIndex),
@@ -135,15 +138,7 @@ export function Placement({
                 <div className="placement-status">
                     <p>{t(ruleset.shipsMayTouch ? 'placement.touchAllowed' : 'placement.noTouch')}</p>
                     {error && <p role="alert">{t(error)}</p>}
-                    <p role="status">
-                        {t(
-                            snapshot.you.ready
-                                ? 'placement.waiting'
-                                : allowed.includes('READY')
-                                  ? 'placement.fleetComplete'
-                                  : 'placement.incomplete',
-                        )}
-                    </p>
+                    <p role="status">{t(readinessMessage)}</p>
                     <div className="placement-actions">
                         {allowed.includes('PLACE_FLEET_RANDOMLY') && (
                             <Button

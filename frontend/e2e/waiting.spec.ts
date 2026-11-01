@@ -120,7 +120,7 @@ test('a host shares, replaces, and watches an invitation live', async ({ page, b
     await page.getByRole('button', { name: 'Replace link' }).click();
     const replaceResponse = await replaceResponsePromise;
     const updated = (await replaceResponse.json()) as Snapshot;
-    expect(updated.invitationUrl === originalInvitation).toBe(false);
+    expect(updated.invitationUrl).not.toBe(originalInvitation);
     await page.getByRole('button', { name: 'Copy link' }).click();
     await expect
         .poll(() =>

@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import org.junit.jupiter.api.Test;
 import ua.kostenko.battleship.application.port.TimeSource;
+import ua.kostenko.battleship.application.registry.GameSlot;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
 import ua.kostenko.battleship.application.result.ApplicationFailure;
 import ua.kostenko.battleship.domain.model.Phase;
@@ -96,12 +97,12 @@ class JoinOrderingTest {
         fixture.sessions.register("guest", CreateGameUseCaseTest.NOW);
         var created = fixture.create.execute(CreateGameUseCaseTest.RULESET, "Host", "host");
         fixture.join.execute(created.snapshot().gameId(), CreateGameUseCaseTest.INVITATION, "Guest", "guest");
-        var before = fixture.games.withSlot(created.snapshot().gameId(), slot -> slot.state());
+        var before = fixture.games.withSlot(created.snapshot().gameId(), GameSlot::state);
         var rejoined = fixture.join.execute(created.snapshot().gameId(), "B".repeat(43), "Ignored", "guest");
         assertThat(rejoined.snapshot().version()).isEqualTo(1);
         assertThat(rejoined.snapshot().you().displayName()).isEqualTo("Guest");
         ua.kostenko.battleship.domain.model.GameState after =
-                fixture.games.withSlot(created.snapshot().gameId(), slot -> slot.state());
+                fixture.games.withSlot(created.snapshot().gameId(), GameSlot::state);
         assertThat(after).isSameAs(before);
     }
 
@@ -274,7 +275,7 @@ class JoinOrderingTest {
                 fixture.games.withSlot(id, slot -> slot.state().guest());
         assertThat(guest).isNull();
         assertThat(fixture.sessions.find("session-2")).isEmpty();
-        String unusedSecret = fixture.games.withSlot(id, slot -> slot.unusedInvitationSecret());
+        String unusedSecret = fixture.games.withSlot(id, GameSlot::unusedInvitationSecret);
         assertThat(unusedSecret).isNull();
     }
 

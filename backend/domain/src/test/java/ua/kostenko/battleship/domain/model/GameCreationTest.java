@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
+import ua.kostenko.battleship.domain.rules.FleetEntry;
 import ua.kostenko.battleship.domain.rules.Ruleset;
 import ua.kostenko.battleship.domain.rules.Rulesets;
 
@@ -60,7 +61,7 @@ class GameCreationTest {
             List<Ship> hostFleet = state.host().board().fleet();
             List<Ship> guestFleet = state.guest().board().fleet();
             int expectedSize =
-                    ruleset.fleet().stream().mapToInt(entry -> entry.count()).sum();
+                    ruleset.fleet().stream().mapToInt(FleetEntry::count).sum();
 
             assertThat(hostFleet).hasSize(expectedSize);
             assertThat(guestFleet).hasSize(expectedSize);
@@ -92,8 +93,9 @@ class GameCreationTest {
         assertThat(vertical.cells()).containsExactly(new Coordinate(2, 4), new Coordinate(3, 4), new Coordinate(4, 4));
         assertThat(unplaced.cells()).isEmpty();
         assertThat(unplaced.status()).isEqualTo(Ship.ShipStatus.INTACT);
-        assertThatThrownBy(() -> horizontal.cells().add(new Coordinate(3, 4)))
-                .isInstanceOf(UnsupportedOperationException.class);
+        var horizontalCells = horizontal.cells();
+        var extraCell = new Coordinate(3, 4);
+        assertThatThrownBy(() -> horizontalCells.add(extraCell)).isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
@@ -149,25 +151,34 @@ class GameCreationTest {
         assertThat(player.shotsFired()).isEmpty();
         assertThat(ship.hits()).isEmpty();
         assertThat(timeline.turnDurationsMs().get(Seat.HOST)).containsExactly(12L);
-        assertThatThrownBy(() -> board.fleet().add(ship)).isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> board.incomingShots().add(new Coordinate(1, 1)))
+        var immutableFleet = board.fleet();
+        var immutableIncoming = board.incomingShots();
+        var immutableWater = board.revealedWater();
+        var immutableShots = player.shotsFired();
+        var immutableHits = ship.hits();
+        var readyTimes = timeline.readyAt();
+        var decisionStarts = timeline.shotDecisionStartedAt();
+        var turnDurations = timeline.turnDurationsMs();
+        var hostTurnDurations = turnDurations.get(Seat.HOST);
+        var decisionDurations = timeline.shotDecisionDurationsMs();
+        var sampleCoordinate = new Coordinate(1, 1);
+        var sampleShot = new Shot(Seat.HOST, new Coordinate(0, 0), ShotResult.MISS, null);
+        var sampleDuration = List.of(1L);
+        assertThatThrownBy(() -> immutableFleet.add(ship)).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> immutableIncoming.add(sampleCoordinate))
                 .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> board.revealedWater().add(new Coordinate(1, 1)))
+        assertThatThrownBy(() -> immutableWater.add(sampleCoordinate))
                 .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(
-                        () -> player.shotsFired().add(new Shot(Seat.HOST, new Coordinate(0, 0), ShotResult.MISS, null)))
+        assertThatThrownBy(() -> immutableShots.add(sampleShot)).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> immutableHits.add(sampleCoordinate)).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> readyTimes.put(Seat.HOST, Instant.EPOCH))
                 .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> ship.hits().add(new Coordinate(1, 1)))
+        assertThatThrownBy(() -> decisionStarts.put(Seat.HOST, Instant.EPOCH))
                 .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> timeline.readyAt().put(Seat.HOST, Instant.EPOCH))
+        assertThatThrownBy(() -> turnDurations.put(Seat.GUEST, sampleDuration))
                 .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> timeline.shotDecisionStartedAt().put(Seat.HOST, Instant.EPOCH))
-                .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> timeline.turnDurationsMs().put(Seat.GUEST, List.of(1L)))
-                .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> timeline.turnDurationsMs().get(Seat.HOST).add(2L))
-                .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> timeline.shotDecisionDurationsMs().put(Seat.HOST, List.of(1L)))
+        assertThatThrownBy(() -> hostTurnDurations.add(2L)).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> decisionDurations.put(Seat.HOST, sampleDuration))
                 .isInstanceOf(UnsupportedOperationException.class);
         assertThat(state.host().board().fleet()).isEmpty();
     }

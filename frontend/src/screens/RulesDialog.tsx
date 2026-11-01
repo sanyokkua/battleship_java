@@ -5,7 +5,7 @@ import { RulesetFacts } from '../components/RulesetFacts';
 import { listRulesets, type Ruleset } from '../gateway/gameGateway';
 import { useT } from '../i18n/useT';
 
-export function RulesDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function RulesDialog({ open, onClose }: Readonly<{ open: boolean; onClose: () => void }>) {
     const t = useT();
     const [rulesets, setRulesets] = useState<Ruleset[]>([]);
     useEffect(() => {

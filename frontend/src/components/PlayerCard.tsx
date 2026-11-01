@@ -7,12 +7,12 @@ export function PlayerCard({
     board,
     fleet,
     opponent = false,
-}: {
+}: Readonly<{
     player: components['schemas']['Player'];
     board: components['schemas']['Board'];
     fleet: components['schemas']['Ruleset']['fleet'];
     opponent?: boolean;
-}) {
+}>) {
     const t = useT();
     const totalShips = fleet.reduce((sum, ship) => sum + ship.count, 0);
     const totalCells = fleet.reduce((sum, ship) => sum + ship.length * ship.count, 0);

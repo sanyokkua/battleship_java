@@ -18,6 +18,16 @@ import { LeaveControl } from './LeaveControl';
 import { SettingsDialog } from './SettingsDialog';
 import { useRetryWindow } from '../session/useRetryWindow';
 
+function handleGameReadFailure(store: ReturnType<typeof getGameStore>, error: unknown): number {
+    const status = error instanceof GatewayError ? error.problem.status : 0;
+    if (error instanceof GatewayError && [429, 503].includes(status)) {
+        store.setNotice(error.problem);
+    }
+    const reconnectable = [0, 429, 502, 503].includes(status) && navigator.onLine;
+    store.setConnection(reconnectable ? 'reconnecting' : 'offline');
+    return status;
+}
+
 export function GameRoute({
     gameId,
     onTitle,
@@ -25,14 +35,14 @@ export function GameRoute({
     onSettingsClose,
     installAvailable,
     onInstall,
-}: {
+}: Readonly<{
     gameId: GameId;
     onTitle: (title: string) => void;
     settingsOpen: boolean;
     onSettingsClose: () => void;
     installAvailable: boolean;
     onInstall: () => void;
-}) {
+}>) {
     const t = useT();
     const state = useGame(gameId);
     const retryBlocked = useRetryWindow(state.notice?.retryAtMs);
@@ -43,7 +53,7 @@ export function GameRoute({
     const refreshGeneration = useRef(0);
     const [streamReplaced, setStreamReplaced] = useState(false);
     const [showCreatedToast] = useState(() => {
-        const historyState = window.history.state as { toast?: unknown } | null;
+        const historyState = globalThis.history.state as { toast?: unknown } | null;
         return historyState?.toast === 'game-created';
     });
     const refresh = useCallback(async () => {
@@ -71,23 +81,16 @@ export function GameRoute({
             );
             setFailure(undefined);
         } else {
-            const error: unknown = gameResult.reason as unknown;
-            const status = error instanceof GatewayError ? error.problem.status : 0;
-            if (error instanceof GatewayError && [429, 503].includes(status)) {
-                getGameStore(gameId).setNotice(error.problem);
-            }
-            const reconnectable = [0, 429, 502, 503].includes(status) && navigator.onLine;
-            getGameStore(gameId).setConnection(reconnectable ? 'reconnecting' : 'offline');
-            setFailure(status);
+            setFailure(handleGameReadFailure(store, gameResult.reason as unknown));
         }
         setLoading(false);
     }, [gameId]);
     useEffect(() => {
-        const timer = window.setTimeout(() => {
+        const timer = globalThis.setTimeout(() => {
             void refresh();
         }, 0);
         return () => {
-            window.clearTimeout(timer);
+            globalThis.clearTimeout(timer);
         };
     }, [refresh]);
     useEffect(() => {
@@ -96,17 +99,17 @@ export function GameRoute({
         const offline = () => {
             generationRef.current++;
         };
-        window.addEventListener('online', listener);
-        window.addEventListener('offline', offline);
+        globalThis.addEventListener('online', listener);
+        globalThis.addEventListener('offline', offline);
         return () => {
             generationRef.current++;
-            window.removeEventListener('online', listener);
-            window.removeEventListener('offline', offline);
+            globalThis.removeEventListener('online', listener);
+            globalThis.removeEventListener('offline', offline);
         };
     }, [refresh]);
     useEffect(() => {
         if (showCreatedToast) {
-            window.history.replaceState(null, '', window.location.href);
+            globalThis.history.replaceState(null, '', globalThis.location.href);
         }
     }, [showCreatedToast]);
     useEffect(() => {
@@ -122,9 +125,9 @@ export function GameRoute({
     }, [gameId, state.meta]);
     useEffect(() => {
         const listener = () => void refresh();
-        window.addEventListener('game-refresh', listener);
+        globalThis.addEventListener('game-refresh', listener);
         return () => {
-            window.removeEventListener('game-refresh', listener);
+            globalThis.removeEventListener('game-refresh', listener);
         };
     }, [refresh]);
     const send = async (request: components['schemas']['CommandRequest']) => {
@@ -230,16 +233,16 @@ export function GameRoute({
     );
 }
 
-function CommandNotice({ notice }: { notice: NonNullable<GameState['notice']> }) {
+function CommandNotice({ notice }: Readonly<{ notice: NonNullable<GameState['notice']> }>) {
     const t = useT();
     const [now, setNow] = useState(Date.now);
     useEffect(() => {
         if (!notice.retryAtMs) return;
-        const timer = window.setInterval(() => {
+        const timer = globalThis.setInterval(() => {
             setNow(Date.now());
         }, 1000);
         return () => {
-            window.clearInterval(timer);
+            globalThis.clearInterval(timer);
         };
     }, [notice.retryAtMs]);
     const waitSeconds = Math.max(0, Math.ceil(((notice.retryAtMs ?? 0) - now) / 1000));

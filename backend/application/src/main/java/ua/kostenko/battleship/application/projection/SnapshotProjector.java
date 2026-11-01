@@ -9,6 +9,7 @@ import ua.kostenko.battleship.application.projection.BoardView.ShipView;
 import ua.kostenko.battleship.application.projection.SnapshotView.Side;
 import ua.kostenko.battleship.domain.model.*;
 import ua.kostenko.battleship.domain.rules.AllowedActions;
+import ua.kostenko.battleship.domain.rules.FleetEntry;
 import ua.kostenko.battleship.domain.rules.GameRules;
 import ua.kostenko.battleship.domain.rules.Ruleset;
 import ua.kostenko.battleship.domain.rules.Rulesets;
@@ -69,7 +70,7 @@ public class SnapshotProjector {
 
     private static PlayerView player(PlayerState player, boolean connected, Ruleset ruleset, Phase phase) {
         int remaining = phase == Phase.WAITING
-                ? ruleset.fleet().stream().mapToInt(entry -> entry.count()).sum()
+                ? ruleset.fleet().stream().mapToInt(FleetEntry::count).sum()
                 : (int) player.board().fleet().stream()
                         .filter(ship -> ship.status() != Ship.ShipStatus.SUNK)
                         .count();

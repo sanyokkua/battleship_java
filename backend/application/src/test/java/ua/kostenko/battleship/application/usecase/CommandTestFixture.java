@@ -7,6 +7,7 @@ import ua.kostenko.battleship.application.MutableTimeSource;
 import ua.kostenko.battleship.application.port.SecretGenerator;
 import ua.kostenko.battleship.application.projection.SnapshotProjector;
 import ua.kostenko.battleship.application.registry.GameRegistry;
+import ua.kostenko.battleship.application.registry.GameSlot;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
 import ua.kostenko.battleship.application.result.ApplicationFailure;
 import ua.kostenko.battleship.domain.SeededRandomSource;
@@ -143,7 +144,7 @@ final class CommandTestFixture {
     }
 
     GameState state(Game game) {
-        return games.withSlot(game.id(), slot -> slot.state());
+        return games.withSlot(game.id(), GameSlot::state);
     }
 
     void placeFleet(Game game, Seat seat) {
@@ -177,7 +178,7 @@ final class CommandTestFixture {
     }
 
     Instant idleDeadline(String gameId) {
-        return games.withSlot(gameId, slot -> slot.idleDeadline());
+        return games.withSlot(gameId, GameSlot::idleDeadline);
     }
 
     record Game(String id, String host, String guest) {}

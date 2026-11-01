@@ -9,7 +9,7 @@ interface Props {
     onRules: () => void;
 }
 
-export function Shell({ children, title, refresh, onSettings, onRules }: Props) {
+export function Shell({ children, title, refresh, onSettings, onRules }: Readonly<Props>) {
     return (
         <div className="app-frame">
             <Header

@@ -150,7 +150,7 @@ class MetaAndRulesetsIT {
 
         assertThat(reply.status()).isEqualTo(200);
         assertThat(reply.header("Content-Type")).startsWith("application/json");
-        assertThat(reply.json().toString()).isEqualTo("{\"live\":true,\"ready\":true}");
+        assertThat(reply.json()).hasToString("{\"live\":true,\"ready\":true}");
     }
 
     @ParameterizedTest
@@ -182,7 +182,7 @@ class MetaAndRulesetsIT {
 
             assertThat(reply.status()).isEqualTo(503);
             assertThat(reply.header("Content-Type")).startsWith("application/json");
-            assertThat(reply.json().toString()).isEqualTo("{\"live\":true,\"ready\":false,\"reason\":\"DRAINING\"}");
+            assertThat(reply.json()).hasToString("{\"live\":true,\"ready\":false,\"reason\":\"DRAINING\"}");
         } finally {
             AvailabilityChangeEvent.publish(context, ReadinessState.ACCEPTING_TRAFFIC);
         }

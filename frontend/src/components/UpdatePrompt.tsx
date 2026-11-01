@@ -3,7 +3,7 @@ import { Button } from './Button';
 import { useT } from '../i18n/useT';
 import type { PwaGateway } from '../pwa/pwaGateway';
 
-export function UpdatePrompt({ gateway }: { gateway: PwaGateway }) {
+export function UpdatePrompt({ gateway }: Readonly<{ gateway: PwaGateway }>) {
     const [available, setAvailable] = useState(false);
     const t = useT();
 

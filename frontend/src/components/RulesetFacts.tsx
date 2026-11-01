@@ -3,7 +3,7 @@ import type { Ruleset } from '../gateway/gameGateway';
 import { useT } from '../i18n/useT';
 import './RulesetFacts.css';
 
-export function RulesetFacts({ ruleset }: { ruleset: Ruleset }) {
+export function RulesetFacts({ ruleset }: Readonly<{ ruleset: Ruleset }>) {
     const t = useT();
     const fleetText = ruleset.fleet.map((entry) => {
         const ship = entry.shipTypeId.startsWith('ship-')

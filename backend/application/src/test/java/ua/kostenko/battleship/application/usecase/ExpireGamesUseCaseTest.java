@@ -68,7 +68,8 @@ class ExpireGamesUseCaseTest {
                 },
                 RETENTION);
         List<String> expired = new ArrayList<>();
-        assertThatThrownBy(() -> failing.sweep(f.time.now(), expired::add)).isInstanceOf(IllegalStateException.class);
+        Instant sweepTime = f.time.now();
+        assertThatThrownBy(() -> failing.sweep(sweepTime, expired::add)).isInstanceOf(IllegalStateException.class);
         assertThat(expired).containsExactlyInAnyOrder(first.id(), second.id());
         assertThat(f.games.gameIds()).isEmpty();
     }

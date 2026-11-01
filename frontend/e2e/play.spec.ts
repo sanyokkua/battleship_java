@@ -272,7 +272,7 @@ test('a lost answer stays checking after SSE and Retry resends the same action o
         expect(requests).toHaveLength(2);
         expect(requests[1]).toEqual(requests[0]);
         const snapshot = await readGame(shooter, gameId);
-        expect(snapshot.opponentBoard.grid.flat().filter((state) => state === 'HIT' || state === 'MISS').length).toBe(
+        expect(snapshot.opponentBoard.grid.flat().filter((state) => state === 'HIT' || state === 'MISS')).toHaveLength(
             1,
         );
         expect(snapshot.opponentBoard.grid[0]?.[0]).toBe('HIT');

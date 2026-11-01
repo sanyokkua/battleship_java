@@ -19,7 +19,7 @@ export function ShipActionDialog({
     onPickAnchor,
     onCommand,
     onOrientationChange,
-}: {
+}: Readonly<{
     open: boolean;
     anchor: Coordinate;
     ships: Ship[];
@@ -30,7 +30,7 @@ export function ShipActionDialog({
     onPickAnchor: (ship: Ship) => void;
     onCommand: (command: Command) => void;
     onOrientationChange?: (orientation: components['schemas']['Orientation']) => void;
-}) {
+}>) {
     const t = useT();
     const [shipId, setShipId] = useState(selectedShip?.shipId ?? ships.find((ship) => ship.cells.length === 0)?.shipId);
     const [orientation, setOrientation] = useState<components['schemas']['Orientation']>(

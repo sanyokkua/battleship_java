@@ -9,7 +9,7 @@ interface Props {
     onRules: () => void;
 }
 
-export function Header({ title, refresh, onSettings, onRules }: Props) {
+export function Header({ title, refresh, onSettings, onRules }: Readonly<Props>) {
     const t = useT();
     return (
         <header className="app-bar">
