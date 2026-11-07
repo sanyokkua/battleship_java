@@ -1,0 +1,28 @@
+{
+    "compilerOptions": {
+        "composite": true,
+        "skipLibCheck": true,
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "allowSyntheticDefaultImports": true,
+        "strict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noUncheckedIndexedAccess": true,
+        "exactOptionalPropertyTypes": true,
+        "noImplicitOverride": true,
+        "noFallthroughCasesInSwitch": true,
+        "noEmit": true,
+        "types": ["node"]
+    },
+    "include": [
+        "vite.config.ts",
+        "vitest.config.ts",
+        "playwright.config.ts",
+        "e2e/**/*.ts",
+        "src/contract/generated/api.ts",
+        "src/i18n/en.ts",
+        "src/i18n/uk.ts",
+        "src/i18n/translate.ts"
+    ]
+}

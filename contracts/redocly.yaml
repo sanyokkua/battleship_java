@@ -1,0 +1,23 @@
+extends:
+  - recommended
+
+rules:
+  no-unresolved-refs: error
+  # Off: StreamClosed is the JSON inside the SSE `closed` event, and OpenAPI 3.1 cannot reference a
+  # schema from a text/event-stream body, so it would be reported as unused.
+  no-unused-components: off
+  no-ambiguous-paths: error
+  no-identical-paths: error
+  operation-description: error
+  operation-operationId: error
+  operation-2xx-response: error
+  # Public reads (meta, rulesets, health) have no meaningful 4xx; do not force fake ones.
+  operation-4xx-response: off
+  security-defined: error
+  # Every embedded example must match its schema; this is the contract's proof.
+  no-invalid-media-type-examples:
+    severity: error
+    allowAdditionalProperties: false
+  no-invalid-schema-examples: error
+
+telemetry: off

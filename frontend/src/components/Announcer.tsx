@@ -1,0 +1,27 @@
+import type { components } from '../contract/generated/api';
+import { cellKeys } from './cellKeys';
+import { useT } from '../i18n/useT';
+import { columnLabel } from './Board';
+
+export function Announcer({ shot }: { readonly shot: components['schemas']['Shot'] | undefined }) {
+    const t = useT();
+    // React leaves the live-region text untouched when later snapshots repeat this shot.
+    let message = '';
+    if (shot) {
+        const actor = t(shot.by === 'YOU' ? 'play.youFired' : 'play.opponentFired');
+        const coordinate = `${columnLabel(shot.target.columnIndex)}${String(shot.target.rowIndex + 1)}`;
+        const result = t(cellKeys[shot.result]);
+        message = `${actor} ${coordinate}: ${result}.`;
+    }
+    return (
+        <p
+            role="status"
+            className="shot-announcement"
+            aria-live="polite"
+            aria-atomic="true"
+            aria-label={t('play.announcement')}
+        >
+            {message}
+        </p>
+    );
+}

@@ -1,0 +1,31 @@
+import { Button } from '../components/Button';
+import { useT } from '../i18n/useT';
+import { navigate } from '../app/router';
+import './StatusScreen.css';
+
+export function SessionUnavailable({ expired }: Readonly<{ expired: boolean }>) {
+    const t = useT();
+    return (
+        <section className="home-screen">
+            <div className="status-screen-content">
+                <span className="status-badge">{t('session.unavailable')}</span>
+                <h1>{expired ? t('session.expired') : t('session.ended')}</h1>
+                <Button
+                    variant="primary"
+                    onClick={() => {
+                        navigate('/create');
+                    }}
+                >
+                    {t('session.createNew')}
+                </Button>
+                <Button
+                    onClick={() => {
+                        navigate('/');
+                    }}
+                >
+                    {t('app.returnHome')}
+                </Button>
+            </div>
+        </section>
+    );
+}

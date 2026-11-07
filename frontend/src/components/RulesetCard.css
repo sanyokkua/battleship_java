@@ -1,0 +1,32 @@
+.ruleset-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: var(--space-3);
+}
+.ruleset-card {
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    cursor: pointer;
+}
+.ruleset-card.selected {
+    border-color: var(--accent);
+    box-shadow: var(--focus-ring);
+}
+.ruleset-card h2 {
+    margin: 0;
+    font-size: 1rem;
+}
+.ruleset-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.55rem;
+}
+.ruleset-badges span {
+    border: 1px solid var(--border-strong);
+    border-radius: 0.4rem;
+    padding: 0.15rem 0.4rem;
+    font-size: 0.8rem;
+}

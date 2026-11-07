@@ -1,95 +1,146 @@
-# battleship_java — how to work here
+# Battleship Rewrite — how to work here
 
 ## Where this stands
 
-This is an educational two-player Battleship web service: a Spring Boot REST/MVC backend and a React/Vite frontend bundled into one runnable JAR.
+This repository is a greenfield Battleship rewrite. Build from the OpenSpec specifications, not from the
+implementation that currently lives on `master`. Branch `rewrite_prod_ready` is the main development branch.
 
-**Stack.** Java 25, Spring Boot 4.1.0, Maven, React 19, TypeScript, Vite, Vitest, Playwright.
+**Stack.** Modules (contracts, backend, frontend), technologies and boundaries are in `openspec/config.yaml` and
+`openspec/specs/`. Runtimes are pinned by major only (Java 25, Node 24, newest patch); npm and Maven dependencies stay exact.
 
-**State.** The application is running and feature work is active. Use the current branch, source, tests, and generated artifacts as the live state; do not infer completion from older documentation.
+**The spec is the authority.** `openspec/specs/` describes current behavior; `openspec/config.yaml` holds project
+context and rules; `openspec/changes/` holds work in progress and `openspec/changes/archive/` the history (including the
+three original features: API contract, backend, frontend). If the spec is silent on a behavior that matters, stop and
+ask with a recommended default.
 
-**Authority.** Runtime behavior is defined by source, configuration, and tests. Human-facing architecture and API context are in `README.md`, `docs/index.md`, and `docs/architecture.md`. New behavior needs a written spec in `specs/<###-feature>/spec.md`.
+## Workflow (OpenSpec)
 
-## The loop
+New work starts as an OpenSpec change. Use the generated commands (Claude Code `/opsx:*`, Codex `$openspec-*`):
 
-Six phases. No feature code before PLAN is complete.
+`explore -> propose -> (update) -> apply -> verify -> sync/archive`
 
-| Phase | Exit condition | Command or artifact |
-|---|---|---|
-| ORIENT | Current state and unit of work are named | Read this file, `README.md`, relevant docs/source, and `git status --short --branch` |
-| SPEC | Acceptance criteria and edge cases are written | `specs/<###-feature>/spec.md` |
-| PLAN | Ordered tasks exist; one task = one branch = one commit | `specs/<###-feature>/plan.md` and `tasks.md` |
-| BUILD | Each task is implemented and individually checked | Work on the task branch |
-| VERIFY | The gate is green and behavior matches the spec | `scripts/verify.sh` |
-| CLOSE | Evidence is recorded, docs are current, and the next unit is named | Update the feature artifacts and relevant docs; leave final merge to the user |
+- `/opsx:explore` think and investigate; `/opsx:propose` create proposal, specs, design and tasks in one step.
+- `/opsx:update` revise a change's artifacts and keep them coherent; never edits code.
+- `/opsx:apply` implement tasks; `/opsx:sync` merge delta specs into `openspec/specs/`; `/opsx:archive` finish.
+- `openspec validate --all --strict` must pass before a change is applied or archived.
+- Generated skills and commands (`.claude/commands/opsx`, `.claude/skills/openspec-*`, `.agents/skills/openspec-*`) are
+  tool output: refresh with `OPENSPEC_TELEMETRY=0 openspec update`, never hand-edit.
+- Artifact rules (provenance tags, assurance level, task forecast and the 20-task limit, one task / one deliverable /
+  one finite proof, mutation-fails-the-gate evidence) live in `openspec/config.yaml` and apply automatically.
 
-Advance through phases without asking. Stop only for an ambiguous spec, the same gate failure twice, an irreversible/out-of-repo action, a costly architectural decision, or information contradicting the approved spec.
+Advance without asking when the next step is clear from the approved artifacts. Stop only for an ambiguous or silent
+spec, a repeated verification failure with the same cause, a costly architecture decision, or an irreversible action
+outside normal repo edits. Scope only grows by the owner's decision: agent-proposed requirements are listed with their
+cost and default to deferred.
 
 ## Definition of Done
 
-**Gate:** `scripts/verify.sh`. It runs Maven verification, the pinned frontend runtime, frontend tests/lint, mock-browser E2E, and live packaged-JAR E2E. Its normal duration is about 70 seconds here; a hang is a failure.
+**Gate.** `./scripts/local-build.sh` is the single repository-wide product gate (`--docker` runs it inside Docker). Run
+it before declaring a change complete. It checks runtimes and exact installs, the contract, backend, frontend, and
+browser journeys against the packaged backend; any failed or timed-out stage fails the run.
 
-A unit is done only when the gate is green and the implementation matches the spec.
+**Backend gate.** `cd backend && ./mvnw -q verify && ./mvnw spotless:check`. Contract gate: see below. For substantial
+implementation, refactoring, or a requested quality audit, also run the local SonarQube scans in
+`docs/local-operation.md`; review findings in context, report scan or server failures, and never suppress findings to
+improve metrics. They do not replace the product gate.
 
-- Capture the baseline before work; distinguish existing findings from new ones.
-- `mvn verify` may regenerate tracked `docs/openapi.json`; inspect and record that diff when the API changes.
-- Report evidence: acceptance criterion → proving test, gate result, generated-artifact changes, and remaining limitations.
+**Local topology.** UI and API share one origin (no CORS): `vite preview` serves the built UI and proxies `/api`
+(`./scripts/local-deploy.sh`, HTTPS on the LAN because the session cookie is `Secure`). Frontend journeys run against the
+real packaged backend; no recorded game data and no fake engine.
+
+**Scripts.** `scripts/` holds only product scripts: `local-build.sh` (gate), `local-deploy.sh` (run on the LAN),
+and `build-docker-{frontend,backend,render}.sh` (images built in Linux stages from the root `Dockerfile`; no push).
+Commands, ports, images and troubleshooting: `docs/local-operation.md`. The Render image (frontend + backend,
+`linux/amd64`, `--smoke` checks) is an intentional, owner-approved artifact; deploying to Render stays manual
+(`docs/render-deployment.md`). There is no hosting or deployment infrastructure in this repository.
+
+**CI** (`.github/workflows/ci.yml`, `release.yml`; guide `docs/ci.md`) has three paths in two workflows: build-only on branch
+pushes except `master`, the PR gate `./scripts/local-build.sh`, and a stable `vX.Y.Z` tag on `master` that pushes the
+Render image to GHCR and creates a GitHub Release. No new script; SonarQube stays local; only `GITHUB_TOKEN`.
+
+**Generation path.** The backend generates the wire DTOs from `contracts/openapi.yaml` into
+`backend/app/target/generated-sources/openapi` (package `ua.kostenko.battleship.app.web.dto`) during `generate-sources`:
+Jackson 2 models plus only the whitelisted discriminator/date helpers the `Command` oneOf needs, no endpoint classes or
+`ApiClient`; the app's HTTP converter must use the declared Jackson 2 mapper. Generated sources are build output: never
+committed, hand-edited or Spotless-formatted; change the contract and regenerate.
+
+Work is done only when the change's tasks are complete, `./scripts/local-build.sh` has run cleanly, and the delivered
+behavior still matches the governing specs. Do not borrow commands, tests, or success criteria from `master`.
+
+Capture evidence, not just conclusions. Report skipped, timed-out, failed, and environment-blocked checks distinctly;
+none count as a passing gate.
 
 ## Git protocol
 
-```
-master                         protected; do not develop or commit directly
-  └── feature/<slug>           one parent branch per unit of work
-        └── feature/<slug>--<task>  one task branch per plan task
-```
+`master` is historical context for the old application, not the base for new work. At the start of each task inspect
+`git status --short --branch` and the local branches, confirm the intended branch, and reuse an existing task
+branch when appropriate. For multi-commit tasks create `feature/<change>--<task>` from the active integration
+branch and record that parent. Keep unrelated staged or unstaged changes intact.
 
-Use an existing suitable feature branch; do not stack another parent branch. Commit only on task branches, keep one task per commit, and verify before committing. Never merge the parent into `master`; final integration belongs to the user. Never use `--no-verify` or force-push; fix the check instead.
+Commit each completed task with a concise imperative subject; at closeout verify it is committed and squash-merge a
+task branch into its recorded parent. Keep `rewrite_prod_ready` for completed change-level integration. Do not rewrite
+history, force-push, or use destructive cleanup unless asked; merges to the default branch need user approval.
 
 ## Delegation
 
-The main Codex session owns the plan, decisions, conversation, and judgment of completion. Delegate read-only mapping, broad searches, implementation task groups, test writing, or independent conformance review when useful.
-
-Brief each delegated task with its objective, output format, files to inspect, and boundaries. Ask for a condensed summary, not a transcript. Never delegate the decision about the next step or whether the spec is satisfied.
+The main agent is the orchestrator: it keeps task framing, decisions, synthesis and the final judgment on whether the
+work satisfies the approved specs. Substantive inspection, implementation, debugging, research, verification and review
+go to focused sub-agents (brief them with objective, expected output, paths, and what not to touch). If delegation
+tooling is unavailable, say so and continue locally.
 
 ## Non-negotiables
 
-| Rule | Enforced by |
-|---|---|
-| Gate green before claiming done | `scripts/verify.sh`, pre-push hook |
-| Agent entry points and skill mirrors stay synchronized | `scripts/sync-agent-files.py --check`, pre-push |
-| `.agents/skills` is the only real project-skill tree | synchronizer check |
-| API changes regenerate and review `docs/openapi.json` | Maven verify plus closing evidence |
-| No feature code before SPEC and PLAN | — (advisory) |
-| Preserve unrelated worktree changes | — (advisory) |
-| Do not bypass hooks or force-push | — (advisory) |
+- Greenfield: never use the current `master` implementation as the foundation. `openspec/specs/`, `openspec/config.yaml`
+  and the active change are the authority; do not invent module boundaries, technologies, commands or standards they
+  have not established.
+- Update `AGENTS.md`, the OpenSpec specs/config and saved agent memory together when a change establishes or invalidates
+  durable repository-wide knowledge (boundaries, architecture, commands, verification, security, deployment, workflow);
+  correct stale memory rather than leaving it inconsistent.
+
+## Engineering discipline
+
+Build code only when this change has a concrete caller or test for it; do not add functions, DTOs, models, or
+interfaces "for later" (YAGNI). Reuse an existing function, component, or type with the needed or closely similar
+behavior before writing a new one; never duplicate close-by functionality (DRY). Prefer the simplest working design
+(KISS) and single-purpose, substitutable components (SOLID) over speculative structure. Introduce an interface or
+abstract class only once a second concrete implementation is known, not in anticipation of one.
+
+Tests should exercise real collaborators and observable behavior (black-box) rather than mocks, except where a real
+collaborator is external, non-deterministic, or not yet built in this change. Delivered functionality MUST be
+integrated into its consumer and covered by a test in the same change — code with no caller and no test is not done.
+
+## Contract product boundary
+
+`contracts/openapi.yaml` is the only wire authority: one file with operations, schemas and embedded examples (guide
+`contracts/README.md`). The backend is authoritative: every game operation returns the caller-relative `GameSnapshot`
+and the client enables exactly `allowedActions`; placement hints are advisory and the backend validates commands.
+`contracts/` holds no application code, rules, persistence, generated client, CI or deployment. The gate is
+`cd contracts && npm ci && npm run check` (Redocly lint validates every embedded example, plus `openapi-typescript`
+generation into the ignored `.tmp/`); `npm run docs` builds an optional HTML reference. Use the pinned local tools
+through these scripts, never a global CLI or `npx`.
+
+Keep it lean: no oracle files, wording-asserting tests, symbolic fixtures, `x-` extensions that restate behaviour, or a
+second copy of any rule. A contract change is an edit to `openapi.yaml` with a matching embedded example. The contract
+stays v1 and is not frozen: a gap found while implementing MAY be fixed in `openapi.yaml` if every dependent is updated
+in the same change. Build no migration, deprecation or versioning machinery.
 
 ## End every turn with Next step
 
-Every turn that advances work ends with this block:
-
-```markdown
-## Next step
-
-**State:** <where the work actually is, citing evidence>
-**Command:** <exact command> — or "none — decision needed"
-**Prompt:**
-> <complete, copy-pasteable prompt naming the unit, artifacts to read, and the constraint most likely to be violated>
-```
-
-Be honest: written is not verified, and a red or unrun gate is unverified. Give one next step, not a plan.
+Every work turn should end with a compact `Next step` block: the real verification status (checked boxes are not
+proof; evidence is), the exact next command when one exists (or the decision, stated directly), and a self-contained
+prompt for the next session. Short enough to scan, complete enough to survive a fresh session.
 
 ## What will bite you
 
-- **Wrong Node runtime.** The shell may expose Node 26, while Maven installs Node 24.18.0 in `frontend/node`. Running Vitest with the wrong runtime can make `localStorage` undefined and produce a cascade of unrelated-looking failures. The verification gate must prepend `frontend/node` to `PATH`.
-- **Restricted localhost binding.** Playwright may fail before any test with `listen EPERM ... ::1:5173`. Treat that as an environment capability failure and retry with scoped host access; do not call it a product regression.
-- **Generated OpenAPI drift.** Maven's integration-test phase starts the application and regenerates `docs/openapi.json`. A successful build can still leave a meaningful tracked diff.
-- **Live E2E needs the packaged JAR.** The live suite starts `target/battleship-0.0.1-SNAPSHOT.jar` on port 8080 and uses in-memory state; build it before diagnosing browser failures.
-- **Frontend commands are scoped.** Direct npm commands run from `frontend/`; the repository gate uses `npm --prefix frontend ...` after Maven installs dependencies.
+- The old app on `master` is not the rewrite baseline; its commands, tests and architecture assumptions mislead even
+  though they remain in git history.
+- `openspec validate` checks artifact structure, not implementation health; a green validate is not a passing gate.
+- Repository-wide standards are intentionally incomplete: when a rule is not approved, stay consistent with the current
+  slice and record the durable decision once made.
 
 ## Where things live
 
-- Behavior and API context: `README.md`, `docs/index.md`, `docs/architecture.md`, `docs/openapi.json`
-- Spec Kit feature artifacts: `specs/<###-feature>/` (`spec.md`, `plan.md`, `tasks.md`, and optional research/design artifacts)
-- Canonical agent skills: `.agents/skills/`
-- Claude bridge/runtime: `CLAUDE.md`, `.claude/`; generated Codex mirror: `.codex/`
-- Synchronizer and verification gate: `scripts/sync-agent-files.py`, `scripts/verify.sh`
+- Product intent and visual mockup: `docs/intent.md`, `docs/design/`
+- Specs, project context and rules: `openspec/specs/`, `openspec/config.yaml`; active work `openspec/changes/`; history `openspec/changes/archive/`
+- Local commands, images and troubleshooting: `docs/local-operation.md`; Render: `docs/render-deployment.md`; CI: `docs/ci.md`
+- Architecture and development guides: `docs/architecture.md`, `docs/development.md`

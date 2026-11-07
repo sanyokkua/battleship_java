@@ -1,0 +1,7 @@
+src/contract/generated/
+dist/
+dev-dist/
+e2e/.logs/
+test-results/
+playwright-report/
+coverage/

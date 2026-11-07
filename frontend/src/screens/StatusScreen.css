@@ -1,0 +1,5 @@
+.status-screen-content {
+    display: grid;
+    width: min(33rem, 100%);
+    gap: var(--space-3);
+}
