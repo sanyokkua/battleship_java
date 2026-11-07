@@ -99,7 +99,7 @@ public class SseHub implements SnapshotPublisher {
             return set;
         });
         emitter.onCompletion(() -> drop(subscriber));
-        emitter.onError(failure -> drop(subscriber));
+        emitter.onError(failure -> fail(subscriber));
         // Checked after the subscriber is registered: either closeAll() sees it and ends it, or this sees the flag.
         if (closing) {
             drop(subscriber);
@@ -205,12 +205,7 @@ public class SseHub implements SnapshotPublisher {
             try {
                 subscriber.emitter().send(Set.of(new DataWithMediaType(text(next), FRAME)));
             } catch (IOException | RuntimeException _) {
-                // Only the failure that wins the close claim says so, once, and before the stream's end becomes
-                // visible to anyone, so whoever sees it gone also finds the record.
-                if (subscriber.close()) {
-                    events.deliveryFailed(subscriber.gameId());
-                    end(subscriber);
-                }
+                fail(subscriber);
                 return;
             }
             if (next.closing() != null) {
@@ -219,6 +214,18 @@ public class SseHub implements SnapshotPublisher {
                 subscriber.emitter().complete();
                 return;
             }
+        }
+    }
+
+    /**
+     * A delivery failure, whether our write threw or the container reported the client's I/O error first. Only the
+     * failure that wins the close claim says so, once, and before the stream's end becomes visible to anyone, so
+     * whoever sees it gone also finds the record.
+     */
+    private void fail(Subscriber subscriber) {
+        if (subscriber.close()) {
+            events.deliveryFailed(subscriber.gameId());
+            end(subscriber);
         }
     }
 
