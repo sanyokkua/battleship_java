@@ -27,7 +27,7 @@ attempts=0
 until wget -q -O - http://127.0.0.1:8080/api/v1/health 2>/dev/null | grep -q '"ready":true'; do
     kill -0 "$backend" 2>/dev/null || fail 'backend exited before becoming ready.'
     attempts=$((attempts + 1))
-    [ "$attempts" -lt 120 ] || { stop; fail 'backend did not become ready within 60 seconds.'; }
+    [ "$attempts" -lt 600 ] || { stop; fail 'backend did not become ready within 300 seconds.'; }
     sleep 0.5
 done
 
