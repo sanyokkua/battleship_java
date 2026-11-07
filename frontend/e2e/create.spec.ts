@@ -229,8 +229,13 @@ test('a lost create answer is shown as unknown and never resent', async ({ page,
 test('refresh performs one current-snapshot request', async ({ page, stack }) => {
     await page.goto(`${stack.origin}/create`);
     await page.getByLabel('Captain name').fill('Refresh Host');
+    // The game page reads the snapshot once on its own after mounting; count only the refresh that follows.
+    const initialRead = page.waitForResponse(
+        (response) => response.request().method() === 'GET' && /\/api\/v1\/games\/[^/]+$/.test(response.url()),
+    );
     await page.getByRole('button', { name: 'Create game' }).click();
     await expect(page).toHaveURL(/\/games\//);
+    await initialRead;
     let gets = 0;
     page.on('request', (request) => {
         if (request.method() === 'GET' && /\/api\/v1\/games\/[^/]+$/.test(request.url())) gets++;
