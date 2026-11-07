@@ -1,6 +1,7 @@
 package ua.kostenko.battleship.app.realtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static ua.kostenko.battleship.app.security.SecurityHttp.SESSION_COOKIE;
 import static ua.kostenko.battleship.app.web.Browser.invitationSecret;
 import static ua.kostenko.battleship.app.web.Browser.simple;
 
@@ -29,8 +30,8 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter.DataWithMediaType;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import ua.kostenko.battleship.app.config.BattleshipProperties;
 import ua.kostenko.battleship.app.security.SecurityHttp.Reply;
@@ -291,7 +292,8 @@ class EventStreamIT {
         try (SseStream before = host.events()) {
             assertThat(json(before.next()).get("serverTime").isTextual()).isTrue();
         }
-        wireMapper.configure(com.fasterxml.jackson.core.JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
+        wireMapper.configure(
+                com.fasterxml.jackson.core.json.JsonWriteFeature.WRITE_NUMBERS_AS_STRINGS.mappedFeature(), true);
         try (SseStream after = host.events()) {
             Event first = after.next();
             Reply read = host.read();
@@ -299,7 +301,8 @@ class EventStreamIT {
             assertThat(read.json().get("version").isTextual()).isTrue();
             assertThat(first.data()).isEqualTo(read.response().body());
         } finally {
-            wireMapper.configure(com.fasterxml.jackson.core.JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, false);
+            wireMapper.configure(
+                    com.fasterxml.jackson.core.json.JsonWriteFeature.WRITE_NUMBERS_AS_STRINGS.mappedFeature(), false);
         }
     }
 
@@ -307,7 +310,7 @@ class EventStreamIT {
     void aCommandRacingBeforeTheLockedCaptureIsInTheFirstSnapshot() throws Exception {
         Game game = game();
         long before = version(game.host().snapshot());
-        hub.afterPendingInstalled = once(() -> game.host().accept(simple("PLACE_FLEET_RANDOMLY")));
+        hub.afterPendingInstalled.set(once(() -> game.host().accept(simple("PLACE_FLEET_RANDOMLY"))));
         try (SseStream stream = game.host().events()) {
             Event first = stream.next();
             assertThat(first.id())
@@ -328,10 +331,10 @@ class EventStreamIT {
     void commandsRacingAfterTheCaptureArriveAfterTheFirstSnapshotAndIdsOnlyIncrease() throws Exception {
         Game game = game();
         long captured = version(game.host().snapshot()) + 1; // the stream connecting the host bumps once
-        hub.afterCapture = once(() -> {
+        hub.afterCapture.set(once(() -> {
             game.host().accept(simple("PLACE_FLEET_RANDOMLY"));
             game.host().accept(simple("PLACE_FLEET_RANDOMLY"));
-        });
+        }));
         try (SseStream stream = game.host().events()) {
             assertThat(stream.next().id()).isEqualTo(String.valueOf(captured));
             Event raced = stream.next();
@@ -458,10 +461,10 @@ class EventStreamIT {
 
         Browser pending = hostOnly("Captain");
         String deadline = pending.snapshot().get("expiresAt").asText();
-        hub.afterCapture = once(() -> {
+        hub.afterCapture.set(once(() -> {
             time.set(Instant.parse(deadline));
             expire.sweep(time.now());
-        });
+        }));
         try (SseStream stream = pending.events()) {
             assertThat(stream.next().name())
                     .as("the snapshot captured before the expiry")
@@ -630,6 +633,38 @@ class EventStreamIT {
     }
 
     @Test
+    void beatsFollowTheIntervalFromOpeningEvenWhenTicksAreCoarseAndLate() throws Exception {
+        Browser host = hostOnly("Captain");
+        Duration interval = Duration.ofSeconds(properties.heartbeatSeconds());
+        Instant opened = time.now();
+        try (SseStream stream = host.events()) {
+            stream.next();
+            time.set(opened.plus(interval).plusMillis(900));
+            heartbeat.tick();
+            assertThat(stream.nextFrame().lines())
+                    .as("first beat, noticed late")
+                    .containsExactly(KEEP_ALIVE);
+
+            time.set(opened.plus(interval.multipliedBy(2)));
+            heartbeat.tick();
+            assertThat(stream.nextFrame().lines())
+                    .as("second beat is due an interval after opening, not after the first was noticed")
+                    .containsExactly(KEEP_ALIVE);
+        } finally {
+            time.set(START);
+        }
+    }
+
+    @Test
+    void theHeartbeatTicksEverySecondSoNoBeatIsMoreThanASecondLate() throws NoSuchMethodException {
+        Scheduled schedule =
+                HeartbeatScheduler.class.getDeclaredMethod("scheduled").getAnnotation(Scheduled.class);
+
+        assertThat(schedule.fixedDelay()).isEqualTo(1);
+        assertThat(schedule.timeUnit()).isEqualTo(TimeUnit.SECONDS);
+    }
+
+    @Test
     void aStreamEndsAtItsMaximumLifetimeWithNoClosedEvent() throws Exception {
         Game game = game();
         Duration lifetime = Duration.ofSeconds(properties.streamMaxLifetimeSeconds());
@@ -703,7 +738,7 @@ class EventStreamIT {
             stalled.countDown();
             try {
                 released.await();
-            } catch (InterruptedException interrupted) {
+            } catch (InterruptedException _) {
                 Thread.currentThread().interrupt();
             }
             throw new IOException("the client stopped reading");
@@ -719,10 +754,10 @@ class EventStreamIT {
             guest.next();
             // The host's stream is opened on the hub with an emitter whose writes block after the first snapshot,
             // as when its client stops reading and the socket buffer is full.
-            hub.newEmitter = () -> stalling;
+            hub.newEmitter.set(() -> stalling);
             assertThat(hub.open(game.host().gameId(), game.host().sessionValue()))
                     .isSameAs(stalling);
-            hub.newEmitter = () -> new SseEmitter(0L);
+            hub.newEmitter.set(() -> new SseEmitter(0L));
             assertThat(connected(json(guest.next()), "opponent")).isTrue();
 
             // Both streams are due a keep-alive: the host's write blocks, and that must hold up neither the thread
@@ -837,6 +872,49 @@ class EventStreamIT {
         }
 
         @Test
+        void aStrangerAtTheCeilingIsToldTheGameIsUnavailableNotThatTheServerIsFull() throws Exception {
+            Game game = ceilingGame();
+            Browser stranger = new Browser(ceilingPort);
+            stranger.create(SEA_BATTLE, "Other");
+            try (SseStream silent = game.host().events();
+                    SseStream refused = SseStream.open(
+                            ceilingPort,
+                            "/api/v1/games/" + game.host().gameId() + "/events",
+                            SESSION_COOKIE + "=" + stranger.sessionValue())) {
+                silent.next();
+                assertThat(refused.status()).isEqualTo(404);
+            }
+            heartbeatUntilOpponentDropped(game.guest());
+        }
+
+        @Test
+        void aReplacementStreamAtTheCeilingTakesOverThePermitOfTheOneItReplaces() throws Exception {
+            Game game = ceilingGame();
+            try (SseStream older = game.host().events()) {
+                older.next();
+                try (SseStream newer = game.host().events()) {
+                    assertThat(newer.status())
+                            .as("replacing at the ceiling is not refused")
+                            .isEqualTo(200);
+                    newer.next();
+                    assertClosedAfterSnapshots(older, "REPLACED");
+                    try (SseStream other = game.guest().events()) {
+                        assertThat(other.status())
+                                .as("the one permit is held by the replacement")
+                                .isEqualTo(503);
+                    }
+                }
+            }
+            heartbeatUntilOpponentDropped(game.guest());
+            try (SseStream afterwards = game.guest().events()) {
+                assertThat(afterwards.status())
+                        .as("the replacement released the permit once it ended")
+                        .isEqualTo(200);
+            }
+            heartbeatUntilOpponentDropped(game.host());
+        }
+
+        @Test
         void aHundredOpenAndDropCyclesLeakNoPermit() throws Exception {
             Game game = ceilingGame();
             for (int cycle = 0; cycle < 100; cycle++) {
@@ -885,9 +963,9 @@ class EventStreamIT {
     @AfterEach
     void removeRaceSeams() {
         hub.closing = false;
-        hub.afterPendingInstalled = () -> {};
-        hub.afterCapture = () -> {};
-        hub.newEmitter = () -> new SseEmitter(0L);
+        hub.afterPendingInstalled.set(() -> {});
+        hub.afterCapture.set(() -> {});
+        hub.newEmitter.set(() -> new SseEmitter(0L));
     }
 
     private interface Step {

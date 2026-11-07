@@ -10,7 +10,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import org.junit.jupiter.api.Test;
+import ua.kostenko.battleship.application.SessionFixtures;
 import ua.kostenko.battleship.application.port.TimeSource;
+import ua.kostenko.battleship.application.registry.GameSlot;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
 import ua.kostenko.battleship.application.result.ApplicationFailure;
 import ua.kostenko.battleship.domain.model.Phase;
@@ -19,8 +21,8 @@ class JoinOrderingTest {
     @Test
     void freshInvitationIsRedeemedOnceAndThirdBrowserMatchesWrongSecretRefusal() {
         var fixture = CreateGameUseCaseTest.fixture(3, 3);
-        fixture.sessions.register("host", CreateGameUseCaseTest.NOW);
-        fixture.sessions.register("guest", CreateGameUseCaseTest.NOW);
+        SessionFixtures.register(fixture.sessions, "host", CreateGameUseCaseTest.NOW);
+        SessionFixtures.register(fixture.sessions, "guest", CreateGameUseCaseTest.NOW);
         var created = fixture.create.execute(CreateGameUseCaseTest.RULESET, "Host", "host");
         var joined =
                 fixture.join.execute(created.snapshot().gameId(), CreateGameUseCaseTest.INVITATION, "Guest", "guest");
@@ -32,12 +34,12 @@ class JoinOrderingTest {
                 created.snapshot().gameId(), slot -> slot.state().timeline().guestJoinedAt());
         assertThat(joinedAt).isEqualTo(CreateGameUseCaseTest.NOW);
         ApplicationFailure used = catchThrowableOfType(
+                ApplicationFailure.class,
                 () -> fixture.join.execute(
-                        created.snapshot().gameId(), CreateGameUseCaseTest.INVITATION, "Third", "third"),
-                ApplicationFailure.class);
+                        created.snapshot().gameId(), CreateGameUseCaseTest.INVITATION, "Third", "third"));
         ApplicationFailure wrong = catchThrowableOfType(
-                () -> fixture.join.execute(created.snapshot().gameId(), "B".repeat(43), "Third", "third"),
-                ApplicationFailure.class);
+                ApplicationFailure.class,
+                () -> fixture.join.execute(created.snapshot().gameId(), "B".repeat(43), "Third", "third"));
         assertSameRefusal(used, wrong);
         assertThat(fixture.sessions.find("third")).isEmpty();
     }
@@ -57,7 +59,7 @@ class JoinOrderingTest {
         assertThat(joined.sessionValue()).isEqualTo("session-2");
         assertThat(fixture.sessions.find(joined.sessionValue()))
                 .get()
-                .satisfies(record -> assertThat(record.liveGames()).containsExactly(id));
+                .satisfies(session -> assertThat(session.liveGames()).containsExactly(id));
     }
 
     @Test
@@ -92,34 +94,34 @@ class JoinOrderingTest {
     @Test
     void guestMembershipPrecedesWrongOrStaleSecretAndDoesNotChangeState() {
         var fixture = CreateGameUseCaseTest.fixture(2, 2);
-        fixture.sessions.register("host", CreateGameUseCaseTest.NOW);
-        fixture.sessions.register("guest", CreateGameUseCaseTest.NOW);
+        SessionFixtures.register(fixture.sessions, "host", CreateGameUseCaseTest.NOW);
+        SessionFixtures.register(fixture.sessions, "guest", CreateGameUseCaseTest.NOW);
         var created = fixture.create.execute(CreateGameUseCaseTest.RULESET, "Host", "host");
         fixture.join.execute(created.snapshot().gameId(), CreateGameUseCaseTest.INVITATION, "Guest", "guest");
-        var before = fixture.games.withSlot(created.snapshot().gameId(), slot -> slot.state());
+        var before = fixture.games.withSlot(created.snapshot().gameId(), GameSlot::state);
         var rejoined = fixture.join.execute(created.snapshot().gameId(), "B".repeat(43), "Ignored", "guest");
         assertThat(rejoined.snapshot().version()).isEqualTo(1);
         assertThat(rejoined.snapshot().you().displayName()).isEqualTo("Guest");
         ua.kostenko.battleship.domain.model.GameState after =
-                fixture.games.withSlot(created.snapshot().gameId(), slot -> slot.state());
+                fixture.games.withSlot(created.snapshot().gameId(), GameSlot::state);
         assertThat(after).isSameAs(before);
     }
 
     @Test
     void refusalPathsShareOneFailureShape() {
         var fixture = CreateGameUseCaseTest.fixture(3, 3);
-        fixture.sessions.register("host", CreateGameUseCaseTest.NOW);
+        SessionFixtures.register(fixture.sessions, "host", CreateGameUseCaseTest.NOW);
         var created = fixture.create.execute(CreateGameUseCaseTest.RULESET, "Host", "host");
         String id = created.snapshot().gameId();
         List<ApplicationFailure> failures = new ArrayList<>();
         failures.add(catchThrowableOfType(
-                () -> fixture.join.execute("missing", CreateGameUseCaseTest.INVITATION, "Guest", "guest"),
-                ApplicationFailure.class));
+                ApplicationFailure.class,
+                () -> fixture.join.execute("missing", CreateGameUseCaseTest.INVITATION, "Guest", "guest")));
         failures.add(catchThrowableOfType(
-                () -> fixture.join.execute(id, "B".repeat(43), "Guest", "guest"), ApplicationFailure.class));
+                ApplicationFailure.class, () -> fixture.join.execute(id, "B".repeat(43), "Guest", "guest")));
         failures.add(catchThrowableOfType(
-                () -> fixture.join.execute(id, CreateGameUseCaseTest.INVITATION, "Host", "host"),
-                ApplicationFailure.class));
+                ApplicationFailure.class,
+                () -> fixture.join.execute(id, CreateGameUseCaseTest.INVITATION, "Host", "host")));
         var usedFixture = CreateGameUseCaseTest.fixture(2, 2);
         String usedId = usedFixture
                 .create
@@ -128,15 +130,15 @@ class JoinOrderingTest {
                 .gameId();
         usedFixture.join.execute(usedId, CreateGameUseCaseTest.INVITATION, "Guest", "guest");
         failures.add(catchThrowableOfType(
-                () -> usedFixture.join.execute(usedId, CreateGameUseCaseTest.INVITATION, "Third", "third"),
-                ApplicationFailure.class));
+                ApplicationFailure.class,
+                () -> usedFixture.join.execute(usedId, CreateGameUseCaseTest.INVITATION, "Third", "third")));
         fixture.replace.execute(id, "host");
         failures.add(catchThrowableOfType(
-                () -> fixture.join.execute(id, CreateGameUseCaseTest.INVITATION, "Guest", "guest"),
-                ApplicationFailure.class));
+                ApplicationFailure.class,
+                () -> fixture.join.execute(id, CreateGameUseCaseTest.INVITATION, "Guest", "guest")));
         fixture.time.advance(Duration.ofSeconds(30));
         failures.add(catchThrowableOfType(
-                () -> fixture.join.execute(id, "B".repeat(43), "Guest", "guest"), ApplicationFailure.class));
+                ApplicationFailure.class, () -> fixture.join.execute(id, "B".repeat(43), "Guest", "guest")));
         for (ApplicationFailure failure : failures) assertSameRefusal(failures.getFirst(), failure);
     }
 
@@ -274,7 +276,7 @@ class JoinOrderingTest {
                 fixture.games.withSlot(id, slot -> slot.state().guest());
         assertThat(guest).isNull();
         assertThat(fixture.sessions.find("session-2")).isEmpty();
-        String unusedSecret = fixture.games.withSlot(id, slot -> slot.unusedInvitationSecret());
+        String unusedSecret = fixture.games.withSlot(id, GameSlot::unusedInvitationSecret);
         assertThat(unusedSecret).isNull();
     }
 
@@ -305,8 +307,8 @@ class JoinOrderingTest {
         java.time.Instant joinedAt =
                 fixture.games.withSlot(id, slot -> slot.state().timeline().guestJoinedAt());
         assertThat(joinedAt).isEqualTo(CreateGameUseCaseTest.NOW.plusSeconds(10));
-        assertThat(fixture.sessions.find(joined.sessionValue())).get().satisfies(record -> assertThat(
-                        record.createdAt())
+        assertThat(fixture.sessions.find(joined.sessionValue())).get().satisfies(session -> assertThat(
+                        session.lastSeenAt())
                 .isEqualTo(CreateGameUseCaseTest.NOW.plusSeconds(10)));
     }
 

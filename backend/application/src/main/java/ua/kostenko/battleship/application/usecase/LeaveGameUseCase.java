@@ -72,7 +72,7 @@ public final class LeaveGameUseCase {
                 }
                 return new Left(seat, false, null, null);
             });
-        } catch (UnknownGameException unknown) {
+        } catch (UnknownGameException _) {
             throw ExpiryPolicy.unavailable();
         }
         if (left.remove()) games.remove(gameId);

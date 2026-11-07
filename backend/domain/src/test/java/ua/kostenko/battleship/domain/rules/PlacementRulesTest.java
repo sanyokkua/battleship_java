@@ -140,6 +140,33 @@ class PlacementRulesTest {
         assertThat(accepted.viewChanged()).containsExactly(Seat.HOST);
     }
 
+    @Test
+    void noTouchProjectionMarksOnlyEmptyInBoundsNeighbours() {
+        GameState placed = withFleet(
+                "sea-battle-10-ship.v1", List.of(new GameCommand.PlaceShip("s01", at(0, 0), Orientation.HORIZONTAL)));
+
+        assertThat(GameRules.placementBlockedCells(
+                        Rulesets.byId(placed.rulesetId()).orElseThrow(),
+                        placed.host().board().fleet()))
+                .containsExactlyInAnyOrder(at(0, 4), at(1, 0), at(1, 1), at(1, 2), at(1, 3), at(1, 4));
+    }
+
+    @Test
+    void touchAllowedProjectionAndEmptyFleetHaveNoBlockedCells() {
+        GameState classic = withFleet(
+                "hasbro-classic-2002.v1", List.of(new GameCommand.PlaceShip("s01", at(0, 0), Orientation.HORIZONTAL)));
+
+        assertThat(GameRules.placementBlockedCells(
+                        Rulesets.byId(classic.rulesetId()).orElseThrow(),
+                        classic.host().board().fleet()))
+                .isEmpty();
+        GameState untouched = state("sea-battle-10-ship.v1");
+        assertThat(GameRules.placementBlockedCells(
+                        Rulesets.byId(untouched.rulesetId()).orElseThrow(),
+                        untouched.host().board().fleet()))
+                .isEmpty();
+    }
+
     private static Transition apply(GameState state, Seat actor, GameCommand command) {
         return GameRules.apply(state, actor, command, NOW, bound -> {
             throw new AssertionError("manual placement must not draw randomness");

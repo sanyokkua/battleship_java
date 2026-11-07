@@ -1,0 +1,112 @@
+# Release: a vX.Y.Z tag on a commit that is already on master publishes the Render image to GHCR and a GitHub release.
+# It does not re-run the product gate (the PR gate already did). Details: docs/ci.md
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write # create the release
+      packages: write # push the image to GHCR
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # full history, so origin/master exists for the ancestry check
+          persist-credentials: false
+
+      - name: Validate the tag and require it to be on master
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          [[ $TAG =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo "::error::$TAG is not vX.Y.Z"; exit 1; }
+          git rev-parse --verify --quiet origin/master >/dev/null || { echo "::error::origin/master not found"; exit 1; }
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/master \
+            || { echo "::error::$TAG ($GITHUB_SHA) is not on master; merge the PR first and tag a master commit"; exit 1; }
+
+      # Docker driver of buildx is docker-container: the cache of this build stays in the builder
+      # and the push build below reuses it, so the image is compiled once.
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build and smoke-test the image
+        run: ./scripts/build-docker-render.sh --smoke battleship-render:release
+
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      # Plain single-manifest linux/amd64 image. Provenance and SBOM attestations are a Release-grade addition.
+      - id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: render
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          sbom: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Create or update the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          repo=$(printf %s "$GITHUB_REPOSITORY" | tr "[:upper:]" "[:lower:]")
+          version=${TAG#v}
+          notes=$(mktemp)
+          cat >"$notes" <<NOTES
+          ## Render image (GHCR)
+
+          Image:
+
+          \`\`\`
+          ghcr.io/$repo:$version
+          \`\`\`
+
+          Immutable reference (pin this to deploy exactly this build):
+
+          \`\`\`
+          ghcr.io/$repo@$DIGEST
+          \`\`\`
+
+          Required environment variables on the Render service:
+
+          - \`BATTLESHIP_PUBLICBASEURL\`: the exact public https origin, no trailing slash, path or query.
+          - \`PORT\`: supplied by Render.
+
+          A private GHCR package needs a registry credential with pull access in Render; a public package does not.
+          Setup, health check and verification: [docs/render-deployment.md]($SERVER_URL/$GITHUB_REPOSITORY/blob/$TAG/docs/render-deployment.md).
+          How this release was produced: [docs/ci.md]($SERVER_URL/$GITHUB_REPOSITORY/blob/$TAG/docs/ci.md).
+          NOTES
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TAG" --notes-file "$notes"
+          else
+            gh release create "$TAG" --verify-tag --generate-notes --title "$TAG" --notes-file "$notes"
+          fi

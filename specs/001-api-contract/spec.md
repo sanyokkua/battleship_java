@@ -11,8 +11,7 @@ on the backend: the UI only reflects the backend state."
 
 This document replaces the first version of the specification (65 requirements, six convergence
 rounds; see git history up to `d33b670`). The owner judged that version over-engineered and approved
-the simplifications recorded in `contracts/README.md` § *Supersedes planning inputs*. Where any older
-document disagrees with `contracts/openapi.yaml`, the OpenAPI file wins.
+the simplifications. Where any older document disagrees with `contracts/openapi.yaml`, the OpenAPI file wins.
 
 Provenance: `[user]` = stated by the owner; `[agent]` = proposed by the agent and approved by the owner
 on 2026-09-20.
@@ -112,5 +111,5 @@ reads, recovery of a join whose answer was lost before the cookie arrived.
   `tasks.md`).
 - **S2** Both rulesets can be played from create to result using only `openapi.yaml`.
 - **S3** No example shows opponent placement outside the allowed cases.
-- **S4** Every API-relevant item of `docs/rewrite_context_doc/Previous_Mistakes/ARCHITECTURE-SMELLS-REPORT.md`
+- **S4** Every API-relevant item of the legacy architecture-smells report (see `docs/intent.md`, *Lessons carried forward*)
   is avoided by construction (checklist in `tasks.md`).

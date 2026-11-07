@@ -10,11 +10,16 @@ import ua.kostenko.battleship.application.projection.SnapshotView;
 import ua.kostenko.battleship.application.registry.GameRegistry;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
 import ua.kostenko.battleship.application.registry.UnknownGameException;
+import ua.kostenko.battleship.application.result.ApplicationFailure;
 import ua.kostenko.battleship.domain.model.GameState;
-import ua.kostenko.battleship.domain.model.Phase;
 import ua.kostenko.battleship.domain.model.Seat;
+import ua.kostenko.battleship.domain.rules.AllowedActions;
 
-/** A player's presence signal: extends the idle deadline at most once per interval, per seat. */
+/**
+ * A player's presence signal: extends the idle deadline at most once per interval, per seat. Only while the contract
+ * allows it ({@code SEND_PRESENCE} in the caller's allowed actions); a finished or abandoned game answers
+ * {@code action-not-allowed}.
+ */
 public final class PresenceUseCase {
     private final GameRegistry games;
     private final SessionRegistry sessions;
@@ -54,16 +59,16 @@ public final class PresenceUseCase {
             captured = games.withSlot(gameId, slot -> {
                 Instant now = time.now();
                 Seat seat = ExpiryPolicy.authorize(slot, digest, now, resultRetention, sessions);
-                Phase phase = slot.state().phase();
-                boolean over = phase == Phase.FINISHED || phase == Phase.ABANDONED;
+                if (!AllowedActions.of(slot.state(), seat).contains(AllowedActions.Action.SEND_PRESENCE))
+                    throw new ApplicationFailure("action-not-allowed", null, null, null);
                 Instant notBefore = slot.presenceNotBefore().get(seat);
-                if (!over && (notBefore == null || ExpiryPolicy.reached(notBefore, now))) {
+                if (notBefore == null || ExpiryPolicy.reached(notBefore, now)) {
                     slot.idleDeadline(now.plus(idleTimeout));
                     slot.presenceNotBefore().put(seat, now.plus(presenceInterval));
                 }
                 return new Captured(slot.state(), seat, slot.contextFor(seat, now));
             });
-        } catch (UnknownGameException unknown) {
+        } catch (UnknownGameException _) {
             throw ExpiryPolicy.unavailable();
         }
         return projector.project(captured.state(), captured.seat(), captured.context());

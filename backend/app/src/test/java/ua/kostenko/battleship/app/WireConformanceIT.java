@@ -610,6 +610,7 @@ class WireConformanceIT {
     static Stream<String> conflictCodes() {
         return Stream.of(
                 "invitation-unavailable",
+                "browser-game-limit",
                 "action-not-allowed",
                 "placement-out-of-bounds",
                 "placement-overlap",
@@ -637,6 +638,15 @@ class WireConformanceIT {
                 Browser host = new Browser(port);
                 host.create(SEA, "Captain");
                 yield new SecurityHttp(port).postJson(GAMES + host.gameId() + "/join", null, joinBody(WRONG_SECRET));
+            }
+            case "browser-game-limit" -> {
+                Browser host = new Browser(port);
+                host.create(SEA, "Captain");
+                yield host.http()
+                        .postJson(
+                                "/api/v1/games",
+                                SESSION_COOKIE + "=" + host.sessionValue(),
+                                "{\"rulesetId\":\"" + SEA + "\",\"displayName\":\"Again\"}");
             }
             case "action-not-allowed" -> seated(SEA).host().send(fire(0, 0));
             case "placement-out-of-bounds" -> {
@@ -712,14 +722,7 @@ class WireConformanceIT {
 
     @Test
     void serviceUnavailableCarriesRetryAfterEqualToItsBody() throws Exception {
-        Browser host = new Browser(port);
-        host.create(SEA, "Captain");
-
-        Reply refused = host.http()
-                .postJson(
-                        "/api/v1/games",
-                        SESSION_COOKIE + "=" + host.sessionValue(),
-                        "{\"rulesetId\":\"" + SEA + "\",\"displayName\":\"Captain\"}");
+        Reply refused = new SecurityHttp(port).call("GET", "/probe/fail/service-unavailable?retryAfter=1", null);
 
         assertProblem(refused, 503, "service-unavailable", problemExample("ServiceUnavailable", "serviceUnavailable"));
         assertThat(refused.json().get("retryAfterSeconds").asInt()).isGreaterThanOrEqualTo(1);
@@ -846,6 +849,7 @@ class WireConformanceIT {
                     null,
                     null,
                     board,
+                    null,
                     board,
                     null,
                     null,
@@ -873,6 +877,7 @@ class WireConformanceIT {
                 "https://battleship.example/join/Zk3vQ1hYc0a7Tn2LwR9sXg#invite=" + "A".repeat(43),
                 now,
                 board,
+                List.of(),
                 board,
                 new ShotView(SnapshotView.Side.YOU, at(0, 1), ShotResult.SUNK, "s01"),
                 new SnapshotView.OutcomeView(SnapshotView.Side.YOU, Outcome.Reason.FLEET_DESTROYED),

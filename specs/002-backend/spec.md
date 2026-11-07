@@ -2,21 +2,19 @@
 
 **Feature Branch**: `feature/002-backend`
 **Created**: 2026-09-21
-**Status**: Planned — see [plan.md](plan.md)
+**Status**: Delivered — see [plan.md](plan.md)
 
 **Input**: "Create feature `002-backend` for the production-ready anonymous Battleship rewrite. Implement
 one server-authoritative, ephemeral backend that conforms to the published `001-api-contract` contract.
 The backend has no database, no durable state, no frontend assets, and no alternate public API."
-(`docs/rewrite_context_doc/Planning/04-backend/specify-input.md`)
+(legacy seed document, since removed)
 
 ## Authority
 
 `contracts/openapi.yaml` is the source of truth for every externally visible behaviour: operations,
 schemas, statuses, problem codes, headers, cookies, events and privacy rules. This specification
 describes the behaviour a server must have in order to be that contract's implementation, and does not
-restate the contract where the contract is already precise. The seed documents under
-`docs/rewrite_context_doc/Planning/04-backend/` are context, not authority; where they and the contract
-disagree, the contract wins.
+restate the contract where the contract is already precise. The contract wins over any other description.
 
 Requirements are `[user]` unless tagged `[agent]` — proposed by the agent and approved by the owner.
 
@@ -359,7 +357,7 @@ confirm the running service reports the changed value.
 - **R37** Requests reject unknown fields, so a caller can never supply a seat, a turn, a winner
   or a result. Field-level failures are reported per field with a machine-readable rule. Every response
   is marked not to be stored by caches.
-- **R64** A display name containing any control character is rejected, including at its edges. Otherwise
+- **R64** A display name containing any control, bidirectional-override or invisible formatting character (except the zero-width joiner used by emoji) is rejected, including at its edges. Otherwise
   it is trimmed of surrounding whitespace and normalised to Unicode NFC before length validation;
   length is counted in code points after normalisation and
   must lie within the bounds the contract's `DisplayName` schema states. A name that fails any of these
@@ -379,7 +377,8 @@ confirm the running service reports the changed value.
   and no open stream is ever evicted to make room, and the service still reports itself ready. Each
   allocation is released exactly once when the game or stream ends.
 - **R62** `[agent]` One browser additionally holds at most the configured number of live games at a
-  time, so a single browser cannot fill the server. Only games that have not ended count, so a finished
+  time, so a single browser cannot fill the server. A create or join refused by this limit answers
+  `409 browser-game-limit` without a retry hint; only games that have not ended count, so a finished
   or abandoned game never blocks a new one, and leaving frees the allocation at once.
 - **R40** `[agent]` A request body larger than the configured ceiling is refused as too large, and a
   request that carries a body whose content type is not the expected one is refused as an unsupported
@@ -562,9 +561,10 @@ deadline equals the current instant has already expired. The same comparison app
   a link fragment, board content or a raw request body.
 - **S10** The packaged artifact starts from default configuration on a developer machine and reports
   itself ready, serving no user-interface assets.
-- **S11** At either configured ceiling, a new game or a new event stream is refused with a retry hint
-  while every running game and open stream continues, and the service still reports itself ready. A
-  browser already at its own game limit is refused too, and a game it has finished never counts.
+- **S11** At either server capacity ceiling, a new game or a new event stream is refused with a retry
+  hint while every running game and open stream continues, and the service still reports itself ready.
+  A browser already at its own game limit is refused with `409 browser-game-limit` and no retry hint,
+  and a game it has finished never counts.
 - **S12** Every limit in R52 can be changed by configuration alone, with no code change, and the running
   service both enforces and publishes the changed value.
 
@@ -641,5 +641,4 @@ the fourth clarifies a pre-release response. The contract product is otherwise o
 
 The capabilities the contract itself defers are not built: claiming a win against a vanished opponent,
 rematch, recovering a join whose answer was lost before the session arrived, conditional reads and salvo
-rules. Where the seed documents under `docs/rewrite_context_doc/Planning/` describe a different API,
-`contracts/README.md` § *Supersedes planning inputs* records the delta.
+rules. 

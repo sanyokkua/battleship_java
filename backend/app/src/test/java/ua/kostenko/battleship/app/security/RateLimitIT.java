@@ -21,6 +21,7 @@ import ua.kostenko.battleship.app.security.SecurityHttp.Reply;
 import ua.kostenko.battleship.app.web.Browser;
 import ua.kostenko.battleship.app.web.SseStream;
 import ua.kostenko.battleship.application.MutableTimeSource;
+import ua.kostenko.battleship.application.registry.SessionRegistry;
 
 /**
  * Rate limits (R38, R41, R52, R61) over a real server. Time is a {@link MutableTimeSource}, so the 60-second window is
@@ -117,6 +118,20 @@ class RateLimitIT {
     @FunctionalInterface
     private interface ThrowingSupplier {
         Reply get() throws Exception;
+    }
+
+    @Test
+    void forwardedForIsIgnoredUnlessTheProxyIsTrusted() throws Exception {
+        SecurityHttp http = new SecurityHttp(port);
+        String body = "{\"rulesetId\":\"sea-battle-10-ship.v1\",\"displayName\":\"A\"}";
+        for (int i = 1; i <= 2; i++) {
+            assertThat(http.postJson("/api/v1/games", null, body, "X-Forwarded-For", "198.51.100." + i)
+                            .status())
+                    .isEqualTo(201);
+        }
+        assertThat(http.postJson("/api/v1/games", null, body, "X-Forwarded-For", "198.51.100.3")
+                        .status())
+                .isEqualTo(429);
     }
 
     // (1) the enumerated manifest: one test per class
@@ -338,6 +353,16 @@ class RateLimitIT {
         assertThat(admitted)
                 .as("the player's counter survived the flood, so exactly the configured 40 were admitted")
                 .isEqualTo(40);
+    }
+
+    @Test
+    void theBucketTableHoldsTheSessionDigestNeverTheCookieValue() throws Exception {
+        Browser browser = player();
+        assertThat(browser.read().status()).isEqualTo(200);
+
+        assertThat(buckets.ids())
+                .anyMatch(id -> id.contains(SessionRegistry.digest(browser.sessionValue())))
+                .noneMatch(id -> id.contains(browser.sessionValue()));
     }
 
     @Test

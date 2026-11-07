@@ -45,9 +45,17 @@ public record BattleshipProperties(
         @Min(value = 1, message = "battleship.max-concurrent-games must be at least 1")
         Integer maxConcurrentGames,
 
+        @NotNull(message = "battleship.max-concurrent-sessions is required")
+        @Min(value = 1, message = "battleship.max-concurrent-sessions must be at least 1")
+        Integer maxConcurrentSessions,
+
         @NotNull(message = "battleship.max-concurrent-streams is required")
         @Min(value = 1, message = "battleship.max-concurrent-streams must be at least 1")
         Integer maxConcurrentStreams,
+
+        @NotNull(message = "battleship.stream-retry-after-seconds is required")
+        @Min(value = 1, message = "battleship.stream-retry-after-seconds must be at least 1")
+        Integer streamRetryAfterSeconds,
 
         @NotNull(message = "battleship.max-live-games-per-browser is required")
         @Min(value = 1, message = "battleship.max-live-games-per-browser must be at least 1")
@@ -71,6 +79,9 @@ public record BattleshipProperties(
 
         @NotBlank(message = "battleship.public-base-url is required")
         String publicBaseUrl,
+
+        /** Behind one trusted reverse proxy that appends the peer address to X-Forwarded-For; off by default. */
+        boolean trustForwardedFor,
 
         @Valid @NotNull(message = "battleship.rate-limit is required")
         RateLimits rateLimit) {
@@ -99,6 +110,10 @@ public record BattleshipProperties(
     }
 
     public record RateLimits(
+            @NotNull(message = "battleship.rate-limit.table-capacity is required")
+            @Min(value = 1, message = "battleship.rate-limit.table-capacity must be at least 1")
+            Integer tableCapacity,
+
             @NotNull(message = "battleship.rate-limit.create-game-per-minute is required")
             @Min(value = 1, message = "battleship.rate-limit.create-game-per-minute must be at least 1")
             Integer createGamePerMinute,

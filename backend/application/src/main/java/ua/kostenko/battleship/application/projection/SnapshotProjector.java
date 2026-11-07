@@ -1,6 +1,7 @@
 package ua.kostenko.battleship.application.projection;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import ua.kostenko.battleship.application.projection.BoardView.CellState;
@@ -8,6 +9,8 @@ import ua.kostenko.battleship.application.projection.BoardView.ShipView;
 import ua.kostenko.battleship.application.projection.SnapshotView.Side;
 import ua.kostenko.battleship.domain.model.*;
 import ua.kostenko.battleship.domain.rules.AllowedActions;
+import ua.kostenko.battleship.domain.rules.FleetEntry;
+import ua.kostenko.battleship.domain.rules.GameRules;
 import ua.kostenko.battleship.domain.rules.Ruleset;
 import ua.kostenko.battleship.domain.rules.Rulesets;
 
@@ -23,30 +26,28 @@ public class SnapshotProjector {
                 Rulesets.byId(state.rulesetId()).orElseThrow(() -> new IllegalArgumentException("unknown ruleset"));
         boolean invitation = seat == Seat.HOST && state.phase() == Phase.WAITING;
         Shot shot = state.lastShot();
+        boolean ownConnected = seat == Seat.HOST ? context.hostConnected() : context.guestConnected();
+        boolean opponentConnected = seat == Seat.HOST ? context.guestConnected() : context.hostConnected();
         return new SnapshotView(
                 context.gameId(),
                 state.version(),
                 context.serverTime(),
                 state.rulesetId(),
                 state.phase(),
-                player(
-                        own,
-                        seat == Seat.HOST ? context.hostConnected() : context.guestConnected(),
-                        ruleset,
-                        state.phase()),
-                opponent == null
-                        ? null
-                        : player(
-                                opponent,
-                                seat == Seat.HOST ? context.guestConnected() : context.hostConnected(),
-                                ruleset,
-                                state.phase()),
+                player(own, ownConnected, ruleset, state.phase()),
+                opponent == null ? null : player(opponent, opponentConnected, ruleset, state.phase()),
                 state.phase() == Phase.PLAYING ? side(state.turn(), seat) : null,
                 AllowedActions.of(state, seat),
                 context.expiresAt(),
                 invitation ? context.invitationUrl() : null,
                 invitation ? context.invitationExpiresAt() : null,
                 board(own.board(), ruleset, true, false),
+                state.phase() == Phase.PLACEMENT
+                        ? GameRules.placementBlockedCells(ruleset, own.board().fleet()).stream()
+                                .sorted(Comparator.comparingInt(Coordinate::rowIndex)
+                                        .thenComparingInt(Coordinate::columnIndex))
+                                .toList()
+                        : null,
                 board(
                         opponent == null ? Board.empty() : opponent.board(),
                         ruleset,
@@ -69,7 +70,7 @@ public class SnapshotProjector {
 
     private static PlayerView player(PlayerState player, boolean connected, Ruleset ruleset, Phase phase) {
         int remaining = phase == Phase.WAITING
-                ? ruleset.fleet().stream().mapToInt(entry -> entry.count()).sum()
+                ? ruleset.fleet().stream().mapToInt(FleetEntry::count).sum()
                 : (int) player.board().fleet().stream()
                         .filter(ship -> ship.status() != Ship.ShipStatus.SUNK)
                         .count();
@@ -100,12 +101,12 @@ public class SnapshotProjector {
 
     private static CellState cell(Board board, Coordinate coordinate, boolean complete, boolean abandoned) {
         if (abandoned) return CellState.UNKNOWN;
-        for (Ship ship : board.fleet())
-            if (ship.cells().contains(coordinate)) {
-                if (ship.status() == Ship.ShipStatus.SUNK) return CellState.SUNK;
-                if (ship.hits().contains(coordinate)) return CellState.HIT;
-                return complete ? CellState.SHIP : CellState.UNKNOWN;
-            }
+        for (Ship ship : board.fleet()) {
+            if (!ship.cells().contains(coordinate)) continue;
+            if (ship.status() == Ship.ShipStatus.SUNK) return CellState.SUNK;
+            if (ship.hits().contains(coordinate)) return CellState.HIT;
+            return complete ? CellState.SHIP : CellState.UNKNOWN;
+        }
         if (board.incomingShots().contains(coordinate)) return CellState.MISS;
         if (board.revealedWater().contains(coordinate)) return CellState.REVEALED_WATER;
         return complete ? CellState.WATER : CellState.UNKNOWN;

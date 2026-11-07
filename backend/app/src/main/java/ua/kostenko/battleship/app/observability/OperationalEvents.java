@@ -44,11 +44,11 @@ public class OperationalEvents {
                 MDC.put(CorrelationIdFilter.GAME_ID_KEY, gameId);
             }
             try {
-                var record = LOG.atInfo().addKeyValue("event", event);
+                var logEntry = LOG.atInfo().addKeyValue("event", event);
                 if (problemCode != null) {
-                    record = record.addKeyValue("code", problemCode);
+                    logEntry = logEntry.addKeyValue("code", problemCode);
                 }
-                record.log(message);
+                logEntry.log(message);
             } finally {
                 if (ownGameId) {
                     MDC.remove(CorrelationIdFilter.GAME_ID_KEY);

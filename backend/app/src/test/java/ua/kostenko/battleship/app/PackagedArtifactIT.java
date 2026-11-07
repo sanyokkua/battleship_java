@@ -52,6 +52,11 @@ class PackagedArtifactIT {
         assertThat(health.json()).isEqualTo(JSON.readTree("{\"live\":true,\"ready\":true}"));
     }
 
+    @Test
+    void actuatorHealthIsNotExposedOnThePublicPort() throws Exception {
+        assertThat(packaged.get("/actuator/health").status()).isEqualTo(404);
+    }
+
     // (2)
 
     @Test

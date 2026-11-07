@@ -86,7 +86,7 @@ class ProblemMappingIT {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/", "/index.html", "/static/x.js", "/assets/x.css", "/api/v1/nowhere"})
+    @ValueSource(strings = {"/", "/index.html", "/static/x.js", "/assets/x.css", "/api/v1/nowhere", "/error"})
     void anUnknownPathAnswersGameUnavailableWithItsCorrelationId(String path) throws Exception {
         Reply reply = get(path);
 
@@ -209,24 +209,14 @@ class ProblemMappingIT {
             delimiter = '|',
             value = {
                 "{\"type\":\"READY\",\"seat\":\"HOST\"}|/command/seat|UNKNOWN_FIELD",
-                "{\"type\":\"FIRE\",\"target\":{\"rowIndex\":\"x\",\"columnIndex\":0}}|/command/target/rowIndex|INVALID_FORMAT",
+                "{\"type\":\"FIRE\",\"target\":{\"rowIndex\":\"x\",\"columnIndex\":0}}|/command/target/rowIndex|INVALID_TYPE",
+                "{\"type\":\"FIRE\",\"target\":{\"rowIndex\":\"5\",\"columnIndex\":0}}|/command/target/rowIndex|INVALID_TYPE",
+                "{\"type\":\"FIRE\",\"target\":{\"rowIndex\":3.7,\"columnIndex\":0}}|/command/target/rowIndex|INVALID_TYPE",
+                "{\"type\":\"FIRE\",\"target\":{\"rowIndex\":3.0,\"columnIndex\":0}}|/command/target/rowIndex|INVALID_TYPE",
+                "{\"type\":\"PLACE_SHIP\",\"shipId\":\"s01\",\"anchor\":{\"rowIndex\":1,\"columnIndex\":1},\"orientation\":0}|/command/orientation|INVALID_TYPE",
                 "{\"type\":\"DANCE\"}|/command/type|UNKNOWN_VALUE",
                 "{\"shipId\":\"s01\"}|/command/type|UNKNOWN_VALUE",
-                "{\"type\":\"PLACE_SHIP\",\"shipId\":\"s01\",\"anchor\":{\"rowIndex\":1,\"columnIndex\":1,\"z\":0},\"orientation\":\"HORIZONTAL\"}|/command/anchor/z|UNKNOWN_FIELD"
-            })
-    void aNestedCommandErrorKeepsItsPointer(String command, String pointer, String rule) throws Exception {
-        Reply reply = postJson("/probe/command", command(command));
-
-        assertEquals(422, reply.status());
-        assertEquals("validation-failed", reply.json().get("code").asText());
-        assertEquals(pointer, reply.json().at("/violations/0/field").asText());
-        assertEquals(rule, reply.json().at("/violations/0/rule").asText());
-    }
-
-    @ParameterizedTest
-    @CsvSource(
-            delimiter = '|',
-            value = {
+                "{\"type\":\"PLACE_SHIP\",\"shipId\":\"s01\",\"anchor\":{\"rowIndex\":1,\"columnIndex\":1,\"z\":0},\"orientation\":\"HORIZONTAL\"}|/command/anchor/z|UNKNOWN_FIELD",
                 "{\"type\":\"PLACE_SHIP\",\"shipId\":\"s01\",\"anchor\":{\"rowIndex\":100,\"columnIndex\":0},\"orientation\":\"HORIZONTAL\"}|/command/anchor/rowIndex|OUT_OF_RANGE",
                 "{\"type\":\"FIRE\",\"target\":{\"rowIndex\":0,\"columnIndex\":100}}|/command/target/columnIndex|OUT_OF_RANGE",
                 "{\"type\":\"FIRE\",\"target\":{\"rowIndex\":-1,\"columnIndex\":0}}|/command/target/rowIndex|OUT_OF_RANGE",
@@ -234,8 +224,7 @@ class ProblemMappingIT {
                 "{\"type\":\"FIRE\",\"target\":{\"rowIndex\":3}}|/command/target/columnIndex|REQUIRED",
                 "{\"type\":\"REMOVE_SHIP\",\"shipId\":\"012345678901234567890123456789012\"}|/command/shipId|TOO_LONG"
             })
-    void aConstraintViolationInACommandIsRefusedWithItsPointerAndRule(String command, String pointer, String rule)
-            throws Exception {
+    void aCommandValidationErrorKeepsItsPointerAndRule(String command, String pointer, String rule) throws Exception {
         Reply reply = postJson("/probe/command", command(command));
 
         assertEquals(422, reply.status());
@@ -302,12 +291,51 @@ class ProblemMappingIT {
         assertEquals("malformed-request", reply.json().get("code").asText());
     }
 
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "{\"rulesetId\":\"r\",\"displayName\":\"Ann\"} x",
+                "{\"rulesetId\":\"r\",\"displayName\":\"Ann\"}{}"
+            })
+    void textAfterTheJsonDocumentIsRefusedAsMalformedRequest(String body) throws Exception {
+        Reply reply = postJson("/probe/create-game", body);
+
+        assertEquals(400, reply.status());
+        assertEquals("malformed-request", reply.json().get("code").asText());
+    }
+
+    @Test
+    void aNumberWhereTextIsExpectedIsNotCoercedToText() throws Exception {
+        Reply reply = postJson("/probe/create-game", "{\"rulesetId\":\"r\",\"displayName\":123}");
+
+        assertEquals(422, reply.status());
+        assertEquals("/displayName", reply.json().at("/violations/0/field").asText());
+        assertEquals("INVALID_TYPE", reply.json().at("/violations/0/rule").asText());
+    }
+
     @Test
     void aWrongContentTypeIsRefusedAsUnsupportedMediaType() throws Exception {
         Reply reply = post("/probe/create-game", "text/plain", "hello");
 
         assertEquals(415, reply.status());
         assertEquals("unsupported-media-type", reply.json().get("code").asText());
+    }
+
+    @Test
+    void anUnexpectedFailureIsLoggedWithItsStackWhileTheResponseStaysSanitized() throws Exception {
+        Reply reply = get("/probe/boom?leak=x");
+
+        String id = reply.json().get("correlationId").asText();
+        assertThat(logs.list)
+                .filteredOn(event -> event.getFormattedMessage().contains(id))
+                .singleElement()
+                .satisfies(event -> {
+                    assertThat(event.getThrowableProxy()).isNotNull();
+                    assertThat(event.getThrowableProxy().getClassName()).isEqualTo("java.lang.IllegalStateException");
+                    assertThat(event.getThrowableProxy().getStackTraceElementProxyArray())
+                            .isNotEmpty();
+                });
+        assertThat(reply.raw()).doesNotContain("IllegalStateException", "leaked");
     }
 
     @Test

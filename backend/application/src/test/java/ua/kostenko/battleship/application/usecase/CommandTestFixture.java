@@ -7,6 +7,7 @@ import ua.kostenko.battleship.application.MutableTimeSource;
 import ua.kostenko.battleship.application.port.SecretGenerator;
 import ua.kostenko.battleship.application.projection.SnapshotProjector;
 import ua.kostenko.battleship.application.registry.GameRegistry;
+import ua.kostenko.battleship.application.registry.GameSlot;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
 import ua.kostenko.battleship.application.result.ApplicationFailure;
 import ua.kostenko.battleship.domain.SeededRandomSource;
@@ -23,7 +24,7 @@ final class CommandTestFixture {
     static final Duration ABSOLUTE = Duration.ofSeconds(120);
     static final Duration INVITATION = Duration.ofSeconds(30);
     static final Duration RETENTION = Duration.ofSeconds(30);
-    static final Duration PRESENCE = Duration.ofSeconds(10);
+    static final Duration PRESENCE_INTERVAL = Duration.ofSeconds(10);
     static final int[][] ANCHORS = {{0, 0}, {2, 0}, {2, 4}, {4, 0}, {4, 3}, {4, 6}, {6, 0}, {6, 2}, {6, 4}, {6, 6}};
 
     final GameRegistry games;
@@ -33,16 +34,16 @@ final class CommandTestFixture {
     final RecordingPublisher published = new RecordingPublisher();
     final AtomicInteger commandIds = new AtomicInteger();
     final SecretGenerator secrets = new SecretGenerator() {
-        final AtomicInteger games = new AtomicInteger();
-        final AtomicInteger sessions = new AtomicInteger();
+        final AtomicInteger gameIds = new AtomicInteger();
+        final AtomicInteger sessionIds = new AtomicInteger();
         final AtomicInteger invitations = new AtomicInteger();
 
         public String gameId() {
-            return "game-" + games.incrementAndGet();
+            return "game-" + gameIds.incrementAndGet();
         }
 
         public String sessionValue() {
-            return "session-" + sessions.incrementAndGet();
+            return "session-" + sessionIds.incrementAndGet();
         }
 
         public String invitationSecret() {
@@ -53,6 +54,7 @@ final class CommandTestFixture {
     final JoinGameUseCase join;
     final CommandUseCase commands;
     final PresenceUseCase presence;
+    final GetGameUseCase get;
     final ExpireGamesUseCase expire;
     final ReplaceInvitationUseCase replace;
     final LeaveGameUseCase leave;
@@ -62,7 +64,7 @@ final class CommandTestFixture {
     }
 
     CommandTestFixture(SnapshotProjector projector) {
-        this(projector, 20, IDLE, ABSOLUTE, INVITATION, RETENTION, PRESENCE);
+        this(projector, 20, IDLE, ABSOLUTE, INVITATION, RETENTION, PRESENCE_INTERVAL);
     }
 
     CommandTestFixture(
@@ -104,6 +106,7 @@ final class CommandTestFixture {
         commands = new CommandUseCase(
                 games, sessions, time, new SeededRandomSource(42), projector, published, idle, retention);
         presence = new PresenceUseCase(games, sessions, time, projector, idle, presenceInterval, retention);
+        get = new GetGameUseCase(games, sessions, time, projector, retention);
         expire = new ExpireGamesUseCase(games, sessions, published, retention);
         leave = new LeaveGameUseCase(games, sessions, time, projector, published, retention);
     }
@@ -143,7 +146,7 @@ final class CommandTestFixture {
     }
 
     GameState state(Game game) {
-        return games.withSlot(game.id(), slot -> slot.state());
+        return games.withSlot(game.id(), GameSlot::state);
     }
 
     void placeFleet(Game game, Seat seat) {
@@ -177,7 +180,7 @@ final class CommandTestFixture {
     }
 
     Instant idleDeadline(String gameId) {
-        return games.withSlot(gameId, slot -> slot.idleDeadline());
+        return games.withSlot(gameId, GameSlot::idleDeadline);
     }
 
     record Game(String id, String host, String guest) {}

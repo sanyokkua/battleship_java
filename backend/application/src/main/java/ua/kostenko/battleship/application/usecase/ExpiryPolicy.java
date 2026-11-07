@@ -73,16 +73,16 @@ public final class ExpiryPolicy {
             TimeSource time,
             Duration resultRetention) {
         if (sessionValue == null) return;
-        sessions.find(sessionValue).ifPresent(record -> {
-            if (record.liveGames().isEmpty()) return;
+        sessions.find(sessionValue).ifPresent(session -> {
+            if (session.liveGames().isEmpty()) return;
             Instant now = time.now();
-            for (String gameId : record.liveGames()) {
+            for (String gameId : session.liveGames()) {
                 try {
                     games.withSlot(gameId, slot -> {
                         if (status(slot, now, resultRetention) != Status.LIVE) settle(slot, sessions, resultRetention);
                         return null;
                     });
-                } catch (UnknownGameException reclaimed) {
+                } catch (UnknownGameException _) {
                     // the sweep settled it before removing it, so nothing is left to release
                 }
             }
@@ -91,7 +91,9 @@ public final class ExpiryPolicy {
 
     /**
      * Admits a protected operation: a forgotten game and a stranger both read as unavailable, an expired game tells
-     * only its own two seats, and a live game yields the caller's seat.
+     * only its own two seats, and a live game yields the caller's seat. The seat comes from the slot's digests alone,
+     * so this use case does not need the session registry to be current; the HTTP layer still requires a known
+     * session before it gets here (SessionCookieFilter answers 401 otherwise).
      */
     static Seat authorize(
             GameSlot slot, String digest, Instant now, Duration resultRetention, SessionRegistry sessions) {
@@ -100,7 +102,7 @@ public final class ExpiryPolicy {
         if (status == Status.EXPIRED_RETAINED) settle(slot, sessions, resultRetention);
         if (status == Status.FORGOTTEN || (status == Status.EXPIRED_RETAINED && seat == null)) throw unavailable();
         if (status == Status.EXPIRED_RETAINED) throw new ApplicationFailure("game-expired", null, null, null);
-        if (seat == null || sessions.findDigest(digest).isEmpty()) throw unavailable();
+        if (seat == null) throw unavailable();
         return seat;
     }
 

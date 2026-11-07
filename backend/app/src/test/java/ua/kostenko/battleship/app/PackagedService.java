@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -41,7 +42,7 @@ public final class PackagedService implements AutoCloseable {
     public static PackagedService start(Map<String, String> environment) throws Exception {
         try {
             return launch(environment);
-        } catch (PortTaken taken) {
+        } catch (PortTaken _) {
             return launch(environment); // the free port was taken between probing and binding
         }
     }
@@ -57,20 +58,35 @@ public final class PackagedService implements AutoCloseable {
         try (ServerSocket free = new ServerSocket(0)) {
             port = free.getLocalPort();
         }
-        Path output = Files.createTempFile("packaged-service", ".log");
-        ProcessBuilder builder = new ProcessBuilder(
-                        Path.of(System.getProperty("java.home"), "bin", "java").toString(),
-                        "-jar",
-                        jar().toString(),
-                        "--server.port=" + port)
-                .redirectErrorStream(true)
-                .redirectOutput(output.toFile());
-        builder.environment()
-                .keySet()
-                .removeIf(name ->
-                        name.startsWith("SPRING_") || name.startsWith("SERVER_") || name.startsWith("BATTLESHIP_"));
-        builder.environment().putAll(environment);
-        PackagedService service = new PackagedService(builder.start(), output, port);
+        Path directory = Files.createTempDirectory(
+                "packaged-service-",
+                PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")));
+        Path output = directory.resolve("service.log");
+        PackagedService service;
+        try {
+            ProcessBuilder builder = new ProcessBuilder(
+                            Path.of(System.getProperty("java.home"), "bin", "java")
+                                    .toString(),
+                            "-jar",
+                            jar().toString(),
+                            "--server.port=" + port)
+                    .redirectErrorStream(true)
+                    .redirectOutput(output.toFile());
+            builder.environment()
+                    .keySet()
+                    .removeIf(name ->
+                            name.startsWith("SPRING_") || name.startsWith("SERVER_") || name.startsWith("BATTLESHIP_"));
+            builder.environment().putAll(environment);
+            service = new PackagedService(builder.start(), output, port);
+        } catch (Throwable failure) {
+            try {
+                Files.deleteIfExists(output);
+                Files.deleteIfExists(directory);
+            } catch (IOException cleanupFailure) {
+                failure.addSuppressed(cleanupFailure);
+            }
+            throw failure;
+        }
         try {
             service.awaitReady();
         } catch (Throwable failure) {
@@ -91,10 +107,10 @@ public final class PackagedService implements AutoCloseable {
             }
             try {
                 if (get("/api/v1/health").status() == 200) return;
-            } catch (IOException notYet) {
+            } catch (IOException _) {
                 // not listening yet
             }
-            Thread.sleep(200);
+            process.waitFor(200, TimeUnit.MILLISECONDS);
         }
         throw new AssertionError(
                 "the packaged service was not ready within " + STARTUP + ":\n" + Files.readString(output));
@@ -113,14 +129,18 @@ public final class PackagedService implements AutoCloseable {
         process.destroyForcibly();
         try {
             process.waitFor(10, TimeUnit.SECONDS);
-        } catch (InterruptedException interrupted) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
         }
         try {
             Runtime.getRuntime().removeShutdownHook(killOnExit);
-        } catch (IllegalStateException shuttingDown) {
+        } catch (IllegalStateException _) {
             // the hook is already running
         }
-        Files.deleteIfExists(output);
+        try {
+            Files.deleteIfExists(output);
+        } finally {
+            Files.deleteIfExists(output.getParent());
+        }
     }
 }

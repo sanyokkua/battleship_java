@@ -16,6 +16,7 @@ import ua.kostenko.battleship.app.config.BattleshipProperties;
 import ua.kostenko.battleship.app.config.GracefulShutdownConfig;
 import ua.kostenko.battleship.app.web.ProblemAdvice;
 import ua.kostenko.battleship.app.web.dto.ProblemCode;
+import ua.kostenko.battleship.application.port.TimeSource;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
 
 /**
@@ -30,11 +31,11 @@ class SecurityConfig {
     SecurityFilterChain apiSecurity(
             HttpSecurity http,
             SessionRegistry sessions,
+            TimeSource time,
             ObjectMapper wireMapper,
             FixedWindowBuckets buckets,
             GracefulShutdownConfig shutdown,
-            BattleshipProperties properties)
-            throws Exception {
+            BattleshipProperties properties) {
         CookieCsrfTokenRepository csrfTokens = new CookieCsrfTokenRepository();
         csrfTokens.setCookiePath("/");
         csrfTokens.setCookieCustomizer(
@@ -60,7 +61,8 @@ class SecurityConfig {
                 .exceptionHandling(handling ->
                         handling.accessDeniedHandler((request, response, denied) -> ProblemAdvice.writeProblem(
                                 request, response, ProblemCode.REQUEST_SECURITY_REJECTED, wireMapper)))
-                // Refused before the anti-forgery check, size, then site; both run before the rate limit, so a refusal
+                // Refused in this order: draining, size, site, then an unknown session (401 even without an
+                // anti-forgery token, R33), then the anti-forgery check; all run before the rate limit, so a refusal
                 // never spends quota.
                 .addFilterBefore(new SiteIsolationFilter(properties.publicBaseUrl(), wireMapper), CsrfFilter.class)
                 .addFilterBefore(
@@ -69,9 +71,11 @@ class SecurityConfig {
                 .addFilterBefore(
                         new DrainingFilter(shutdown, wireMapper, properties.shutdownDrainSeconds()),
                         RequestSizeFilter.class)
-                .addFilterAfter(new SessionCookieFilter(sessions, wireMapper), CsrfFilter.class)
+                .addFilterBefore(new SessionCookieFilter(sessions, time, wireMapper), CsrfFilter.class)
                 .addFilterAfter(
-                        new RateLimitFilter(buckets, properties.rateLimit(), wireMapper), SessionCookieFilter.class)
+                        new RateLimitFilter(
+                                buckets, properties.rateLimit(), properties.trustForwardedFor(), wireMapper),
+                        CsrfFilter.class)
                 .build();
     }
 }

@@ -1,0 +1,58 @@
+.fleet-tray {
+    display: grid;
+    gap: var(--space-2);
+}
+.fleet-progress {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--text-2);
+}
+.fleet-inventory {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+}
+.inventory-ship {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-width: 0;
+    min-height: var(--control-h);
+    gap: var(--space-2);
+    padding: var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    color: var(--text-2);
+    text-align: center;
+    cursor: pointer;
+}
+.inventory-ship[aria-pressed='true'] {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+.inventory-ship:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+.fleet-segments {
+    display: inline-flex;
+    gap: 0.2rem;
+}
+.fleet-segments i {
+    width: 0.7rem;
+    height: 0.48rem;
+    border: 1px solid var(--board-ship-edge);
+    border-radius: 3px;
+    background: var(--board-ship);
+}
+
+.inventory-ship > span:first-child {
+    display: none;
+}
+.inventory-ship .fleet-segments i {
+    background: var(--accent);
+    border-color: var(--accent-strong);
+}

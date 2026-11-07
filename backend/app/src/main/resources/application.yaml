@@ -25,14 +25,18 @@ battleship:
   heartbeat-seconds: 15
   stream-max-lifetime-seconds: 1200
   max-concurrent-games: 100
+  max-concurrent-sessions: 200
   max-concurrent-streams: 200
+  stream-retry-after-seconds: 1
   max-live-games-per-browser: 1
   max-request-body-bytes: 16384
   random-arrangement-attempts: 1000
   sweep-interval-seconds: 30
   shutdown-drain-seconds: 5
   public-base-url: http://localhost:5173
+  trust-forwarded-for: false
   rate-limit:
+    table-capacity: 10000
     create-game-per-minute: 5
     join-per-minute: 20
     commands-per-minute: 60

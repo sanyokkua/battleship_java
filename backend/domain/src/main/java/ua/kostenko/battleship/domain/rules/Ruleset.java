@@ -12,7 +12,7 @@ public record Ruleset(
         boolean shipsMayTouch,
         boolean extraTurnOnHit,
         boolean revealWaterAroundSunk) {
-    private static final Pattern RULESET_ID = Pattern.compile("^[a-z0-9-]+\\.v[0-9]+$");
+    private static final Pattern RULESET_ID = Pattern.compile("^[a-z\\d-]+\\.v\\d+$");
 
     public Ruleset {
         Objects.requireNonNull(id, "id");

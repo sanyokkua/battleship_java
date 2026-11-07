@@ -1,5 +1,10 @@
 <!--
 Sync Impact Report
+- 2.0.1 -> 2.1.0 (2026-11-07): MINOR. Owner approved GitHub Actions workflows as part of the `003-frontend` extension (no new feature): a branch-push build, a pull-request gate that runs `scripts/local-build.sh`, and a stable-semver tag release that pushes the Render image to GHCR and creates a GitHub Release. Materially expanded section: VII (the baseline is no longer "not CI"; CI workflows are allowed within stated limits). Modified sections: VII, Scope and Technical Baseline (launch exclusions no longer list CI workflows). Limits kept: deploying to Render and publishing to Render remain manual; SonarQube stays local-only; workflows use only the scoped `GITHUB_TOKEN` and no other secrets; deployment manifests, hosting automation and provider-specific infrastructure stay excluded. No principle added or removed. AGENTS.md, docs, spec/plan/tasks and agent memory updated in the same change.
+- 2.0.0 -> 2.0.1 (2026-11-07): PATCH. Script consolidation by owner decision. The single product gate is now `scripts/local-build.sh` (replacing `scripts/verify.sh`, `build.sh`, `install.sh`); the repository keeps only `local-build.sh`, `local-deploy.sh` and three `build-docker-*.sh` image builds. The `Dockerfile` images (frontend, backend, and the combined Render image) are recorded as an intentional, owner-approved manual artifact: nothing is pushed or deployed by the repository, and no hosting, CI or deployment infrastructure is added. Modified section: VII. No principle added or removed. AGENTS.md and agent memory updated in the same change.
+- 1.3.2 -> 2.0.0 (2026-11-06): MAJOR. Owner approved a narrow, advisory placement check using the player’s known board and ruleset, to offer valid placement directions; server validation remains authoritative. Principle II and Scope and Technical Baseline amended; feature artifacts, AGENTS.md and saved memory updated. No sections removed; no deferred placeholders.
+- 1.3.1 -> 1.3.2 (2026-10-18): PATCH. Runtimes are pinned by major version only (Java 25, Node 24, newest patch); runtime checks verify the major alone. Motivation: owner decision while planning `003-frontend` — the machine runs Node 24.21.0 against the recorded 24.19.0, and patch levels move during development. Modified section: Scope and Technical Baseline. Dependency versions stay exact in lockfiles; the Maven Wrapper and Spring Boot pins are unchanged. AGENTS.md and agent memory updated in the same change.
+- 1.3.0 -> 1.3.1 (2026-10-18): PATCH. Folded the planned `004-integration` feature into `003-frontend` by owner decision, so the frontend is tested against the real backend instead of recorded data or a fake engine. `003-frontend` now owns the root integration layer and `scripts/verify.sh`. Modified sections: VII (gate owner wording), Development Workflow and Quality Gates (feature order). No principle added or removed. AGENTS.md and agent memory updated in the same change.
 - 1.2.1 -> 1.3.0 (2026-09-29): MINOR. Added a mandatory task-branch lifecycle: verify branch/worktree state at task start, isolate tasks expected to need multiple commits, commit each completed task, and squash-merge task branches into their recorded parent feature branch. `rewrite_prod_ready` remains reserved for completed feature-level integration. Motivation: make task completion and branch integration explicit and verifiable across sessions. Updated AGENTS.md in the same change.
 - Version change: 1.2.1 -> 1.3.0
 - Modified principles: VIII. Proportionate Process (added task branch, commit, and closeout requirements).
@@ -81,7 +86,10 @@ backend or frontend changes that depend on it.
 The backend owns game rules, command validation, authorization, state
 transitions, lifecycle decisions, statistics, and player-safe projections. The
 browser is a contract client and MUST NOT infer hidden placement, turn,
-winner, legality, expiry, or command success. Anonymous authorization MUST use
+winner, legality outside fleet placement, expiry, or command success. For fleet placement only, it MAY derive
+advisory available destinations and orientations from the caller’s current
+visible ships and published ruleset. The server remains the sole authority
+for validation and state; rejected commands and newer snapshots MUST be handled. Anonymous authorization MUST use
 high-entropy capability handling with server-side digest storage for the browser
 session (an unused one-time invitation secret MAY stay in process memory so the
 host's own snapshot can show the invitation link); a public game
@@ -182,20 +190,32 @@ evidence MUST be updated in the same work item.
 
 ### VII. Local Production-Like Readiness
 
-The baseline is local development and local production-style verification, not
-hosting, CI, or deployment. The resulting shape MUST nevertheless be ready for
-minimal hosting changes: runtime configuration is explicit and validated,
-frontend and backend artifacts remain separate, development proxy addresses
-are not baked into static output, the public application path is preserved,
-security defaults are deployment-aware, resources are bounded, and health,
-logging, shutdown, and troubleshooting are documented. The backend is
-intentionally ephemeral and in-memory. The accepted lifecycle baseline is a
-15-minute idle lifetime, a two-hour absolute lifetime, five-minute terminal
-retention, and explicit restart loss; the UI and tests MUST describe these
-limits rather than implying persistence.
+The baseline is local development and local production-style verification;
+hosting and deployment are not part of the repository. The resulting shape MUST
+nevertheless be ready for minimal hosting changes: runtime configuration is
+explicit and validated, frontend and backend artifacts remain separate,
+development proxy addresses are not baked into static output, the public
+application path is preserved, security defaults are deployment-aware,
+resources are bounded, and health, logging, shutdown, and troubleshooting are
+documented. The backend is intentionally ephemeral and in-memory. The accepted
+lifecycle baseline is a 15-minute idle lifetime, a two-hour absolute lifetime,
+five-minute terminal retention, and explicit restart loss; the UI and tests
+MUST describe these limits rather than implying persistence.
 
-The root integration feature owns the single authoritative `scripts/verify.sh`
-gate. Before that feature exists, each feature MUST use only the focused build,
+The repository MAY build local Docker images (frontend, backend, and one combined
+image for Render) from the same artifacts. GitHub Actions workflows under
+`.github/workflows/` MAY build the project on branch pushes, run the root gate
+on pull requests, and, on a stable semantic-version tag on `master`, push the
+Render image to GHCR and create a GitHub Release. Workflows MUST call the
+repository's own scripts and Dockerfile rather than duplicate their logic,
+MUST use only the scoped `GITHUB_TOKEN` with least-privilege per-job
+permissions and no other secrets, and MUST NOT run SonarQube. Deploying the
+image to Render, and publishing it to any registry other than GHCR, remain
+manual steps that the repository does not automate.
+
+Feature `003-frontend` owns the root integration layer and the single
+authoritative `scripts/local-build.sh` gate (`--docker` runs the same gate inside
+Docker). Before that feature exists, each feature MUST use only the focused build,
 test, lint, and local-run commands named by its approved plan. No command may
 declare a skipped, timed-out, or capability-blocked stage green.
 
@@ -261,16 +281,20 @@ one root integration layer:
   changed only by amending the contract and regenerating.
 - `frontend/` is an independent TypeScript/React/Vite static application that
   consumes the contract through a single gateway and does not ship a local
-  rules engine or frontend assets inside the backend JAR.
+  rules engine or frontend assets inside the backend JAR. The narrow advisory
+  placement checks permitted by Principle II are not authoritative game state.
 - `scripts/`, local configuration examples, integration tests, and local
   operation documentation own cross-product orchestration and verification;
   they are not a fourth application product or a root npm workspace.
 
 The primary implementation languages are Java and TypeScript. The approved
-baseline is Java 25 LTS at patch 25.0.4 with Maven 3.9.16 Wrapper and Spring
-Boot 4.1.1, plus Node 24.19.0 LTS/npm with the approved React, Vite, TypeScript, contract,
+baseline is Java 25 LTS with Maven 3.9.16 Wrapper and Spring Boot 4.1.1, plus
+Node 24 LTS/npm with the approved React, Vite, TypeScript, contract,
 testing, accessibility, and browser tooling versions recorded by the owning
-feature plan and lockfile. Dependencies MUST use exact versions in the owning
+feature plan and lockfile. Runtimes (Java, Node) are pinned by major version
+only: use the newest available patch of that major, and runtime checks MUST
+verify the major version alone, because minor and patch releases change
+during development. Dependencies MUST use exact versions in the owning
 lockfile and MUST pass compatibility checks before acceptance. A later version
 or framework substitution requires evidence and an approved plan change; it
 MUST NOT be introduced as an incidental upgrade.
@@ -278,16 +302,17 @@ MUST NOT be introduced as an incidental upgrade.
 The launch baseline excludes a database, durable session store, cache or
 broker as authority, accounts, chat, spectators, rankings, payments,
 analytics, advertisements, offline gameplay or command queues, horizontal
-scaling, multiple replicas, CI workflows, deployment manifests, hosting
-automation, and provider-specific infrastructure. Excluding those capabilities
+scaling, multiple replicas, deployment manifests, hosting automation, and
+provider-specific infrastructure. The CI workflows permitted by Principle VII
+are the only automation beyond local scripts. Excluding those capabilities
 does not permit insecure local shortcuts: local configuration MUST model the
 same origin, public-path, credential, redaction, and resource-boundary
 assumptions needed for a later hosting choice.
 
 ## Development Workflow and Quality Gates
 
-The approved feature order is `001-api-contract`, `002-backend`,
-`003-frontend`, and `004-integration`. Each feature MUST have its own
+The approved feature order is `001-api-contract`, `002-backend`, and
+`003-frontend`; `003-frontend` also delivers the root integration layer. Each feature MUST have its own
 `specs/<feature>/spec.md`, `plan.md`, and `tasks.md`; the plan MUST be complete
 before feature code is written. The normal loop is:
 
@@ -346,4 +371,4 @@ scope, reason, risk, owner, expiry or removal condition, and compensating proof;
 an undocumented exception is not accepted. Compliance review does not replace
 behavioral tests or the local verification commands.
 
-**Version**: 1.3.0 | **Ratified**: 2026-08-20 | **Last Amended**: 2026-09-29
+**Version**: 2.1.0 | **Ratified**: 2026-08-20 | **Last Amended**: 2026-11-07

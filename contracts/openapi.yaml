@@ -200,6 +200,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Unprocessable'
         '429':
@@ -638,11 +640,12 @@ components:
     Conflict:
       description: >-
         The request is well formed but the game does not allow it now. Codes: `invitation-unavailable`
-        (join), `action-not-allowed` (not in `allowedActions`: wrong phase, not your turn, already
+        (join), `browser-game-limit` (create, join: this browser already holds its live game; do not retry;
+        play again once it ends or expires), `action-not-allowed` (not in `allowedActions`: wrong phase, not your turn, already
         ready, fleet incomplete, not the host), `placement-out-of-bounds`, `placement-overlap`,
         `placement-touching`, `random-arrangement-failed` (random arrangement exhausted its attempt
         limit), `target-already-fired`. Nothing changed; except for
-        `invitation-unavailable`, fetch the snapshot.
+        `invitation-unavailable` and `browser-game-limit`, fetch the snapshot.
       content:
         application/problem+json:
           schema:
@@ -650,6 +653,8 @@ components:
           examples:
             invitationUnavailable:
               value: { title: Invitation unavailable, status: 409, code: invitation-unavailable, correlationId: 9f2c1d7a4b6e4c1e }
+            browserGameLimit:
+              value: { title: Browser already in a game, status: 409, code: browser-game-limit, correlationId: 9f2c1d7a4b6e4c1e }
             actionNotAllowed:
               value: { title: Action not allowed, status: 409, code: action-not-allowed, correlationId: 9f2c1d7a4b6e4c1e }
             placementOutOfBounds:
@@ -741,7 +746,8 @@ components:
       minLength: 1
       maxLength: 32
       description: >-
-        Name shown to both players. The server rejects control characters anywhere in the input, including
+        Name shown to both players. The server rejects control, bidirectional-override and invisible formatting
+        characters (except the zero-width joiner used by emoji) anywhere in the input, including
         at its edges, then trims surrounding whitespace and normalizes to Unicode NFC; length is
         counted in code points after that. It is plain
         text, need not be unique, cannot be changed and proves nothing about who the player is.
@@ -1030,9 +1036,9 @@ components:
           type: integer
           minimum: 0
           description: >-
-            Grows when either player's **view** changes — that player's snapshot excluding `serverTime`
-            and `expiresAt`, both of which are always current. Only for ordering: display a snapshot
-            when its version is greater than the displayed one. Numbers may skip.
+            Grows when either player's **view** changes — that player's snapshot excluding `serverTime`,
+            `expiresAt`, `invitationUrl` and `invitationExpiresAt`, which are always current. Only for
+            ordering: display a snapshot when its version is greater than the displayed one. Numbers may skip.
         serverTime:
           allOf:
             - $ref: '#/components/schemas/Instant'
@@ -1085,6 +1091,16 @@ components:
           description: >-
             The caller's own board. `grid` never contains `UNKNOWN`. From `PLACEMENT` on, `ships` lists
             the whole fleet, including ships that are not placed yet.
+        placementBlockedCells:
+          type: array
+          uniqueItems: true
+          description: >-
+            Present only in `PLACEMENT`. Empty, in-bounds cells adjacent horizontally, vertically or
+            diagonally to the caller's placed ships when this ruleset forbids ship contact. Empty when
+            ships may touch or no ship has been placed. This is a display hint, not a complete list of
+            valid placements for any ship; the server still validates every placement command.
+          items:
+            $ref: '#/components/schemas/Coordinate'
         opponentBoard:
           allOf:
             - $ref: '#/components/schemas/Board'
@@ -1347,6 +1363,7 @@ components:
         - request-security-rejected
         - game-unavailable
         - invitation-unavailable
+        - browser-game-limit
         - action-not-allowed
         - placement-out-of-bounds
         - placement-overlap
@@ -1482,6 +1499,7 @@ components:
         you: { displayName: Rival, ready: false, connected: false, shipsRemaining: 10 }
         opponent: { displayName: Captain, ready: false, connected: true, shipsRemaining: 10 }
         allowedActions: [PLACE_SHIP, REMOVE_SHIP, PLACE_FLEET_RANDOMLY, CLEAR_FLEET, SEND_PRESENCE, LEAVE]
+        placementBlockedCells: []
         expiresAt: '2026-09-20T12:17:00.000Z'
         yourBoard:
           grid:
@@ -1550,6 +1568,26 @@ components:
         you: { displayName: Captain, ready: false, connected: true, shipsRemaining: 10 }
         opponent: { displayName: Rival, ready: true, connected: true, shipsRemaining: 10 }
         allowedActions: [PLACE_SHIP, REMOVE_SHIP, PLACE_FLEET_RANDOMLY, CLEAR_FLEET, SEND_PRESENCE, LEAVE]
+        placementBlockedCells:
+          - {rowIndex: 0, columnIndex: 4}
+          - {rowIndex: 1, columnIndex: 0}
+          - {rowIndex: 1, columnIndex: 1}
+          - {rowIndex: 1, columnIndex: 2}
+          - {rowIndex: 1, columnIndex: 3}
+          - {rowIndex: 1, columnIndex: 4}
+          - {rowIndex: 1, columnIndex: 5}
+          - {rowIndex: 1, columnIndex: 6}
+          - {rowIndex: 1, columnIndex: 7}
+          - {rowIndex: 2, columnIndex: 3}
+          - {rowIndex: 2, columnIndex: 7}
+          - {rowIndex: 3, columnIndex: 0}
+          - {rowIndex: 3, columnIndex: 1}
+          - {rowIndex: 3, columnIndex: 2}
+          - {rowIndex: 3, columnIndex: 3}
+          - {rowIndex: 3, columnIndex: 4}
+          - {rowIndex: 3, columnIndex: 5}
+          - {rowIndex: 3, columnIndex: 6}
+          - {rowIndex: 3, columnIndex: 7}
         expiresAt: '2026-09-20T12:18:10.000Z'
         yourBoard:
           grid:

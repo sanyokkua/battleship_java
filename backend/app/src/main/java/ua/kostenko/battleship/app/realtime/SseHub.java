@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -42,7 +43,6 @@ import ua.kostenko.battleship.domain.model.Seat;
 @Component
 public class SseHub implements SnapshotPublisher {
     private static final MediaType FRAME = new MediaType("text", "plain", StandardCharsets.UTF_8);
-    private static final int RETRY_AFTER_SECONDS = 1;
     private static final String KEEP_ALIVE = ": keep-alive\n\n";
     private static final ThreadFactory WRITERS =
             Thread.ofVirtual().name("sse-writer-", 0).factory();
@@ -54,6 +54,7 @@ public class SseHub implements SnapshotPublisher {
     private final Semaphore streams;
     private final Duration heartbeat;
     private final Duration lifetime;
+    private final int retryAfterSeconds;
     private final int drainRetryAfterSeconds;
     private final ConcurrentHashMap<String, Set<Subscriber>> subscribers = new ConcurrentHashMap<>();
 
@@ -61,12 +62,12 @@ public class SseHub implements SnapshotPublisher {
     volatile boolean closing;
 
     /** Race seams for EventStreamIT only: run after the pending install and after the capture; no-ops otherwise. */
-    volatile Runnable afterPendingInstalled = () -> {};
+    final AtomicReference<Runnable> afterPendingInstalled = new AtomicReference<>(() -> {});
 
-    volatile Runnable afterCapture = () -> {};
+    final AtomicReference<Runnable> afterCapture = new AtomicReference<>(() -> {});
 
     /** Emitter seam for EventStreamIT only: lets a proof open a stream whose writes it can stall. */
-    volatile Supplier<SseEmitter> newEmitter = () -> new SseEmitter(0L);
+    final AtomicReference<Supplier<SseEmitter>> newEmitter = new AtomicReference<>(() -> new SseEmitter(0L));
 
     SseHub(
             SubscribeUseCase subscribe,
@@ -81,6 +82,7 @@ public class SseHub implements SnapshotPublisher {
         this.streams = new Semaphore(properties.maxConcurrentStreams());
         this.heartbeat = Duration.ofSeconds(properties.heartbeatSeconds());
         this.lifetime = Duration.ofSeconds(properties.streamMaxLifetimeSeconds());
+        this.retryAfterSeconds = properties.streamRetryAfterSeconds();
         this.drainRetryAfterSeconds = properties.shutdownDrainSeconds();
     }
 
@@ -89,8 +91,7 @@ public class SseHub implements SnapshotPublisher {
      * emitter is returned, so it is answered as the same problem document as every other operation.
      */
     public SseEmitter open(String gameId, String sessionValue) {
-        if (!streams.tryAcquire()) throw new ApplicationFailure("service-unavailable", null, null, RETRY_AFTER_SECONDS);
-        SseEmitter emitter = newEmitter.get();
+        SseEmitter emitter = newEmitter.get().get();
         Subscriber subscriber = new Subscriber(gameId, emitter, time.now());
         subscribers.compute(gameId, (id, present) -> {
             Set<Subscriber> set = present == null ? ConcurrentHashMap.newKeySet() : present;
@@ -104,20 +105,51 @@ public class SseHub implements SnapshotPublisher {
             drop(subscriber);
             throw new ApplicationFailure("service-unavailable", null, null, drainRetryAfterSeconds);
         }
-        afterPendingInstalled.run();
+        afterPendingInstalled.get().run();
         SubscribeUseCase.Subscription subscription;
         try {
-            subscription = subscribe.open(gameId, sessionValue);
+            subscription = subscribe.open(gameId, sessionValue, seat -> admit(gameId, subscriber, seat));
         } catch (RuntimeException refused) {
             drop(subscriber);
             throw refused;
         }
-        afterCapture.run();
+        afterCapture.get().run();
         Seat seat = subscription.seat();
         long stream = subscription.stream();
+        Activation activation = activate(gameId, subscriber, subscription);
+        if (!activation.active()) {
+            disconnected(gameId, seat, stream);
+            return emitter;
+        }
+        if (subscription.opponent() != null) publish(gameId, seat.opponent(), subscription.opponent());
+        drain(subscriber);
+        if (activation.replaced() != null && activation.replaced().closeWith(StreamClosed.ReasonEnum.REPLACED))
+            drain(activation.replaced());
+        return emitter;
+    }
+
+    /**
+     * Gives a stream that is now known to be a player's its place under the streams ceiling, so a stranger or an
+     * expired game is refused as such and never as "full". A stream replacing the seat's open one takes over that
+     * stream's permit: the replaced stream is about to be closed, so the ceiling is neither exceeded nor refused.
+     */
+    private void admit(String gameId, Subscriber subscriber, Seat seat) {
+        for (Subscriber other : subscribersOf(gameId)) {
+            if (other != subscriber && other.isOpenFor(seat) && other.surrenderPermit()) {
+                subscriber.grantPermit();
+                return;
+            }
+        }
+        if (!streams.tryAcquire()) throw new ApplicationFailure("service-unavailable", null, null, retryAfterSeconds);
+        subscriber.grantPermit();
+    }
+
+    private Activation activate(String gameId, Subscriber subscriber, SubscribeUseCase.Subscription subscription) {
         Subscriber[] replaced = {null};
         boolean[] active = {false};
         subscribers.computeIfPresent(gameId, (id, set) -> {
+            Seat seat = subscription.seat();
+            long stream = subscription.stream();
             active[0] = subscriber.activate(seat, stream, subscription.first());
             if (active[0]) {
                 for (Subscriber other : set) {
@@ -127,15 +159,10 @@ public class SseHub implements SnapshotPublisher {
             }
             return set;
         });
-        if (!active[0]) {
-            disconnected(gameId, seat, stream);
-            return emitter;
-        }
-        if (subscription.opponent() != null) publish(gameId, seat.opponent(), subscription.opponent());
-        drain(subscriber);
-        if (replaced[0] != null && replaced[0].closeWith(StreamClosed.ReasonEnum.REPLACED)) drain(replaced[0]);
-        return emitter;
+        return new Activation(active[0], replaced[0]);
     }
+
+    private record Activation(boolean active, Subscriber replaced) {}
 
     @Override
     public void publish(String gameId, Seat seat, SnapshotView view) {
@@ -177,7 +204,7 @@ public class SseHub implements SnapshotPublisher {
             if (next == null) return;
             try {
                 subscriber.emitter().send(Set.of(new DataWithMediaType(text(next), FRAME)));
-            } catch (IOException | RuntimeException failed) {
+            } catch (IOException | RuntimeException _) {
                 // Only the failure that wins the close claim says so, once, and before the stream's end becomes
                 // visible to anyone, so whoever sees it gone also finds the record.
                 if (subscriber.close()) {
@@ -262,7 +289,7 @@ public class SseHub implements SnapshotPublisher {
             set.remove(subscriber);
             return set.isEmpty() ? null : set;
         });
-        streams.release();
+        if (subscriber.surrenderPermit()) streams.release();
         Seat seat = subscriber.seat();
         if (seat != null) disconnected(subscriber.gameId(), seat, subscriber.stream());
     }

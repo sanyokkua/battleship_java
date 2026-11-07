@@ -23,7 +23,7 @@ class LeaveGameTest {
                 CommandTestFixture.ABSOLUTE,
                 CommandTestFixture.INVITATION,
                 CommandTestFixture.RETENTION,
-                CommandTestFixture.PRESENCE);
+                CommandTestFixture.PRESENCE_INTERVAL);
     }
 
     private boolean liveGamesEmpty(CommandTestFixture f, String session) {
@@ -67,7 +67,7 @@ class LeaveGameTest {
                     .isEqualTo("game-unavailable");
             Seat other = leaver == Seat.HOST ? Seat.GUEST : Seat.HOST;
             String otherSession = other == Seat.HOST ? game.host() : game.guest();
-            var view = f.presence.execute(game.id(), otherSession);
+            var view = f.get.execute(game.id(), otherSession);
             assertThat(view.phase()).isEqualTo(Phase.ABANDONED);
             assertThat(view.statistics()).isNull();
             assertThat(view.outcome()).isNull();
@@ -110,14 +110,14 @@ class LeaveGameTest {
         assertThat(failureCode(() -> f.presence.execute(game.id(), game.host())))
                 .isEqualTo("game-unavailable");
         assertThat(failureCode(() -> f.leave.execute(game.id(), game.host()))).isEqualTo("game-unavailable");
-        var view = f.presence.execute(game.id(), game.guest());
+        var view = f.get.execute(game.id(), game.guest());
         assertThat(view.phase()).isEqualTo(Phase.FINISHED);
         assertThat(view.outcome()).isNotNull();
         assertThat(view.statistics()).isNotNull();
 
         // the other player's result stays readable for the full retention period
         f.time.advance(CommandTestFixture.RETENTION.minus(SECOND));
-        assertThat(f.presence.execute(game.id(), game.guest()).phase()).isEqualTo(Phase.FINISHED);
+        assertThat(f.get.execute(game.id(), game.guest()).phase()).isEqualTo(Phase.FINISHED);
     }
 
     @Test
@@ -128,7 +128,7 @@ class LeaveGameTest {
 
         assertThat(f.state(game).phase()).isEqualTo(Phase.ABANDONED);
         assertThat(failureCode(() -> f.leave.execute(game.id(), game.host()))).isEqualTo("game-unavailable");
-        assertThat(f.presence.execute(game.id(), game.guest()).phase()).isEqualTo(Phase.ABANDONED);
+        assertThat(f.get.execute(game.id(), game.guest()).phase()).isEqualTo(Phase.ABANDONED);
         f.leave.execute(game.id(), game.guest());
         assertThat(failureCode(() -> f.leave.execute(game.id(), game.guest()))).isEqualTo("game-unavailable");
     }

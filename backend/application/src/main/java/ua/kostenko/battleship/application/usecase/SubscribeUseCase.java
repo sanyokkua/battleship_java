@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import ua.kostenko.battleship.application.port.TimeSource;
 import ua.kostenko.battleship.application.projection.SnapshotContext;
 import ua.kostenko.battleship.application.projection.SnapshotProjector;
@@ -44,14 +45,19 @@ public final class SubscribeUseCase {
         this.resultRetention = resultRetention;
     }
 
-    /** Opens a stream; the number is taken under the lock, so for one seat a higher number is a newer stream. */
-    public Subscription open(String gameId, String sessionValue) {
+    /**
+     * Opens a stream; the number is taken under the lock, so for one seat a higher number is a newer stream.
+     * {@code admission} runs under the lock once the caller is known to be a player of a live game and before anything
+     * changes, so it can refuse (by throwing) only an authorized caller and a refusal leaves the game untouched.
+     */
+    public Subscription open(String gameId, String sessionValue, Consumer<Seat> admission) {
         String digest = sessionValue == null ? null : SessionRegistry.digest(sessionValue);
         Captured captured;
         try {
             captured = games.withSlot(gameId, slot -> {
                 Instant now = time.now();
                 Seat seat = ExpiryPolicy.authorize(slot, digest, now, resultRetention, sessions);
+                admission.accept(seat);
                 long stream = streamNumbers.incrementAndGet();
                 boolean connecting = slot.connectedStreams().put(seat, stream) == null;
                 if (connecting) slot.replace(slot.state().withBumpedVersion());
@@ -62,7 +68,7 @@ public final class SubscribeUseCase {
                         slot.contextFor(seat, now),
                         connecting ? opponentContext(slot, seat, now) : null);
             });
-        } catch (UnknownGameException unknown) {
+        } catch (UnknownGameException _) {
             throw ExpiryPolicy.unavailable();
         }
         return new Subscription(
@@ -88,7 +94,7 @@ public final class SubscribeUseCase {
                 slot.replace(slot.state().withBumpedVersion());
                 return new Captured(slot.state(), seat, stream, null, opponentContext(slot, seat, now));
             });
-        } catch (UnknownGameException removed) {
+        } catch (UnknownGameException _) {
             return null;
         }
         return captured == null ? null : opponentView(captured);

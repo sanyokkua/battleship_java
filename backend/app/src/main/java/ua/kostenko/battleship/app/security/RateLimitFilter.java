@@ -16,6 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import ua.kostenko.battleship.app.config.BattleshipProperties.RateLimits;
 import ua.kostenko.battleship.app.web.ProblemAdvice;
 import ua.kostenko.battleship.app.web.dto.ProblemCode;
+import ua.kostenko.battleship.application.registry.SessionRegistry;
 
 /**
  * Throttles the eight limited operations, each with its own configured per-minute limit (R38, R52). Create and join
@@ -81,23 +82,27 @@ final class RateLimitFilter extends OncePerRequestFilter {
     private final FixedWindowBuckets buckets;
     private final RateLimits limits;
     private final ObjectMapper wireMapper;
+    private final boolean trustForwardedFor;
 
-    RateLimitFilter(FixedWindowBuckets buckets, RateLimits limits, ObjectMapper wireMapper) {
+    RateLimitFilter(FixedWindowBuckets buckets, RateLimits limits, boolean trustForwardedFor, ObjectMapper wireMapper) {
         this.buckets = buckets;
         this.limits = limits;
+        this.trustForwardedFor = trustForwardedFor;
         this.wireMapper = wireMapper;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        for (Limited operation : CLASSES) {
-            if (!operation.matcher().matches(request)) {
-                continue;
-            }
+        Limited operation = CLASSES.stream()
+                .filter(candidate -> candidate.matcher().matches(request))
+                .findFirst()
+                .orElse(null);
+        if (operation != null) {
+            // The table holds only the session's digest, never the cookie value itself (R32).
             String key = operation.key() == Key.ADDRESS
-                    ? request.getRemoteAddr()
-                    : SessionCookieFilter.sessionValue(request);
+                    ? callerAddress(request)
+                    : SessionRegistry.digest(SessionCookieFilter.sessionValue(request));
             long retryAfter =
                     buckets.acquire(operation.name(), key, operation.limit().applyAsInt(limits));
             if (retryAfter > 0) {
@@ -105,8 +110,28 @@ final class RateLimitFilter extends OncePerRequestFilter {
                         request, response, ProblemCode.RATE_LIMIT_EXCEEDED, wireMapper, (int) retryAfter);
                 return;
             }
-            break;
         }
         chain.doFilter(request, response);
+    }
+
+    /**
+     * The peer address, or, when one trusted proxy is configured, the last X-Forwarded-For entry: the one that proxy
+     * appended itself. Earlier entries are client-supplied and would let a caller pick its own bucket.
+     */
+    private String callerAddress(HttpServletRequest request) {
+        if (trustForwardedFor) {
+            String forwarded = null;
+            for (var lines = request.getHeaders("X-Forwarded-For"); lines.hasMoreElements(); ) {
+                forwarded = lines.nextElement();
+            }
+            if (forwarded != null) {
+                String last =
+                        forwarded.substring(forwarded.lastIndexOf(',') + 1).trim();
+                if (!last.isEmpty()) {
+                    return last;
+                }
+            }
+        }
+        return request.getRemoteAddr();
     }
 }

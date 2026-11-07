@@ -11,8 +11,10 @@ import ua.kostenko.battleship.application.port.TimeSource;
 import ua.kostenko.battleship.application.projection.SnapshotContext;
 import ua.kostenko.battleship.application.projection.SnapshotProjector;
 import ua.kostenko.battleship.application.projection.SnapshotView;
+import ua.kostenko.battleship.application.registry.BrowserGameLimitException;
 import ua.kostenko.battleship.application.registry.CapacityExceededException;
 import ua.kostenko.battleship.application.registry.GameRegistry;
+import ua.kostenko.battleship.application.registry.GameSlot;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
 import ua.kostenko.battleship.application.registry.UnknownGameException;
 import ua.kostenko.battleship.application.result.ApplicationFailure;
@@ -62,75 +64,88 @@ public final class JoinGameUseCase {
             String gameId, String invitationSecret, String displayName, String presentedSessionValue) {
         ExpiryPolicy.settleExpiredGamesOf(games, sessions, presentedSessionValue, time, resultRetention);
         try {
-            Captured captured = games.withSlot(gameId, slot -> {
-                Instant now = time.now();
-                String presentedDigest =
-                        presentedSessionValue == null ? null : SessionRegistry.digest(presentedSessionValue);
-                var status = ExpiryPolicy.status(slot, now, resultRetention);
-                if (status == ExpiryPolicy.Status.EXPIRED_RETAINED)
-                    ExpiryPolicy.settle(slot, sessions, resultRetention);
-                if (presentedDigest != null && presentedDigest.equals(slot.guestSessionDigest())) {
-                    if (status == ExpiryPolicy.Status.EXPIRED_RETAINED)
-                        throw new ApplicationFailure("game-expired", null, null, null);
-                    if (status == ExpiryPolicy.Status.FORGOTTEN) throw unavailable();
-                    return new Captured(presentedSessionValue, slot.state(), slot.contextFor(Seat.GUEST, now), null);
-                }
-                if (presentedDigest != null && presentedDigest.equals(slot.hostSessionDigest())) throw unavailable();
-                if (status != ExpiryPolicy.Status.LIVE
-                        || slot.state().phase() != Phase.WAITING
-                        || slot.state().guest() != null
-                        || ExpiryPolicy.reached(slot.invitationDeadline(), now)) {
-                    if (ExpiryPolicy.reached(slot.invitationDeadline(), now)) clearInvitation(slot);
-                    throw unavailable();
-                }
-                if (invitationSecret == null
-                        || slot.invitationDigest() == null
-                        || !matches(slot.invitationDigest(), invitationSecret)) throw unavailable();
-                String name;
-                try {
-                    name = DisplayNameNormalizer.normalize(displayName);
-                } catch (DisplayNameNormalizer.InvalidNameException invalid) {
-                    throw new ApplicationFailure(
-                            "validation-failed",
-                            "/displayName",
-                            invalid.reason().name(),
-                            null);
-                }
-                String sessionValue = presentedSessionValue != null
-                                && sessions.find(presentedSessionValue).isPresent()
-                        ? presentedSessionValue
-                        : secrets.sessionValue();
-                Instant admittedAt;
-                try {
-                    admittedAt = sessions.admitGame(sessionValue, gameId, maxLiveGames, () -> {
-                        Instant admissionNow = time.now();
-                        if (ExpiryPolicy.status(slot, admissionNow, resultRetention) != ExpiryPolicy.Status.LIVE
-                                || ExpiryPolicy.reached(slot.invitationDeadline(), admissionNow)) {
-                            clearInvitation(slot);
-                            throw unavailable();
-                        }
-                        slot.replace(slot.state().withGuest(name, admissionNow));
-                        slot.guestSessionDigest(SessionRegistry.digest(sessionValue));
-                        slot.idleDeadline(admissionNow.plus(idleTimeout));
-                        clearInvitation(slot);
-                        return admissionNow;
-                    });
-                } catch (CapacityExceededException full) {
-                    throw new ApplicationFailure("service-unavailable", null, null, full.retryAfterSeconds());
-                }
-                return new Captured(
-                        sessionValue,
-                        slot.state(),
-                        slot.contextFor(Seat.GUEST, admittedAt),
-                        slot.contextFor(Seat.HOST, admittedAt));
-            });
+            Captured captured = games.withSlot(
+                    gameId, slot -> capture(slot, gameId, invitationSecret, displayName, presentedSessionValue));
             if (captured.hostContext() != null)
                 publisher.publish(
                         gameId, Seat.HOST, projector.project(captured.state(), Seat.HOST, captured.hostContext()));
             return new JoinedGame(
                     captured.sessionValue(), projector.project(captured.state(), Seat.GUEST, captured.context()));
-        } catch (UnknownGameException unknown) {
+        } catch (UnknownGameException _) {
             throw unavailable();
+        }
+    }
+
+    private Captured capture(
+            GameSlot slot, String gameId, String invitationSecret, String displayName, String presentedSessionValue) {
+        Instant now = time.now();
+        String presentedDigest = presentedSessionValue == null ? null : SessionRegistry.digest(presentedSessionValue);
+        var status = ExpiryPolicy.status(slot, now, resultRetention);
+        if (status == ExpiryPolicy.Status.EXPIRED_RETAINED) ExpiryPolicy.settle(slot, sessions, resultRetention);
+        if (presentedDigest != null && presentedDigest.equals(slot.guestSessionDigest())) {
+            if (status == ExpiryPolicy.Status.EXPIRED_RETAINED)
+                throw new ApplicationFailure("game-expired", null, null, null);
+            if (status == ExpiryPolicy.Status.FORGOTTEN) throw unavailable();
+            return new Captured(presentedSessionValue, slot.state(), slot.contextFor(Seat.GUEST, now), null);
+        }
+        if (presentedDigest != null && presentedDigest.equals(slot.hostSessionDigest())) throw unavailable();
+        requireAvailableInvitation(slot, status, now, invitationSecret);
+        String name = normalizeName(displayName);
+        String sessionValue = presentedSessionValue != null
+                        && sessions.find(presentedSessionValue).isPresent()
+                ? presentedSessionValue
+                : secrets.sessionValue();
+        Instant admittedAt = admit(slot, gameId, sessionValue, name);
+        return new Captured(
+                sessionValue,
+                slot.state(),
+                slot.contextFor(Seat.GUEST, admittedAt),
+                slot.contextFor(Seat.HOST, admittedAt));
+    }
+
+    private static void requireAvailableInvitation(
+            GameSlot slot, ExpiryPolicy.Status status, Instant now, String invitationSecret) {
+        if (status != ExpiryPolicy.Status.LIVE
+                || slot.state().phase() != Phase.WAITING
+                || slot.state().guest() != null
+                || ExpiryPolicy.reached(slot.invitationDeadline(), now)) {
+            if (ExpiryPolicy.reached(slot.invitationDeadline(), now)) clearInvitation(slot);
+            throw unavailable();
+        }
+        if (invitationSecret == null
+                || slot.invitationDigest() == null
+                || !matches(slot.invitationDigest(), invitationSecret)) throw unavailable();
+    }
+
+    /** The validated display name, or the contract's validation failure; shared by create and join. */
+    static String normalizeName(String displayName) {
+        try {
+            return DisplayNameNormalizer.normalize(displayName);
+        } catch (DisplayNameNormalizer.InvalidNameException invalid) {
+            throw new ApplicationFailure(
+                    "validation-failed", "/displayName", invalid.reason().name(), null);
+        }
+    }
+
+    private Instant admit(GameSlot slot, String gameId, String sessionValue, String name) {
+        try {
+            return sessions.admitGame(sessionValue, gameId, maxLiveGames, () -> {
+                Instant admissionNow = time.now();
+                if (ExpiryPolicy.status(slot, admissionNow, resultRetention) != ExpiryPolicy.Status.LIVE
+                        || ExpiryPolicy.reached(slot.invitationDeadline(), admissionNow)) {
+                    clearInvitation(slot);
+                    throw unavailable();
+                }
+                slot.replace(slot.state().withGuest(name, admissionNow));
+                slot.guestSessionDigest(SessionRegistry.digest(sessionValue));
+                slot.idleDeadline(admissionNow.plus(idleTimeout));
+                clearInvitation(slot);
+                return admissionNow;
+            });
+        } catch (BrowserGameLimitException _) {
+            throw new ApplicationFailure("browser-game-limit", null, null, null);
+        } catch (CapacityExceededException full) {
+            throw new ApplicationFailure("service-unavailable", null, null, full.retryAfterSeconds());
         }
     }
 
@@ -140,7 +155,7 @@ public final class JoinGameUseCase {
         return MessageDigest.isEqual(expected, actual);
     }
 
-    private static void clearInvitation(ua.kostenko.battleship.application.registry.GameSlot slot) {
+    private static void clearInvitation(GameSlot slot) {
         slot.invitationDigest(null);
         slot.unusedInvitationSecret(null);
     }

@@ -2,10 +2,7 @@
 
 **Plan**: [plan.md](plan.md) · **Date**: 2026-09-21
 
-Decisions only. The seed documents under `docs/rewrite_context_doc/` are inputs, not authority; where
-they disagree with `contracts/openapi.yaml` or [spec.md](spec.md), the contract and spec win, and
-`contracts/README.md` § *Supersedes planning inputs* records the delta, so none of the mechanisms
-listed there were researched or are built.
+Decisions only. Where anything disagrees with `contracts/openapi.yaml` or [spec.md](spec.md), the contract and spec win.
 
 ## Decisions
 

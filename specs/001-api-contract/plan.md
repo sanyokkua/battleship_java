@@ -41,8 +41,7 @@ No application code, generated client package, CI, deployment or runtime lives h
 ## Design decisions
 
 All wire decisions and their reasons are in `contracts/openapi.yaml` (`info.description`) and
-`contracts/README.md`. The ones that differ from the earlier planning inputs are listed in
-`contracts/README.md` § *Supersedes planning inputs*.
+`contracts/README.md`.
 
 ## Forecast
 

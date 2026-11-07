@@ -16,6 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import ua.kostenko.battleship.app.web.ProblemAdvice;
 import ua.kostenko.battleship.app.web.SessionCookie;
 import ua.kostenko.battleship.app.web.dto.ProblemCode;
+import ua.kostenko.battleship.application.port.TimeSource;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
 
 /**
@@ -37,10 +38,12 @@ final class SessionCookieFilter extends OncePerRequestFilter {
             .toList());
 
     private final SessionRegistry sessions;
+    private final TimeSource time;
     private final ObjectMapper wireMapper;
 
-    SessionCookieFilter(SessionRegistry sessions, ObjectMapper wireMapper) {
+    SessionCookieFilter(SessionRegistry sessions, TimeSource time, ObjectMapper wireMapper) {
         this.sessions = sessions;
+        this.time = time;
         this.wireMapper = wireMapper;
     }
 
@@ -53,7 +56,7 @@ final class SessionCookieFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String value = sessionValue(request);
-        if (value == null || sessions.find(value).isEmpty()) {
+        if (value == null || sessions.authenticate(value, time.now()).isEmpty()) {
             response.addHeader(HttpHeaders.SET_COOKIE, SessionCookie.cleared());
             ProblemAdvice.writeProblem(request, response, ProblemCode.SESSION_REQUIRED, wireMapper);
             return;

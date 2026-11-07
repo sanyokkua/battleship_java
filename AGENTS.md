@@ -6,15 +6,17 @@ This repository is a greenfield Battleship rewrite. Build the new application fr
 implementation that currently lives on `master`. Branch `rewrite_prod_ready` must be considered as main development
 branch.
 
-**Stack.** Target modules are API, backend, and frontend, but their concrete technologies, boundaries, and verification
-commands are defined by the approved spec and technical plan for the active feature.
+**Stack.** Modules (API, backend, frontend) and their technologies, boundaries and verification commands come from the
+approved spec and plan of the active feature. Runtimes are pinned by major only (Java 25, Node 24, newest patch); npm
+and Maven dependencies stay exact.
 
-**State.** Current workflow state lives in the active Spec Kit feature artifacts and the prerequisite checker. Do not
-assume an application module, build, test, lint, or local-run command exists until the approved plan introduces it.
+**State.** Workflow state lives in the active Spec Kit feature artifacts and the prerequisite checker; the approved
+`003-frontend` feature supplies the modules, local commands and the gate, and `./scripts/local-build.sh` is the
+authoritative product check.
 
-**The spec is the authority.** `.specify/memory/constitution.md` is project governance. For implementation, use the
-active feature's `spec.md`, `plan.md`, and `tasks.md`; if the spec is silent on a behavior that matters, stop and ask
-with a recommended default.
+**The spec is the authority.** `.specify/memory/constitution.md` is governance; implement from the active feature's
+`spec.md`, `plan.md` and `tasks.md`. If the spec is silent on a behavior that matters, stop and ask with a recommended
+default.
 
 ## The loop
 
@@ -26,38 +28,29 @@ Use this common feature path; skip only explicitly optional steps. No feature co
 
 1. **Orient.** For a registered feature, run `bash .specify/scripts/bash/check-prerequisites.sh --json
    --require-tasks --include-tasks` and identify the active feature.
-2. **Governance and memory.** Run `$speckit-constitution` only when governance is missing or changing. The
-   standalone `$speckit-memory-loader-load` is optional; configured mandatory hooks run
-   `speckit.memory-loader.load` before `specify`, `clarify`, `checklist`, `plan`, `tasks`, `analyze`, and
-   `implement`.
-3. **Specify and clarify.** Run `$speckit-specify`, then `$speckit-clarify`; clarification is completed before
-   planning.
-4. **Requirements quality (optional).** Run `$speckit-checklist` after specification/clarification and before
-   planning or task generation as appropriate. It evaluates requirements writing, not implementation behavior.
+2. **Governance and memory.** Run `$speckit-constitution` only when governance is missing or changing. Mandatory hooks
+   run `speckit.memory-loader.load` before `specify`, `clarify`, `checklist`, `plan`, `tasks`, `analyze`, `implement`.
+3. **Specify and clarify.** Run `$speckit-specify`, then `$speckit-clarify`, before planning.
+4. **Requirements quality (optional).** `$speckit-checklist` evaluates requirements writing, not implementation.
 5. **Plan and task.** Run `$speckit-plan` through Phase 0 research and Phase 1 design/contracts, then run
    `$speckit-tasks` to create the dependency-ordered implementation list.
 6. **Analyze.** Run `$speckit-analyze` after tasks and before implementation. It is read-only; resolve material
    cross-artifact issues before building.
-7. **Handoff and implement.** After tasks, the configured hook mandatorily creates the
-   `speckit.speckit-superpowers-bridge.handoff`. Explicit bridge skills are
-   `$speckit-speckit-superpowers-bridge-handoff` and
-   `$speckit-speckit-superpowers-bridge-guard`; with bridge ownership, run the guard and one of
-   `$speckit-speckit-superpowers-bridge-execute` or `$speckit-superpowers-bridge`; these are aliases, not
-   sequential steps. Use `$speckit-implement` directly only when the bridge is not used. The configured
-   `speckit.speckit-superpowers-bridge.guard` also runs before clarification, planning, tasks, and implementation.
-8. **Converge and repeat.** Run `$speckit-converge` only after an implementation pass. If it appends remaining
-   tasks, rerun the selected bridge or direct implementation path; do not use converge as initial planning.
+7. **Handoff and implement.** After tasks, the configured hook creates the
+   `speckit.speckit-superpowers-bridge.handoff`; the guard (also hooked before clarify, plan, tasks, implement) and
+   `$speckit-speckit-superpowers-bridge-execute` / `$speckit-superpowers-bridge` are aliases, not sequential steps. Use
+   `$speckit-implement` directly only when the bridge is not used.
+8. **Converge and repeat.** Run `$speckit-converge` only after an implementation pass; if it appends tasks, rerun the
+   implementation path. It is not initial planning.
 9. **Verify, close.** After implementation, run the verification commands named in the approved plan, update
    durable docs/status, and hand off with evidence and the next step.
 
-**Optional extensions.** Use `$speckit-taskstoissues` when tasks must become GitHub issues.
+**Optional extensions.** `$speckit-taskstoissues` turns tasks into GitHub issues. Mermaid diagrams in plans only when
+they clarify behavior or boundaries.
 
-Advance without asking when the next phase is clear from the approved artifacts. Stop only to resolve an ambiguous or
-silent spec, report a repeated verification failure with the same cause, raise a costly architecture decision, or
-request approval for an irreversible action outside normal repo edits.
-
-Spec Kit plans may include Mermaid diagrams when they clarify behavior, interactions, or boundaries. Diagrams are
-optional and should never be decorative.
+Advance without asking when the next phase is clear from the approved artifacts. Stop only for an ambiguous or silent
+spec, a repeated verification failure with the same cause, a costly architecture decision, or an irreversible action
+outside normal repo edits.
 
 ## Scope control
 
@@ -65,10 +58,9 @@ Every step above is additive. `specify`, `clarify`, `checklist`, `plan`, `tasks`
 `converge` can each add a requirement; none can remove one, so the loop has no fixed point and ends only when the
 user tires. These seven rules are the missing counterweight. They bind the agent, not the user.
 
-1. **Mark provenance.** Tag every requirement in `spec.md` `[user]` (traceable to the user's own words or the seed
-   doc) or `[agent]`. Present the `[agent]` set as one block with its aggregate cost before it enters the spec;
-   agent-added requirements default to deferred. `speckit-specify` is told to make informed guesses and to escalate
-   only when scope is "significantly impacted", so unmarked agent expansion is the default failure.
+1. **Mark provenance.** Tag every requirement in `spec.md` `[user]` (traceable to the user's words or the seed doc) or
+   `[agent]`. Present the `[agent]` set as one block with its aggregate cost before it enters the spec; agent-added
+   requirements default to deferred.
 2. **Name the assurance level in `plan.md`.** `Lean` — canonical artifact, standard lint, one guide. `Standard` —
    targeted examples and tests for named risks. `Release-grade` — baselines, generated consumers, exhaustive
    fixtures, privacy matrices. Default to `Lean`. Never escalate silently; escalation is a user decision.
@@ -79,86 +71,78 @@ user tires. These seven rules are the missing counterweight. They bind the agent
    "all", "every", "complete", or "final" without an enumerated manifest of what it covers.
 5. **Done means a named mutation fails the gate.** Record the command output showing the assertion failing when the
    thing it guards is removed. A green test that cannot fail is not evidence, and a checked box is not evidence.
-6. **Bound convergence.** `$speckit-converge` is append-only by contract and never repairs the task that was wrongly
-   checked. When a finding maps to an existing task, uncheck that task rather than letting the appended one stand
-   alone. After two rounds with material findings, stop and fix the plan instead of appending a third phase.
+6. **Bound convergence.** `$speckit-converge` is append-only and never repairs a wrongly checked task: when a finding
+   maps to an existing task, uncheck it. After two rounds with material findings, fix the plan instead of appending.
 7. **Present cost, not just benefit.** Anything offered for approval carries what it adds (files, dependencies,
-   tasks), a cheaper alternative, and a recommendation of now / later / no. Offer decisions, not finished documents —
-   a coherent document written faster than the user can read it cannot be rejected, only accepted.
+   tasks), a cheaper alternative, and a recommendation of now / later / no. Offer decisions, not finished documents.
 
 ## Definition of Done
 
-**Gate.** There is no single repository-wide product gate at this `HEAD` yet. Before BUILD starts, the approved
-technical plan must name the build, test, lint, and local-run commands for the affected module or feature.
+**Gate.** `003-frontend` owns the root integration layer and the single repository-wide product gate,
+`./scripts/local-build.sh` (there is no `004-integration`; `--docker` runs the same gate inside Docker). Run it before
+declaring the feature complete. It checks runtimes and exact installs, the contract, backend, frontend, and browser
+journeys against the packaged backend; any failed or timed-out stage fails the run.
+
+**Backend gate.** `cd backend && ./mvnw -q verify && ./mvnw spotless:check`. Contract gate: see below. For substantial
+implementation, refactoring, or a requested quality audit, also run the local SonarQube scans in
+`docs/local-operation.md`; review findings in context, report scan or server failures, and never suppress findings to
+improve metrics. They do not replace the product gate.
+
+**Local topology.** UI and API share one origin (no CORS): `vite preview` serves the built UI and proxies `/api`
+(`./scripts/local-deploy.sh`, HTTPS on the LAN because the session cookie is `Secure`). Frontend journeys run against the
+real packaged backend; no recorded game data and no fake engine.
+
+**Scripts.** `scripts/` holds only product scripts: `local-build.sh` (gate), `local-deploy.sh` (run on the LAN),
+and `build-docker-{frontend,backend,render}.sh` (images built in Linux stages from the root `Dockerfile`; no push).
+Commands, ports, images and troubleshooting: `docs/local-operation.md`. The Render image (frontend + backend,
+`linux/amd64`, `--smoke` checks) is an intentional, owner-approved artifact; deploying to Render stays manual
+(`docs/render-deployment.md`). There is no hosting or deployment infrastructure in this repository.
+
+**CI** (`.github/workflows/ci.yml`, `release.yml`; guide `docs/ci.md`) has three paths in two workflows: build-only on branch
+pushes except `master`, the PR gate `./scripts/local-build.sh`, and a stable `vX.Y.Z` tag on `master` that pushes the
+Render image to GHCR and creates a GitHub Release. No new script; SonarQube stays local; only `GITHUB_TOKEN`.
 
 **Generation path.** `002-backend` generates the wire DTOs from `contracts/openapi.yaml` into
-`backend/app/target/generated-sources/openapi` (package `ua.kostenko.battleship.app.web.dto`) during
-`generate-sources`. It generates Jackson 2 models and only the whitelisted discriminator/date helpers
-required by the `Command` oneOf model; it emits no API endpoint classes or `ApiClient`. The app declares
-Jackson 2 runtime modules explicitly, and its HTTP converter must use that mapper for generated DTOs. All generated sources are
-build output — never committed, never hand-edited, not formatted by Spotless, and changed only by amending
-the contract and regenerating (constitution § *Scope and Technical Baseline*, Principle VI).
+`backend/app/target/generated-sources/openapi` (package `ua.kostenko.battleship.app.web.dto`) during `generate-sources`:
+Jackson 2 models plus only the whitelisted discriminator/date helpers the `Command` oneOf needs, no endpoint classes or
+`ApiClient`; the app's HTTP converter must use the declared Jackson 2 mapper. Generated sources are build output: never
+committed, hand-edited or Spotless-formatted; change the contract and regenerate (constitution Principle VI).
 
-For a registered feature, start by proving the feature artifacts exist:
-
+For a registered feature, first prove the artifacts exist:
 `bash .specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
 
-Work is done only when the approved tasks are complete, the required verification from the plan has run cleanly, and the
-delivered behavior still matches the governing spec. Do not borrow commands, tests, or success criteria from `master`.
+Work is done only when the approved tasks are complete, `./scripts/local-build.sh` has run cleanly, and the delivered
+behavior still matches the governing spec. Do not borrow commands, tests, or success criteria from `master`.
 
-Capture evidence, not just conclusions. If no product verification command exists yet, say that plainly and leave the
-work in a not-fully-verified state.
+Capture evidence, not just conclusions. Report skipped, timed-out, failed, and environment-blocked checks distinctly;
+none count as a passing gate.
 
 ## Git protocol
 
-`master` is historical context for the old application, not the base for new implementation work.
+`master` is historical context for the old application, not the base for new work. At the start of each task inspect
+`git status --short --branch` and the local branches, confirm the intended feature branch, and reuse an existing task
+branch when appropriate. For multi-commit tasks create `feature/<feature>--<task>` from the active feature integration
+branch and record that parent. Keep unrelated staged or unstaged changes intact.
 
-At the start of each task, inspect `git status --short --branch` and the local branch list. Confirm the current branch
-exists and is the intended feature branch; check whether a task branch for this work already exists and reuse it when
-appropriate. For a task expected to need multiple commits, create `feature/<feature>--<task>` from the active feature
-integration branch and record that parent before editing. Keep unrelated staged or unstaged changes intact.
-
-Commit each completed task with a concise imperative subject. At task closeout, verify its changes are committed; if a
-task branch was used, squash-merge it into its recorded parent feature branch and verify the result there. Keep
-`rewrite_prod_ready` for completed feature-level integration, not unfinished task branches.
-
-Do not rewrite history, force-push, or use destructive git cleanup unless the user explicitly asks. Final merges to the
-default branch remain a user-approved step.
+Commit each completed task with a concise imperative subject; at closeout verify it is committed and squash-merge a
+task branch into its recorded parent. Keep `rewrite_prod_ready` for completed feature-level integration. Do not rewrite
+history, force-push, or use destructive cleanup unless asked; merges to the default branch need user approval.
 
 ## Delegation
 
-The main agent is the orchestrator. Keep the main context for task framing, decisions, coordination, synthesis, and
-integration.
-
-Substantive repository work such as inspection, implementation, debugging, research, verification, and review must go to
-focused sub-agents when that tooling is available. Brief them with the objective, expected output, files or paths to
-inspect, and what must not be touched.
-
-If delegation tooling is unavailable, say so and continue locally instead of pretending the repository rule does not
-exist.
-
-Never delegate the final judgment about whether the implementation satisfies the approved spec or what the next step
-should be.
+The main agent is the orchestrator: it keeps task framing, decisions, synthesis and the final judgment on whether the
+work satisfies the approved spec. Substantive inspection, implementation, debugging, research, verification and review
+go to focused sub-agents (brief them with objective, expected output, paths, and what not to touch). If delegation
+tooling is unavailable, say so and continue locally.
 
 ## Non-negotiables
 
-- Treat the new Battleship application as greenfield work; never use the current `master` implementation as the
-  foundation. Enforced by `AGENTS.md` and approved specs — (advisory)
-- `.specify/memory/constitution.md` plus the active feature's `spec.md`, `plan.md`, and `tasks.md` are the
-  implementation authority. Enforced by review discipline — (advisory)
-- Do not invent module boundaries, technologies, commands, or standards that the approved artifacts have not established
-  yet. Enforced by plan-first workflow — (advisory)
-- Preserve unrelated staged and unstaged changes. Enforced by task scope and git discipline — (advisory)
-- Use orchestrator-plus-focused-sub-agent execution for substantive repo work when the tooling exists; if it does not,
-  state that limitation. Enforced by `AGENTS.md` — (advisory)
-- Add Mermaid diagrams to Spec Kit technical plans only when they materially clarify the design. Enforced by plan
-  review — (advisory)
-- Update `AGENTS.md`, the constitution, and this project's saved agent memory together when a change establishes or
-  invalidates durable repository-wide knowledge such as module boundaries, architecture, commands, verification,
-  security, deployment, or workflow decisions; remove or correct memory that has gone stale rather than leaving it
-  inconsistent. Enforced by repository maintenance discipline — (advisory)
-- Never exceed a feature's recorded assurance level or task forecast without a new explicit approval, and never let a
-  requirement the user did not ask for enter a spec unmarked. Enforced by `AGENTS.md` Scope control — (advisory)
+- Greenfield: never use the current `master` implementation as the foundation. The constitution plus the active
+  feature's `spec.md`, `plan.md` and `tasks.md` are the authority; do not invent module boundaries, technologies,
+  commands or standards they have not established.
+- Update `AGENTS.md`, the constitution and saved agent memory together when a change establishes or invalidates durable
+  repository-wide knowledge (boundaries, architecture, commands, verification, security, deployment, workflow); correct
+  stale memory rather than leaving it inconsistent.
 
 ## Engineering discipline
 
@@ -174,54 +158,43 @@ integrated into its consumer and covered by a test in the same change — code w
 
 ## Contract product boundary
 
-Feature `specs/001-api-contract` publishes the API contract under `contracts/`. The whole contract is the single
-file `contracts/openapi.yaml` (operations, schemas, embedded examples); `contracts/README.md` is its guide. The
-backend is the model and a client is only a view: every game operation returns the caller-relative `GameSnapshot`
-and the client enables exactly `allowedActions`. `contracts/` contains no application code, game rules,
-persistence, generated client package, CI or deployment.
+`contracts/openapi.yaml` (feature `001-api-contract`; guide `contracts/README.md`) is the only wire authority: one
+file with operations, schemas and embedded examples. The backend is authoritative: every game operation returns the
+caller-relative `GameSnapshot` and the client enables exactly `allowedActions`; placement hints are advisory and the
+backend validates commands. `contracts/` holds no application code, rules, persistence, generated client, CI or
+deployment. The gate is `cd contracts && npm ci && npm run check` (Redocly lint validates every embedded example,
+plus `openapi-typescript` generation into the ignored `.tmp/`); `npm run docs` builds an optional HTML reference. Use
+the pinned local tools through these scripts, never a global CLI or `npx`.
 
-The gate is `cd contracts && npm ci && npm run check` (Redocly lint, which validates every embedded example against
-its schema, plus `openapi-typescript` generation into the ignored `.tmp/`). `npm run docs` builds an optional HTML
-reference into the ignored `dist/`. Use the pinned local tools through these scripts; no global CLI or `npx`.
-
-Keep it lean. Do not add oracle files, tests that assert wording, symbolic fixtures, vendor `x-` extensions that
-restate behaviour, or a second copy of any rule. A contract change is an edit to `openapi.yaml` with a matching
-embedded example. Where `docs/rewrite_context_doc/Planning/` disagrees with `openapi.yaml`, the OpenAPI file wins
-(see `contracts/README.md` § Supersedes planning inputs).
-
-The contract stays v1 for this rewrite; it is not frozen. A gap or design flaw found while implementing the backend
-or frontend MAY be fixed by editing `openapi.yaml` directly, provided every current dependent is updated in the same
-change. Do not build migration, deprecation, or versioning machinery for this pre-release contract.
+Keep it lean: no oracle files, wording-asserting tests, symbolic fixtures, `x-` extensions that restate behaviour, or a
+second copy of any rule. A contract change is an edit to `openapi.yaml` with a matching embedded example. The contract
+stays v1 and is not frozen: a gap found while implementing MAY be fixed in `openapi.yaml` if every dependent is updated
+in the same change. Build no migration, deprecation or versioning machinery.
 
 ## End every turn with Next step
 
-Every work turn should end with a compact `Next step` handoff block that states the real state, the exact next command
-when one exists, and a self-contained prompt for the next session.
-
-Be precise about verification status. Checked boxes are not proof; evidence is. If the next step is a decision, say that
-directly instead of inventing a command.
-
-The block should be short enough to scan quickly and complete enough to survive a fresh session.
+Every work turn should end with a compact `Next step` block: the real verification status (checked boxes are not
+proof; evidence is), the exact next command when one exists (or the decision, stated directly), and a self-contained
+prompt for the next session. Short enough to scan, complete enough to survive a fresh session.
 
 ## What will bite you
 
-- The old Battleship app on `master` is not the rewrite baseline. Reusing its commands, tests, or architecture
-  assumptions will send work down the wrong path even when those artifacts still exist in git history.
-- This `HEAD` may have no product modules or gate yet. Treat that as real project state, not as permission to import
-  conventions from `master` or invent missing commands.
+- The old app on `master` is not the rewrite baseline; its commands, tests and architecture assumptions mislead even
+  though they remain in git history. The active feature plan defines the modules and commands.
 - The Spec Kit prerequisite checker is about feature artifacts, not implementation health. If it fails because tasks or
   a registered feature are missing, fix the workflow state instead of papering over the error.
 - Skills live in two real trees rendered per agent by Spec Kit: `.agents/skills` (Codex) and `.claude/skills` (Claude
-  Code), with the same skills and content apart from that rendering. `python3 scripts/sync-agent-files.py --check`
+  Code), with the same skills and content apart from that rendering. `python3 .specify/scripts/sync-agent-files.py --check`
   must pass; `--apply` copies a skill that exists in only one tree. Never symlink or hand-merge the trees.
-- Repository-wide standards are intentionally incomplete right now. When a naming rule, test framework, or architecture
-  boundary has not been approved, keep the work consistent with the current slice and record the durable decision once
-  it is made.
+- Repository-wide standards are intentionally incomplete: when a rule is not approved, stay consistent with the current
+  slice and record the durable decision once made.
 
 ## Where things live
 
-- Rewrite context and historical planning inputs: `docs/rewrite_context_doc/`
+- Product intent and visual mockup: `docs/intent.md`, `docs/design/`
 - Project governance: `.specify/memory/constitution.md`
+- Durable frontend and integration memory: `.specify/memory/frontend-absorbs-integration.md`
+- Local commands, images and troubleshooting: `docs/local-operation.md`; Render: `docs/render-deployment.md`
 - Spec Kit workflows, templates, and prerequisite scripts: `.specify/`
 - Active feature authority: `specs/<feature-id>/spec.md`, `plan.md`, and `tasks.md`
-- Agent skill sync check: `scripts/sync-agent-files.py`
+- Agent skill sync check: `.specify/scripts/sync-agent-files.py`

@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import org.junit.jupiter.api.Test;
 import ua.kostenko.battleship.application.MutableTimeSource;
+import ua.kostenko.battleship.application.SessionFixtures;
 import ua.kostenko.battleship.application.port.SecretGenerator;
 import ua.kostenko.battleship.application.projection.SnapshotContext;
 import ua.kostenko.battleship.application.projection.SnapshotProjector;
@@ -42,29 +43,28 @@ class CreateGameUseCaseTest {
         assertThat(first.snapshot().expiresAt()).isEqualTo(NOW.plusSeconds(60));
         assertThat(first.snapshot().invitationExpiresAt()).isEqualTo(NOW.plusSeconds(30));
         assertThat(first.snapshot().invitationUrl()).isEqualTo("https://example.test/join/game-1#invite=" + INVITATION);
-        assertThat(fixture.sessions.find("session-1")).get().satisfies(record -> assertThat(record.liveGames())
+        assertThat(fixture.sessions.find("session-1")).get().satisfies(session -> assertThat(session.liveGames())
                 .containsExactly("game-1"));
 
         var second = fixture.create.execute(RULESET, "Grace", first.sessionValue());
         assertThat(second.sessionValue()).isEqualTo(first.sessionValue());
-        assertThat(fixture.sessions.find("session-1")).get().satisfies(record -> assertThat(record.liveGames())
+        assertThat(fixture.sessions.find("session-1")).get().satisfies(session -> assertThat(session.liveGames())
                 .containsExactlyInAnyOrder("game-1", "game-2"));
-        assertThat(fixture.sessions.digests()).hasSize(1);
     }
 
     @Test
     void gameCeilingFailureDoesNotAttachOrphanedGameToSession() {
         Fixture fixture = fixture(1, 2);
-        fixture.sessions.register("host-session", NOW);
+        SessionFixtures.register(fixture.sessions, "host-session", NOW);
         fixture.create.execute(RULESET, "Ada", "host-session");
         assertThatThrownBy(() -> fixture.create.execute(RULESET, "Grace", "host-session"))
                 .isInstanceOfSatisfying(ApplicationFailure.class, failure -> assertThat(failure.code())
                         .isEqualTo("service-unavailable"));
-        assertThat(fixture.sessions.find("host-session")).get().satisfies(record -> assertThat(record.liveGames())
+        assertThat(fixture.sessions.find("host-session")).get().satisfies(session -> assertThat(session.liveGames())
                 .containsExactly("game-1"));
         fixture.games.remove("game-1");
         fixture.create.execute(RULESET, "Grace", "host-session");
-        assertThat(fixture.sessions.find("host-session")).get().satisfies(record -> assertThat(record.liveGames())
+        assertThat(fixture.sessions.find("host-session")).get().satisfies(session -> assertThat(session.liveGames())
                 .containsExactlyInAnyOrder("game-1", "game-3"));
     }
 
@@ -75,7 +75,7 @@ class CreateGameUseCaseTest {
         assertThatThrownBy(() -> fixture.create.execute(RULESET, "Grace", null))
                 .isInstanceOfSatisfying(ApplicationFailure.class, failure -> assertThat(failure.code())
                         .isEqualTo("service-unavailable"));
-        assertThat(fixture.sessions.digests()).containsExactly(SessionRegistry.digest("session-1"));
+        assertThat(fixture.sessions.find("session-1")).isPresent();
         assertThat(fixture.sessions.find("session-2")).isEmpty();
     }
 
@@ -151,7 +151,7 @@ class CreateGameUseCaseTest {
         assertThat(created.get().snapshot().invitationExpiresAt()).isEqualTo(NOW.plusSeconds(40));
         assertThat(fixture.sessions.find(created.get().sessionValue()))
                 .get()
-                .satisfies(record -> assertThat(record.createdAt()).isEqualTo(NOW.plusSeconds(10)));
+                .satisfies(session -> assertThat(session.lastSeenAt()).isEqualTo(NOW.plusSeconds(10)));
     }
 
     private static ReentrantLock sessionLock(SessionRegistry sessions) {
@@ -173,15 +173,15 @@ class CreateGameUseCaseTest {
                     assertThat(failure.field()).isEqualTo("/displayName");
                     assertThat(failure.rule()).isEqualTo("TOO_SHORT");
                 });
-        assertThat(fixture.sessions.digests()).isEmpty();
-        assertThatThrownBy(() -> fixture.games.withSlot("game-1", slot -> slot.state()))
+        assertThat(fixture.sessions.find("session-1")).isEmpty();
+        assertThatThrownBy(() -> fixture.games.withSlot("game-1", GameSlot::state))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void simultaneousCreatesByOneBrowserRespectItsCap() throws Exception {
         Fixture fixture = fixture(4, 1);
-        fixture.sessions.register("host", NOW);
+        SessionFixtures.register(fixture.sessions, "host", NOW);
         ExecutorService workers = Executors.newFixedThreadPool(2);
         CyclicBarrier barrier = new CyclicBarrier(2);
         try {
@@ -189,7 +189,7 @@ class CreateGameUseCaseTest {
             Future<Boolean> second = workers.submit(() -> createAfterBarrier(fixture, barrier));
             assertThat((first.get(5, TimeUnit.SECONDS) ? 1 : 0) + (second.get(5, TimeUnit.SECONDS) ? 1 : 0))
                     .isEqualTo(1);
-            assertThat(fixture.sessions.find("host")).get().satisfies(record -> assertThat(record.liveGames())
+            assertThat(fixture.sessions.find("host")).get().satisfies(session -> assertThat(session.liveGames())
                     .hasSize(1));
         } finally {
             workers.shutdownNow();
@@ -202,7 +202,7 @@ class CreateGameUseCaseTest {
             fixture.create.execute(RULESET, "Host", "host");
             return true;
         } catch (ApplicationFailure refused) {
-            assertThat(refused.code()).isEqualTo("service-unavailable");
+            assertThat(refused.code()).isEqualTo("browser-game-limit");
             return false;
         }
     }
@@ -213,7 +213,7 @@ class CreateGameUseCaseTest {
         final MutableTimeSource time = new MutableTimeSource(NOW);
         final SecretGenerator secrets = new SecretGenerator() {
             final AtomicInteger ids = new AtomicInteger();
-            final AtomicInteger sessions = new AtomicInteger();
+            final AtomicInteger sessionIds = new AtomicInteger();
             final AtomicInteger invitations = new AtomicInteger();
 
             public String gameId() {
@@ -221,7 +221,7 @@ class CreateGameUseCaseTest {
             }
 
             public String sessionValue() {
-                return "session-" + sessions.incrementAndGet();
+                return "session-" + sessionIds.incrementAndGet();
             }
 
             public String invitationSecret() {

@@ -222,15 +222,18 @@ class ProjectionPrivacyTest {
         GameState state = fixture(Phase.PLAYING, "sea-battle-10-ship.v1");
         GameState before = fixture(Phase.PLAYING, "sea-battle-10-ship.v1");
         SnapshotView snapshot = view(state, Seat.HOST);
-        assertThatThrownBy(() -> snapshot.yourBoard().grid().clear()).isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> snapshot.yourBoard().grid().getFirst().set(0, WATER))
-                .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> snapshot.yourBoard().ships().clear())
-                .isInstanceOf(UnsupportedOperationException.class);
-        assertThat(snapshot.yourBoard().ships()).isNotEmpty();
-        assertThatThrownBy(() -> snapshot.yourBoard().ships().getFirst().cells().clear())
-                .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> snapshot.allowedActions().clear()).isInstanceOf(UnsupportedOperationException.class);
+        var projectedBoard = snapshot.yourBoard();
+        var projectedGrid = projectedBoard.grid();
+        var projectedRow = projectedGrid.getFirst();
+        var projectedShips = projectedBoard.ships();
+        assertThat(projectedShips).isNotEmpty();
+        var projectedCells = projectedShips.getFirst().cells();
+        assertThatThrownBy(projectedGrid::clear).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> projectedRow.set(0, WATER)).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(projectedShips::clear).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(projectedCells::clear).isInstanceOf(UnsupportedOperationException.class);
+        var actions = snapshot.allowedActions();
+        assertThatThrownBy(actions::clear).isInstanceOf(UnsupportedOperationException.class);
         List<BoardView.CellState> row = new ArrayList<>(List.of(WATER));
         List<List<BoardView.CellState>> grid = new ArrayList<>(List.of(row));
         List<Coordinate> cells = new ArrayList<>(List.of(c(0, 0)));

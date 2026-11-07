@@ -3,12 +3,16 @@ package ua.kostenko.battleship.app.web;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.cfg.CoercionAction;
+import com.fasterxml.jackson.databind.cfg.CoercionInputShape;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import com.fasterxml.jackson.databind.type.LogicalType;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -51,6 +55,17 @@ class JacksonConfig implements WebMvcConfigurer {
                 .defaultPropertyInclusion(
                         JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true)
+                // The contract's types are exact: "5" or 3.7 is not an integer, 5 is not text, and text after the
+                // document is
+                // no JSON.
+                .configure(MapperFeature.ALLOW_COERCION_OF_SCALARS, false)
+                .configure(DeserializationFeature.ACCEPT_FLOAT_AS_INT, false)
+                .configure(DeserializationFeature.FAIL_ON_TRAILING_TOKENS, true)
+                .configure(DeserializationFeature.FAIL_ON_NUMBERS_FOR_ENUMS, true)
+                .withCoercionConfig(LogicalType.Textual, textual -> textual.setCoercion(
+                                CoercionInputShape.Integer, CoercionAction.Fail)
+                        .setCoercion(CoercionInputShape.Float, CoercionAction.Fail)
+                        .setCoercion(CoercionInputShape.Boolean, CoercionAction.Fail))
                 .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
                 .build();
     }
@@ -74,6 +89,8 @@ class JacksonConfig implements WebMvcConfigurer {
     }
 
     @Override
+    // The builder hook did not retain wire converter precedence with Boot 4.1.1; the integration tests prove it.
+    @SuppressWarnings("removal")
     public void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
         converters.addFirst(new WireDtoConverter(wire));
     }

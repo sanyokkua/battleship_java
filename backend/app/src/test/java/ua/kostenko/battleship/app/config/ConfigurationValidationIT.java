@@ -11,12 +11,8 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 
 class ConfigurationValidationIT {
     @Test
-    void defaultApplicationBindsAllSettings() {
-        try (var context = new SpringApplicationBuilder(ua.kostenko.battleship.app.BattleshipApplication.class)
-                .web(WebApplicationType.NONE)
-                .run()) {
-            var properties = context.getBean(BattleshipProperties.class);
-
+    void defaultLifetimesAreBound() {
+        withDefaults(properties -> {
             assertEquals(900, properties.idleTimeoutSeconds());
             assertEquals(7200, properties.maxGameDurationSeconds());
             assertEquals(300, properties.resultRetentionSeconds());
@@ -24,15 +20,30 @@ class ConfigurationValidationIT {
             assertEquals(300, properties.presenceIntervalSeconds());
             assertEquals(15, properties.heartbeatSeconds());
             assertEquals(1200, properties.streamMaxLifetimeSeconds());
+            assertEquals(30, properties.sweepIntervalSeconds());
+            assertEquals(5, properties.shutdownDrainSeconds());
+        });
+    }
+
+    @Test
+    void defaultCapacitiesAreBound() {
+        withDefaults(properties -> {
             assertEquals(100, properties.maxConcurrentGames());
+            assertEquals(200, properties.maxConcurrentSessions());
             assertEquals(200, properties.maxConcurrentStreams());
+            assertEquals(1, properties.streamRetryAfterSeconds());
             assertEquals(1, properties.maxLiveGamesPerBrowser());
             assertEquals(16384, properties.maxRequestBodyBytes());
             assertEquals(1000, properties.randomArrangementAttempts());
-            assertEquals(30, properties.sweepIntervalSeconds());
-            assertEquals(5, properties.shutdownDrainSeconds());
             assertEquals("http://localhost:5173", properties.publicBaseUrl());
+        });
+    }
+
+    @Test
+    void defaultRateLimitsAreBound() {
+        withDefaults(properties -> {
             var rateLimit = properties.rateLimit();
+            assertEquals(10000, rateLimit.tableCapacity());
             assertEquals(5, rateLimit.createGamePerMinute());
             assertEquals(20, rateLimit.joinPerMinute());
             assertEquals(60, rateLimit.commandsPerMinute());
@@ -41,6 +52,14 @@ class ConfigurationValidationIT {
             assertEquals(30, rateLimit.streamOpenPerMinute());
             assertEquals(10, rateLimit.replaceInvitationPerMinute());
             assertEquals(10, rateLimit.leavePerMinute());
+        });
+    }
+
+    private static void withDefaults(java.util.function.Consumer<BattleshipProperties> check) {
+        try (var context = new SpringApplicationBuilder(ua.kostenko.battleship.app.BattleshipApplication.class)
+                .web(WebApplicationType.NONE)
+                .run()) {
+            check.accept(context.getBean(BattleshipProperties.class));
         }
     }
 
@@ -61,11 +80,10 @@ class ConfigurationValidationIT {
 
     @Test
     void absentIdleTimeoutStopsStartupAndNamesSetting() {
-        var failure = assertThrows(RuntimeException.class, () -> new SpringApplicationBuilder(
-                        ua.kostenko.battleship.app.BattleshipApplication.class)
+        var application = new SpringApplicationBuilder(ua.kostenko.battleship.app.BattleshipApplication.class)
                 .web(WebApplicationType.NONE)
-                .properties("spring.config.name=configuration-validation-missing")
-                .run());
+                .properties("spring.config.name=configuration-validation-missing");
+        var failure = assertThrows(RuntimeException.class, application::run);
 
         assertTrue(causeMessages(failure).contains("idle-timeout-seconds"), causeMessages(failure));
     }

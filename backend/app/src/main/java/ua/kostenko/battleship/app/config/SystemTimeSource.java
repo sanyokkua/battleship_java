@@ -3,6 +3,7 @@ package ua.kostenko.battleship.app.config;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import ua.kostenko.battleship.application.port.TimeSource;
 
@@ -10,6 +11,7 @@ import ua.kostenko.battleship.application.port.TimeSource;
 public final class SystemTimeSource implements TimeSource {
     private final Clock clock;
 
+    @Autowired
     public SystemTimeSource() {
         this(Clock.systemUTC());
     }

@@ -60,4 +60,27 @@ class DisplayNameNormalizerTest {
                     .hasToString("INVALID_FORMAT");
         }
     }
+
+    @Test
+    void rejectsInvisibleFormattingSeparatorAndUnassignedCharacters() {
+        for (String invisible : new String[] {"\u200b", "\u202e", "\u2066", "\ufeff", "\u2028", "\u2029", "\u0378"}) {
+            assertThatThrownBy(() -> DisplayNameNormalizer.normalize("Ada" + invisible + "Lovelace"))
+                    .as("U+%04X", (int) invisible.charAt(0))
+                    .isInstanceOf(DisplayNameNormalizer.InvalidNameException.class)
+                    .extracting("reason")
+                    .hasToString("INVALID_FORMAT");
+        }
+    }
+
+    @Test
+    void acceptsEmojiSequencesJoinedByTheZeroWidthJoiner() {
+        String family = "\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67";
+        assertThat(DisplayNameNormalizer.normalize(family)).isEqualTo(family);
+        assertThat(DisplayNameNormalizer.normalize("\u2764\uFE0F")).isEqualTo("\u2764\uFE0F");
+    }
+
+    @Test
+    void stillAcceptsOrdinaryLettersSpacesAndEmoji() {
+        assertThat(DisplayNameNormalizer.normalize("Ада Лавлейс 😀")).isEqualTo("Ада Лавлейс 😀");
+    }
 }

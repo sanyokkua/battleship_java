@@ -7,12 +7,12 @@ import ua.kostenko.battleship.application.port.SecretGenerator;
 import ua.kostenko.battleship.application.port.TimeSource;
 import ua.kostenko.battleship.application.projection.SnapshotProjector;
 import ua.kostenko.battleship.application.projection.SnapshotView;
+import ua.kostenko.battleship.application.registry.BrowserGameLimitException;
 import ua.kostenko.battleship.application.registry.CapacityExceededException;
 import ua.kostenko.battleship.application.registry.GameRegistry;
 import ua.kostenko.battleship.application.registry.GameSlot;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
 import ua.kostenko.battleship.application.result.ApplicationFailure;
-import ua.kostenko.battleship.domain.model.DisplayNameNormalizer;
 import ua.kostenko.battleship.domain.model.GameState;
 import ua.kostenko.battleship.domain.model.Seat;
 import ua.kostenko.battleship.domain.rules.Rulesets;
@@ -63,13 +63,7 @@ public final class CreateGameUseCase {
     }
 
     public CreatedGame execute(String rulesetId, String displayName, String presentedSessionValue) {
-        String name;
-        try {
-            name = DisplayNameNormalizer.normalize(displayName);
-        } catch (DisplayNameNormalizer.InvalidNameException invalid) {
-            throw new ApplicationFailure(
-                    "validation-failed", "/displayName", invalid.reason().name(), null);
-        }
+        String name = JoinGameUseCase.normalizeName(displayName);
         var ruleset = Rulesets.byId(rulesetId)
                 .orElseThrow(() -> new ApplicationFailure("validation-failed", "/rulesetId", "UNKNOWN_VALUE", null));
         String sessionValue = presentedSessionValue != null
@@ -96,6 +90,8 @@ public final class CreateGameUseCase {
                 games.insert(gameId, slot);
                 return admittedAt;
             });
+        } catch (BrowserGameLimitException _) {
+            throw new ApplicationFailure("browser-game-limit", null, null, null);
         } catch (CapacityExceededException full) {
             throw new ApplicationFailure("service-unavailable", null, null, full.retryAfterSeconds());
         }

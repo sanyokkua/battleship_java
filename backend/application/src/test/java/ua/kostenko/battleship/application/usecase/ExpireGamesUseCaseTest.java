@@ -7,7 +7,7 @@ import static ua.kostenko.battleship.application.usecase.CommandTestFixture.ABSO
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.IDLE;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.INVITATION;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.NOW;
-import static ua.kostenko.battleship.application.usecase.CommandTestFixture.PRESENCE;
+import static ua.kostenko.battleship.application.usecase.CommandTestFixture.PRESENCE_INTERVAL;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.RETENTION;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.failureCode;
 
@@ -26,7 +26,7 @@ class ExpireGamesUseCaseTest {
     private static final Instant FORGOTTEN_AT = NOW.plus(IDLE).plus(RETENTION);
 
     private static CommandTestFixture singleGameFixture() {
-        return new CommandTestFixture(1, IDLE, ABSOLUTE, INVITATION, RETENTION, PRESENCE);
+        return new CommandTestFixture(1, IDLE, ABSOLUTE, INVITATION, RETENTION, PRESENCE_INTERVAL);
     }
 
     @Test
@@ -48,7 +48,7 @@ class ExpireGamesUseCaseTest {
 
     @Test
     void aFailingSweepStillReportsEveryGameItForgot() {
-        var f = new CommandTestFixture(2, IDLE, ABSOLUTE, INVITATION, RETENTION, PRESENCE);
+        var f = new CommandTestFixture(2, IDLE, ABSOLUTE, INVITATION, RETENTION, PRESENCE_INTERVAL);
         Game first = f.newGame();
         Game second = f.newGame();
         f.time.set(FORGOTTEN_AT);
@@ -57,7 +57,9 @@ class ExpireGamesUseCaseTest {
                 f.sessions,
                 new SnapshotPublisher() {
                     @Override
-                    public void publish(String gameId, Seat seat, SnapshotView view) {}
+                    public void publish(String gameId, Seat seat, SnapshotView view) {
+                        // Only unavailable notifications are relevant to this failure case.
+                    }
 
                     @Override
                     public void unavailable(String gameId, Seat seat) {
@@ -66,7 +68,8 @@ class ExpireGamesUseCaseTest {
                 },
                 RETENTION);
         List<String> expired = new ArrayList<>();
-        assertThatThrownBy(() -> failing.sweep(f.time.now(), expired::add)).isInstanceOf(IllegalStateException.class);
+        Instant sweepTime = f.time.now();
+        assertThatThrownBy(() -> failing.sweep(sweepTime, expired::add)).isInstanceOf(IllegalStateException.class);
         assertThat(expired).containsExactlyInAnyOrder(first.id(), second.id());
         assertThat(f.games.gameIds()).isEmpty();
     }

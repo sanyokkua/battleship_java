@@ -50,7 +50,7 @@ public final class SnapshotDtoAssembler {
                 .phase(Phase.valueOf(view.phase().name()))
                 .you(player(view.you()))
                 .opponent(view.opponent() == null ? null : player(view.opponent()))
-                .turn(side(view.turn()))
+                .turn(view.turn() == null ? null : side(view.turn()))
                 .allowedActions(view.allowedActions().stream()
                         .sorted(Comparator.naturalOrder())
                         .map(action -> Action.valueOf(action.name()))
@@ -59,6 +59,10 @@ public final class SnapshotDtoAssembler {
                 .invitationUrl(view.invitationUrl() == null ? null : URI.create(view.invitationUrl()))
                 .invitationExpiresAt(view.invitationExpiresAt() == null ? null : utc(view.invitationExpiresAt()))
                 .yourBoard(board(view.yourBoard()))
+                .placementBlockedCells(
+                        view.placementBlockedCells() == null
+                                ? null
+                                : new LinkedHashSet<>(coordinates(view.placementBlockedCells())))
                 .opponentBoard(board(view.opponentBoard()))
                 .lastShot(view.lastShot() == null ? null : shot(view.lastShot()))
                 .outcome(view.outcome() == null ? null : outcome(view.outcome()))
@@ -70,7 +74,7 @@ public final class SnapshotDtoAssembler {
     }
 
     private static Side side(SnapshotView.Side side) {
-        return side == null ? null : Side.valueOf(side.name());
+        return Side.valueOf(side.name());
     }
 
     private static Player player(PlayerView player) {

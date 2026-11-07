@@ -1,0 +1,11 @@
+.turn-pill {
+    margin: 0;
+    padding: 0.55rem 1rem;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-align: center;
+}

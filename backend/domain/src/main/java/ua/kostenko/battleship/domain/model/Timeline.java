@@ -75,12 +75,16 @@ public record Timeline(
                 Duration.between(shotDecisionStartedAt.get(actor), now).toMillis());
         boolean closeTurn = finished || actor != nextTurn;
         Map<Seat, List<Long>> turns = closeTurn ? append(turnDurationsMs, actor, turnDurationMs(now)) : turnDurationsMs;
+        Instant nextTurnStartedAt = turnStartedAt;
+        if (closeTurn) {
+            nextTurnStartedAt = finished ? null : now;
+        }
         return new Timeline(
                 guestJoinedAt,
                 readyAt,
                 playStartedAt,
                 finished ? now : finishedAt,
-                closeTurn ? (finished ? null : now) : turnStartedAt,
+                nextTurnStartedAt,
                 finished ? Map.of() : Map.of(nextTurn, now),
                 turns,
                 decisions);

@@ -2,16 +2,11 @@ package ua.kostenko.battleship.application.registry;
 
 import static org.assertj.core.api.Assertions.*;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.*;
 import org.junit.jupiter.api.Test;
 import ua.kostenko.battleship.domain.model.*;
@@ -36,8 +31,8 @@ class GameRegistryTest {
         GameRegistry registry = new GameRegistry(1);
         GameSlot first = slot("first");
         registry.insert("first", first);
-        assertThatThrownBy(() -> registry.insert("second", slot("second")))
-                .isInstanceOf(CapacityExceededException.class);
+        GameSlot second = slot("second");
+        assertThatThrownBy(() -> registry.insert("second", second)).isInstanceOf(CapacityExceededException.class);
         GameState retained = registry.withSlot("first", s -> s.state());
         assertThat(retained).isSameAs(first.state());
     }
@@ -52,7 +47,8 @@ class GameRegistryTest {
             registry.remove(id);
         }
         registry.insert("last", slot("last"));
-        assertThatThrownBy(() -> registry.insert("over", slot("over"))).isInstanceOf(CapacityExceededException.class);
+        GameSlot over = slot("over");
+        assertThatThrownBy(() -> registry.insert("over", over)).isInstanceOf(CapacityExceededException.class);
     }
 
     @Test
@@ -71,7 +67,7 @@ class GameRegistryTest {
                         try {
                             registry.insert(id, candidate);
                             return true;
-                        } catch (CapacityExceededException refused) {
+                        } catch (CapacityExceededException _) {
                             return false;
                         }
                     }));
@@ -117,7 +113,7 @@ class GameRegistryTest {
                 entered.countDown();
                 try {
                     release.await();
-                } catch (InterruptedException e) {
+                } catch (InterruptedException _) {
                     Thread.currentThread().interrupt();
                 }
                 return null;
@@ -134,7 +130,7 @@ class GameRegistryTest {
                         secondCallbackEntered.countDown();
                         return null;
                     });
-                } catch (IllegalArgumentException removedFirst) {
+                } catch (IllegalArgumentException _) {
                     // Removing the slot first is an allowed outcome.
                 }
             });
@@ -150,117 +146,6 @@ class GameRegistryTest {
             assertThat(replacement).isNotNull();
         } finally {
             release.countDown();
-            workers.shutdownNow();
-        }
-    }
-
-    @Test
-    void sessionRegistryStoresDigestAndDropsLeastRecentlySeen() {
-        SessionRegistry sessions = new SessionRegistry(2);
-        String first = "first-secret-session";
-        String second = "second-secret-session";
-        String third = "third-secret-session";
-        sessions.register(first, NOW);
-        sessions.register(second, NOW.plusSeconds(1));
-        sessions.touch(first, NOW.plusSeconds(2));
-        sessions.register(third, NOW.plusSeconds(3));
-        assertThat(sessions.find(first)).isPresent();
-        assertThat(sessions.find(second)).isEmpty();
-        assertThat(sessions.find(third)).isPresent();
-        assertThat(sessions.digests()).contains(SessionRegistry.digest(first)).doesNotContain(first, second, third);
-    }
-
-    @Test
-    void sessionRegistryRetainsNoRawSessionValueInItsObjectGraph() throws IllegalAccessException {
-        SessionRegistry sessions = new SessionRegistry(2);
-        String raw = "raw-session-canary-7b9f6e";
-        sessions.registerForGame(raw, "game-one", NOW);
-
-        assertThat(retainedStrings(sessions))
-                .contains(SessionRegistry.digest(raw))
-                .doesNotContain(raw);
-    }
-
-    @Test
-    void inventedSessionsCannotEvictLiveGameSession() {
-        SessionRegistry sessions = new SessionRegistry(2);
-        sessions.registerForGame("active-secret", "game-one", NOW);
-        sessions.register("inactive-secret", NOW.plusSeconds(1));
-        for (int i = 0; i < 100; i++) sessions.register("invented-" + i, NOW.plusSeconds(i + 2));
-        assertThat(sessions.find("active-secret")).isPresent();
-        assertThat(sessions.digests()).hasSize(2).doesNotContain("active-secret");
-    }
-
-    @Test
-    void registrationAttachesGameBeforeAnotherSessionCanEvictIt() {
-        SessionRegistry sessions = new SessionRegistry(1);
-        sessions.registerForGame("host-secret", "game-one", NOW);
-        assertThatThrownBy(() -> sessions.register("invented-secret", NOW.plusSeconds(1)))
-                .isInstanceOf(CapacityExceededException.class);
-        assertThat(sessions.find("host-secret")).get().satisfies(record -> assertThat(record.liveGames())
-                .containsExactly("game-one"));
-        assertThat(sessions.find("invented-secret")).isEmpty();
-    }
-
-    @Test
-    void concurrentAssociationCannotLoseItsSessionToAnInventedCaller() throws Exception {
-        ExecutorService workers = Executors.newFixedThreadPool(2);
-        try {
-            for (int round = 0; round < 100; round++) {
-                SessionRegistry sessions = new SessionRegistry(1);
-                CyclicBarrier start = new CyclicBarrier(2);
-                Future<?> owner = workers.submit(() -> {
-                    start.await(5, TimeUnit.SECONDS);
-                    sessions.registerForGame("host-secret", "game-one", NOW);
-                    return null;
-                });
-                Future<?> invented = workers.submit(() -> {
-                    start.await(5, TimeUnit.SECONDS);
-                    try {
-                        sessions.register("invented-secret", NOW);
-                    } catch (CapacityExceededException refused) {
-                        // The owner associated first; refusing an invented caller is expected.
-                    }
-                    return null;
-                });
-                owner.get(5, TimeUnit.SECONDS);
-                invented.get(5, TimeUnit.SECONDS);
-                assertThat(sessions.find("host-secret")).get().satisfies(record -> assertThat(record.liveGames())
-                        .containsExactly("game-one"));
-            }
-        } finally {
-            workers.shutdownNow();
-        }
-    }
-
-    @Test
-    void callersCannotMutateSessionOwnershipOutsideRegistryLock() {
-        SessionRegistry sessions = new SessionRegistry(1);
-        SessionRecord record = sessions.registerForGame("host-secret", "game-one", NOW);
-        assertThatThrownBy(() -> record.liveGames().clear()).isInstanceOf(UnsupportedOperationException.class);
-    }
-
-    @Test
-    void publicSessionApiCannotInsertAnUndigestedKey() {
-        assertThat(Arrays.stream(SessionRegistry.class.getMethods())
-                        .filter(method -> method.getDeclaringClass() == SessionRegistry.class)
-                        .map(java.lang.reflect.Method::getName))
-                .doesNotContain("registerDigest");
-    }
-
-    @Test
-    void concurrentInventedSessionsRespectHardCap() throws Exception {
-        SessionRegistry sessions = new SessionRegistry(5);
-        ExecutorService workers = Executors.newFixedThreadPool(16);
-        try {
-            var jobs = new ArrayList<Future<?>>();
-            for (int i = 0; i < 100; i++) {
-                String value = "invented-" + i;
-                jobs.add(workers.submit(() -> sessions.register(value, NOW)));
-            }
-            for (Future<?> job : jobs) job.get(5, TimeUnit.SECONDS);
-            assertThat(sessions.digests()).hasSize(5);
-        } finally {
             workers.shutdownNow();
         }
     }
@@ -285,32 +170,21 @@ class GameRegistryTest {
         assertThat(slot.contextFor(Seat.GUEST, NOW).invitationUrl()).isNull();
     }
 
-    private static List<String> retainedStrings(Object root) throws IllegalAccessException {
-        List<String> strings = new ArrayList<>();
-        var visited = Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>());
-        var pending = new ArrayDeque<Object>();
-        pending.add(root);
-        while (!pending.isEmpty()) {
-            Object value = pending.removeFirst();
-            if (!visited.add(value)) continue;
-            if (value instanceof String string) {
-                strings.add(string);
-            } else if (value instanceof Map<?, ?> map) {
-                map.forEach((key, entry) -> {
-                    pending.add(key);
-                    pending.add(entry);
-                });
-            } else if (value instanceof Iterable<?> iterable) {
-                iterable.forEach(pending::add);
-            } else if (value.getClass().getPackageName().equals("ua.kostenko.battleship.application.registry")) {
-                for (Field field : value.getClass().getDeclaredFields()) {
-                    if (Modifier.isStatic(field.getModifiers())) continue;
-                    field.setAccessible(true);
-                    Object held = field.get(value);
-                    if (held != null) pending.add(held);
-                }
-            }
+    @Test
+    void invitationUrlRemovesOnlyTrailingSlashesFromBaseUrl() {
+        for (String base :
+                List.of("https://example.test/path", "https://example.test/path/", "https://example.test/path///")) {
+            GameSlot slot = new GameSlot(
+                    "game-one",
+                    GameState.create(Rulesets.byId("sea-battle-10-ship.v1").orElseThrow(), "Host"),
+                    "host-digest",
+                    NOW.plusSeconds(60),
+                    NOW.plusSeconds(120),
+                    NOW.plusSeconds(30),
+                    base);
+            slot.unusedInvitationSecret("invitation");
+            assertThat(slot.contextFor(Seat.HOST, NOW).invitationUrl())
+                    .isEqualTo("https://example.test/path/join/game-one#invite=invitation");
         }
-        return strings;
     }
 }

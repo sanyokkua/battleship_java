@@ -69,7 +69,7 @@ public final class CommandUseCase {
         Captured captured;
         try {
             captured = games.withSlot(gameId, slot -> apply(slot, gameId, digest, commandId, command));
-        } catch (UnknownGameException unknown) {
+        } catch (UnknownGameException _) {
             throw ExpiryPolicy.unavailable();
         }
         SnapshotView caller = projector.project(captured.state(), captured.actor(), captured.callerContext());

@@ -29,7 +29,8 @@ final class Subscriber {
     private long lastVersion = Long.MIN_VALUE;
     private SnapshotView first;
     private SnapshotView latest;
-    private Instant lastBeat;
+    private Instant nextBeat;
+    private boolean permit;
     private boolean beat;
     private StreamClosed.ReasonEnum closing;
     private boolean draining;
@@ -44,7 +45,6 @@ final class Subscriber {
         this.gameId = gameId;
         this.emitter = emitter;
         this.openedAt = openedAt;
-        this.lastBeat = openedAt;
     }
 
     String gameId() {
@@ -152,14 +152,30 @@ final class Subscriber {
     }
 
     /**
-     * Asks for a keep-alive once {@code interval} has passed since the last one, or since opening; true when the
-     * caller must drain to write it. A stream being closed gets none.
+     * Asks for a keep-alive when one is due: the first {@code interval} after opening and then every {@code interval}
+     * from that deadline, not from when it was noticed, so a coarse tick never stretches the cadence. A clock or tick
+     * that fell far behind owes no burst of catch-up beats. True when the caller must drain to write it; a stream
+     * being closed gets none.
      */
     synchronized boolean beatDue(Instant now, Duration interval) {
-        if (closed || closing != null || now.isBefore(lastBeat.plus(interval))) return false;
-        lastBeat = now;
+        if (nextBeat == null) nextBeat = openedAt.plus(interval);
+        if (closed || closing != null || now.isBefore(nextBeat)) return false;
+        nextBeat = nextBeat.plus(interval);
+        if (!now.isBefore(nextBeat)) nextBeat = now.plus(interval);
         beat = true;
         return true;
+    }
+
+    /** Marks this stream as holding a slot under the streams ceiling. */
+    synchronized void grantPermit() {
+        permit = true;
+    }
+
+    /** Gives up the held permit; true exactly when this stream held one, so a permit is released exactly once. */
+    synchronized boolean surrenderPermit() {
+        boolean held = permit;
+        permit = false;
+        return held;
     }
 
     /** True from {@code openedAt + lifetime} on: the stream has reached its maximum lifetime. */

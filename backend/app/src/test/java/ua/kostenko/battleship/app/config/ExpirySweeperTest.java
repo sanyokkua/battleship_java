@@ -32,15 +32,19 @@ class ExpirySweeperTest {
     private final GameRegistry games = new GameRegistry(1);
     private final SnapshotPublisher noStreams = new SnapshotPublisher() {
         @Override
-        public void publish(String gameId, Seat seat, SnapshotView view) {}
+        public void publish(String gameId, Seat seat, SnapshotView view) {
+            // This fixture has no connected streams.
+        }
 
         @Override
-        public void unavailable(String gameId, Seat seat) {}
+        public void unavailable(String gameId, Seat seat) {
+            // This fixture has no connected streams.
+        }
     };
     private final ExpirySweeper sweeper = new ExpirySweeper(
             new ExpireGamesUseCase(games, new SessionRegistry(4), noStreams, RETENTION),
             time,
-            new FixedWindowBuckets(time),
+            new FixedWindowBuckets(time, 10_000),
             new OperationalEvents());
 
     private void insertGame(String id) {
@@ -98,7 +102,9 @@ class ExpirySweeperTest {
                         new SessionRegistry(4),
                         new SnapshotPublisher() {
                             @Override
-                            public void publish(String gameId, Seat seat, SnapshotView view) {}
+                            public void publish(String gameId, Seat seat, SnapshotView view) {
+                                // Only unavailable notifications are relevant to this failure case.
+                            }
 
                             @Override
                             public void unavailable(String gameId, Seat seat) {
@@ -107,7 +113,7 @@ class ExpirySweeperTest {
                         },
                         RETENTION),
                 time,
-                new FixedWindowBuckets(time),
+                new FixedWindowBuckets(time, 10_000),
                 new OperationalEvents() {
                     @Override
                     public void gameExpired(String gameId) {

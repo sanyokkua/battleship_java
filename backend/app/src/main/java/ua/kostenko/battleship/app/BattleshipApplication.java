@@ -4,6 +4,7 @@ import java.time.Duration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.boot.webmvc.autoconfigure.error.ErrorMvcAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import ua.kostenko.battleship.app.config.BattleshipProperties;
@@ -24,7 +25,9 @@ import ua.kostenko.battleship.application.usecase.ReplaceInvitationUseCase;
 import ua.kostenko.battleship.application.usecase.SubscribeUseCase;
 import ua.kostenko.battleship.domain.RandomSource;
 
-@SpringBootApplication
+// Boot's /error endpoint would answer its own JSON for a direct GET; without it /error is an unknown path like any
+// other, and every failure is a problem document (R01, R49).
+@SpringBootApplication(exclude = ErrorMvcAutoConfiguration.class)
 @ConfigurationPropertiesScan
 @EnableScheduling
 public class BattleshipApplication {
@@ -35,7 +38,7 @@ public class BattleshipApplication {
 
     @Bean
     SessionRegistry sessionRegistry(BattleshipProperties properties) {
-        return new SessionRegistry(properties.maxConcurrentGames() * 2);
+        return new SessionRegistry(properties.maxConcurrentSessions());
     }
 
     @Bean

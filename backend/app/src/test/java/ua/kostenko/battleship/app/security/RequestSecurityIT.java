@@ -83,14 +83,17 @@ class RequestSecurityIT {
 
     @Test
     void aMissingEmptyOrMismatchedTokenIsRejectedOnEveryPostPath() throws Exception {
+        // A known session, so the protected paths get past authentication, which is checked first (R33).
+        String session = SecurityHttp.issuedSession(http.postJson(
+                "/api/v1/games", null, "{\"rulesetId\":\"sea-battle-10-ship.v1\",\"displayName\":\"Captain\"}"));
         for (String path : POST_PATHS) {
-            String cookie = XSRF_COOKIE + "=" + http.freshToken();
+            String cookie = XSRF_COOKIE + "=" + http.freshToken() + "; " + session;
             String other = http.freshToken();
 
             assertRejected(http.call("POST", path, cookie));
             assertRejected(http.call("POST", path, cookie, "X-XSRF-TOKEN", ""));
             assertRejected(http.call("POST", path, cookie, "X-XSRF-TOKEN", other));
-            assertRejected(http.call("POST", path, null, "X-XSRF-TOKEN", other));
+            assertRejected(http.call("POST", path, session, "X-XSRF-TOKEN", other));
         }
     }
 
@@ -295,10 +298,14 @@ class RequestSecurityIT {
     void aMalformedChunkedBodyIsAnsweredBadRequestNotPassedOn() throws Exception {
         try (java.net.Socket socket = new java.net.Socket("localhost", port)) {
             socket.setSoTimeout(5000);
-            socket.getOutputStream()
-                    .write(("POST /api/v1/games HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n"
-                                    + "Content-Type: application/json\r\n\r\nZZZ\r\n")
-                            .getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+            socket.getOutputStream().write(("""
+                            POST /api/v1/games HTTP/1.1\r
+                            Host: localhost\r
+                            Transfer-Encoding: chunked\r
+                            Content-Type: application/json\r
+                            \r
+                            ZZZ\r
+                            """).getBytes(java.nio.charset.StandardCharsets.US_ASCII));
             String reply = new String(socket.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
 
             assertThat(reply).startsWith("HTTP/1.1 400");

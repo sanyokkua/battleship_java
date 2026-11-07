@@ -41,8 +41,7 @@ closed as **superseded**, not re-verified.
   superseded planning inputs.
 - [x] F06 Lean `spec.md`, `plan.md`, `tasks.md`; delete `research.md`, `data-model.md`, `quickstart.md`,
   `contracts/`, `checklists/`.
-- [x] F07 Banner in `docs/rewrite_context_doc/Planning/{00-decisions-and-evidence.md, 03-api, 04-backend,
-  05-frontend, 06-integration}` pointing at the authoritative contract; constitution 1.1.0 (Principle II
+- [x] F07 Banner in the legacy planning documents (since removed) pointing at the authoritative contract; constitution 1.1.0 (Principle II
   allows the unused invitation secret in process memory).
 - [x] F08 `AGENTS.md` contract section and root `README.md` rewritten for the new layout and gate.
 - [x] F09 One bounded independent review (unusable flow, placement leak, example/description mismatch).

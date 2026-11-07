@@ -26,6 +26,8 @@ import ua.kostenko.battleship.domain.transition.Rejection.ProblemCode;
 import ua.kostenko.battleship.domain.transition.Transition;
 
 public final class GameRules {
+    private static final String OUT_OF_RANGE = "OUT_OF_RANGE";
+
     private GameRules() {}
 
     public static Transition apply(GameState state, Seat actor, GameCommand command, Instant now, RandomSource random) {
@@ -36,13 +38,13 @@ public final class GameRules {
         Objects.requireNonNull(random, "random");
         AllowedActions.Action action =
                 switch (command) {
-                    case GameCommand.PlaceShip ignored -> AllowedActions.Action.PLACE_SHIP;
-                    case GameCommand.RemoveShip ignored -> AllowedActions.Action.REMOVE_SHIP;
-                    case GameCommand.PlaceFleetRandomly ignored -> AllowedActions.Action.PLACE_FLEET_RANDOMLY;
-                    case GameCommand.ClearFleet ignored -> AllowedActions.Action.CLEAR_FLEET;
-                    case GameCommand.Ready ignored -> AllowedActions.Action.READY;
-                    case GameCommand.Fire ignored -> AllowedActions.Action.FIRE;
-                    case GameCommand.Resign ignored -> AllowedActions.Action.RESIGN;
+                    case GameCommand.PlaceShip _ -> AllowedActions.Action.PLACE_SHIP;
+                    case GameCommand.RemoveShip _ -> AllowedActions.Action.REMOVE_SHIP;
+                    case GameCommand.PlaceFleetRandomly _ -> AllowedActions.Action.PLACE_FLEET_RANDOMLY;
+                    case GameCommand.ClearFleet _ -> AllowedActions.Action.CLEAR_FLEET;
+                    case GameCommand.Ready _ -> AllowedActions.Action.READY;
+                    case GameCommand.Fire _ -> AllowedActions.Action.FIRE;
+                    case GameCommand.Resign _ -> AllowedActions.Action.RESIGN;
                 };
         if (!AllowedActions.of(state, actor).contains(action)) {
             return refused(state, Rejection.problem(ProblemCode.ACTION_NOT_ALLOWED));
@@ -51,10 +53,10 @@ public final class GameRules {
             case GameCommand.PlaceShip placeShip -> placeShip(state, actor, placeShip);
             case GameCommand.RemoveShip removeShip -> removeShip(state, actor, removeShip);
             case GameCommand.PlaceFleetRandomly arrange -> placeFleetRandomly(state, actor, arrange, random);
-            case GameCommand.ClearFleet ignored -> clearFleet(state, actor);
-            case GameCommand.Ready ignored -> ready(state, actor, now, random);
+            case GameCommand.ClearFleet _ -> clearFleet(state, actor);
+            case GameCommand.Ready _ -> ready(state, actor, now, random);
             case GameCommand.Fire fire -> fire(state, actor, fire, now);
-            case GameCommand.Resign ignored -> resign(state, actor, now);
+            case GameCommand.Resign _ -> resign(state, actor, now);
         };
     }
 
@@ -63,18 +65,15 @@ public final class GameRules {
     }
 
     private static Transition fire(GameState state, Seat actor, GameCommand.Fire command, Instant now) {
-        if (state.phase() != Phase.PLAYING || state.turn() != actor) {
-            return refused(state, Rejection.problem(ProblemCode.ACTION_NOT_ALLOWED));
-        }
         Ruleset ruleset = Rulesets.byId(state.rulesetId()).orElseThrow();
         Coordinate target = command.target();
         if (target.rowIndex() >= ruleset.rows()) {
-            return refused(state, Rejection.validation("/command/target/rowIndex", "OUT_OF_RANGE"));
+            return refused(state, Rejection.validation("/command/target/rowIndex", OUT_OF_RANGE));
         }
         if (target.columnIndex() >= ruleset.columns()) {
-            return refused(state, Rejection.validation("/command/target/columnIndex", "OUT_OF_RANGE"));
+            return refused(state, Rejection.validation("/command/target/columnIndex", OUT_OF_RANGE));
         }
-        PlayerState defender = player(state, other(actor));
+        PlayerState defender = requiredPlayer(state, other(actor));
         Board board = defender.board();
         if (board.incomingShots().contains(target) || board.revealedWater().contains(target)) {
             return refused(state, Rejection.problem(ProblemCode.TARGET_ALREADY_FIRED));
@@ -83,26 +82,9 @@ public final class GameRules {
         Set<Coordinate> incoming = new HashSet<>(board.incomingShots());
         incoming.add(target);
         Set<Coordinate> water = new HashSet<>(board.revealedWater());
-        ShotResult result = ShotResult.MISS;
-        String sunkId = null;
-        for (int index = 0; index < fleet.size(); index++) {
-            Ship ship = fleet.get(index);
-            if (!ship.cells().contains(target)) continue;
-            Set<Coordinate> hits = new HashSet<>(ship.hits());
-            hits.add(target);
-            Ship hit =
-                    new Ship(ship.shipId(), ship.shipTypeId(), ship.length(), ship.anchor(), ship.orientation(), hits);
-            fleet.set(index, hit);
-            boolean sunk = hit.status() == Ship.ShipStatus.SUNK;
-            result = sunk ? ShotResult.SUNK : ShotResult.HIT;
-            if (sunk) {
-                sunkId = ship.shipId();
-                if (ruleset.revealWaterAroundSunk()) revealWater(ruleset, board, incoming, water, hit);
-            }
-            break;
-        }
-        Shot shot = new Shot(actor, target, result, sunkId);
-        PlayerState attacker = player(state, actor);
+        Shot shot = resolveShot(actor, target, ruleset, board, fleet, incoming, water);
+        ShotResult result = shot.result();
+        PlayerState attacker = requiredPlayer(state, actor);
         List<Shot> history = new ArrayList<>(attacker.shotsFired());
         history.add(shot);
         PlayerState updatedAttacker =
@@ -125,26 +107,57 @@ public final class GameRules {
         return new Transition(next, true, Set.of(Seat.HOST, Seat.GUEST), null);
     }
 
+    private static Shot resolveShot(
+            Seat actor,
+            Coordinate target,
+            Ruleset ruleset,
+            Board board,
+            List<Ship> fleet,
+            Set<Coordinate> incoming,
+            Set<Coordinate> water) {
+        for (int index = 0; index < fleet.size(); index++) {
+            Ship ship = fleet.get(index);
+            if (ship.cells().contains(target)) {
+                Set<Coordinate> hits = new HashSet<>(ship.hits());
+                hits.add(target);
+                Ship hit = new Ship(
+                        ship.shipId(), ship.shipTypeId(), ship.length(), ship.anchor(), ship.orientation(), hits);
+                fleet.set(index, hit);
+                boolean sunk = hit.status() == Ship.ShipStatus.SUNK;
+                if (sunk && ruleset.revealWaterAroundSunk()) revealWater(ruleset, board, incoming, water, hit);
+                return new Shot(actor, target, sunk ? ShotResult.SUNK : ShotResult.HIT, sunk ? ship.shipId() : null);
+            }
+        }
+        return new Shot(actor, target, ShotResult.MISS, null);
+    }
+
     private static void revealWater(
             Ruleset ruleset, Board board, Set<Coordinate> incoming, Set<Coordinate> water, Ship sunk) {
         Set<Coordinate> occupied = new HashSet<>();
         board.fleet().forEach(ship -> occupied.addAll(ship.cells()));
         for (Coordinate cell : sunk.cells()) {
-            for (int row = Math.max(0, cell.rowIndex() - 1);
-                    row <= Math.min(ruleset.rows() - 1, cell.rowIndex() + 1);
-                    row++) {
-                for (int column = Math.max(0, cell.columnIndex() - 1);
-                        column <= Math.min(ruleset.columns() - 1, cell.columnIndex() + 1);
-                        column++) {
-                    Coordinate neighbour = new Coordinate(row, column);
-                    if (!occupied.contains(neighbour) && !incoming.contains(neighbour)) water.add(neighbour);
-                }
+            for (Coordinate neighbour : neighbourhood(ruleset, cell)) {
+                if (!occupied.contains(neighbour) && !incoming.contains(neighbour)) water.add(neighbour);
             }
         }
     }
 
+    /** The cell and the up to eight cells around it that lie on the board. */
+    private static List<Coordinate> neighbourhood(Ruleset ruleset, Coordinate cell) {
+        List<Coordinate> cells = new ArrayList<>(9);
+        for (int row = Math.max(0, cell.rowIndex() - 1);
+                row <= Math.min(ruleset.rows() - 1, cell.rowIndex() + 1);
+                row++) {
+            for (int column = Math.max(0, cell.columnIndex() - 1);
+                    column <= Math.min(ruleset.columns() - 1, cell.columnIndex() + 1);
+                    column++) {
+                cells.add(new Coordinate(row, column));
+            }
+        }
+        return cells;
+    }
+
     private static Transition resign(GameState state, Seat actor, Instant now) {
-        if (state.phase() != Phase.PLAYING) return refused(state, Rejection.problem(ProblemCode.ACTION_NOT_ALLOWED));
         GameState next = new GameState(
                 state.rulesetId(),
                 Phase.FINISHED,
@@ -159,13 +172,7 @@ public final class GameRules {
     }
 
     private static Transition ready(GameState state, Seat actor, Instant now, RandomSource random) {
-        PlayerState player = player(state, actor);
-        if (state.phase() != Phase.PLACEMENT
-                || player == null
-                || player.board().fleet().isEmpty()
-                || player.board().fleet().stream().anyMatch(ship -> ship.anchor() == null)) {
-            return refused(state, Rejection.problem(ProblemCode.ACTION_NOT_ALLOWED));
-        }
+        PlayerState player = requiredPlayer(state, actor);
         PlayerState readyPlayer = new PlayerState(player.displayName(), true, player.board(), player.shotsFired());
         PlayerState host = actor == Seat.HOST ? readyPlayer : state.host();
         PlayerState guest = actor == Seat.GUEST ? readyPlayer : state.guest();
@@ -176,7 +183,13 @@ public final class GameRules {
             int order = timeline.readyAt()
                     .get(Seat.HOST)
                     .compareTo(timeline.readyAt().get(Seat.GUEST));
-            turn = order < 0 ? Seat.HOST : order > 0 ? Seat.GUEST : random.nextInt(2) == 0 ? Seat.HOST : Seat.GUEST;
+            if (order < 0) {
+                turn = Seat.HOST;
+            } else if (order > 0) {
+                turn = Seat.GUEST;
+            } else {
+                turn = random.nextInt(2) == 0 ? Seat.HOST : Seat.GUEST;
+            }
             timeline = timeline.withPlayStartedAt(now, turn);
         }
         GameState next = new GameState(
@@ -195,13 +208,13 @@ public final class GameRules {
     private static Transition placeShip(GameState state, Seat actor, GameCommand.PlaceShip command) {
         Ruleset ruleset = Rulesets.byId(state.rulesetId()).orElseThrow();
         if (command.anchor().rowIndex() >= ruleset.rows()) {
-            return refused(state, Rejection.validation("/command/anchor/rowIndex", "OUT_OF_RANGE"));
+            return refused(state, Rejection.validation("/command/anchor/rowIndex", OUT_OF_RANGE));
         }
         if (command.anchor().columnIndex() >= ruleset.columns()) {
-            return refused(state, Rejection.validation("/command/anchor/columnIndex", "OUT_OF_RANGE"));
+            return refused(state, Rejection.validation("/command/anchor/columnIndex", OUT_OF_RANGE));
         }
 
-        PlayerState player = player(state, actor);
+        PlayerState player = requiredPlayer(state, actor);
         List<Ship> fleet = player.board().fleet();
         int shipIndex = indexOf(fleet, command.shipId());
         if (shipIndex < 0) {
@@ -230,7 +243,7 @@ public final class GameRules {
     }
 
     private static Transition removeShip(GameState state, Seat actor, GameCommand.RemoveShip command) {
-        PlayerState player = player(state, actor);
+        PlayerState player = requiredPlayer(state, actor);
         List<Ship> fleet = player.board().fleet();
         int shipIndex = indexOf(fleet, command.shipId());
         if (shipIndex < 0) {
@@ -250,7 +263,7 @@ public final class GameRules {
     private static Transition placeFleetRandomly(
             GameState state, Seat actor, GameCommand.PlaceFleetRandomly command, RandomSource random) {
         Ruleset ruleset = Rulesets.byId(state.rulesetId()).orElseThrow();
-        PlayerState player = player(state, actor);
+        PlayerState player = requiredPlayer(state, actor);
         List<Ship> replacement = new ArrayList<>(unplacedFleet(player.board().fleet()));
         List<Integer> placementOrder = new ArrayList<>();
         for (int index = 0; index < replacement.size(); index++) {
@@ -284,7 +297,7 @@ public final class GameRules {
     }
 
     private static Transition clearFleet(GameState state, Seat actor) {
-        PlayerState player = player(state, actor);
+        PlayerState player = requiredPlayer(state, actor);
         List<Ship> replacement = unplacedFleet(player.board().fleet());
         if (replacement.equals(player.board().fleet())) {
             return acceptedNoOp(state);
@@ -323,9 +336,25 @@ public final class GameRules {
     }
 
     private static boolean touches(Ship first, Ship second) {
-        return first.cells().stream().anyMatch(a -> second.cells().stream()
-                .anyMatch(b -> Math.abs(a.rowIndex() - b.rowIndex()) <= 1
-                        && Math.abs(a.columnIndex() - b.columnIndex()) <= 1));
+        return first.cells().stream().anyMatch(a -> second.cells().stream().anyMatch(b -> adjacent(a, b)));
+    }
+
+    public static Set<Coordinate> placementBlockedCells(Ruleset ruleset, List<Ship> fleet) {
+        if (ruleset.shipsMayTouch()) return Set.of();
+        Set<Coordinate> occupied = new HashSet<>();
+        fleet.forEach(ship -> occupied.addAll(ship.cells()));
+        Set<Coordinate> blocked = new HashSet<>();
+        for (Coordinate cell : occupied) {
+            for (Coordinate neighbour : neighbourhood(ruleset, cell)) {
+                if (!occupied.contains(neighbour)) blocked.add(neighbour);
+            }
+        }
+        return Set.copyOf(blocked);
+    }
+
+    private static boolean adjacent(Coordinate first, Coordinate second) {
+        return Math.abs(first.rowIndex() - second.rowIndex()) <= 1
+                && Math.abs(first.columnIndex() - second.columnIndex()) <= 1;
     }
 
     private static int indexOf(List<Ship> fleet, String shipId) {
@@ -342,6 +371,10 @@ public final class GameRules {
             case HOST -> state.host();
             case GUEST -> state.guest() == null ? null : state.guest();
         };
+    }
+
+    private static PlayerState requiredPlayer(GameState state, Seat seat) {
+        return Objects.requireNonNull(player(state, seat), "player for " + seat);
     }
 
     private static PlayerState playerWithFleet(PlayerState player, List<Ship> fleet) {

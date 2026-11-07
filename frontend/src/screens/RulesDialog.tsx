@@ -1,0 +1,37 @@
+import { useEffect, useState } from 'react';
+import { Button } from '../components/Button';
+import { Dialog } from '../components/Dialog';
+import { RulesetFacts } from '../components/RulesetFacts';
+import { listRulesets, type Ruleset } from '../gateway/gameGateway';
+import { useT } from '../i18n/useT';
+
+export function RulesDialog({ open, onClose }: Readonly<{ open: boolean; onClose: () => void }>) {
+    const t = useT();
+    const [rulesets, setRulesets] = useState<Ruleset[]>([]);
+    useEffect(() => {
+        if (open)
+            void listRulesets()
+                .then(setRulesets)
+                .catch(() => {
+                    setRulesets([]);
+                });
+    }, [open]);
+    return (
+        <Dialog open={open} titleId="rules-title" onClose={onClose}>
+            <div className="dialog-head">
+                <h2 id="rules-title">{t('rules.title')}</h2>
+            </div>
+            <section className="dialog-body rules-dialog-body" tabIndex={0} aria-labelledby="rules-title">
+                {rulesets.map((ruleset) => (
+                    <section className="rules-dialog-card" key={ruleset.id}>
+                        <h3>{t(`ruleset.${ruleset.id}`)}</h3>
+                        <RulesetFacts ruleset={ruleset} />
+                    </section>
+                ))}
+            </section>
+            <div className="dialog-actions">
+                <Button onClick={onClose}>{t('app.close')}</Button>
+            </div>
+        </Dialog>
+    );
+}

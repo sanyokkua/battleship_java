@@ -1,0 +1,115 @@
+.placement-screen {
+    display: grid;
+    gap: var(--space-5);
+}
+.placement-heading,
+.placement-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+}
+.placement-heading {
+    justify-content: space-between;
+}
+.placement-heading h1,
+.placement-heading p {
+    margin: 0 0 var(--space-2);
+}
+.placement-stage {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: var(--space-5);
+}
+.board-panel {
+    min-width: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-1);
+}
+.board-panel h2 {
+    margin-top: 0;
+    color: var(--accent-strong);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-family: var(--font-display);
+    font-size: 1.03rem;
+}
+.placement-status {
+    align-self: end;
+}
+.ship-options {
+    display: grid;
+    gap: var(--space-4);
+}
+.ship-options [aria-pressed='true'] {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+@container app (max-width: 47.5rem) {
+    .placement-stage {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+.placement-popover {
+    z-index: 1000;
+    display: grid;
+    gap: 0.45rem;
+    width: max-content;
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+    overflow: auto;
+    padding: 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    box-shadow: 0 0.4rem 1.2rem rgb(0 0 0 / 35%);
+}
+.placement-popover h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 1rem;
+}
+.placement-popover p {
+    margin: 0;
+}
+.placement-popover-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.4rem;
+}
+.placement-popover-dirs {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    gap: 0.4rem;
+}
+.placement-popover-dirs > .is-vertical,
+.placement-popover-dirs > .is-single {
+    grid-column: 2;
+}
+.placement-popover-dirs > .is-horizontal {
+    grid-column: 1;
+}
+.placement-popover-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.placement-popover button {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    color: var(--text-1);
+    cursor: pointer;
+}
+
+.placement-popover .fleet-segments i {
+    background: var(--accent);
+    border-color: var(--accent-strong);
+}

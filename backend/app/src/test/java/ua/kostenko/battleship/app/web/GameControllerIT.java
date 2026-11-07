@@ -21,6 +21,7 @@ import ua.kostenko.battleship.app.config.BattleshipProperties;
 import ua.kostenko.battleship.app.security.SecurityHttp;
 import ua.kostenko.battleship.app.security.SecurityHttp.Reply;
 import ua.kostenko.battleship.application.MutableTimeSource;
+import ua.kostenko.battleship.application.SessionFixtures;
 import ua.kostenko.battleship.application.projection.PrivacyFixtures;
 import ua.kostenko.battleship.application.projection.SnapshotContext;
 import ua.kostenko.battleship.application.projection.SnapshotProjector;
@@ -81,7 +82,7 @@ class GameControllerIT {
     /** Makes the game a two-player PLAYING game and returns the guest's session cookie. */
     private String seatAGuest(String gameId) {
         String guestValue = "guest-session-" + gameId + "-0123456789abcdefghijklmnop";
-        sessions.register(guestValue, time.now());
+        SessionFixtures.register(sessions, guestValue, time.now());
         games.withSlot(gameId, slot -> {
             slot.replace(PrivacyFixtures.fixture(Phase.PLAYING, SEA_BATTLE));
             slot.guestSessionDigest(SessionRegistry.digest(guestValue));

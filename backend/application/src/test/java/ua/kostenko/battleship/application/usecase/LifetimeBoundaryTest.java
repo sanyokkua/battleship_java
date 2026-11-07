@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.IDLE;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.INVITATION;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.NOW;
-import static ua.kostenko.battleship.application.usecase.CommandTestFixture.PRESENCE;
+import static ua.kostenko.battleship.application.usecase.CommandTestFixture.PRESENCE_INTERVAL;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.RETENTION;
 import static ua.kostenko.battleship.application.usecase.CommandTestFixture.failureCode;
 
@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import ua.kostenko.battleship.application.SessionFixtures;
 import ua.kostenko.battleship.application.usecase.CommandTestFixture.Game;
 import ua.kostenko.battleship.domain.command.GameCommand;
 import ua.kostenko.battleship.domain.model.Phase;
@@ -36,7 +37,7 @@ class LifetimeBoundaryTest {
     @Test
     void absoluteLifetimeEndsPlayAtItsDeadlineWhateverTheActivity() {
         var f = new CommandTestFixture(
-                5, Duration.ofSeconds(100), Duration.ofSeconds(60), INVITATION, RETENTION, PRESENCE);
+                5, Duration.ofSeconds(100), Duration.ofSeconds(60), INVITATION, RETENTION, PRESENCE_INTERVAL);
         Game active = f.newGame();
         Game other = f.newGame();
         f.time.set(NOW.plusSeconds(30));
@@ -67,6 +68,24 @@ class LifetimeBoundaryTest {
     }
 
     @Test
+    void aFinishedGameStaysReadableByItsPlayersAfterTheRegistryDroppedTheirIdleSessions() {
+        var f = new CommandTestFixture();
+        Game game = f.newGame();
+        f.startPlaying(game);
+        UUID resign = f.id();
+        f.send(game, Seat.HOST, resign, new GameCommand.Resign());
+        for (int i = 0; i < 30; i++) {
+            SessionFixtures.register(f.sessions, "stranger-" + i, NOW.plusSeconds(10 + i));
+        }
+        assertThat(f.sessions.find(game.host())).isEmpty();
+        assertThat(f.sessions.find(game.guest())).isEmpty();
+
+        var replay = f.send(game, Seat.GUEST, resign, new GameCommand.Resign());
+
+        assertThat(replay.snapshot().phase()).isEqualTo(Phase.FINISHED);
+    }
+
+    @Test
     void invitationLifetimeAcceptsJoinJustBeforeItsDeadlineAndRefusesAtIt() {
         var f = new CommandTestFixture();
         var early = f.newWaitingGame();
@@ -87,11 +106,11 @@ class LifetimeBoundaryTest {
         Game game = f.newGame();
         var first = f.presence.execute(game.id(), game.host());
         assertThat(first.expiresAt()).isEqualTo(NOW.plus(IDLE));
-        f.time.set(NOW.plus(PRESENCE).minus(MS));
+        f.time.set(NOW.plus(PRESENCE_INTERVAL).minus(MS));
         assertThat(f.presence.execute(game.id(), game.host()).expiresAt()).isEqualTo(NOW.plus(IDLE));
-        f.time.set(NOW.plus(PRESENCE));
+        f.time.set(NOW.plus(PRESENCE_INTERVAL));
         assertThat(f.presence.execute(game.id(), game.host()).expiresAt())
-                .isEqualTo(NOW.plus(PRESENCE).plus(IDLE));
+                .isEqualTo(NOW.plus(PRESENCE_INTERVAL).plus(IDLE));
     }
 
     @Test
@@ -157,7 +176,7 @@ class LifetimeBoundaryTest {
     @Test
     void gameFinishedJustBeforeTheAbsoluteCeilingKeepsItsResultForTheFullRetention() {
         var f = new CommandTestFixture(
-                5, Duration.ofSeconds(100), Duration.ofSeconds(60), INVITATION, RETENTION, PRESENCE);
+                5, Duration.ofSeconds(100), Duration.ofSeconds(60), INVITATION, RETENTION, PRESENCE_INTERVAL);
         Game game = f.newGame();
         f.startPlaying(game);
         f.time.set(NOW.plusSeconds(60).minus(MS));
@@ -178,7 +197,7 @@ class LifetimeBoundaryTest {
     void expiredGameAnswersGoneToItsOwnDigestsAndUnavailableToOthersThenUnavailableToAllAfterRetention() {
         var f = new CommandTestFixture();
         Game game = f.newGame();
-        f.sessions.register("stranger", NOW);
+        SessionFixtures.register(f.sessions, "stranger", NOW);
         f.time.set(NOW.plus(IDLE));
         assertThat(failureCode(() -> f.probe(game, Seat.HOST))).isEqualTo("game-expired");
         assertThat(failureCode(() -> f.probe(game, Seat.GUEST))).isEqualTo("game-expired");
@@ -197,8 +216,8 @@ class LifetimeBoundaryTest {
         var waiting = f.newWaitingGame();
         String guest =
                 f.join.execute(waiting.id(), waiting.secret(), "Guest", null).sessionValue();
-        f.sessions.register("stranger-1", NOW);
-        f.sessions.register("stranger-2", NOW);
+        SessionFixtures.register(f.sessions, "stranger-1", NOW);
+        SessionFixtures.register(f.sessions, "stranger-2", NOW);
         f.time.set(NOW.plus(IDLE));
         assertThat(failureCode(() -> f.join.execute(waiting.id(), ANY_SECRET, "Guest", guest)))
                 .isEqualTo("game-expired");
@@ -232,7 +251,7 @@ class LifetimeBoundaryTest {
     void replacingTheInvitationOfAnIdleExpiredGameAnswersGoneToItsHostAndChangesNothing() {
         var f = new CommandTestFixture();
         var waiting = f.newWaitingGame();
-        f.sessions.register("stranger", NOW);
+        SessionFixtures.register(f.sessions, "stranger", NOW);
         long version = f.games.withSlot(waiting.id(), slot -> slot.state().version());
         f.time.set(NOW.plus(IDLE));
         assertThat(failureCode(() -> f.replace.execute(waiting.id(), waiting.host())))
@@ -260,7 +279,7 @@ class LifetimeBoundaryTest {
         var f = new CommandTestFixture();
         var first = f.create.execute(CommandTestFixture.RULESET, "Host", null);
         assertThat(failureCode(() -> f.create.execute(CommandTestFixture.RULESET, "Host", first.sessionValue())))
-                .isEqualTo("service-unavailable");
+                .isEqualTo("browser-game-limit");
         f.time.set(NOW.plus(IDLE).plusSeconds(5));
         assertThatCode(() -> f.create.execute(CommandTestFixture.RULESET, "Host", first.sessionValue()))
                 .doesNotThrowAnyException();
@@ -275,7 +294,7 @@ class LifetimeBoundaryTest {
         var other = f.newWaitingGame();
         f.time.set(NOW.plus(INVITATION).minusSeconds(1));
         assertThat(failureCode(() -> f.join.execute(other.id(), other.secret(), "Guest", guest)))
-                .isEqualTo("service-unavailable");
+                .isEqualTo("browser-game-limit");
         f.time.set(NOW.plus(IDLE));
         var late = f.create.execute(CommandTestFixture.RULESET, "Host", null);
         String url = late.snapshot().invitationUrl();

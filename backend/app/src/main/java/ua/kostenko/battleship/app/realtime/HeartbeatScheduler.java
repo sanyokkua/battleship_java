@@ -8,11 +8,14 @@ import ua.kostenko.battleship.app.observability.CorrelationIdFilter;
 import ua.kostenko.battleship.application.port.TimeSource;
 
 /**
- * Scheduling adapter: the one scheduler shared by every stream. Each round sends the keep-alive comment to streams
- * due one and ends streams that reached their maximum lifetime (R30); what is due is decided by the injected time.
+ * Scheduling adapter: the one scheduler shared by every stream. A round every second sends the keep-alive comment to
+ * the streams due one at their own interval from opening and ends streams that reached their maximum lifetime (R30); what is due is decided by the injected time.
  */
 @Component
 final class HeartbeatScheduler {
+    /** Coarse enough to be cheap, fine enough that a beat is at most this late; each stream keeps its own deadline. */
+    static final long TICK_SECONDS = 1;
+
     private final SseHub hub;
     private final TimeSource time;
 
@@ -21,7 +24,7 @@ final class HeartbeatScheduler {
         this.time = Objects.requireNonNull(time);
     }
 
-    @Scheduled(fixedDelayString = "${battleship.heartbeat-seconds}", timeUnit = TimeUnit.SECONDS)
+    @Scheduled(fixedDelay = TICK_SECONDS, timeUnit = TimeUnit.SECONDS)
     void scheduled() {
         tick();
     }

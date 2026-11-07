@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import ua.kostenko.battleship.app.security.SecurityHttp.Reply;
+import ua.kostenko.battleship.application.SessionFixtures;
 import ua.kostenko.battleship.application.registry.SessionRegistry;
 
 /**
@@ -67,11 +68,8 @@ class AuthorizationIT {
     }
 
     private Reply send(String method, String path, String cookie) throws Exception {
-        if (method.equals("GET")) {
-            return http.call("GET", path, cookie);
-        }
-        String token = http.freshToken();
-        return http.postWithToken(path, token, cookie);
+        // No anti-forgery token on a POST: authentication is refused before the token is looked at (R33).
+        return http.call(method, path, cookie);
     }
 
     private static void assertSessionRequiredAndCleared(Reply reply) {
@@ -125,7 +123,7 @@ class AuthorizationIT {
     @Test
     void aKnownSessionPassesTheFilterAndReachesDispatch() throws Exception {
         String value = "a-session-value-the-registry-knows-0123456789abcdef";
-        sessions.register(value, Instant.now());
+        SessionFixtures.register(sessions, value, Instant.now());
 
         Reply reply = http.call("GET", "/api/v1/games/g1", SESSION_COOKIE + "=" + value);
 
@@ -264,7 +262,7 @@ class AuthorizationIT {
         Reply created = http.postJson("/api/v1/games", null, CREATE_BODY);
         String realGameId = created.json().get("gameId").asText();
         String stranger = SESSION_COOKIE + "=a-valid-session-that-plays-nowhere-0123456789abcdef";
-        sessions.register(stranger.substring(SESSION_COOKIE.length() + 1), Instant.now());
+        SessionFixtures.register(sessions, stranger.substring(SESSION_COOKIE.length() + 1), Instant.now());
 
         List<Probe> all = new java.util.ArrayList<>(synchronousProtectedOperations());
         all.add(new Probe("streamGameEvents", "GET", "/events", null));

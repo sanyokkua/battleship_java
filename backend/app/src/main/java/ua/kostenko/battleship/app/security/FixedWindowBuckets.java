@@ -6,13 +6,15 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import ua.kostenko.battleship.app.config.BattleshipProperties;
 import ua.kostenko.battleship.application.port.TimeSource;
 
 /**
  * Counts calls per (operation class, key) in a fixed 60-second window that starts at the key's first call and ends
- * inclusively: at {@code start + 60 s} the counter has already reset (the same boundary as the game expiry, T020).
+ * inclusively: at {@code start + window} the counter has already reset (the same boundary as the game expiry, T020).
  *
  * <p>Bounded by construction (R41): the table has a hard cap and, when full, drops the key unused for longest instead
  * of refusing a caller it has not seen, so a flood of invented keys cannot lock a real player out. Time comes only
@@ -20,7 +22,6 @@ import ua.kostenko.battleship.application.port.TimeSource;
  */
 @Component
 public final class FixedWindowBuckets {
-    static final int DEFAULT_CAP = 10_000;
     private static final Duration WINDOW = Duration.ofSeconds(60);
 
     private final TimeSource time;
@@ -28,11 +29,11 @@ public final class FixedWindowBuckets {
     private final Map<String, Bucket> table = new LinkedHashMap<>(16, 0.75f, true);
 
     @Autowired
-    public FixedWindowBuckets(TimeSource time) {
-        this(time, DEFAULT_CAP);
+    public FixedWindowBuckets(TimeSource time, BattleshipProperties properties) {
+        this(time, properties.rateLimit().tableCapacity());
     }
 
-    FixedWindowBuckets(TimeSource time, int cap) {
+    public FixedWindowBuckets(TimeSource time, int cap) {
         if (cap < 1) {
             throw new IllegalArgumentException("cap must be at least 1");
         }
@@ -81,5 +82,9 @@ public final class FixedWindowBuckets {
 
     synchronized int size() {
         return table.size();
+    }
+
+    synchronized Set<String> ids() {
+        return Set.copyOf(table.keySet());
     }
 }

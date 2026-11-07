@@ -6,6 +6,7 @@ import java.text.Normalizer;
 public final class DisplayNameNormalizer {
     private static final int MIN_CODE_POINTS = 1;
     private static final int MAX_CODE_POINTS = 32;
+    private static final int ZERO_WIDTH_JOINER = 0x200D;
 
     private DisplayNameNormalizer() {}
 
@@ -14,7 +15,7 @@ public final class DisplayNameNormalizer {
         if (name == null) {
             throw new InvalidNameException(InvalidNameReason.REQUIRED);
         }
-        rejectControlCharacters(name);
+        rejectInvisibleCharacters(name);
         String normalized = Normalizer.normalize(name.strip(), Normalizer.Form.NFC);
 
         int codePointCount = normalized.codePointCount(0, normalized.length());
@@ -27,10 +28,28 @@ public final class DisplayNameNormalizer {
         return normalized;
     }
 
-    private static void rejectControlCharacters(String name) {
-        if (name.codePoints().anyMatch(codePoint -> Character.getType(codePoint) == Character.CONTROL)) {
+    /**
+     * Control, format (zero-width and bidirectional marks), line and paragraph separators and unassigned code points.
+     * The zero-width joiner is allowed because emoji sequences need it.
+     */
+    private static void rejectInvisibleCharacters(String name) {
+        if (name.codePoints().anyMatch(DisplayNameNormalizer::isInvisible)) {
             throw new InvalidNameException(InvalidNameReason.INVALID_FORMAT);
         }
+    }
+
+    private static boolean isInvisible(int codePoint) {
+        if (codePoint == ZERO_WIDTH_JOINER) {
+            return false;
+        }
+        return switch (Character.getType(codePoint)) {
+            case Character.CONTROL,
+                    Character.FORMAT,
+                    Character.LINE_SEPARATOR,
+                    Character.PARAGRAPH_SEPARATOR,
+                    Character.UNASSIGNED -> true;
+            default -> false;
+        };
     }
 
     public enum InvalidNameReason {

@@ -314,6 +314,19 @@ class CommandControllerIT {
     }
 
     @Test
+    void presenceOnAFinishedGameIs409ActionNotAllowed() throws Exception {
+        Match match = startMatch();
+        bothReady(match);
+        assertThat(command(match.host(), "RESIGN").status()).isEqualTo(200);
+
+        for (Player player : new Player[] {match.host(), match.guest()}) {
+            Reply presence = player.http()
+                    .postWithToken(player.path("presence"), player.http().freshToken(), player.cookie());
+            assertProblem(presence, 409, "action-not-allowed");
+        }
+    }
+
+    @Test
     void leaveAnswers204WithNoBodyARepeatIs404AndLeavingDuringPlayIs409() throws Exception {
         Match match = startMatch();
         Player host = match.host();

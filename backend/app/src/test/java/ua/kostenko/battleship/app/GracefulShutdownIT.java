@@ -78,7 +78,7 @@ class GracefulShutdownIT {
                     entered.countDown();
                     try {
                         release.await(LONG.toSeconds(), TimeUnit.SECONDS);
-                    } catch (InterruptedException interrupted) {
+                    } catch (InterruptedException _) {
                         Thread.currentThread().interrupt();
                     }
                 }
@@ -152,6 +152,9 @@ class GracefulShutdownIT {
                                     "{\"invitationSecret\":\"" + "x".repeat(22) + "\",\"displayName\":\"Late\"}"));
                     seen.commandAtFlip = within(() -> seen.host.send(Browser.simple("CLEAR_FLEET")));
                     seen.readAtFlip = within(seen.host::read);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    seen.failure = interrupted;
                 } catch (Throwable failure) {
                     seen.failure = failure;
                 } finally {
@@ -200,7 +203,7 @@ class GracefulShutdownIT {
                     event = stream.poll(Duration.ofMillis(300));
                 }
                 return true;
-            } catch (AssertionError ended) {
+            } catch (AssertionError _) {
                 return false;
             }
         }
@@ -338,7 +341,7 @@ class GracefulShutdownIT {
         Reply health = Seams.OBSERVED.startupHealth;
 
         assertThat(health.status()).isEqualTo(503);
-        assertThat(health.json().toString()).isEqualTo("{\"live\":true,\"ready\":false,\"reason\":\"STARTING\"}");
+        assertThat(health.json()).hasToString("{\"live\":true,\"ready\":false,\"reason\":\"STARTING\"}");
     }
 
     // (2)
@@ -447,7 +450,7 @@ class GracefulShutdownIT {
         assertThat(body.has("code")).isFalse();
         assertThat(body.has("title")).isFalse();
         assertThat(body.has("status")).isFalse();
-        assertThat(body.toString()).isEqualTo("{\"live\":true,\"ready\":false,\"reason\":\"DRAINING\"}");
+        assertThat(body).hasToString("{\"live\":true,\"ready\":false,\"reason\":\"DRAINING\"}");
     }
 
     // the drain window is one setting

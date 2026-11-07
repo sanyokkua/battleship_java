@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -46,6 +47,7 @@ import ua.kostenko.battleship.application.result.ApplicationFailure;
 public class ProblemAdvice {
     private static final Logger LOG = LoggerFactory.getLogger(ProblemAdvice.class);
 
+    private static final String TRAILING_TOKEN = "Trailing token";
     private static final String ONE_OF_NO_MATCH = "Failed deserialization for Command";
 
     private record Entry(int status, String title) {}
@@ -56,6 +58,7 @@ public class ProblemAdvice {
             Map.entry(ProblemCode.REQUEST_SECURITY_REJECTED, new Entry(403, "Request rejected")),
             Map.entry(ProblemCode.GAME_UNAVAILABLE, new Entry(404, "Game unavailable")),
             Map.entry(ProblemCode.INVITATION_UNAVAILABLE, new Entry(409, "Invitation unavailable")),
+            Map.entry(ProblemCode.BROWSER_GAME_LIMIT, new Entry(409, "Browser already in a game")),
             Map.entry(ProblemCode.ACTION_NOT_ALLOWED, new Entry(409, "Action not allowed")),
             Map.entry(ProblemCode.PLACEMENT_OUT_OF_BOUNDS, new Entry(409, "Ship is out of bounds")),
             Map.entry(ProblemCode.PLACEMENT_OVERLAP, new Entry(409, "Ships may not overlap")),
@@ -135,6 +138,11 @@ public class ProblemAdvice {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<Problem> unreadableBody(HttpServletRequest request, HttpMessageNotReadableException failure) {
         Throwable cause = failure.getCause();
+        if (cause instanceof MismatchedInputException trailing
+                && String.valueOf(trailing.getOriginalMessage()).startsWith(TRAILING_TOKEN)) {
+            // Text after the document: the body is not valid JSON, which the contract answers as malformed.
+            return respond(request, ProblemCode.MALFORMED_REQUEST, null, null, null);
+        }
         if (cause instanceof JsonMappingException mapping) {
             return respond(request, ProblemCode.VALIDATION_FAILED, List.of(violationOf(mapping)), null, null);
         }
@@ -182,7 +190,9 @@ public class ProblemAdvice {
      * committed, so there is nothing to answer and nothing went wrong on our side. Streams never time out.
      */
     @ExceptionHandler(AsyncRequestNotUsableException.class)
-    void streamEnded() {}
+    void streamEnded() {
+        // The response is already committed; there is no response left to write.
+    }
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<Problem> unexpected(HttpServletRequest request, Exception failure) {
@@ -200,12 +210,13 @@ public class ProblemAdvice {
         if (cause == null) {
             LOG.info("problem code={} status={} correlationId={}", code.getValue(), problem.getStatus(), correlationId);
         } else {
+            // The throwable goes to the log with its stack so a 500 can be diagnosed; the response stays sanitized.
             LOG.error(
-                    "problem code={} status={} correlationId={} cause={}",
+                    "problem code={} status={} correlationId={}",
                     code.getValue(),
                     problem.getStatus(),
                     correlationId,
-                    cause.getClass().getName());
+                    cause);
         }
         ResponseEntity.BodyBuilder response =
                 ResponseEntity.status(problem.getStatus()).contentType(MediaType.APPLICATION_PROBLEM_JSON);
@@ -218,12 +229,15 @@ public class ProblemAdvice {
     private static Violation violationOf(JsonMappingException failure) {
         String pointer = pointerOf(failure);
         Violation.RuleEnum rule = Violation.RuleEnum.INVALID_TYPE;
+        // A number the type does not take (3.7 for an integer, 1 for an enum) is the wrong type, not a bad format.
+        boolean wrongType = failure instanceof InvalidFormatException number && number.getValue() instanceof Number;
         if (failure instanceof UnrecognizedPropertyException) {
             rule = Violation.RuleEnum.UNKNOWN_FIELD;
-        } else if (failure instanceof InvalidFormatException invalid
+        } else if (!wrongType
+                && failure instanceof InvalidFormatException invalid
                 && invalid.getTargetType().isEnum()) {
             rule = Violation.RuleEnum.UNKNOWN_VALUE;
-        } else if (failure instanceof InvalidFormatException) {
+        } else if (!wrongType && failure instanceof InvalidFormatException) {
             rule = Violation.RuleEnum.INVALID_FORMAT;
         } else if (failure.getClass() == JsonMappingException.class && pointer.equals("/command")) {
             return unknownCommandType();
@@ -249,15 +263,15 @@ public class ProblemAdvice {
         }
         Violation.RuleEnum rule =
                 switch (violation.getConstraintDescriptor().getAnnotation()) {
-                    case NotNull ignored -> Violation.RuleEnum.REQUIRED;
-                    case Min ignored -> Violation.RuleEnum.OUT_OF_RANGE;
-                    case Max ignored -> Violation.RuleEnum.OUT_OF_RANGE;
+                    case NotNull _ -> Violation.RuleEnum.REQUIRED;
+                    case Min _ -> Violation.RuleEnum.OUT_OF_RANGE;
+                    case Max _ -> Violation.RuleEnum.OUT_OF_RANGE;
                     case Size size ->
                         violation.getInvalidValue() instanceof CharSequence text
                                         && text.toString().codePointCount(0, text.length()) < size.min()
                                 ? Violation.RuleEnum.TOO_SHORT
                                 : Violation.RuleEnum.TOO_LONG;
-                    case Pattern ignored -> Violation.RuleEnum.INVALID_FORMAT;
+                    case Pattern _ -> Violation.RuleEnum.INVALID_FORMAT;
                     default -> Violation.RuleEnum.INVALID_TYPE;
                 };
         return new Violation().field(pointer.toString()).rule(rule);

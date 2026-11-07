@@ -69,7 +69,7 @@ public final class ReplaceInvitationUseCase {
                 slot.replace(slot.state().withBumpedVersion());
                 return new Captured(slot.state(), slot.contextFor(Seat.HOST, now));
             });
-        } catch (UnknownGameException unknown) {
+        } catch (UnknownGameException _) {
             throw ExpiryPolicy.unavailable();
         }
         SnapshotView host = projector.project(captured.state(), Seat.HOST, captured.context());

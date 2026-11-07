@@ -2,6 +2,7 @@ package ua.kostenko.battleship.domain.rules;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -52,9 +53,9 @@ class RulesetCatalogTest {
                         new FleetEntry("submarine", 3, 1),
                         new FleetEntry("patrol-boat", 2, 1)),
                 hasbro.fleet());
-        assertFalse(seaBattle.shipsMayTouch() == hasbro.shipsMayTouch());
-        assertFalse(seaBattle.extraTurnOnHit() == hasbro.extraTurnOnHit());
-        assertFalse(seaBattle.revealWaterAroundSunk() == hasbro.revealWaterAroundSunk());
+        assertNotEquals(seaBattle.shipsMayTouch(), hasbro.shipsMayTouch());
+        assertNotEquals(seaBattle.extraTurnOnHit(), hasbro.extraTurnOnHit());
+        assertNotEquals(seaBattle.revealWaterAroundSunk(), hasbro.revealWaterAroundSunk());
         assertTrue(hasbro.shipsMayTouch());
         assertFalse(hasbro.extraTurnOnHit());
         assertFalse(hasbro.revealWaterAroundSunk());
@@ -69,9 +70,10 @@ class RulesetCatalogTest {
             assertEquals(ruleset, Rulesets.byId(ruleset.id()).orElseThrow());
         }
 
-        assertThrows(
-                UnsupportedOperationException.class, () -> seaBattle.fleet().add(new FleetEntry("extra", 1, 1)));
-        assertThrows(UnsupportedOperationException.class, () -> Rulesets.all().clear());
+        var seaBattleFleet = seaBattle.fleet();
+        var extraShip = new FleetEntry("extra", 1, 1);
+        assertThrows(UnsupportedOperationException.class, () -> seaBattleFleet.add(extraShip));
+        assertThrows(UnsupportedOperationException.class, rulesets::clear);
     }
 
     @Test
@@ -100,7 +102,9 @@ class RulesetCatalogTest {
         Ruleset ruleset = new Ruleset("test-rules.v1", 1, 100, sourceFleet, false, false, false);
         sourceFleet.add(new FleetEntry("ship-2", 2, 1));
         assertEquals(List.of(new FleetEntry("ship-1", 1, 1)), ruleset.fleet());
-        assertThrows(UnsupportedOperationException.class, () -> ruleset.fleet().add(new FleetEntry("ship-2", 2, 1)));
+        var fleet = ruleset.fleet();
+        var ship = new FleetEntry("ship-2", 2, 1);
+        assertThrows(UnsupportedOperationException.class, () -> fleet.add(ship));
 
         assertThrows(
                 IllegalArgumentException.class,
@@ -111,5 +115,16 @@ class RulesetCatalogTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> new Ruleset("test-rules.v1", 10, 101, List.of(), false, false, false));
+    }
+
+    @Test
+    void rulesetIdentifiersAcceptAsciiDigitsOnly() {
+        assertEquals("rules-42.v123", new Ruleset("rules-42.v123", 10, 10, List.of(), false, false, false).id());
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new Ruleset("rules-٤.v1", 10, 10, List.of(), false, false, false));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new Ruleset("rules-4.v١", 10, 10, List.of(), false, false, false));
     }
 }

@@ -4,7 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.availability.AvailabilityChangeEvent;
 import org.springframework.boot.availability.ReadinessState;
-import org.springframework.boot.web.server.context.WebServerGracefulShutdownLifecycle;
+import org.springframework.boot.web.server.context.WebServerApplicationContext;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
@@ -31,7 +31,7 @@ import ua.kostenko.battleship.app.realtime.SseHub;
 @Component
 public class GracefulShutdownConfig implements SmartLifecycle {
     /** One above the web server's graceful phase: stopped before it. */
-    public static final int PHASE = WebServerGracefulShutdownLifecycle.SMART_LIFECYCLE_PHASE + 1;
+    public static final int PHASE = WebServerApplicationContext.GRACEFUL_SHUTDOWN_PHASE + 1;
 
     private static final Logger LOG = LoggerFactory.getLogger(GracefulShutdownConfig.class);
 

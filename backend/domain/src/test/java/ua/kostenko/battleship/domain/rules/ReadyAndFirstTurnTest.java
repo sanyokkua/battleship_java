@@ -69,7 +69,8 @@ class ReadyAndFirstTurnTest {
         assertThat(after.outcome()).isEqualTo(before.outcome());
         assertThat(before.host().ready()).isFalse();
         assertThat(before.timeline().readyAt()).isEmpty();
-        assertThatThrownBy(() -> after.timeline().readyAt().clear()).isInstanceOf(UnsupportedOperationException.class);
+        var readyTimes = after.timeline().readyAt();
+        assertThatThrownBy(readyTimes::clear).isInstanceOf(UnsupportedOperationException.class);
     }
 
     @ParameterizedTest
@@ -198,8 +199,8 @@ class ReadyAndFirstTurnTest {
         assertThat(before.turn()).isNull();
         assertThat(before.timeline().readyAt()).hasSize(1);
         assertThat(before.timeline().playStartedAt()).isNull();
-        assertThatThrownBy(() -> after.timeline().shotDecisionStartedAt().clear())
-                .isInstanceOf(UnsupportedOperationException.class);
+        var shotDecisionTimes = after.timeline().shotDecisionStartedAt();
+        assertThatThrownBy(shotDecisionTimes::clear).isInstanceOf(UnsupportedOperationException.class);
     }
 
     private static void assertAccepted(Transition result, GameState before) {

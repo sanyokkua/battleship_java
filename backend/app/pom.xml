@@ -9,9 +9,28 @@
   </parent>
   <artifactId>app</artifactId>
   <name>Battleship Application</name>
+  <properties>
+    <sonar.junit.reportPaths>${project.build.directory}/surefire-reports,${project.build.directory}/failsafe-reports</sonar.junit.reportPaths>
+  </properties>
   <build>
-    <finalName>battleship-app-${project.version}</finalName>
+    <finalName>battleship-app</finalName>
     <plugins>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>coverage-report</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>report-aggregate</goal>
+            </goals>
+            <configuration>
+              <includeCurrentProject>true</includeCurrentProject>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
@@ -19,6 +38,7 @@
           <!-- Lets an IT set the Host header to prove the service never reads it; the JDK reads this once per JVM. -->
           <systemPropertyVariables>
             <jdk.httpclient.allowRestrictedHeaders>host</jdk.httpclient.allowRestrictedHeaders>
+            <spring.test.context.cache.maxSize>1</spring.test.context.cache.maxSize>
             <!-- The executable JAR that package built before failsafe runs, for the ITs that launch it with java -jar. -->
             <packaged.jar>${project.build.directory}/${project.build.finalName}.jar</packaged.jar>
           </systemPropertyVariables>
@@ -114,12 +134,10 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
-      <version>2.21.5</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.datatype</groupId>
       <artifactId>jackson-datatype-jsr310</artifactId>
-      <version>2.21.5</version>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -163,10 +181,6 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-security</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
   </dependencies>
 </project>

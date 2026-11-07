@@ -1,0 +1,52 @@
+# One nginx server block for both images that use nginx (frontend image, render image).
+# The official nginx image copies this template to conf.d/default.conf at start-up and replaces ${PORT} and
+# ${BATTLESHIP_BACKEND_UPSTREAM} from the container environment (all other $variables below are nginx's own).
+# Files that must be revalidated on every load, or a deployed update is not picked up: the shell, the service worker
+# and the manifest keep fixed names (everything under /assets/ is content-hashed). An empty value adds no header.
+# Evaluated per request URI, so the SPA fallback to /index.html is covered too.
+map $uri $battleship_cache_control {
+    default "";
+    ~^/(index\.html|sw\.js|manifest\.webmanifest)$ "no-cache";
+}
+
+server {
+    listen ${PORT};
+    server_name _;
+    root /usr/share/nginx/html;
+    access_log off;
+
+    # Security headers. Keep in step with `securityHeaders` in frontend/vite.config.ts (local-deploy server).
+    # Everything is same-origin: scripts, the API, the event stream, the service worker and the manifest all fall
+    # back to default-src 'self'. Two relaxations, both needed by the built app:
+    #  - style-src-attr 'unsafe-inline': React sets style="" attributes (Board, ShipActionDialog). Only attributes
+    #    are relaxed; <style> elements and scripts stay blocked.
+    #  - img-src data: : the bundler inlines small images as data: URLs.
+    # These are server-level on purpose: an add_header inside a location would drop all of them for that location.
+    add_header Content-Security-Policy "default-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    # A server-level add_header, like the four above, so the revalidation header cannot displace them (see the map).
+    add_header Cache-Control $battleship_cache_control always;
+
+    location /api/ {
+        proxy_pass ${BATTLESHIP_BACKEND_UPSTREAM};
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        # Replace, never append: a client-supplied X-Forwarded-For must not reach the backend.
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Connection "";
+        # The backend sends these two itself; drop its copies so each header appears once (ours, above).
+        proxy_hide_header X-Content-Type-Options;
+        proxy_hide_header X-Frame-Options;
+        # Server-sent events: pass bytes through immediately and keep the stream open.
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 1h;
+    }
+
+    # Single-page app: unknown paths (deep links such as /games/abc) get the shell.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

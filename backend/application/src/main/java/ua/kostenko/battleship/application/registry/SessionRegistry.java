@@ -8,7 +8,6 @@ import java.util.HexFormat;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
@@ -32,21 +31,6 @@ public final class SessionRegistry {
         }
     }
 
-    public SessionRecord register(String sessionValue, Instant now) {
-        return registerDigest(digest(sessionValue), now);
-    }
-
-    public SessionRecord registerForGame(String sessionValue, String gameId, Instant now) {
-        lock.lock();
-        try {
-            SessionRecord record = registerDigest(digest(sessionValue), now);
-            record.attachGame(gameId);
-            return record;
-        } finally {
-            lock.unlock();
-        }
-    }
-
     /** Runs admission before changing session ownership, while the per-browser cap is locked. */
     public Instant admitGame(String sessionValue, String gameId, int maxLiveGames, Supplier<Instant> admission) {
         Objects.requireNonNull(admission);
@@ -55,8 +39,7 @@ public final class SessionRegistry {
         lock.lock();
         try {
             SessionRecord current = records.get(digest);
-            if (current != null && current.liveGames().size() >= maxLiveGames)
-                throw new CapacityExceededException("browser games", 1);
+            if (current != null && current.liveGames().size() >= maxLiveGames) throw new BrowserGameLimitException();
             String evictable = null;
             if (current == null && records.size() == capacity) {
                 evictable = records.entrySet().stream()
@@ -81,63 +64,21 @@ public final class SessionRegistry {
         }
     }
 
-    private SessionRecord registerDigest(String digest, Instant now) {
-        lock.lock();
-        try {
-            SessionRecord current = records.get(digest);
-            if (current != null) {
-                current.touch(now);
-                return current;
-            }
-            if (records.size() == capacity) {
-                String oldest = records.entrySet().stream()
-                        .filter(entry -> entry.getValue().liveGames().isEmpty())
-                        .min((a, b) ->
-                                a.getValue().lastSeenAt().compareTo(b.getValue().lastSeenAt()))
-                        .map(Map.Entry::getKey)
-                        .orElse(null);
-                if (oldest == null) throw new CapacityExceededException("sessions", 1);
-                records.remove(oldest);
-            }
-            SessionRecord created = new SessionRecord(digest, now);
-            records.put(digest, created);
-            return created;
-        } finally {
-            lock.unlock();
-        }
-    }
-
     public Optional<SessionRecord> find(String sessionValue) {
-        return findDigest(digest(sessionValue));
+        return Optional.ofNullable(records.get(digest(sessionValue)));
     }
 
-    public Optional<SessionRecord> findDigest(String digest) {
-        return Optional.ofNullable(records.get(digest));
+    /** Finds the session a protected request presents and marks it seen, so eviction drops the longest-idle one. */
+    public Optional<SessionRecord> authenticate(String sessionValue, Instant now) {
+        Optional<SessionRecord> session = find(sessionValue);
+        session.ifPresent(found -> found.touch(now));
+        return session;
     }
 
     /** Terminal ownership release deliberately avoids the admission lock while a game slot is held. */
     public void releaseGame(String digest, String gameId) {
         if (digest == null) return;
-        SessionRecord record = records.get(digest);
-        if (record != null) record.detachGame(gameId);
-    }
-
-    public void touch(String sessionValue, Instant now) {
-        lock.lock();
-        try {
-            SessionRecord current = records.get(digest(sessionValue));
-            if (current != null) current.touch(now);
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    public Set<String> digests() {
-        lock.lock();
-        try {
-            return Set.copyOf(records.keySet());
-        } finally {
-            lock.unlock();
-        }
+        SessionRecord session = records.get(digest);
+        if (session != null) session.detachGame(gameId);
     }
 }

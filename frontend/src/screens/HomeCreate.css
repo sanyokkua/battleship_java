@@ -1,0 +1,14 @@
+.home-screen .home-card {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+.home-screen .home-illustration {
+    width: min(100%, 15rem);
+    filter: none;
+}
+.home-screen .home-card > .btn:last-child {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+}
