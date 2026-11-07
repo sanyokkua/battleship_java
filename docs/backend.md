@@ -6,7 +6,7 @@ security model read [architecture](architecture.md) first. For the endpoints and
 
 Stack: Java 25, Spring Boot 4.1.1 (`web`, `validation`, `security`, `actuator` starters), Maven through the wrapper
 [`backend/mvnw`](../backend/mvnw), virtual threads enabled (`spring.threads.virtual.enabled`). The authoritative design is in
-[`specs/002-backend/plan.md`](../specs/002-backend/plan.md).
+archived backend change design (`openspec/changes/archive/*-backend/design.md`) and [`openspec/specs/`](../openspec/specs/).
 
 ## Contents
 

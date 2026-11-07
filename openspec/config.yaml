@@ -1,0 +1,89 @@
+schema: spec-driven
+
+context: |
+  Battleship: a greenfield rewrite as one monorepo with three independently buildable products and a root
+  integration layer. Branch `rewrite_prod_ready` is the main development branch; `master` holds the old
+  application and is historical context only, never a foundation, command source or test source.
+
+  Products and boundaries:
+  - `contracts/openapi.yaml` is the only wire authority (v1, not frozen; fix in place and update every dependent
+    in the same change; no migration, deprecation or versioning machinery). Gate: `cd contracts && npm ci && npm run check`.
+  - `backend/` is a Java 25 / Spring Boot 4.1.1 / Maven 3.9.16 Wrapper reactor (domain, application,
+    application-adapter) producing one backend-only JAR. Wire DTOs are generated from the contract into
+    `backend/app/target/generated-sources/openapi` and never committed or hand-edited. Gate:
+    `cd backend && ./mvnw -q verify && ./mvnw spotless:check`.
+  - `frontend/` is an independent TypeScript / React / Vite (Node 24) static app. Transport sits behind one gateway;
+    data is validated before it enters server-state storage; local state only for drafts and presentation.
+  - `scripts/` holds only product scripts: `local-build.sh` (the single repository-wide gate; `--docker` runs it in
+    Docker), `local-deploy.sh`, `build-docker-{frontend,backend,render}.sh`. CI lives in `.github/workflows/`
+    (`ci.yml`, `release.yml`). Commands, ports and troubleshooting: `docs/local-operation.md`.
+  - Runtimes are pinned by major only (Java 25, Node 24, newest patch); npm and Maven dependencies stay exact.
+
+  Non-negotiable invariants:
+  - The backend is authoritative for rules, validation, authorization, lifecycle and caller-relative projections;
+    every game operation returns `GameSnapshot` and the client enables exactly `allowedActions`. The only
+    browser-side derivation is the advisory fleet-placement hint; the server validates every command.
+  - Anonymous capability handling: high-entropy secrets with server-side digests; no capability, invitation
+    fragment, cookie, hidden board or raw command body in URLs, logs, metrics, errors or another seat's view.
+  - Backend is ephemeral and in-memory: 15-minute idle, two-hour absolute, five-minute terminal retention, explicit
+    restart loss. No database, accounts, chat, spectators, rankings, payments, analytics, offline play or scaling.
+  - UI and API share one origin (no CORS); the session cookie is `Secure`, so LAN deploys use HTTPS. Journeys run
+    against the real packaged backend: no recorded game data, no fake engine.
+  - English and Ukrainian resources keep key parity; keyboard, touch and assistive-technology operation; sound and
+    haptics are best-effort and never block anything.
+  - Deploying to Render stays manual; SonarQube stays local; workflows use only the scoped `GITHUB_TOKEN`.
+
+  Sources of intent: `docs/intent.md`, mockup `docs/design/`, architecture `docs/architecture.md`.
+  Current behavior lives in `openspec/specs/`; history of the original the original workflow features is in
+  `openspec/changes/archive/`.
+
+rules:
+  proposal:
+    - Say what problem exists, why it matters, what behavior changes and what is out of scope. No implementation plan.
+    - Tag every requirement `[user]` (traceable to the owner's words or `docs/intent.md`) or `[agent]`. Present the
+      `[agent]` set as one block with its aggregate cost; agent-added requirements default to deferred.
+    - >-
+      Name the assurance level - Lean (default, canonical artifact, standard lint, one guide), Standard (targeted
+      examples and tests for named risks) or Release-grade (baselines, exhaustive fixtures, privacy matrices).
+      Escalation is an owner decision, never silent.
+    - Anything offered for approval states what it adds (files, dependencies, tasks), a cheaper alternative and a
+      recommendation of now / later / no.
+    - If behavior is undefined by specs and code, ask the owner with a recommended default instead of inventing it.
+  specs:
+    - Use `### Requirement:` with SHALL wording and at least one `#### Scenario:` with WHEN/THEN using concrete values.
+    - Describe observable behavior, not classes or algorithms. One authoritative requirement per behavior; modify the
+      existing requirement rather than adding an overlapping one.
+    - A public wire change updates `contracts/openapi.yaml` and its embedded example first.
+    - Cover where relevant - privacy projection, keyboard/focus, accessible names, localization parity, safe user
+      outcome plus non-sensitive diagnostics for rejected commands, expiry, restart loss and realtime failure.
+  design:
+    - Write a design only for architecture, boundary, data-model, concurrency or security decisions; skip it for trivial changes.
+    - Inspect existing code and `docs/architecture.md` first and extend them. A new abstraction names the boundary it
+      isolates and the responsibility it replaces; an interface needs a second concrete implementation.
+    - State projected file and task counts. More than 20 tasks stops for a simplify / split / approve decision.
+    - Name exact build, test, lint and local-run commands for each affected product.
+  tasks:
+    - One task, one deliverable, one finite proof. A task never claims a requirement range or uses "all", "every",
+      "complete" or "final" without an enumerated manifest of what it covers.
+    - Each task carries its own proof (tests live in the task, not in a separate test phase) and is integrated into
+      its consumer in the same change. Order by real dependency; a task depends only on existing code or earlier tasks.
+    - Done means a named mutation fails the gate - record the command output showing the assertion failing when the
+      guarded behavior is removed. A checked box is not evidence.
+
+operations:
+  apply:
+    guidance:
+      - Inspect `git status --short --branch` and local branches first; confirm the intended branch, preserve unrelated
+        changes. For multi-commit work use `feature/<change>--<task>` cut from the integration branch and record the parent.
+      - Search for an existing function, component or type before writing one (DRY). Build only what has a concrete
+        caller or test (YAGNI); no code "for later".
+      - Prefer real collaborators and black-box behavior over mocks; doubles only for external, non-deterministic or
+        not-yet-built boundaries. Never delete, skip or weaken a test or quality config to make work pass.
+      - Commit each completed task with a concise imperative subject. No history rewrites or force pushes.
+      - Report skipped, timed-out, failed and environment-blocked checks distinctly; none count as a passing gate.
+      - Run SonarQube scans (`docs/local-operation.md`) for substantial implementation or refactoring; never suppress findings.
+  archive:
+    guidance:
+      - Archive only after `./scripts/local-build.sh` ran cleanly and the delivered behavior matches the change's specs.
+      - Update AGENTS.md, docs and saved agent memory in the same change when it alters durable repository knowledge.
+      - Squash-merge task branches into their recorded parent; merges to the default branch need owner approval.

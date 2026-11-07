@@ -25,7 +25,7 @@ Docker images (built from the root `Dockerfile`, nothing is pushed): `scripts/bu
 - [Render deployment](docs/render-deployment.md): AMD64 image build, manual publishing and service configuration.
 - [API contract guide](contracts/README.md) and [OpenAPI contract](contracts/openapi.yaml): authoritative wire formats, examples and client rules.
 
-The active rewrite uses `rewrite_prod_ready` as its development baseline; `master` contains the historical application. Feature specifications and plans live in [`specs/`](specs/). The product intent is in [`docs/intent.md`](docs/intent.md) and the visual reference is [`docs/design/naval-command-center-mockup.html`](docs/design/naval-command-center-mockup.html).
+The active rewrite uses `rewrite_prod_ready` as its development baseline; `master` contains the historical application. Specifications live in [`openspec/specs/`](openspec/specs/) (workflow and rules in [`AGENTS.md`](AGENTS.md) and [`openspec/config.yaml`](openspec/config.yaml)); the original feature plans are archived in [`openspec/changes/archive/`](openspec/changes/archive/). The product intent is in [`docs/intent.md`](docs/intent.md) and the visual reference is [`docs/design/naval-command-center-mockup.html`](docs/design/naval-command-center-mockup.html).
 
 ## License
 
